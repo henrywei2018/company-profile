@@ -2,85 +2,109 @@
 
 namespace App\Repositories\Interfaces;
 
+use App\Models\Project;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
+
 interface ProjectRepositoryInterface
 {
     /**
      * Get all projects
-     * 
-     * @return \Illuminate\Database\Eloquent\Collection
+     *
+     * @return Collection
      */
-    public function all();
+    public function all(): Collection;
     
     /**
-     * Find project by ID
-     * 
+     * Get paginated projects
+     *
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function paginate(int $perPage = 10): LengthAwarePaginator;
+    
+    /**
+     * Find a project by ID
+     *
      * @param int $id
-     * @return \App\Models\Project
+     * @return Project|null
      */
-    public function find($id);
+    public function find(int $id): ?Project;
     
     /**
-     * Find project by slug
-     * 
+     * Find a project by slug
+     *
      * @param string $slug
-     * @return \App\Models\Project
+     * @return Project|null
      */
-    public function findBySlug($slug);
+    public function findBySlug(string $slug): ?Project;
     
     /**
      * Create a new project
-     * 
+     *
      * @param array $data
-     * @return \App\Models\Project
+     * @return Project
      */
-    public function create(array $data);
+    public function create(array $data): Project;
     
     /**
-     * Update existing project
-     * 
-     * @param int $id
+     * Update a project
+     *
+     * @param Project $project
      * @param array $data
-     * @return \App\Models\Project
+     * @return Project
      */
-    public function update($id, array $data);
+    public function update(Project $project, array $data): Project;
     
     /**
-     * Delete project
-     * 
-     * @param int $id
+     * Delete a project
+     *
+     * @param Project $project
      * @return bool
      */
-    public function delete($id);
+    public function delete(Project $project): bool;
     
     /**
      * Get featured projects
-     * 
-     * @return \Illuminate\Database\Eloquent\Collection
+     *
+     * @param int $limit
+     * @return Collection
      */
-    public function getFeatured();
+    public function getFeatured(int $limit = 6): Collection;
     
     /**
      * Get projects by category
-     * 
+     *
      * @param string $category
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
-    public function getByCategory($category);
-    
-    /**
-     * Get projects by year
-     * 
-     * @param int $year
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
-    public function getByYear($year);
-    
-    /**
-     * Get paginated projects with filters
-     * 
-     * @param array $filters
      * @param int $perPage
-     * @return \Illuminate\Pagination\LengthAwarePaginator
+     * @return LengthAwarePaginator
      */
-    public function getPaginated(array $filters = [], $perPage = 10);
+    public function getByCategory(string $category, int $perPage = 10): LengthAwarePaginator;
+    
+    /**
+     * Get related projects
+     *
+     * @param Project $project
+     * @param int $limit
+     * @return Collection
+     */
+    public function getRelated(Project $project, int $limit = 3): Collection;
+    
+    /**
+     * Get projects by client
+     *
+     * @param int $clientId
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function getByClient(int $clientId, int $perPage = 10): LengthAwarePaginator;
+    
+    /**
+     * Search projects
+     *
+     * @param string $query
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function search(string $query, int $perPage = 10): LengthAwarePaginator;
 }

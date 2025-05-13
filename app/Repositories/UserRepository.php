@@ -4,169 +4,165 @@ namespace App\Repositories;
 
 use App\Models\User;
 use App\Repositories\Interfaces\UserRepositoryInterface;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Hash;
 
 class UserRepository implements UserRepositoryInterface
 {
     /**
-     * @var User
-     */
-    protected $model;
-    
-    /**
-     * UserRepository constructor.
-     * 
-     * @param User $user
-     */
-    public function __construct(User $user)
-    {
-        $this->model = $user;
-    }
-    
-    /**
      * Get all users
-     * 
-     * @return \Illuminate\Database\Eloquent\Collection
+     *
+     * @return Collection
      */
-    public function all()
+    public function all(): Collection
     {
-        return $this->model->all();
+        return User::with('roles')->get();
     }
     
     /**
-     * Find user by ID
-     * 
+     * Get paginated users
+     *
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function paginate(int $perPage = 15): LengthAwarePaginator
+    {
+        return User::with('roles')->paginate($perPage);
+    }
+    
+    /**
+     * Find a user by ID
+     *
      * @param int $id
-     * @return \App\Models\User
+     * @return User|null
      */
-    public function find($id)
+    public function find(int $id): ?User
     {
-        return $this->model->findOrFail($id);
+        return User::with('roles')->find($id);
     }
     
     /**
-     * Find user by email
-     * 
+     * Find a user by email
+     *
      * @param string $email
-     * @return \App\Models\User
+     * @return User|null
      */
-    public function findByEmail($email)
+    public function findByEmail(string $email): ?User
     {
-        return $this->model->where('email', $email)->first();
+        return User::where('email', $email)->first();
     }
     
     /**
      * Create a new user
-     * 
+     *
      * @param array $data
-     * @return \App\Models\User
+     * @return User
      */
-    public function create(array $data)
+    public function create(array $data): User
     {
         // Ensure password is hashed
-        if (isset($data['password'])) {
+        if (isset($data['password']) && !Hash::info($data['password'])['algo']) {
             $data['password'] = Hash::make($data['password']);
         }
         
-        $user = $this->model->create($data);
-        
-        // Assign roles if provided
-        if (isset($data['roles']) && !empty($data['roles'])) {
-            $user->syncRoles($data['roles']);
-        }
-        
-        return $user;
+        return User::create($data);
     }
     
     /**
-     * Update existing user
-     * 
-     * @param int $id
+     * Update a user
+     *
+     * @param User $user
      * @param array $data
-     * @return \App\Models\User
+     * @return User
      */
-    public function update($id, array $data)
+    public function update(User $user, array $data): User
     {
-        $user = $this->find($id);
-        
-        // Hash password if provided
-        if (isset($data['password']) && !empty($data['password'])) {
+        // Ensure password is hashed if provided
+        if (isset($data['password']) && !Hash::info($data['password'])['algo']) {
             $data['password'] = Hash::make($data['password']);
-        } else {
-            unset($data['password']); // Don't update password if not provided
         }
         
         $user->update($data);
-        
-        // Sync roles if provided
-        if (isset($data['roles'])) {
-            $user->syncRoles($data['roles']);
-        }
-        
         return $user;
     }
     
     /**
-     * Delete user
-     * 
-     * @param int $id
+     * Delete a user
+     *
+     * @param User $user
      * @return bool
      */
-    public function delete($id)
+    public function delete(User $user): bool
     {
-        return $this->find($id)->delete();
+        return $user->delete();
     }
     
     /**
      * Get users by role
-     * 
+     *
      * @param string $role
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
-    public function getByRole($role)
-    {
-        return $this->model->role($role)->get();
-    }
-    
-    /**
-     * Get active users
-     * 
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
-    public function getActive()
-    {
-        return $this->model->where('is_active', true)->get();
-    }
-    
-    /**
-     * Get paginated users with filters
-     * 
-     * @param array $filters
      * @param int $perPage
-     * @return \Illuminate\Pagination\LengthAwarePaginator
+     * @return LengthAwarePaginator
      */
-    public function getPaginated(array $filters = [], $perPage = 15)
+    public function getByRole(string $role, int $perPage = 15): LengthAwarePaginator
     {
-        $query = $this->model->with('roles');
+        return User::role($role)->paginate($perPage);
+    }
+    
+    /**
+     * Assign role to user
+     *
+     * @param User $user
+     * @param string|array $roles
+     * @return User
+     */
+    public function assignRole(User $user, $roles): User
+    {
+        $user->assignRole($roles);
+        return $user;
+    }
+    
+    /**
+     * Remove role from user
+     *
+     * @param User $user
+     * @param string|array $roles
+     * @return User
+     */
+    public function removeRole(User $user, $roles): User
+    {
+        $user->removeRole($roles);
+        return $user;
+    }
+    
+    /**
+     * Toggle user active status
+     *
+     * @param User $user
+     * @return User
+     */
+    public function toggleActive(User $user): User
+    {
+        $user->update([
+            'is_active' => !$user->is_active
+        ]);
         
-        // Apply filters
-        if (isset($filters['role']) && !empty($filters['role'])) {
-            $query->whereHas('roles', function ($q) use ($filters) {
-                $q->where('name', $filters['role']);
-            });
-        }
-        
-        if (isset($filters['search']) && !empty($filters['search'])) {
-            $query->where(function ($q) use ($filters) {
-                $q->where('name', 'like', "%{$filters['search']}%")
-                  ->orWhere('email', 'like', "%{$filters['search']}%");
-            });
-        }
-        
-        if (isset($filters['active']) && $filters['active'] !== null) {
-            $query->where('is_active', (bool) $filters['active']);
-        }
-        
-        return $query->latest()->paginate($perPage);
+        return $user;
+    }
+    
+    /**
+     * Search users
+     *
+     * @param string $query
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function search(string $query, int $perPage = 15): LengthAwarePaginator
+    {
+        return User::where('name', 'like', "%{$query}%")
+            ->orWhere('email', 'like', "%{$query}%")
+            ->orWhere('company', 'like', "%{$query}%")
+            ->paginate($perPage);
     }
 }

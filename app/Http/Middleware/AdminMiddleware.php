@@ -17,22 +17,14 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next)
     {
-        // Check if user is authenticated
-        if (!Auth::check()) {
-            return redirect()->route('login')->with('error', 'You must login to access this area.');
+        if (!Auth::check() || !Auth::user()->hasRole('admin')) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+            
+            return redirect()->route('login')->with('error', 'You do not have permission to access this area.');
         }
-        
-        // Check if user has admin role
-        if (!Auth::user()->hasRole('admin')) {
-            abort(403, 'Unauthorized action. You do not have the necessary permissions.');
-        }
-        
-        // Check if user is active
-        if (!Auth::user()->is_active) {
-            Auth::logout();
-            return redirect()->route('login')->with('error', 'Your account has been deactivated. Please contact the administrator.');
-        }
-        
+
         return $next($request);
     }
 }

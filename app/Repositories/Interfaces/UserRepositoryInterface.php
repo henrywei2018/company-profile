@@ -2,77 +2,109 @@
 
 namespace App\Repositories\Interfaces;
 
+use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
+
 interface UserRepositoryInterface
 {
     /**
      * Get all users
-     * 
-     * @return \Illuminate\Database\Eloquent\Collection
+     *
+     * @return Collection
      */
-    public function all();
+    public function all(): Collection;
     
     /**
-     * Find user by ID
-     * 
+     * Get paginated users
+     *
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function paginate(int $perPage = 15): LengthAwarePaginator;
+    
+    /**
+     * Find a user by ID
+     *
      * @param int $id
-     * @return \App\Models\User
+     * @return User|null
      */
-    public function find($id);
+    public function find(int $id): ?User;
     
     /**
-     * Find user by email
-     * 
+     * Find a user by email
+     *
      * @param string $email
-     * @return \App\Models\User
+     * @return User|null
      */
-    public function findByEmail($email);
+    public function findByEmail(string $email): ?User;
     
     /**
      * Create a new user
-     * 
+     *
      * @param array $data
-     * @return \App\Models\User
+     * @return User
      */
-    public function create(array $data);
+    public function create(array $data): User;
     
     /**
-     * Update existing user
-     * 
-     * @param int $id
+     * Update a user
+     *
+     * @param User $user
      * @param array $data
-     * @return \App\Models\User
+     * @return User
      */
-    public function update($id, array $data);
+    public function update(User $user, array $data): User;
     
     /**
-     * Delete user
-     * 
-     * @param int $id
+     * Delete a user
+     *
+     * @param User $user
      * @return bool
      */
-    public function delete($id);
+    public function delete(User $user): bool;
     
     /**
      * Get users by role
-     * 
+     *
      * @param string $role
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
-    public function getByRole($role);
-    
-    /**
-     * Get active users
-     * 
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
-    public function getActive();
-    
-    /**
-     * Get paginated users with filters
-     * 
-     * @param array $filters
      * @param int $perPage
-     * @return \Illuminate\Pagination\LengthAwarePaginator
+     * @return LengthAwarePaginator
      */
-    public function getPaginated(array $filters = [], $perPage = 15);
+    public function getByRole(string $role, int $perPage = 15): LengthAwarePaginator;
+    
+    /**
+     * Assign role to user
+     *
+     * @param User $user
+     * @param string|array $roles
+     * @return User
+     */
+    public function assignRole(User $user, $roles): User;
+    
+    /**
+     * Remove role from user
+     *
+     * @param User $user
+     * @param string|array $roles
+     * @return User
+     */
+    public function removeRole(User $user, $roles): User;
+    
+    /**
+     * Toggle user active status
+     *
+     * @param User $user
+     * @return User
+     */
+    public function toggleActive(User $user): User;
+    
+    /**
+     * Search users
+     *
+     * @param string $query
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function search(string $query, int $perPage = 15): LengthAwarePaginator;
 }

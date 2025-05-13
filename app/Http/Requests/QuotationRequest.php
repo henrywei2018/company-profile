@@ -13,13 +13,13 @@ class QuotationRequest extends FormRequest
      */
     public function authorize()
     {
-        return true; // Anyone can submit a quotation request
+        return true; // Public form, anyone can submit
     }
 
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     public function rules()
     {
@@ -31,51 +31,29 @@ class QuotationRequest extends FormRequest
             'service_id' => 'nullable|exists:services,id',
             'project_type' => 'required|string|max:255',
             'location' => 'nullable|string|max:255',
-            'requirements' => 'required|string|min:10',
+            'requirements' => 'required|string',
             'budget_range' => 'nullable|string|max:100',
             'start_date' => 'nullable|date',
-            'file' => 'nullable|file|max:10240', // Max 10MB
-            'g-recaptcha-response' => config('app.env') !== 'testing' ? 'required|recaptcha' : '',
+            'g-recaptcha-response' => 'sometimes|required', // If using reCAPTCHA
+            'attachments.*' => 'nullable|file|max:10240', // 10MB max per file
         ];
     }
 
     /**
-     * Get the error messages for the defined validation rules.
+     * Get custom messages for validator errors.
      *
      * @return array
      */
     public function messages()
     {
         return [
-            'name.required' => 'Please enter your name',
-            'email.required' => 'Please enter your email address',
-            'email.email' => 'Please enter a valid email address',
-            'project_type.required' => 'Please specify the project type',
-            'requirements.required' => 'Please describe your requirements',
-            'requirements.min' => 'Your requirements must be at least 10 characters',
-            'file.max' => 'The file may not be greater than 10MB',
-            'g-recaptcha-response.required' => 'Please verify that you are not a robot',
-            'g-recaptcha-response.recaptcha' => 'Captcha verification failed. Please try again.',
+            'name.required' => 'Please enter your name.',
+            'email.required' => 'Please enter your email address.',
+            'email.email' => 'Please enter a valid email address.',
+            'project_type.required' => 'Please select a project type.',
+            'requirements.required' => 'Please describe your project requirements.',
+            'g-recaptcha-response.required' => 'Please verify that you are not a robot.',
+            'attachments.*.max' => 'File size should not exceed 10MB.',
         ];
-    }
-
-    /**
-     * Get validated data with additional fields.
-     *
-     * @return array
-     */
-    public function validated()
-    {
-        $validated = parent::validated();
-        
-        // Set status to pending by default
-        $validated['status'] = 'pending';
-        
-        // Link to authenticated user if available
-        if (auth()->check()) {
-            $validated['client_id'] = auth()->id();
-        }
-        
-        return $validated;
     }
 }

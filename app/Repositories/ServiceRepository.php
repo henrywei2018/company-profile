@@ -4,133 +4,174 @@ namespace App\Repositories;
 
 use App\Models\Service;
 use App\Repositories\Interfaces\ServiceRepositoryInterface;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ServiceRepository implements ServiceRepositoryInterface
 {
     /**
-     * @var Service
+     * Get all active services
+     *
+     * @return Collection
      */
-    protected $model;
-    
-    /**
-     * ServiceRepository constructor.
-     * 
-     * @param Service $service
-     */
-    public function __construct(Service $service)
+    public function getAllActive(): Collection
     {
-        $this->model = $service;
+        return Service::active()->ordered()->get();
     }
     
     /**
-     * Get all services
-     * 
-     * @return \Illuminate\Database\Eloquent\Collection
+     * Get all services (including inactive)
+     *
+     * @return Collection
      */
-    public function all()
+    public function all(): Collection
     {
-        return $this->model->all();
+        return Service::ordered()->get();
     }
     
     /**
-     * Find service by ID
-     * 
+     * Get paginated services
+     *
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function paginate(int $perPage = 10): LengthAwarePaginator
+    {
+        return Service::ordered()->paginate($perPage);
+    }
+    
+    /**
+     * Find a service by ID
+     *
      * @param int $id
-     * @return \App\Models\Service
+     * @return Service|null
      */
-    public function find($id)
+    public function find(int $id): ?Service
     {
-        return $this->model->findOrFail($id);
+        return Service::find($id);
     }
     
     /**
-     * Find service by slug
-     * 
+     * Find a service by slug
+     *
      * @param string $slug
-     * @return \App\Models\Service
+     * @return Service|null
      */
-    public function findBySlug($slug)
+    public function findBySlug(string $slug): ?Service
     {
-        return $this->model->where('slug', $slug)->firstOrFail();
+        return Service::where('slug', $slug)->first();
     }
     
     /**
      * Create a new service
-     * 
+     *
      * @param array $data
-     * @return \App\Models\Service
+     * @return Service
      */
-    public function create(array $data)
+    public function create(array $data): Service
     {
-        return $this->model->create($data);
+        return Service::create($data);
     }
     
     /**
-     * Update existing service
-     * 
-     * @param int $id
+     * Update a service
+     *
+     * @param Service $service
      * @param array $data
-     * @return \App\Models\Service
+     * @return Service
      */
-    public function update($id, array $data)
+    public function update(Service $service, array $data): Service
     {
-        $service = $this->find($id);
         $service->update($data);
+        return $service;
+    }
+    
+    /**
+     * Delete a service
+     *
+     * @param Service $service
+     * @return bool
+     */
+    public function delete(Service $service): bool
+    {
+        return $service->delete();
+    }
+    
+    /**
+     * Get featured services
+     *
+     * @param int $limit
+     * @return Collection
+     */
+    public function getFeatured(int $limit = 6): Collection
+    {
+        return Service::active()
+            ->where('featured', true)
+            ->ordered()
+            ->take($limit)
+            ->get();
+    }
+    
+    /**
+     * Get services by category
+     *
+     * @param int $categoryId
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function getByCategory(int $categoryId, int $perPage = 10): LengthAwarePaginator
+    {
+        return Service::active()
+            ->where('category_id', $categoryId)
+            ->ordered()
+            ->paginate($perPage);
+    }
+    
+    /**
+     * Get related services
+     *
+     * @param Service $service
+     * @param int $limit
+     * @return Collection
+     */
+    public function getRelated(Service $service, int $limit = 3): Collection
+    {
+        return Service::active()
+            ->where('id', '!=', $service->id)
+            ->when($service->category_id, function ($query) use ($service) {
+                return $query->where('category_id', $service->category_id);
+            })
+            ->take($limit)
+            ->get();
+    }
+    
+    /**
+     * Toggle service active status
+     *
+     * @param Service $service
+     * @return Service
+     */
+    public function toggleActive(Service $service): Service
+    {
+        $service->update([
+            'is_active' => !$service->is_active
+        ]);
         
         return $service;
     }
     
     /**
-     * Delete service
-     * 
-     * @param int $id
-     * @return bool
+     * Toggle service featured status
+     *
+     * @param Service $service
+     * @return Service
      */
-    public function delete($id)
+    public function toggleFeatured(Service $service): Service
     {
-        return $this->find($id)->delete();
-    }
-    
-    /**
-     * Get active services
-     * 
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
-    public function getActive()
-    {
-        return $this->model->active()->ordered()->get();
-    }
-    
-    /**
-     * Get featured services
-     * 
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
-    public function getFeatured()
-    {
-        return $this->model->active()->featured()->ordered()->get();
-    }
-    
-    /**
-     * Get services by category
-     * 
-     * @param int $categoryId
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
-    public function getByCategory($categoryId)
-    {
-        return $this->model->active()->where('category_id', $categoryId)->ordered()->get();
-    }
-    
-    /**
-     * Get paginated services with filters
-     * 
-     * @param array $filters
-     * @param int $perPage
-     * @return \Illuminate\Pagination\LengthAwarePaginator
-     */
-    public function getPaginated(array $filters = [], $perPage = 10)
-    {
-        return $this->model->filter($filters)->ordered()->paginate($perPage);
+        $service->update([
+            'featured' => !$service->featured
+        ]);
+        
+        return $service;
     }
 }

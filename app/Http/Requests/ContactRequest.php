@@ -13,13 +13,13 @@ class ContactRequest extends FormRequest
      */
     public function authorize()
     {
-        return true; // Anyone can submit a contact form
+        return true; // Public form, anyone can submit
     }
 
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     public function rules()
     {
@@ -28,48 +28,26 @@ class ContactRequest extends FormRequest
             'email' => 'required|email|max:255',
             'phone' => 'nullable|string|max:20',
             'company' => 'nullable|string|max:255',
-            'subject' => 'nullable|string|max:255',
-            'message' => 'required|string|min:10',
-            'g-recaptcha-response' => config('app.env') !== 'testing' ? 'required|recaptcha' : '',
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string',
+            'g-recaptcha-response' => 'sometimes|required', // If using reCAPTCHA
         ];
     }
 
     /**
-     * Get the error messages for the defined validation rules.
+     * Get custom messages for validator errors.
      *
      * @return array
      */
     public function messages()
     {
         return [
-            'name.required' => 'Please enter your name',
-            'email.required' => 'Please enter your email address',
-            'email.email' => 'Please enter a valid email address',
-            'message.required' => 'Please enter a message',
-            'message.min' => 'Your message must be at least 10 characters',
-            'g-recaptcha-response.required' => 'Please verify that you are not a robot',
-            'g-recaptcha-response.recaptcha' => 'Captcha verification failed. Please try again.',
+            'name.required' => 'Please enter your name.',
+            'email.required' => 'Please enter your email address.',
+            'email.email' => 'Please enter a valid email address.',
+            'subject.required' => 'Please enter a subject.',
+            'message.required' => 'Please enter your message.',
+            'g-recaptcha-response.required' => 'Please verify that you are not a robot.',
         ];
-    }
-
-    /**
-     * Get validated data with additional fields.
-     *
-     * @return array
-     */
-    public function validated()
-    {
-        $validated = parent::validated();
-        
-        // Add type
-        $validated['type'] = 'contact_form';
-        
-        // Add IP address for security and tracking
-        $validated['ip_address'] = $this->ip();
-        
-        // Set is_read to false by default
-        $validated['is_read'] = false;
-        
-        return $validated;
     }
 }

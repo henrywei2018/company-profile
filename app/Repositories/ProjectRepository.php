@@ -4,134 +4,167 @@ namespace App\Repositories;
 
 use App\Models\Project;
 use App\Repositories\Interfaces\ProjectRepositoryInterface;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ProjectRepository implements ProjectRepositoryInterface
 {
     /**
-     * @var Project
-     */
-    protected $model;
-    
-    /**
-     * ProjectRepository constructor.
-     * 
-     * @param Project $project
-     */
-    public function __construct(Project $project)
-    {
-        $this->model = $project;
-    }
-    
-    /**
      * Get all projects
-     * 
-     * @return \Illuminate\Database\Eloquent\Collection
+     *
+     * @return Collection
      */
-    public function all()
+    public function all(): Collection
     {
-        return $this->model->all();
+        return Project::with('images')->latest()->get();
     }
     
     /**
-     * Find project by ID
-     * 
+     * Get paginated projects
+     *
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function paginate(int $perPage = 10): LengthAwarePaginator
+    {
+        return Project::with('images')->latest()->paginate($perPage);
+    }
+    
+    /**
+     * Find a project by ID
+     *
      * @param int $id
-     * @return \App\Models\Project
+     * @return Project|null
      */
-    public function find($id)
+    public function find(int $id): ?Project
     {
-        return $this->model->findOrFail($id);
+        return Project::with(['images', 'client', 'testimonial'])->find($id);
     }
     
     /**
-     * Find project by slug
-     * 
+     * Find a project by slug
+     *
      * @param string $slug
-     * @return \App\Models\Project
+     * @return Project|null
      */
-    public function findBySlug($slug)
+    public function findBySlug(string $slug): ?Project
     {
-        return $this->model->where('slug', $slug)->firstOrFail();
+        return Project::with(['images', 'client', 'testimonial'])
+            ->where('slug', $slug)
+            ->first();
     }
     
     /**
      * Create a new project
-     * 
+     *
      * @param array $data
-     * @return \App\Models\Project
+     * @return Project
      */
-    public function create(array $data)
+    public function create(array $data): Project
     {
-        return $this->model->create($data);
+        return Project::create($data);
     }
     
     /**
-     * Update existing project
-     * 
-     * @param int $id
+     * Update a project
+     *
+     * @param Project $project
      * @param array $data
-     * @return \App\Models\Project
+     * @return Project
      */
-    public function update($id, array $data)
+    public function update(Project $project, array $data): Project
     {
-        $project = $this->find($id);
         $project->update($data);
-        
         return $project;
     }
     
     /**
-     * Delete project
-     * 
-     * @param int $id
+     * Delete a project
+     *
+     * @param Project $project
      * @return bool
      */
-    public function delete($id)
+    public function delete(Project $project): bool
     {
-        return $this->find($id)->delete();
+        return $project->delete();
     }
     
     /**
      * Get featured projects
-     * 
-     * @return \Illuminate\Database\Eloquent\Collection
+     *
+     * @param int $limit
+     * @return Collection
      */
-    public function getFeatured()
+    public function getFeatured(int $limit = 6): Collection
     {
-        return $this->model->featured()->latest()->get();
+        return Project::with('images')
+            ->where('featured', true)
+            ->latest()
+            ->take($limit)
+            ->get();
     }
     
     /**
      * Get projects by category
-     * 
+     *
      * @param string $category
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
-    public function getByCategory($category)
-    {
-        return $this->model->where('category', $category)->latest()->get();
-    }
-    
-    /**
-     * Get projects by year
-     * 
-     * @param int $year
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
-    public function getByYear($year)
-    {
-        return $this->model->where('year', $year)->latest()->get();
-    }
-    
-    /**
-     * Get paginated projects with filters
-     * 
-     * @param array $filters
      * @param int $perPage
-     * @return \Illuminate\Pagination\LengthAwarePaginator
+     * @return LengthAwarePaginator
      */
-    public function getPaginated(array $filters = [], $perPage = 10)
+    public function getByCategory(string $category, int $perPage = 10): LengthAwarePaginator
     {
-        return $this->model->filter($filters)->latest()->paginate($perPage);
+        return Project::with('images')
+            ->where('category', $category)
+            ->latest()
+            ->paginate($perPage);
+    }
+    
+    /**
+     * Get related projects
+     *
+     * @param Project $project
+     * @param int $limit
+     * @return Collection
+     */
+    public function getRelated(Project $project, int $limit = 3): Collection
+    {
+        return Project::with('images')
+            ->where('id', '!=', $project->id)
+            ->where('category', $project->category)
+            ->take($limit)
+            ->get();
+    }
+    
+    /**
+     * Get projects by client
+     *
+     * @param int $clientId
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function getByClient(int $clientId, int $perPage = 10): LengthAwarePaginator
+    {
+        return Project::with('images')
+            ->where('client_id', $clientId)
+            ->latest()
+            ->paginate($perPage);
+    }
+    
+    /**
+     * Search projects
+     *
+     * @param string $query
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function search(string $query, int $perPage = 10): LengthAwarePaginator
+    {
+        return Project::with('images')
+            ->where('title', 'like', "%{$query}%")
+            ->orWhere('description', 'like', "%{$query}%")
+            ->orWhere('client_name', 'like', "%{$query}%")
+            ->orWhere('location', 'like', "%{$query}%")
+            ->latest()
+            ->paginate($perPage);
     }
 }

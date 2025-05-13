@@ -4,179 +4,102 @@ namespace App\Services;
 
 use App\Models\Message;
 use App\Models\User;
-use App\Notifications\NewMessageNotification;
-use App\Notifications\NewReplyNotification;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 class MessageService
 {
     /**
+     * Get paginated messages
+     *
+     * @param array $filters
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function getPaginatedMessages(array $filters = [], int $perPage = 15): LengthAwarePaginator
+    {
+        $query = Message::query();
+        
+        // Apply filters
+        if (isset($filters['read'])) {
+            $query->where('is_read', $filters['read'] === 'read');
+        }
+        
+        if (isset($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('subject', 'like', "%{$search}%");
+            });
+        }
+        
+        if (isset($filters['type'])) {
+            $query->where('type', $filters['type']);
+        }
+        
+        // Get latest messages
+        return $query->latest()->paginate($perPage);
+    }
+    
+    /**
+     * Get client messages
+     *
+     * @param User $client
+     * @param array $filters
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function getClientMessages(User $client, array $filters = [], int $perPage = 10): LengthAwarePaginator
+    {
+        $query = Message::where('client_id', $client->id);
+        
+        // Apply filters
+        if (isset($filters['read'])) {
+            $query->where('is_read_by_client', $filters['read'] === 'read');
+        }
+        
+        if (isset($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('subject', 'like', "%{$search}%")
+                    ->orWhere('message', 'like', "%{$search}%");
+            });
+        }
+        
+        // Get latest messages
+        return $query->latest()->paginate($perPage);
+    }
+    
+    /**
      * Create a new message
      *
      * @param array $data
+     * @param array $files
      * @return Message
      */
-    public function createMessage(array $data)
+    public function createMessage(array $data, array $files = []): Message
     {
         // Create the message
         $message = Message::create($data);
         
         // Process attachments if any
-        if (isset($data['attachments']) && !empty($data['attachments'])) {
-            $this->processAttachments($message, $data['attachments']);
+        if (!empty($files)) {
+            $this->processAttachments($message, $files);
         }
-        
-        // Send notifications
-        $this->sendNotifications($message);
         
         return $message;
     }
     
     /**
-     * Reply to a message
-     *
-     * @param Message $parentMessage
-     * @param array $data
-     * @return Message
-     */
-    public function replyToMessage(Message $parentMessage, array $data)
-    {
-        // Set parent ID
-        $data['parent_id'] = $parentMessage->id;
-        
-        // Determine message type
-        if ($data['type'] ?? null) {
-            // Type is already set
-        } elseif (isset($data['client_id']) && $data['client_id']) {
-            $data['type'] = 'client_to_admin';
-            $data['is_read_by_client'] = true;
-            $data['is_read'] = false;
-        } else {
-            $data['type'] = 'admin_to_client';
-            $data['is_read'] = true;
-            $data['is_read_by_client'] = false;
-        }
-        
-        // Create the reply
-        $reply = Message::create($data);
-        
-        // Process attachments if any
-        if (isset($data['attachments']) && !empty($data['attachments'])) {
-            $this->processAttachments($reply, $data['attachments']);
-        }
-        
-        // Send notifications
-        $this->sendReplyNotifications($parentMessage, $reply);
-        
-        return $reply;
-    }
-    
-    /**
-     * Process attachments for a message
-     *
-     * @param Message $message
-     * @param array $attachments
-     * @return void
-     */
-    protected function processAttachments(Message $message, array $attachments)
-    {
-        foreach ($attachments as $file) {
-            $path = $file->store('message_attachments/' . $message->id, 'public');
-            
-            $message->attachments()->create([
-                'file_path' => $path,
-                'file_name' => $file->getClientOriginalName(),
-                'file_size' => $file->getSize(),
-                'file_type' => $file->getMimeType(),
-            ]);
-        }
-    }
-    
-    /**
-     * Send notifications for a new message
-     *
-     * @param Message $message
-     * @return void
-     */
-    protected function sendNotifications(Message $message)
-    {
-        // Contact form or client message to admin - notify admins
-        if (in_array($message->type, ['contact_form', 'client_to_admin'])) {
-            $admins = User::role('admin')->get();
-            
-            foreach ($admins as $admin) {
-                $admin->notify(new NewMessageNotification($message));
-            }
-        } 
-        // Admin message to client - notify client
-        elseif ($message->type === 'admin_to_client' && $message->client_id) {
-            $client = User::find($message->client_id);
-            
-            if ($client) {
-                $client->notify(new NewMessageNotification($message));
-            }
-        }
-    }
-    
-    /**
-     * Send notifications for a reply to a message
-     *
-     * @param Message $parentMessage
-     * @param Message $reply
-     * @return void
-     */
-    protected function sendReplyNotifications(Message $parentMessage, Message $reply)
-    {
-        // Client reply to admin - notify admins
-        if ($reply->type === 'client_to_admin') {
-            $admins = User::role('admin')->get();
-            
-            foreach ($admins as $admin) {
-                $admin->notify(new NewReplyNotification($parentMessage, $reply));
-            }
-        } 
-        // Admin reply to client - notify client
-        elseif ($reply->type === 'admin_to_client' && $parentMessage->client_id) {
-            $client = User::find($parentMessage->client_id);
-            
-            if ($client) {
-                $client->notify(new NewReplyNotification($parentMessage, $reply));
-            }
-        }
-    }
-    
-    /**
-     * Delete a message and its attachments
-     *
-     * @param Message $message
-     * @return bool
-     */
-    public function deleteMessage(Message $message)
-    {
-        // Delete attachments if any
-        foreach ($message->attachments as $attachment) {
-            Storage::disk('public')->delete($attachment->file_path);
-            $attachment->delete();
-        }
-        
-        // Delete replies if any
-        foreach ($message->replies as $reply) {
-            $this->deleteMessage($reply);
-        }
-        
-        // Delete the message
-        return $message->delete();
-    }
-    
-    /**
-     * Mark a message as read
+     * Mark message as read
      *
      * @param Message $message
      * @param string $type
      * @return Message
      */
-    public function markAsRead(Message $message, $type = 'admin')
+    public function markAsRead(Message $message, string $type = 'admin'): Message
     {
         if ($type === 'admin') {
             $message->update([
@@ -186,6 +109,7 @@ class MessageService
         } else {
             $message->update([
                 'is_read_by_client' => true,
+                'read_by_client_at' => now(),
             ]);
         }
         
@@ -193,13 +117,13 @@ class MessageService
     }
     
     /**
-     * Mark a message as unread
+     * Mark message as unread
      *
      * @param Message $message
      * @param string $type
      * @return Message
      */
-    public function markAsUnread(Message $message, $type = 'admin')
+    public function markAsUnread(Message $message, string $type = 'admin'): Message
     {
         if ($type === 'admin') {
             $message->update([
@@ -209,9 +133,50 @@ class MessageService
         } else {
             $message->update([
                 'is_read_by_client' => false,
+                'read_by_client_at' => null,
             ]);
         }
         
         return $message;
+    }
+    
+    /**
+     * Delete message
+     *
+     * @param Message $message
+     * @return bool
+     */
+    public function deleteMessage(Message $message): bool
+    {
+        // Delete attachments if any
+        if ($message->attachments()->count() > 0) {
+            foreach ($message->attachments as $attachment) {
+                Storage::disk('public')->delete($attachment->file_path);
+                $attachment->delete();
+            }
+        }
+        
+        return $message->delete();
+    }
+    
+    /**
+     * Process attachments
+     *
+     * @param Message $message
+     * @param array $files
+     * @return void
+     */
+    private function processAttachments(Message $message, array $files): void
+    {
+        foreach ($files as $file) {
+            $path = $file->store('message_attachments/' . $message->id, 'public');
+            
+            $message->attachments()->create([
+                'file_path' => $path,
+                'file_name' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'file_type' => $file->getMimeType(),
+            ]);
+        }
     }
 }
