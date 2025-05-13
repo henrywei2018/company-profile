@@ -31,7 +31,7 @@ class UserRepository implements UserRepositoryInterface
         return User::with('roles')->paginate($perPage);
     }
     
-    /**
+        /**
      * Find a user by ID
      *
      * @param int $id
@@ -39,7 +39,7 @@ class UserRepository implements UserRepositoryInterface
      */
     public function find(int $id): ?User
     {
-        return User::with('roles')->find($id);
+        return User::find($id)?->load('roles');
     }
     
     /**

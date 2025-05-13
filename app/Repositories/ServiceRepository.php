@@ -48,19 +48,19 @@ class ServiceRepository implements ServiceRepositoryInterface
      */
     public function find(int $id): ?Service
     {
-        return Service::find($id);
+        return Service::find($id)?->load(['category', 'images']);        
     }
     
     /**
-     * Find a service by slug
-     *
-     * @param string $slug
-     * @return Service|null
-     */
-    public function findBySlug(string $slug): ?Service
-    {
-        return Service::where('slug', $slug)->first();
-    }
+ * Find a service by slug
+ *
+ * @param string $slug
+ * @return Service|null
+ */
+public function findBySlug(string $slug): ?Service
+{
+    return Service::where('slug', $slug)->first();
+}
     
     /**
      * Create a new service

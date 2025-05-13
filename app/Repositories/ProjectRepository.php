@@ -31,15 +31,15 @@ class ProjectRepository implements ProjectRepositoryInterface
     }
     
     /**
-     * Find a project by ID
-     *
-     * @param int $id
-     * @return Project|null
-     */
-    public function find(int $id): ?Project
-    {
-        return Project::with(['images', 'client', 'testimonial'])->find($id);
-    }
+ * Find a project by ID
+ *
+ * @param int $id
+ * @return Project|null
+ */
+public function find(int $id): ?Project
+{
+    return Project::find($id)?->load(['images', 'client', 'testimonial']);
+}
     
     /**
      * Find a project by slug
