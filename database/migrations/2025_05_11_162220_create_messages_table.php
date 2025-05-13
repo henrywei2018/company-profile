@@ -16,9 +16,11 @@ class CreateMessagesTable extends Migration
             $table->string('company')->nullable();
             $table->string('subject')->nullable();
             $table->text('message');
+            $table->string('type')->default('contact_form');
             $table->boolean('is_read')->default(false);
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
             $table->timestamp('read_at')->nullable();
+            $table->index(['type', 'is_read']);
             $table->timestamps();
         });
     }
