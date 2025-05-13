@@ -23,6 +23,10 @@ class CreateQuotationsTable extends Migration
             $table->enum('status', ['pending', 'reviewed', 'approved', 'rejected'])->default('pending');
             $table->foreignId('client_id')->nullable()->constrained('users')->onDelete('set null');
             $table->text('admin_notes')->nullable();
+            $table->boolean('client_approved')->nullable();
+            $table->text('client_decline_reason')->nullable();
+            $table->timestamp('client_approved_at')->nullable();
+            $table->text('additional_info')->nullable();
             $table->timestamps();
         });
     }

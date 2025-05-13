@@ -19,6 +19,12 @@ class CreateTeamMembersTable extends Migration
             $table->string('image')->nullable();
             $table->boolean('is_active')->default(true);
             $table->integer('sort_order')->default(0);
+            $table->string('slug')->unique();
+            $table->string('department')->nullable();
+            $table->boolean('is_featured')->default(false);
+            $table->string('social_facebook')->nullable();
+            $table->string('social_twitter')->nullable();
+            $table->string('social_instagram')->nullable();
             $table->timestamps();
         });
     }
