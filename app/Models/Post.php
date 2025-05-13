@@ -1,18 +1,23 @@
 <?php
-// File: app/Models/Post.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\FilterableTrait;
 use App\Traits\HasSlugTrait;
-use App\Traits\ImageableTrait;
 use App\Traits\SeoableTrait;
+use App\Traits\ImageableTrait;
 
 class Post extends Model
 {
-    use HasFactory, HasSlugTrait, ImageableTrait, SeoableTrait;
+    use HasFactory, FilterableTrait, HasSlugTrait, SeoableTrait, ImageableTrait;
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
     protected $fillable = [
         'title',
         'slug',
@@ -24,42 +29,69 @@ class Post extends Model
         'published_at',
         'featured',
     ];
-
+    
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
     protected $casts = [
         'published_at' => 'datetime',
         'featured' => 'boolean',
     ];
-
+    
+    /**
+     * The filterable attributes for the model.
+     *
+     * @var array
+     */
+    protected $filterable = [
+        'status',
+        'search',
+        'featured',
+    ];
+    
+    /**
+     * The searchable attributes for the model.
+     *
+     * @var array
+     */
+    protected $searchable = [
+        'title',
+        'excerpt',
+        'content',
+    ];
+    
+    /**
+     * Get the author of the post.
+     */
     public function author()
     {
         return $this->belongsTo(User::class, 'user_id');
     }
-
+    
+    /**
+     * Get the categories for the post.
+     */
     public function categories()
     {
         return $this->belongsToMany(PostCategory::class);
     }
-
+    
+    /**
+     * Scope a query to only include published posts.
+     */
     public function scopePublished($query)
     {
         return $query->where('status', 'published')
-                    ->where('published_at', '<=', now());
+            ->where('published_at', '<=', now());
     }
-
-    public function scopeFeatured($query)
-    {
-        return $query->where('featured', true);
-    }
-
+    
+    /**
+     * Scope a query to only include recent posts.
+     */
     public function scopeRecent($query, $limit = 5)
     {
-        return $query->orderBy('published_at', 'desc')->limit($limit);
-    }
-
-    public function getReadTimeAttribute()
-    {
-        $wordCount = str_word_count(strip_tags($this->content));
-        $readTime = ceil($wordCount / 200); // Assuming 200 words per minute
-        return $readTime > 0 ? $readTime : 1;
+        return $query->latest('published_at')->limit($limit);
     }
 }

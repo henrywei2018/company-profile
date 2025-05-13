@@ -1,47 +1,52 @@
 <?php
-// File: app/Models/Certification.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasActiveTrait;
+use App\Traits\HasSortOrderTrait;
 use App\Traits\ImageableTrait;
 
 class Certification extends Model
 {
-    use HasFactory, ImageableTrait;
+    use HasFactory, HasActiveTrait, HasSortOrderTrait, ImageableTrait;
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
     protected $fillable = [
         'name',
         'issuer',
         'description',
+        'image',
         'issue_date',
         'expiry_date',
         'is_active',
         'sort_order',
     ];
-
+    
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
     protected $casts = [
         'issue_date' => 'date',
         'expiry_date' => 'date',
         'is_active' => 'boolean',
     ];
-
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
-    }
-
+    
+    /**
+     * Scope a query to only include valid certifications.
+     */
     public function scopeValid($query)
     {
-        return $query->where(function($q) {
+        return $query->where(function ($q) {
             $q->whereNull('expiry_date')
-              ->orWhere('expiry_date', '>=', now());
+                ->orWhere('expiry_date', '>=', now());
         });
-    }
-
-    public function scopeSorted($query)
-    {
-        return $query->orderBy('sort_order');
     }
 }

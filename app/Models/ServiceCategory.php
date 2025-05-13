@@ -1,16 +1,22 @@
 <?php
-// File: app/Models/ServiceCategory.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasActiveTrait;
 use App\Traits\HasSlugTrait;
+use App\Traits\HasSortOrderTrait;
 
 class ServiceCategory extends Model
 {
-    use HasFactory, HasSlugTrait;
+    use HasFactory, HasActiveTrait, HasSlugTrait, HasSortOrderTrait;
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
     protected $fillable = [
         'name',
         'slug',
@@ -19,18 +25,41 @@ class ServiceCategory extends Model
         'is_active',
         'sort_order',
     ];
-
+    
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
     protected $casts = [
         'is_active' => 'boolean',
     ];
-
+    
+    /**
+     * Get the services for the category.
+     */
     public function services()
     {
         return $this->hasMany(Service::class, 'category_id');
     }
-
-    public function scopeActive($query)
+    
+    /**
+     * Get active services for the category.
+     */
+    public function activeServices()
     {
-        return $query->where('is_active', true);
+        return $this->hasMany(Service::class, 'category_id')->active();
+    }
+    
+    /**
+     * Get icon URL.
+     */
+    public function getIconUrlAttribute()
+    {
+        if ($this->icon) {
+            return asset('storage/' . $this->icon);
+        }
+        
+        return asset('images/default-category-icon.png');
     }
 }
