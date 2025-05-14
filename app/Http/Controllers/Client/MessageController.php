@@ -5,10 +5,25 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Message;
+use App\Models\Project;
+use App\Services\MessageService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class MessageController extends Controller
 {
+    protected $messageService;
+
+    /**
+     * Create a new controller instance.
+     *
+     * @param MessageService $messageService
+     */
+    public function __construct(MessageService $messageService)
+    {
+        $this->messageService = $messageService;
+    }
+
     /**
      * Display a listing of the client's messages.
      */
@@ -16,18 +31,11 @@ class MessageController extends Controller
     {
         $user = auth()->user();
 
-        $messages = Message::where('client_id', $user->id)
-            ->when($request->filled('read'), function ($query) use ($request) {
-                return $query->where('is_read_by_client', $request->read === 'read');
-            })
-            ->when($request->filled('search'), function ($query) use ($request) {
-                return $query->where(function ($q) use ($request) {
-                    $q->where('subject', 'like', "%{$request->search}%")
-                        ->orWhere('message', 'like', "%{$request->search}%");
-                });
-            })
-            ->latest()
-            ->paginate(10);
+        // Use service to get filtered messages
+        $messages = $this->messageService->getClientMessages(
+            $user,
+            $request->only(['read', 'search'])
+        );
 
         return view('client.messages.index', compact('messages'));
     }
@@ -37,7 +45,10 @@ class MessageController extends Controller
      */
     public function create()
     {
-        return view('client.messages.create');
+        // Get client's projects for dropdown
+        $projects = Project::where('client_id', auth()->id())->get();
+        
+        return view('client.messages.create', compact('projects'));
     }
 
     /**
@@ -45,44 +56,34 @@ class MessageController extends Controller
      */
     public function store(Request $request)
     {
-        $user = auth()->user();
-
         $validated = $request->validate([
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
+            'project_id' => 'nullable|exists:projects,id',
             'attachments.*' => 'nullable|file|max:10240', // 10MB max
         ]);
+        
+        $user = auth()->user();
 
-        // Create message
-        $message = Message::create([
+        // Prepare message data
+        $messageData = [
             'client_id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
             'subject' => $validated['subject'],
             'message' => $validated['message'],
+            'project_id' => $validated['project_id'] ?? null,
             'is_read' => false,
             'is_read_by_client' => true, // Client sent it, so they've "read" it
             'type' => 'client_to_admin',
-        ]);
+        ];
 
-        // Handle attachments
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                $path = $file->store('message_attachments/' . $message->id, 'public');
-
-                $message->attachments()->create([
-                    'file_path' => $path,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_size' => $file->getSize(),
-                    'file_type' => $file->getMimeType(),
-                ]);
-            }
-        }
-
-        // Send notification to admin (to be implemented)
-        // Notification::route('mail', config('mail.admin'))
-        //    ->notify(new ClientMessageNotification($message));
+        // Use service to create message with attachments
+        $message = $this->messageService->createMessage(
+            $messageData,
+            $request->file('attachments') ?? []
+        );
 
         return redirect()->route('client.messages.index')
             ->with('success', 'Message sent successfully!');
@@ -98,10 +99,13 @@ class MessageController extends Controller
 
         // Mark as read if not already
         if (!$message->is_read_by_client) {
-            $message->update(['is_read_by_client' => true]);
+            $this->messageService->markAsRead($message, 'client');
         }
 
-        return view('client.messages.show', compact('message'));
+        // Get all related messages (thread)
+        $thread = $this->getMessageThread($message);
+
+        return view('client.messages.show', compact('message', 'thread'));
     }
 
     /**
@@ -112,15 +116,15 @@ class MessageController extends Controller
         // Ensure the message belongs to the authenticated client
         $this->authorize('reply', $message);
 
-        $user = auth()->user();
-
         $validated = $request->validate([
             'reply_message' => 'required|string',
             'attachments.*' => 'nullable|file|max:10240', // 10MB max
         ]);
 
+        $user = auth()->user();
+
         // Create a new message as reply
-        $reply = Message::create([
+        $replyData = [
             'client_id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
@@ -128,31 +132,36 @@ class MessageController extends Controller
             'subject' => 'RE: ' . $message->subject,
             'message' => $validated['reply_message'],
             'parent_id' => $message->id,
+            'project_id' => $message->project_id,
             'is_read' => false,
             'is_read_by_client' => true,
             'type' => 'client_to_admin',
-        ]);
+        ];
 
-        // Handle attachments
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                $path = $file->store('message_attachments/' . $reply->id, 'public');
-
-                $reply->attachments()->create([
-                    'file_path' => $path,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_size' => $file->getSize(),
-                    'file_type' => $file->getMimeType(),
-                ]);
-            }
-        }
-
-        // Send notification to admin (to be implemented)
-        // Notification::route('mail', config('mail.admin'))
-        //    ->notify(new ClientMessageNotification($reply));
+        // Use service to create reply with attachments
+        $reply = $this->messageService->createMessage(
+            $replyData,
+            $request->file('attachments') ?? []
+        );
 
         return redirect()->route('client.messages.show', $message->id)
             ->with('success', 'Reply sent successfully!');
+    }
+
+    /**
+     * Download attachment
+     */
+    public function downloadAttachment(Message $message, $attachmentId)
+    {
+        // Ensure the message belongs to the authenticated client
+        $this->authorize('view', $message);
+        
+        $attachment = $message->attachments()->findOrFail($attachmentId);
+        
+        return Storage::disk('public')->download(
+            $attachment->file_path,
+            $attachment->file_name
+        );
     }
 
     /**
@@ -160,13 +169,10 @@ class MessageController extends Controller
      */
     public function markAsRead(Message $message)
     {
-        // Only mark as read if it's from admin to client
-        if ($message->type === 'admin_to_client') {
-            $message->update([
-                'is_read' => true,
-                'read_at' => now(),
-            ]);
-        }
+        // Ensure the message belongs to the authenticated client
+        $this->authorize('update', $message);
+
+        $this->messageService->markAsRead($message, 'client');
 
         return redirect()->back()
             ->with('success', 'Message marked as read.');
@@ -180,9 +186,32 @@ class MessageController extends Controller
         // Ensure the message belongs to the authenticated client
         $this->authorize('update', $message);
 
-        $message->update(['is_read_by_client' => false]);
+        $this->messageService->markAsUnread($message, 'client');
 
         return redirect()->back()
             ->with('success', 'Message marked as unread.');
+    }
+    
+    /**
+     * Get complete message thread (parent and replies)
+     */
+    protected function getMessageThread(Message $message)
+    {
+        // If message has a parent, start with the parent
+        if ($message->parent_id) {
+            $rootMessage = Message::find($message->parent_id);
+        } else {
+            $rootMessage = $message;
+        }
+        
+        // Get all replies to the root message
+        $thread = Message::where(function($query) use ($rootMessage) {
+                $query->where('id', $rootMessage->id)
+                      ->orWhere('parent_id', $rootMessage->id);
+            })
+            ->orderBy('created_at')
+            ->get();
+            
+        return $thread;
     }
 }

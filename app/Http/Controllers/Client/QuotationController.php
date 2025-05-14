@@ -6,10 +6,24 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Quotation;
 use App\Models\Service;
+use App\Services\QuotationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class QuotationController extends Controller
 {
+    protected $quotationService;
+
+    /**
+     * Create a new controller instance.
+     *
+     * @param QuotationService $quotationService
+     */
+    public function __construct(QuotationService $quotationService)
+    {
+        $this->quotationService = $quotationService;
+    }
+
     /**
      * Display a listing of the client's quotations.
      */
@@ -17,15 +31,11 @@ class QuotationController extends Controller
     {
         $user = auth()->user();
         
-        $quotations = Quotation::where('client_id', $user->id)
-            ->when($request->filled('status'), function ($query) use ($request) {
-                return $query->where('status', $request->status);
-            })
-            ->when($request->filled('service'), function ($query) use ($request) {
-                return $query->where('service_id', $request->service);
-            })
-            ->latest()
-            ->paginate(10);
+        // Use service to get filtered quotations
+        $quotations = $this->quotationService->getClientQuotations(
+            $user, 
+            $request->only(['status', 'service'])
+        );
         
         $services = Service::active()->get();
         $statuses = ['pending', 'reviewed', 'approved', 'rejected'];
@@ -48,8 +58,6 @@ class QuotationController extends Controller
      */
     public function store(Request $request)
     {
-        $user = auth()->user();
-        
         $validated = $request->validate([
             'service_id' => 'nullable|exists:services,id',
             'project_type' => 'required|string|max:255',
@@ -60,39 +68,23 @@ class QuotationController extends Controller
             'attachments.*' => 'nullable|file|max:10240', // 10MB max
         ]);
         
-        // Create quotation
-        $quotation = Quotation::create([
+        $user = auth()->user();
+        
+        // Prepare quotation data
+        $quotationData = array_merge($validated, [
             'client_id' => $user->id,
-            'service_id' => $validated['service_id'],
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
             'company' => $user->company,
-            'project_type' => $validated['project_type'],
-            'requirements' => $validated['requirements'],
-            'location' => $validated['location'],
-            'budget_range' => $validated['budget_range'],
-            'start_date' => $validated['start_date'],
             'status' => 'pending',
         ]);
         
-        // Handle attachments
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                $path = $file->store('quotation_attachments/' . $quotation->id, 'public');
-                
-                $quotation->attachments()->create([
-                    'file_path' => $path,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_size' => $file->getSize(),
-                    'file_type' => $file->getMimeType(),
-                ]);
-            }
-        }
-        
-        // Send notification to admin (to be implemented)
-        // Notification::route('mail', config('mail.admin'))
-        //    ->notify(new QuotationSubmittedNotification($quotation));
+        // Use service to create quotation with attachments
+        $quotation = $this->quotationService->createQuotation(
+            $quotationData,
+            $request->file('attachments') ?? []
+        );
         
         return redirect()->route('client.quotations.index')
             ->with('success', 'Quotation request submitted successfully!');
@@ -147,7 +139,7 @@ class QuotationController extends Controller
             'attachments.*' => 'nullable|file|max:10240', // 10MB max
         ]);
         
-        // Update quotation
+        // Update quotation basic info
         $quotation->update([
             'additional_info' => $validated['additional_info'],
             'status' => 'pending', // Reset to pending for review
@@ -167,12 +159,24 @@ class QuotationController extends Controller
             }
         }
         
-        // Send notification to admin (to be implemented)
-        // Notification::route('mail', config('mail.admin'))
-        //    ->notify(new QuotationUpdatedNotification($quotation));
-        
         return redirect()->route('client.quotations.show', $quotation)
             ->with('success', 'Additional information provided successfully!');
+    }
+    
+    /**
+     * Download attachment
+     */
+    public function downloadAttachment(Quotation $quotation, $attachmentId)
+    {
+        // Ensure the quotation belongs to the authenticated client
+        $this->authorize('view', $quotation);
+        
+        $attachment = $quotation->attachments()->findOrFail($attachmentId);
+        
+        return Storage::disk('public')->download(
+            $attachment->file_path,
+            $attachment->file_name
+        );
     }
     
     /**
@@ -189,18 +193,28 @@ class QuotationController extends Controller
                 ->with('error', 'Only approved quotations can be accepted.');
         }
         
-        // Update quotation
-        $quotation->update([
-            'client_approved' => true,
-            'client_approved_at' => now(),
-        ]);
-        
-        // Send notification to admin (to be implemented)
-        // Notification::route('mail', config('mail.admin'))
-        //    ->notify(new QuotationApprovedNotification($quotation));
+        // Use service to process approval
+        $this->quotationService->clientApproval($quotation, true);
         
         return redirect()->route('client.quotations.show', $quotation)
             ->with('success', 'Quotation approved successfully! We will contact you shortly to proceed with the project.');
+    }
+    
+    /**
+     * Show decline confirmation form.
+     */
+    public function showDeclineForm(Quotation $quotation)
+    {
+        // Ensure the quotation belongs to the authenticated client
+        $this->authorize('update', $quotation);
+        
+        // Check if quotation is approved
+        if ($quotation->status !== 'approved') {
+            return redirect()->route('client.quotations.show', $quotation)
+                ->with('error', 'Only approved quotations can be declined.');
+        }
+        
+        return view('client.quotations.decline', compact('quotation'));
     }
     
     /**
@@ -221,16 +235,8 @@ class QuotationController extends Controller
             'decline_reason' => 'required|string|max:500',
         ]);
         
-        // Update quotation
-        $quotation->update([
-            'client_approved' => false,
-            'client_decline_reason' => $validated['decline_reason'],
-            'client_approved_at' => now(),
-        ]);
-        
-        // Send notification to admin (to be implemented)
-        // Notification::route('mail', config('mail.admin'))
-        //    ->notify(new QuotationDeclinedNotification($quotation));
+        // Use service to process decline
+        $this->quotationService->clientApproval($quotation, false, $validated['decline_reason']);
         
         return redirect()->route('client.quotations.show', $quotation)
             ->with('success', 'Quotation declined. Thank you for considering our services.');
