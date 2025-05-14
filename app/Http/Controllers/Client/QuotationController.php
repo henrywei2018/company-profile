@@ -185,7 +185,7 @@ class QuotationController extends Controller
     public function approve(Quotation $quotation)
     {
         // Ensure the quotation belongs to the authenticated client
-        $this->authorize('update', $quotation);
+        $this->authorize('view', $quotation);
         
         // Check if quotation is approved
         if ($quotation->status !== 'approved') {
@@ -206,7 +206,7 @@ class QuotationController extends Controller
     public function showDeclineForm(Quotation $quotation)
     {
         // Ensure the quotation belongs to the authenticated client
-        $this->authorize('update', $quotation);
+        $this->authorize('view', $quotation);
         
         // Check if quotation is approved
         if ($quotation->status !== 'approved') {
@@ -223,7 +223,7 @@ class QuotationController extends Controller
     public function decline(Request $request, Quotation $quotation)
     {
         // Ensure the quotation belongs to the authenticated client
-        $this->authorize('update', $quotation);
+        $this->authorize('view', $quotation);
         
         // Check if quotation is approved
         if ($quotation->status !== 'approved') {
