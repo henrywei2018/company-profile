@@ -25,27 +25,6 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'company' => ['nullable', 'string', 'max:255'],
-            'address' => ['nullable', 'string'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'state' => ['nullable', 'string', 'max:100'],
-            'postal_code' => ['nullable', 'string', 'max:20'],
-            'country' => ['nullable', 'string', 'max:100'],
-            'avatar' => ['nullable', 'image', 'max:1024'],
         ];
-    }
-    /**
-     * Prepare the data for validation.
-     *
-     * @return void
-     */
-    protected function prepareForValidation()
-    {
-        if ($this->email) {
-            $this->merge([
-                'email' => strtolower($this->email),
-            ]);
-        }
     }
 }
