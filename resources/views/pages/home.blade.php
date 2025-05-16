@@ -7,7 +7,7 @@
 
 @section('content')
     <!-- Hero Section -->
-    <div class="px-4 sm:px-6 lg:px-8 ">
+    <div class="px-4 py-8 sm:px-6 lg:px-8 ">
       <div data-hs-carousel='{
           "loadingClasses": "opacity-0"
         }' class="relative">
