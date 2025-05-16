@@ -537,14 +537,6 @@ class PostSeeder extends Seeder
                 'featured' => $postData['featured'],
             ]);
             
-            // Attach categories
-            if (isset($postData['categories'])) {
-                foreach ($postData['categories'] as $categoryName) {
-                    if (isset($categories[$categoryName])) {
-                        $post->categories()->attach($categories[$categoryName]);
-                    }
-                }
-            }
         }
     }
 }
