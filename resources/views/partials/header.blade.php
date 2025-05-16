@@ -1,4 +1,4 @@
-<div class="bg-amber-600 dark:bg-amber-700">
+<div class="bg-amber-400 dark:bg-amber-500">
     <div class="max-w-[85rem] px-4 py-2 sm:px-6 lg:px-8 mx-auto">
         <div class="grid justify-center md:grid-cols-2 md:justify-between gap-2">
             <!-- Contact Info -->
@@ -71,7 +71,7 @@
 </div>
 
 <!-- Main Header -->
-<header class="flex flex-wrap md:justify-start md:flex-nowrap z-50 w-full bg-white text-sm sticky top-0 shadow-sm dark:bg-gray-800">
+<header class="flex flex-wrap lg:justify-start lg:flex-nowrap z-50 w-full py-7">
     <nav class="relative max-w-7xl w-full mx-auto px-4 md:flex md:items-center md:justify-between md:px-6 lg:px-8 py-2" aria-label="Global">
         <div class="flex items-center justify-between">
             <a class="flex-none" href="{{ route('home') }}" aria-label="{{ config('app.name') }}">

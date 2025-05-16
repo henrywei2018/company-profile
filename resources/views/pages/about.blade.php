@@ -1,332 +1,221 @@
-{{-- resources/views/pages/about.blade.php --}}
 @extends('layouts.app')
 
-@section('title', 'About Us')
-@section('meta_description', 'Learn about CV Usaha Prima Lestari, our history, mission, vision, and values as a leading construction and general supplier company in Indonesia.')
+@section('title', 'About Us - CV Usaha Prima Lestari')
+@section('meta_description', 'Get in touch with CV Usaha Prima Lestari for all your construction and supply needs. We offer professional construction services, general supplies, and more.')
 
 @section('content')
     <!-- Page Header -->
-    <section class="bg-gradient-to-r from-gray-900 to-gray-800 py-20">
-        <div class="container mx-auto px-4">
-            <div class="flex flex-col items-center">
-                <h1 class="text-4xl font-bold text-white mb-4">About Us</h1>
-                <nav class="flex" aria-label="Breadcrumb">
-                    <ol class="inline-flex items-center space-x-1 md:space-x-3">
-                        <li class="inline-flex items-center">
-                            <a href="{{ route('home') }}" class="text-sm text-gray-300 hover:text-white">
-                                Home
-                            </a>
-                        </li>
-                        <li>
-                            <div class="flex items-center">
-                                <svg class="w-3 h-3 text-gray-400 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
-                                </svg>
-                                <span class="ml-1 text-sm font-medium text-gray-100 md:ml-2">About Us</span>
-                            </div>
-                        </li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
-    </section>
-
-    <!-- Company Overview -->
-    <section class="py-16 bg-white dark:bg-gray-800">
-        <div class="container mx-auto px-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-                <div data-aos="fade-right" data-aos-delay="100">
-                    @if($companyProfile && $companyProfile->logo)
-                        <img src="{{ $companyProfile->logoUrl }}" alt="{{ $companyProfile->company_name }}" class="mb-8 max-w-xs">
-                    @endif
-                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Our Story</h2>
-                    <div class="prose dark:prose-invert max-w-none">
-                        @if($companyProfile && $companyProfile->about)
-                            {!! $companyProfile->about !!}
-                        @else
-                            <p>
-                                CV Usaha Prima Lestari was established in {{ $companyProfile->established_year ?? '2008' }} with a vision to become a leading construction and general supplier company in Indonesia. We started as a small team with big dreams, and over the years, we have grown into a trusted name in the industry.
-                            </p>
-                            <p>
-                                With over {{ $companyProfile->projects_completed ?? '250+' }} successful projects completed and a team of {{ $companyProfile->employees_count ?? '50+' }} skilled professionals, we continue to deliver excellence in every project we undertake. Our commitment to quality, innovation, and customer satisfaction has been the cornerstone of our success.
-                            </p>
-                        @endif
-                    </div>
-                </div>
-                <div class="relative" data-aos="fade-left" data-aos-delay="200">
-                    <img src="{{ asset('images/about-main.jpg') }}" alt="Our Company" class="rounded-lg shadow-lg w-full">
-                    <div class="absolute -bottom-6 -left-6 bg-amber-600 rounded-lg p-6 shadow-lg w-48 md:w-64">
-                        <div class="text-white text-center">
-                            <p class="text-sm font-medium">Established</p>
-                            <p class="text-3xl font-bold">{{ $companyProfile->established_year ?? '2008' }}</p>
+    <section class="page-header bg-amber-600 py-20 text-white">
+        <div class="container mx-auto px-4 text-center">
+            <h1 class="text-4xl font-bold mb-4">About Us</h1>
+            <nav class="flex justify-center" aria-label="Breadcrumb">
+                <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                    <li class="inline-flex items-center">
+                        <a href="{{ route('home') }}" class="inline-flex items-center text-sm font-medium text-white hover:text-amber-200">
+                            <svg class="w-3 h-3 mr-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+                            </svg>
+                            Home
+                        </a>
+                    </li>
+                    <li aria-current="page">
+                        <div class="flex items-center">
+                            <svg class="w-3 h-3 text-amber-300 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
+                            </svg>
+                            <span class="ml-1 text-sm font-medium md:ml-2">About</span>
                         </div>
-                    </div>
-                </div>
-            </div>
+                    </li>
+                </ol>
+            </nav>
         </div>
     </section>
 
-    <!-- Mission, Vision, Values -->
-    <section class="py-16 bg-gray-50 dark:bg-gray-900">
+    <!-- Contact Info Section -->
+    <section class="py-16 bg-white">
         <div class="container mx-auto px-4">
-            <div class="text-center mb-16">
-                <div class="flex items-center justify-center mb-4">
-                    <div class="w-12 h-1 bg-amber-600 mr-3"></div>
-                    <p class="text-amber-600 font-medium uppercase">Our Principles</p>
-                    <div class="w-12 h-1 bg-amber-600 ml-3"></div>
-                </div>
-                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Mission, Vision & Values</h2>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <!-- Mission -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8" data-aos="fade-up" data-aos-delay="100">
-                    <div class="w-16 h-16 bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mb-6 mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+                <!-- Contact Card 1 -->
+                <div class="bg-gray-50 rounded-lg p-8 text-center shadow-md" data-aos="fade-up">
+                    <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full mx-auto flex items-center justify-center mb-6">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                     </div>
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 text-center">Our Mission</h3>
-                    <div class="prose dark:prose-invert max-w-none">
-                        @if($companyProfile && $companyProfile->mission)
-                            {!! $companyProfile->mission !!}
-                        @else
-                            <p>
-                                To deliver high-quality construction and supply services that exceed customer expectations, while adhering to the highest standards of safety, integrity, and professionalism.
-                            </p>
-                        @endif
-                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Our Location</h3>
+                    <p class="text-gray-600">
+                        {{ isset($companyProfile) && $companyProfile->address ? $companyProfile->address : 'Jl. Raya Bogor No. 123, Jakarta, Indonesia' }}
+                    </p>
                 </div>
-                
-                <!-- Vision -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8" data-aos="fade-up" data-aos-delay="200">
-                    <div class="w-16 h-16 bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mb-6 mx-auto">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 text-center">Our Vision</h3>
-                    <div class="prose dark:prose-invert max-w-none">
-                        @if($companyProfile && $companyProfile->vision)
-                            {!! $companyProfile->vision !!}
-                        @else
-                            <p>
-                                To become the most trusted and preferred construction and general supplier company in Indonesia, recognized for excellence, innovation, and sustainable development practices.
-                            </p>
-                        @endif
-                    </div>
-                </div>
-                
-                <!-- Values -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8" data-aos="fade-up" data-aos-delay="300">
-                    <div class="w-16 h-16 bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mb-6 mx-auto">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 text-center">Our Values</h3>
-                    <div class="prose dark:prose-invert max-w-none">
-                        @if($companyProfile && isset($companyProfile->values) && is_array($companyProfile->values))
-                            <ul>
-                            @foreach($companyProfile->values as $value)
-                                <li>{{ $value }}</li>
-                            @endforeach
-                            </ul>
-                        @else
-                            <ul>
-                                <li><strong>Integrity:</strong> We conduct our business with honesty, transparency, and ethical practices.</li>
-                                <li><strong>Excellence:</strong> We strive for the highest standards in all aspects of our work.</li>
-                                <li><strong>Innovation:</strong> We embrace new technologies and approaches to deliver better solutions.</li>
-                                <li><strong>Safety:</strong> We prioritize the well-being of our employees, clients, and communities.</li>
-                                <li><strong>Collaboration:</strong> We value teamwork and partnerships to achieve shared goals.</li>
-                            </ul>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Our Team Section -->
-    <section class="py-16 bg-white dark:bg-gray-800">
-        <div class="container mx-auto px-4">
-            <div class="text-center mb-16">
-                <div class="flex items-center justify-center mb-4">
-                    <div class="w-12 h-1 bg-amber-600 mr-3"></div>
-                    <p class="text-amber-600 font-medium uppercase">Our Team</p>
-                    <div class="w-12 h-1 bg-amber-600 ml-3"></div>
-                </div>
-                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">Meet Our Leadership</h2>
-                <p class="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-                    Our success is driven by our dedicated team of professionals with extensive experience in construction and supply chain management.
-                </p>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                @forelse($teamMembers as $member)
-                    <x-team-card :member="$member" class="h-full" data-aos="fade-up" data-aos-delay="{{ $loop->iteration * 100 }}"/>
-                @empty
-                    <div class="col-span-full text-center">
-                        <p class="text-gray-500 dark:text-gray-400">Team information will be available soon.</p>
+                <!-- Contact Card 2 -->
+                <div class="bg-gray-50 rounded-lg p-8 text-center shadow-md" data-aos="fade-up" data-aos-delay="100">
+                    <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full mx-auto flex items-center justify-center mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
                     </div>
-                @endforelse
-            </div>
-            
-            <div class="text-center mt-12">
-                <a href="{{ route('team.index') }}" class="inline-flex items-center px-6 py-3 border border-amber-600 text-base font-medium rounded-md text-amber-600 hover:bg-amber-600 hover:text-white transition">
-                    View All Team Members
-                </a>
-            </div>
-        </div>
-    </section>
+                    <h3 class="text-xl font-semibold mb-3">Phone Number</h3>
+                    <p class="text-gray-600">
+                        <a href="tel:{{ isset($companyProfile) && $companyProfile->phone ? $companyProfile->phone : '+62 21 123 4567' }}" class="hover:text-amber-600">
+                            {{ isset($companyProfile) && $companyProfile->phone ? $companyProfile->phone : '+62 21 123 4567' }}
+                        </a>
+                    </p>
+                </div>
 
-    <!-- Certifications Section -->
-    <section class="py-16 bg-gray-50 dark:bg-gray-900">
-        <div class="container mx-auto px-4">
-            <div class="text-center mb-16">
-                <div class="flex items-center justify-center mb-4">
-                    <div class="w-12 h-1 bg-amber-600 mr-3"></div>
-                    <p class="text-amber-600 font-medium uppercase">Our Credentials</p>
-                    <div class="w-12 h-1 bg-amber-600 ml-3"></div>
+                <!-- Contact Card 3 -->
+                <div class="bg-gray-50 rounded-lg p-8 text-center shadow-md" data-aos="fade-up" data-aos-delay="200">
+                    <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full mx-auto flex items-center justify-center mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Email Address</h3>
+                    <p class="text-gray-600">
+                        <a href="mailto:{{ isset($companyProfile) && $companyProfile->email ? $companyProfile->email : 'info@cvupl.com' }}" class="hover:text-amber-600">
+                            {{ isset($companyProfile) && $companyProfile->email ? $companyProfile->email : 'info@cvupl.com' }}
+                        </a>
+                    </p>
                 </div>
-                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">Certifications & Achievements</h2>
-                <p class="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-                    We are proud to be recognized for our commitment to quality, safety, and excellence.
-                </p>
             </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                @forelse($certifications as $certification)
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center" data-aos="fade-up" data-aos-delay="{{ $loop->iteration * 100 }}">
-                        @if($certification->image)
-                            <img src="{{ asset('storage/' . $certification->image) }}" alt="{{ $certification->name }}" class="h-24 mx-auto mb-4">
-                        @endif
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">{{ $certification->name }}</h3>
-                        <p class="text-gray-500 dark:text-gray-400 text-sm mb-2">{{ $certification->issuer }}</p>
-                        @if($certification->issue_date)
-                            <p class="text-sm text-gray-600 dark:text-gray-300">
-                                {{ $certification->issue_date->format('Y') }}
-                                @if($certification->expiry_date)
-                                    - {{ $certification->expiry_date->format('Y') }}
-                                @endif
-                            </p>
-                        @endif
-                    </div>
-                @empty
-                    <div class="col-span-full text-center">
-                        <p class="text-gray-500 dark:text-gray-400">Certification information will be available soon.</p>
-                    </div>
-                @endforelse
-            </div>
-        </div>
-    </section>
 
-    <!-- Why Choose Us -->
-    <section class="py-16 bg-white dark:bg-gray-800">
-        <div class="container mx-auto px-4">
-            <div class="text-center mb-16">
-                <div class="flex items-center justify-center mb-4">
-                    <div class="w-12 h-1 bg-amber-600 mr-3"></div>
-                    <p class="text-amber-600 font-medium uppercase">Why Choose Us</p>
-                    <div class="w-12 h-1 bg-amber-600 ml-3"></div>
-                </div>
-                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">Our Advantages</h2>
-                <p class="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-                    Discover why clients trust CV Usaha Prima Lestari for their construction and supply needs.
-                </p>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <!-- Advantage 1 -->
-                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-8" data-aos="fade-up" data-aos-delay="100">
-                    <div class="w-16 h-16 bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400 rounded-lg flex items-center justify-center mb-6">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">Quality Assurance</h3>
-                    <p class="text-gray-600 dark:text-gray-300">
-                        We adhere to the highest standards of quality in all our projects, ensuring durability, functionality, and aesthetic appeal.
+            <!-- Contact Form & Map Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <!-- Contact Form -->
+                <div data-aos="fade-right">
+                    <h2 class="text-3xl font-bold mb-6">Get In Touch</h2>
+                    <p class="text-gray-600 mb-8">
+                        Have questions or need a quote? Fill out the form below and our team will get back to you as soon as possible.
                     </p>
+
+                    <form action="{{ route('contact.store') }}" method="POST" class="space-y-6">
+                        @csrf
+
+                        @if(session('success'))
+                            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
+                                <p>{{ session('success') }}</p>
+                            </div>
+                        @endif
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="name" class="block text-gray-700 font-medium mb-2">Your Name *</label>
+                                <input type="text" id="name" name="name" required value="{{ old('name') }}" class="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent @error('name') border-red-500 @enderror">
+                                @error('name')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label for="email" class="block text-gray-700 font-medium mb-2">Your Email *</label>
+                                <input type="email" id="email" name="email" required value="{{ old('email') }}" class="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent @error('email') border-red-500 @enderror">
+                                @error('email')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="phone" class="block text-gray-700 font-medium mb-2">Phone Number</label>
+                                <input type="text" id="phone" name="phone" value="{{ old('phone') }}" class="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent @error('phone') border-red-500 @enderror">
+                                @error('phone')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label for="company" class="block text-gray-700 font-medium mb-2">Company Name</label>
+                                <input type="text" id="company" name="company" value="{{ old('company') }}" class="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent @error('company') border-red-500 @enderror">
+                                @error('company')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="subject" class="block text-gray-700 font-medium mb-2">Subject *</label>
+                            <input type="text" id="subject" name="subject" required value="{{ old('subject') }}" class="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent @error('subject') border-red-500 @enderror">
+                            @error('subject')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label for="message" class="block text-gray-700 font-medium mb-2">Your Message *</label>
+                            <textarea id="message" name="message" rows="5" required class="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent @error('message') border-red-500 @enderror">{{ old('message') }}</textarea>
+                            @error('message')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <button type="submit" class="bg-amber-600 text-white py-3 px-6 rounded-md hover:bg-amber-700 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
+                                Send Message
+                            </button>
+                        </div>
+                    </form>
                 </div>
-                
-                <!-- Advantage 2 -->
-                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-8" data-aos="fade-up" data-aos-delay="200">
-                    <div class="w-16 h-16 bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400 rounded-lg flex items-center justify-center mb-6">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+
+                <!-- Map -->
+                <div data-aos="fade-left">
+                    <h2 class="text-3xl font-bold mb-6">Find Us</h2>
+                    <div class="h-96 bg-gray-200 rounded-lg overflow-hidden">
+                        <iframe 
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d126916.04020069465!2d106.7891455!3d-6.229728!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f3e945e34b9d%3A0x100c2651609b318!2sJakarta%2C%20Indonesia!5e0!3m2!1sen!2sus!4v1651234567890!5m2!1sen!2sus" 
+                            class="w-full h-full" 
+                            style="border:0;" 
+                            allowfullscreen="" 
+                            loading="lazy">
+                        </iframe>
                     </div>
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">On-Time Delivery</h3>
-                    <p class="text-gray-600 dark:text-gray-300">
-                        We understand the importance of timelines in construction projects and ensure on-time delivery without compromising on quality.
-                    </p>
-                </div>
-                
-                <!-- Advantage 3 -->
-                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-8" data-aos="fade-up" data-aos-delay="300">
-                    <div class="w-16 h-16 bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400 rounded-lg flex items-center justify-center mb-6">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
+
+                    <div class="mt-8">
+                        <h3 class="text-xl font-semibold mb-4">Business Hours</h3>
+                        <ul class="space-y-3 text-gray-600">
+                            <li class="flex justify-between">
+                                <span>Monday - Friday:</span>
+                                <span class="font-medium">8:00 AM - 5:00 PM</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>Saturday:</span>
+                                <span class="font-medium">9:00 AM - 1:00 PM</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>Sunday:</span>
+                                <span class="font-medium">Closed</span>
+                            </li>
+                        </ul>
                     </div>
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">Experienced Team</h3>
-                    <p class="text-gray-600 dark:text-gray-300">
-                        Our team of professionals brings years of experience and expertise to every project, ensuring optimal solutions for our clients.
-                    </p>
-                </div>
-                
-                <!-- Advantage 4 -->
-                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-8" data-aos="fade-up" data-aos-delay="400">
-                    <div class="w-16 h-16 bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400 rounded-lg flex items-center justify-center mb-6">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">Customer-Centric Approach</h3>
-                    <p class="text-gray-600 dark:text-gray-300">
-                        We prioritize our clients' needs and work closely with them throughout the project lifecycle to ensure complete satisfaction.
-                    </p>
-                </div>
-                
-                <!-- Advantage 5 -->
-                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-8" data-aos="fade-up" data-aos-delay="500">
-                    <div class="w-16 h-16 bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400 rounded-lg flex items-center justify-center mb-6">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">Innovative Solutions</h3>
-                    <p class="text-gray-600 dark:text-gray-300">
-                        We leverage the latest technologies and methodologies to provide innovative solutions that are cost-effective and sustainable.
-                    </p>
-                </div>
-                
-                <!-- Advantage 6 -->
-                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-8" data-aos="fade-up" data-aos-delay="600">
-                    <div class="w-16 h-16 bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400 rounded-lg flex items-center justify-center mb-6">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">Comprehensive Services</h3>
-                    <p class="text-gray-600 dark:text-gray-300">
-                        From planning to execution, we offer end-to-end services for all construction and supply needs, making us your one-stop solution.
-                    </p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- CTA Section -->
-    <section class="py-20 bg-gradient-to-r from-amber-600 to-amber-700 text-white">
-        <div class="container mx-auto px-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                <div data-aos="fade-right" data-aos-delay="100">
-                    <h2 class="text-3xl font-bold mb-4">Ready to Start Your Project?</h2>
-                    <p class="text-lg text-amber-100 mb-8">
-                        Contact us today for a free consultation and estimate for your construction or supplier needs. Our team is ready to help you bring your vision to life.
-                    </p>
-                    <div class="flex flex-wrap gap-4">
-                        <a href="{{ route('quotation.create') }}" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-amber-700 bg-
+    <section class="py-20 bg-amber-600 text-white">
+        <div class="container mx-auto px-4 text-center">
+            <h2 class="text-3xl font-bold mb-4" data-aos="fade-up">Need a Quote for Your Project?</h2>
+            <p class="text-xl mb-8 max-w-3xl mx-auto" data-aos="fade-up" data-aos-delay="100">
+                We offer competitive pricing and excellent service for all your construction and supply needs.
+            </p>
+            <a href="{{ route('quotation.create') }}" class="inline-block bg-white text-amber-600 py-3 px-8 rounded-md hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-amber-600" data-aos="fade-up" data-aos-delay="200">
+                Request a Quote
+            </a>
+        </div>
+    </section>
+@endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize AOS
+        AOS.init({
+            duration: 800,
+            easing: 'ease-in-out',
+            once: true,
+        });
+    });
+</script>
+@endpush
