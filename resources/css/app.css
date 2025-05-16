@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import "./node_modules/preline/variants.css";
 
 :root {
   --primary-color: #d97706; /* amber-600 */
