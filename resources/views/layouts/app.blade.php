@@ -91,6 +91,60 @@
     
     <!-- Scripts -->
     <script>
+
+        const HSThemeAppearance = {
+        init() {
+            const defaultTheme = 'light';
+            let theme = localStorage.getItem('hs_theme') || defaultTheme;
+            
+            if (theme === 'auto') {
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            
+            this.setAppearance(theme);
+        },
+        _resetStylesOnLoad() {
+            const $resetStyles = document.createElement('style');
+            $resetStyles.innerText = `*{transition: unset !important;}`;
+            $resetStyles.setAttribute('data-hs-appearance-onload-styles', '');
+            document.head.appendChild($resetStyles);
+            return $resetStyles;
+        },
+        setAppearance(theme, saveInStore = true, dispatchEvent = true) {
+            const $resetStylesEl = this._resetStylesOnLoad();
+
+            if (saveInStore) {
+            localStorage.setItem('hs_theme', theme);
+            }
+
+            if (theme === 'auto') {
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+
+            document.documentElement.classList.remove('dark', 'light');
+            document.documentElement.classList.add(theme);
+            
+            setTimeout(() => {
+            $resetStylesEl.remove();
+            });
+
+            if (dispatchEvent) {
+            window.dispatchEvent(new CustomEvent('on-hs-appearance-change', {detail: theme}));
+            }
+        },
+        getAppearance() {
+            let theme = this.getOriginalAppearance();
+            if (theme === 'auto') {
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            return theme;
+        },
+        getOriginalAppearance() {
+            return localStorage.getItem('hs_theme') || 'light';
+        }
+        };
+        HSThemeAppearance.init();
+
         // Initialize Preline
         document.addEventListener('DOMContentLoaded', function () {
             // Initialize all Preline components 
@@ -112,6 +166,18 @@
                 }
             }, 5000);
         });
+        document.addEventListener('DOMContentLoaded', () => {
+        const $themeTogglers = document.querySelectorAll('[data-hs-theme-click-value]');
+        
+        $themeTogglers.forEach(($toggler) => {
+            $toggler.addEventListener('click', () => {
+            const theme = $toggler.getAttribute('data-hs-theme-click-value');
+            HSThemeAppearance.setAppearance(theme);
+            });
+        });
+        });
+
+        
     </script>
     
     @stack('scripts')
