@@ -25,18 +25,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Preline CSS (via CDN) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/preline/dist/preline.min.css" />
-
     <!-- Tailwind CSS -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <!-- Custom Styles -->
     @stack('styles')
-    <script src="https://cdn.jsdelivr.net/npm/preline@2.0.0/dist/preline.min.js"></script>
+    
+    <!-- Dark mode detection script - must be in head to avoid FOUC -->
     <script>
-        // On page load or when changing themes, best to add inline in `head` to avoid FOUC
-        if (localStorage.getItem('hs_theme') === 'dark' ||
+        // On page load or when changing themes, check if the user has a preference
+        if (localStorage.getItem('hs_theme') === 'dark' || 
             (!('hs_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
@@ -130,16 +128,9 @@
         </div>
     @endif
 
-    <!-- Preline JS (via CDN) -->
-    <script src="https://cdn.jsdelivr.net/npm/preline/dist/preline.min.js"></script>
-
     <!-- Scripts -->
     <script>
-        // Initialize Preline
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize all Preline components 
-            HSStaticMethods.autoInit();
-
             // Auto-hide flash messages after 5 seconds
             setTimeout(function() {
                 const flashSuccess = document.getElementById('flash-success');
@@ -155,47 +146,6 @@
                     setTimeout(() => flashError.remove(), 300);
                 }
             }, 5000);
-        });
-        // Dark mode toggle
-        document.addEventListener('DOMContentLoaded', function() {
-            // Theme toggle functionality
-            var themeToggleBtn = document.getElementById('theme-toggle');
-            var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-            var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-
-            // Change the icons inside the button based on previous settings
-            if (localStorage.getItem('color-theme') === 'dark' ||
-                (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                themeToggleLightIcon.classList.remove('hidden');
-            } else {
-                themeToggleDarkIcon.classList.remove('hidden');
-            }
-
-            themeToggleBtn.addEventListener('click', function() {
-                // Toggle icons
-                themeToggleDarkIcon.classList.toggle('hidden');
-                themeToggleLightIcon.classList.toggle('hidden');
-
-                // If set via local storage previously
-                if (localStorage.getItem('color-theme')) {
-                    if (localStorage.getItem('color-theme') === 'light') {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    } else {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    }
-                } else {
-                    // If NOT set via local storage previously
-                    if (document.documentElement.classList.contains('dark')) {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    } else {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    }
-                }
-            });
         });
     </script>
 

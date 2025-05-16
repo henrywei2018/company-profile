@@ -1,10 +1,10 @@
-<div class="bg-amber-400 dark:bg-amber-500">
+<div class="bg-amber-600 dark:bg-amber-600">
     <div class="max-w-[85rem] px-4 py-2 sm:px-6 lg:px-8 mx-auto">
         <div class="grid justify-center md:grid-cols-2 md:justify-between gap-2">
             <!-- Contact Info -->
             <div class="flex items-center gap-x-3 gap-y-2 flex-wrap text-white">
                 @if (isset($companyProfile->phone) && $companyProfile->phone)
-                    <a class="inline-flex gap-x-2 text-xs hover:text-amber-200 dark:hover:text-amber-200"
+                    <a class="inline-flex gap-x-2 text-xs text-white hover:text-amber-200 dark:hover:text-amber-200"
                         href="tel:{{ $companyProfile->phone }}">
                         <svg class="flex-shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -17,7 +17,7 @@
                 @endif
 
                 @if (isset($companyProfile->email) && $companyProfile->email)
-                    <a class="inline-flex gap-x-2 text-xs hover:text-amber-200 dark:hover:text-amber-200"
+                    <a class="inline-flex gap-x-2 text-xs text-white hover:text-amber-200 dark:hover:text-amber-200"
                         href="mailto:{{ $companyProfile->email }}">
                         <svg class="flex-shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24"
                             height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -32,7 +32,7 @@
                 @endif
 
                 @if (isset($companyProfile->address) && $companyProfile->address)
-                    <div class="inline-flex gap-x-2 text-xs">
+                    <div class="inline-flex gap-x-2 text-xs text-white">
                         <svg class="flex-shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24"
                             height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                             stroke-linecap="round" stroke-linejoin="round">
@@ -246,47 +246,41 @@
                     </a>
                 </div>
                 <div class="flex items-center ml-3">
-                    <button type="button" class="hs-dark-mode-active:hidden block hs-dark-mode group flex items-center text-gray-700 hover:text-amber-600 dark:text-gray-200 dark:hover:text-amber-400" data-hs-theme-click-value="dark">
-    <svg class="flex-shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
-    </svg>
-</button>
-<button type="button" class="hs-dark-mode-active:block hidden hs-dark-mode group flex items-center text-gray-700 hover:text-amber-600 dark:text-gray-200 dark:hover:text-amber-400" data-hs-theme-click-value="default">
-    <svg class="flex-shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="4"/>
-        <path d="M12 2v2"/>
-        <path d="M12 20v2"/>
-        <path d="m4.93 4.93 1.41 1.41"/>
-        <path d="m17.66 17.66 1.41 1.41"/>
-        <path d="M2 12h2"/>
-        <path d="M20 12h2"/>
-        <path d="m6.34 17.66-1.41 1.41"/>
-        <path d="m19.07 4.93-1.41 1.41"/>
-    </svg>
-</button>
+                    <button type="button" 
+                        class="size-10 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-gray-700 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
+                        data-hs-theme-click-value="dark">
+                        <svg class="flex-shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="5"/>
+                            <path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>
+                        </svg>
+                    </button>
+                    <button type="button" 
+                        class="size-10 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-gray-700 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
+                        data-hs-theme-click-value="default">
+                        <svg class="flex-shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             <div class="pt-3 md:hidden">
-                <button type="button" class="hs-dark-mode-active:hidden block hs-dark-mode group flex w-full items-center gap-x-3.5 py-2 px-3 rounded-lg text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700" data-hs-theme-click-value="dark">
-    <svg class="flex-shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
-    </svg>
-    Switch to dark mode
-</button>
-<button type="button" class="hs-dark-mode-active:block hidden hs-dark-mode group flex w-full items-center gap-x-3.5 py-2 px-3 rounded-lg text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700" data-hs-theme-click-value="default">
-    <svg class="flex-shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="4"/>
-        <path d="M12 2v2"/>
-        <path d="M12 20v2"/>
-        <path d="m4.93 4.93 1.41 1.41"/>
-        <path d="m17.66 17.66 1.41 1.41"/>
-        <path d="M2 12h2"/>
-        <path d="M20 12h2"/>
-        <path d="m6.34 17.66-1.41 1.41"/>
-        <path d="m19.07 4.93-1.41 1.41"/>
-    </svg>
-    Switch to light mode
-</button>
+                <button type="button" 
+                    class="flex w-full items-center gap-x-3.5 py-2 px-3 rounded-lg text-sm text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700" 
+                    data-hs-theme-click-value="dark">
+                    <svg class="flex-shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"/>
+                        <path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>
+                    </svg>
+                    Switch to light mode
+                </button>
+                <button type="button" 
+                    class="flex w-full items-center gap-x-3.5 py-2 px-3 rounded-lg text-sm text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700" 
+                    data-hs-theme-click-value="default">
+                    <svg class="flex-shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                    </svg>
+                    Switch to dark mode
+                </button>
             </div>
         </div>
     </nav>
