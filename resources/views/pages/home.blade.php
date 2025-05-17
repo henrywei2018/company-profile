@@ -1,5 +1,5 @@
 <!-- resources/views/pages/home.blade.php -->
-@extends('layouts.app')
+@extends('components.layouts.app')
 
 @section('title', 'CV Usaha Prima Lestari - Professional Construction & General Supplier')
 @section('meta_description', 'Leading construction and general supplier company in Indonesia providing quality civil

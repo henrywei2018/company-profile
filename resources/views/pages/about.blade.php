@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('components.layouts.app')
 
 @section('title', 'About Us - CV Usaha Prima Lestari')
 @section('meta_description', 'Get in touch with CV Usaha Prima Lestari for all your construction and supply needs. We offer professional construction services, general supplies, and more.')

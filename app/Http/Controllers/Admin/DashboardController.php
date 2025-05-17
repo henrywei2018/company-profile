@@ -62,7 +62,7 @@ class DashboardController extends Controller
         // Enable charts for dashboard
         $enableCharts = true;
         
-        return view('admin.dashboard', compact(
+        return view('components.layouts.admin', compact(
             'totalProjects',
             'activeClients',
             'unreadMessages',
