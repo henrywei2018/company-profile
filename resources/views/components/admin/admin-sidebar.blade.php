@@ -351,4 +351,20 @@
                     
                 </ul>
             </nav>
+            <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-neutral-800 border-t border-gray-200 dark:border-gray-700 py-3 px-4">
+    <div class="text-xs text-gray-500 dark:text-gray-400">
+        &copy; {{ date('Y') }} 
+        CV.USAHAPRIMALESTARI.
+        All rights reserved.
+    </div>
+    <div class="flex items-center gap-2 mt-2 text-xs">
+        <a href="{{ route('home') }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+            View Website
+        </a>
+        <div class="text-gray-400 dark:text-gray-600">•</div>
+        <span class="text-blue-600 dark:text-blue-400">
+            Development Mode
+        </span>
+    </div>
+</div>
         </div>

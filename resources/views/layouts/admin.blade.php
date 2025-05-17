@@ -1,4 +1,6 @@
-<!-- resources/views/layouts/admin.blade.php -->
+<!-- resources/views/components/layouts/admin.blade.php -->
+@props(['title' => config('app.name')])
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
@@ -6,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ $title ?? config('app.name') }} - Admin Panel</title>
+    <title>{{ $title }} - Admin Panel</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,7 +36,7 @@
 </head>
 <body class="bg-gray-50 dark:bg-neutral-900">
     <!-- ========== HEADER ========== -->
-    <x-admin.admin-header></x-admin.admin-header>
+    <x-admin.admin-header :unreadMessagesCount="$unreadMessages ?? 0"></x-admin.admin-header>
     <!-- ========== END HEADER ========== -->
 
     <!-- ========== MAIN CONTENT ========== -->
@@ -42,7 +44,10 @@
     <x-admin.breadcrumb-mobile></x-admin.breadcrumb-mobile>
 
     <!-- Sidebar -->
-    <x-admin.admin-sidebar></x-admin.admin-sidebar>
+    <x-admin.admin-sidebar 
+        :unreadMessagesCount="$unreadMessages ?? 0" 
+        :pendingQuotationsCount="$pendingQuotations ?? 0">
+    </x-admin.admin-sidebar>
 
     <!-- Content -->
     <div class="w-full lg:ps-64">
@@ -73,7 +78,7 @@
             @endif
             
             <!-- Page Content -->
-            
+            {{ $slot }}
         </div>
     </div>
     <!-- ========== END MAIN CONTENT ========== -->

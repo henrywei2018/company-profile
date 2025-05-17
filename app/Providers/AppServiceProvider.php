@@ -5,6 +5,8 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 use App\Services\FileUploadService;
+use Illuminate\Support\Facades\View;
+use App\Models\CompanyProfile;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,5 +26,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Schema::defaultStringLength(191);
+        View::composer(['admin.*', 'components.admin.*', 'layouts.admin'], function ($view) {
+            $view->with('companyProfile', CompanyProfile::getInstance());
+        });
     }
 }

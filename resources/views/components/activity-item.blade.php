@@ -1,4 +1,3 @@
-
 <!-- resources/views/components/activity-item.blade.php -->
 @props(['route', 'icon', 'iconColor' => 'text-gray-400', 'iconBg' => 'bg-gray-100', 'time'])
 

@@ -99,21 +99,15 @@
     <nav class="relative max-w-7xl w-full mx-auto px-4 md:flex md:items-center md:justify-between md:px-6 lg:px-8 py-2"
         aria-label="Global">
         <div class="flex items-center justify-between">
-            <a class="flex-none" href="{{ route('home') }}" aria-label="{{ config('app.name') }}">
-                @if (isset($companyProfile) && $companyProfile->logo)
-                    <img src="{{ $companyProfile->logoUrl }}" alt="{{ config('app.name') }}" class="h-10 md:h-12">
+            <a class="flex-none rounded-md text-xl inline-block font-semibold focus:outline-hidden focus:opacity-80" href="{{ route('admin.dashboard') }}" aria-label="{{ config('app.name') }}">
+                @if (isset($companyProfile) && $companyProfile->logo && $companyProfile->logoUrl)
+                    <img src="{{ $companyProfile->logoUrl }}" alt="{{ config('app.name') }}" class="h-8 md:h-10">
+                @elseif (asset('storage/logo.png'))
+                    <img src="{{ asset('storage/logo.png') }}" alt="{{ config('app.name') }}" class="h-8 md:h-10">
                 @else
-                    <div class="flex items-center">
-                        <svg class="h-8 w-8 text-amber-600" viewBox="0 0 24 24" fill="none"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                d="M3 21H21M3 18H21M5 18V10C5 9.73478 5.10536 9.48043 5.29289 9.29289C5.48043 9.10536 5.73478 9 6 9H18C18.2652 9 18.5196 9.10536 18.7071 9.29289C18.8946 9.48043 19 9.73478 19 10V18M7 9V6C7 5.73478 7.10536 5.48043 7.29289 5.29289C7.48043 5.10536 7.73478 5 8 5H16C16.2652 5 16.5196 5.10536 16.7071 5.29289C16.8946 5.48043 17 5.73478 17 6V9M9 13H15"
-                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" />
-                        </svg>
-                        <span
-                            class="ml-2 text-xl font-bold text-gray-800 dark:text-white">{{ config('app.name', 'CV Usaha Prima Lestari') }}</span>
-                    </div>
+                    <svg class="w-20 h-auto" width="116" height="32" viewBox="0 0 116 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- SVG path content -->
+                    </svg>
                 @endif
             </a>
             <div class="md:hidden">
