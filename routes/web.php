@@ -109,7 +109,9 @@ Route::middleware('auth')->group(function () {
     Route::post('email/verification-notification', [App\Http\Controllers\Auth\EmailVerificationNotificationController::class, 'store'])
         ->middleware('throttle:6,1')
         ->name('verification.send');
-        
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');        
     Route::post('logout', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
 });
@@ -160,6 +162,7 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
     
     // Projects management
     Route::resource('projects', AdminProjectController::class);
@@ -222,6 +225,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::put('/company-profile', [CompanyProfileController::class, 'update'])->name('company-profile.update');
     Route::get('/company-profile/seo', [CompanyProfileController::class, 'seo'])->name('company-profile.seo');
     Route::put('/company-profile/seo', [CompanyProfileController::class, 'updateSeo'])->name('company-profile.seo.update');
+    // Company Profile (Alias routes for sidebar navigation)
+    Route::prefix('company')->name('company.')->group(function () {
+        Route::get('/edit', [CompanyProfileController::class, 'index'])->name('edit');
+    });
     
     // Settings
     Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
