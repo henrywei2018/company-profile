@@ -1,3 +1,4 @@
+<!-- resources/views/layouts/admin.blade.php -->
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
@@ -31,7 +32,13 @@
         <!-- Content -->
         <div class="w-full min-h-screen flex flex-col">
             <!-- Top Navigation -->
-            <x-admin-header :title="$title ?? 'Dashboard'" />
+            <x-admin-header :title="$title ?? 'Dashboard'">
+                @if(isset($breadcrumbs))
+                    <x-slot name="breadcrumbs">
+                        {{ $breadcrumbs }}
+                    </x-slot>
+                @endif
+            </x-admin-header>
 
             <!-- Main Content -->
             <main class="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
