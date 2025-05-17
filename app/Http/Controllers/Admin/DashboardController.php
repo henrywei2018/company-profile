@@ -59,6 +59,9 @@ class DashboardController extends Controller
         // Get company profile
         $companyProfile = CompanyProfile::getInstance();
         
+        // Enable charts for dashboard
+        $enableCharts = true;
+        
         return view('admin.dashboard', compact(
             'totalProjects',
             'activeClients',
@@ -69,7 +72,8 @@ class DashboardController extends Controller
             'recentMessages',
             'recentQuotations',
             'recentProjects',
-            'companyProfile'
+            'companyProfile',
+            'enableCharts'
         ));
     }
 }
