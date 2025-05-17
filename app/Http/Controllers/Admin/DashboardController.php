@@ -31,7 +31,7 @@ class DashboardController extends Controller
         $recentMessages = Message::latest()->take(5)->get();
         $recentQuotations = Quotation::latest()->take(5)->get();
         
-        return view('admin.dashboard', compact(
+        return view('layouts.admin', compact(
             'projectsCount',
             'servicesCount',
             'messagesCount',

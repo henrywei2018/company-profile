@@ -12,16 +12,21 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <!-- Styles -->
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/preline.css') }}">
-
-    <!-- Scripts -->
-    <script src="{{ asset('js/app.js') }}" defer></script>
-    <script src="{{ asset('js/preline.js') }}" defer></script>
-    
+    <!-- Custom Styles -->
     @stack('styles')
+    
+    <!-- Dark mode detection script - must be in head to avoid FOUC -->
+    <script>
+        // On page load or when changing themes, check if the user has a preference
+        if (localStorage.getItem('hs_theme') === 'dark' || 
+            (!('hs_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
 </head>
 <body class="bg-gray-50 dark:bg-slate-900 h-full">
     <!-- ========== MAIN CONTENT ========== -->
@@ -69,7 +74,7 @@
                 
                 <!-- Page Content -->
                 <div class="bg-white dark:bg-slate-800 shadow-sm rounded-xl p-4 sm:p-6">
-                    {{ $slot }}
+                    @yield('content')
                 </div>
             </main>
             
@@ -78,7 +83,26 @@
         </div>
     </div>
     <!-- ========== END MAIN CONTENT ========== -->
-    
+    <!-- Scripts -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-hide flash messages after 5 seconds
+            setTimeout(function() {
+                const flashSuccess = document.getElementById('flash-success');
+                const flashError = document.getElementById('flash-error');
+
+                if (flashSuccess) {
+                    flashSuccess.style.opacity = '0';
+                    setTimeout(() => flashSuccess.remove(), 300);
+                }
+
+                if (flashError) {
+                    flashError.style.opacity = '0';
+                    setTimeout(() => flashError.remove(), 300);
+                }
+            }, 5000);
+        });
+    </script>
     @stack('scripts')
 </body>
 </html>

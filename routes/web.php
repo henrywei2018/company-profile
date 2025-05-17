@@ -218,8 +218,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/blog/{post}/change-status', [AdminBlogController::class, 'changeStatus'])->name('blog.change-status');
     
     // Blog categories
-    Route::resource('blog/categories', BlogCategoryController::class);
-    
+    Route::resource('blog/categories', BlogCategoryController::class)->names('blog.categories');
+        
     // Company profile
     Route::get('/company-profile', [CompanyProfileController::class, 'index'])->name('company-profile.index');
     Route::put('/company-profile', [CompanyProfileController::class, 'update'])->name('company-profile.update');
@@ -229,7 +229,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::prefix('company')->name('company.')->group(function () {
         Route::get('/edit', [CompanyProfileController::class, 'index'])->name('edit');
     });
-    
+
     // Settings
     Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
     Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
