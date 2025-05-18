@@ -3,113 +3,62 @@
 namespace App\Repositories\Interfaces;
 
 use App\Models\Service;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 interface ServiceRepositoryInterface
 {
     /**
-     * Get all active services
+     * Get all services.
      *
-     * @return Collection
+     * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function getAllActive(): Collection;
+    public function all();
     
     /**
-     * Get all services (including inactive)
-     *
-     * @return Collection
-     */
-    public function all(): Collection;
-    
-    /**
-     * Get paginated services
-     *
-     * @param int $perPage
-     * @return LengthAwarePaginator
-     */
-    public function paginate(int $perPage = 10): LengthAwarePaginator;
-    
-    /**
-     * Find a service by ID
+     * Get service by ID.
      *
      * @param int $id
-     * @return Service|null
+     * @return \App\Models\Service
      */
-    public function find(int $id): ?Service;
+    public function findById($id);
     
     /**
-     * Find a service by slug
-     *
-     * @param string $slug
-     * @return Service|null
-     */
-    public function findBySlug(string $slug): ?Service;
-    
-    /**
-     * Create a new service
+     * Create new service.
      *
      * @param array $data
-     * @return Service
+     * @return \App\Models\Service
      */
-    public function create(array $data): Service;
+    public function create(array $data);
     
     /**
-     * Update a service
+     * Update service.
      *
-     * @param Service $service
+     * @param \App\Models\Service $service
      * @param array $data
-     * @return Service
+     * @return \App\Models\Service
      */
-    public function update(Service $service, array $data): Service;
+    public function update(Service $service, array $data);
     
     /**
-     * Delete a service
+     * Delete service.
      *
-     * @param Service $service
+     * @param \App\Models\Service $service
      * @return bool
      */
-    public function delete(Service $service): bool;
+    public function delete(Service $service);
     
     /**
-     * Get featured services
+     * Toggle service active status.
      *
-     * @param int $limit
-     * @return Collection
+     * @param \App\Models\Service $service
+     * @return \App\Models\Service
      */
-    public function getFeatured(int $limit = 6): Collection;
+    public function toggleActive(Service $service);
     
     /**
-     * Get services by category
+     * Toggle service featured status.
      *
-     * @param int $categoryId
-     * @param int $perPage
-     * @return LengthAwarePaginator
+     * @param \App\Models\Service $service
+     * @return \App\Models\Service
      */
-    public function getByCategory(int $categoryId, int $perPage = 10): LengthAwarePaginator;
-    
-    /**
-     * Get related services
-     *
-     * @param Service $service
-     * @param int $limit
-     * @return Collection
-     */
-    public function getRelated(Service $service, int $limit = 3): Collection;
-    
-    /**
-     * Toggle service active status
-     *
-     * @param Service $service
-     * @return Service
-     */
-    public function toggleActive(Service $service): Service;
-    
-    /**
-     * Toggle service featured status
-     *
-     * @param Service $service
-     * @return Service
-     */
-    public function toggleFeatured(Service $service): Service;
+    public function toggleFeatured(Service $service);
 }

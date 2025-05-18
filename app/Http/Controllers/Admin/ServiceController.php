@@ -1,5 +1,4 @@
 <?php
-// File: app/Http/Controllers/Admin/ServiceController.php
 
 namespace App\Http\Controllers\Admin;
 
@@ -58,7 +57,11 @@ class ServiceController extends Controller
         // Get categories for filter dropdown
         $categories = ServiceCategory::active()->get();
         
-        return view('admin.services.index', compact('services', 'categories'));
+        // Get unread messages and pending quotations counts for header notifications
+        $unreadMessages = \App\Models\Message::unread()->count();
+        $pendingQuotations = \App\Models\Quotation::pending()->count();
+        
+        return view('admin.services.index', compact('services', 'categories', 'unreadMessages', 'pendingQuotations'));
     }
 
     /**
@@ -68,7 +71,11 @@ class ServiceController extends Controller
     {
         $categories = ServiceCategory::active()->get();
         
-        return view('admin.services.create', compact('categories'));
+        // Get unread messages and pending quotations counts for header notifications
+        $unreadMessages = \App\Models\Message::unread()->count();
+        $pendingQuotations = \App\Models\Quotation::pending()->count();
+        
+        return view('admin.services.create', compact('categories', 'unreadMessages', 'pendingQuotations'));
     }
 
     /**
@@ -110,11 +117,11 @@ class ServiceController extends Controller
         }
         
         // Handle SEO
-        if ($request->filled('seo_title') || $request->filled('seo_description') || $request->filled('seo_keywords')) {
+        if ($request->filled('meta_title') || $request->filled('meta_description') || $request->filled('meta_keywords')) {
             $service->updateSeo([
-                'title' => $request->seo_title,
-                'description' => $request->seo_description,
-                'keywords' => $request->seo_keywords,
+                'title' => $request->meta_title,
+                'description' => $request->meta_description,
+                'keywords' => $request->meta_keywords,
             ]);
         }
         
@@ -127,9 +134,13 @@ class ServiceController extends Controller
      */
     public function show(Service $service)
     {
-        $service->load('category', 'seo');
+        $service->load('category', 'seo', 'quotations');
         
-        return view('admin.services.show', compact('service'));
+        // Get unread messages and pending quotations counts for header notifications
+        $unreadMessages = \App\Models\Message::unread()->count();
+        $pendingQuotations = \App\Models\Quotation::pending()->count();
+        
+        return view('admin.services.show', compact('service', 'unreadMessages', 'pendingQuotations'));
     }
 
     /**
@@ -140,7 +151,11 @@ class ServiceController extends Controller
         $service->load('category', 'seo');
         $categories = ServiceCategory::active()->get();
         
-        return view('admin.services.edit', compact('service', 'categories'));
+        // Get unread messages and pending quotations counts for header notifications
+        $unreadMessages = \App\Models\Message::unread()->count();
+        $pendingQuotations = \App\Models\Quotation::pending()->count();
+        
+        return view('admin.services.edit', compact('service', 'categories', 'unreadMessages', 'pendingQuotations'));
     }
 
     /**
@@ -193,9 +208,9 @@ class ServiceController extends Controller
         
         // Handle SEO
         $service->updateSeo([
-            'title' => $request->seo_title,
-            'description' => $request->seo_description,
-            'keywords' => $request->seo_keywords,
+            'title' => $request->meta_title,
+            'description' => $request->meta_description,
+            'keywords' => $request->meta_keywords,
         ]);
         
         return redirect()->route('admin.services.index')

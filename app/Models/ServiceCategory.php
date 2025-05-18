@@ -50,16 +50,4 @@ class ServiceCategory extends Model
     {
         return $this->hasMany(Service::class, 'category_id')->active();
     }
-    
-    /**
-     * Get icon URL.
-     */
-    public function getIconUrlAttribute()
-    {
-        if ($this->icon) {
-            return asset('storage/' . $this->icon);
-        }
-        
-        return asset('images/default-category-icon.png');
-    }
 }

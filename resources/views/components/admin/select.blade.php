@@ -47,7 +47,11 @@
                         @foreach($optionLabel as $groupOptionValue => $groupOptionLabel)
                             <option 
                                 value="{{ $groupOptionValue }}" 
-                                {{ $isSelected($value, $groupOptionValue, $multiple) ? 'selected' : '' }}
+                                @if($multiple && is_array($value))
+                                    {{ in_array($groupOptionValue, $value) ? 'selected' : '' }}
+                                @else
+                                    {{ $value == $groupOptionValue ? 'selected' : '' }}
+                                @endif
                             >
                                 {{ $groupOptionLabel }}
                             </option>
@@ -56,7 +60,11 @@
                 @else
                     <option 
                         value="{{ $optionValue }}" 
-                        {{ $isSelected($value, $optionValue, $multiple) ? 'selected' : '' }}
+                        @if($multiple && is_array($value))
+                            {{ in_array($optionValue, $value) ? 'selected' : '' }}
+                        @else
+                            {{ $value == $optionValue ? 'selected' : '' }}
+                        @endif
                     >
                         {{ $optionLabel }}
                     </option>
@@ -85,13 +93,3 @@
         </div>
     @enderror
 </div>
-
-@php
-    function isSelected($selected, $optionValue, $isMultiple) {
-        if ($isMultiple && is_array($selected)) {
-            return in_array($optionValue, $selected);
-        }
-        
-        return $selected == $optionValue;
-    }
-@endphp

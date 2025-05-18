@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withProviders([
         // Register additional service providers here
         \Intervention\Image\Laravel\ServiceProvider::class,
+        App\Providers\RepositoryServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
         // Add your middleware aliases here

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Service;
 use App\Models\ServiceCategory;
+use App\Models\Testimonial;
 use Illuminate\Http\Request;
 
 class ServiceController extends Controller
@@ -26,7 +27,7 @@ class ServiceController extends Controller
             })
             ->paginate(9);
         
-        return view('pages.services', compact('services', 'categories'));
+        return view('pages.services.index', compact('services', 'categories'));
     }
     
     /**
@@ -46,6 +47,16 @@ class ServiceController extends Controller
             ->take(3)
             ->get();
         
-        return view('pages.service-single', compact('service', 'relatedServices'));
+        // Get other services (for "Other Services" section)
+        $otherServices = Service::active()
+            ->where('id', '!=', $service->id)
+            ->inRandomOrder()
+            ->take(3)
+            ->get();
+        
+        // Get featured testimonials
+        $testimonials = Testimonial::active()->featured()->take(3)->get();
+        
+        return view('pages.services.show', compact('service', 'relatedServices', 'otherServices', 'testimonials'));
     }
 }

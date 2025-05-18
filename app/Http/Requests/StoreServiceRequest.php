@@ -13,13 +13,13 @@ class StoreServiceRequest extends FormRequest
      */
     public function authorize()
     {
-        return $this->user()->hasRole('admin');
+        return true;
     }
 
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, mixed>
+     * @return array
      */
     public function rules()
     {
@@ -27,16 +27,16 @@ class StoreServiceRequest extends FormRequest
             'title' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255|unique:services,slug',
             'category_id' => 'nullable|exists:service_categories,id',
-            'short_description' => 'nullable|string|max:500',
-            'description' => 'required|string',
-            'icon' => 'nullable|image|max:1024',
-            'image' => 'nullable|image|max:2048',
-            'featured' => 'boolean',
-            'is_active' => 'boolean',
-            'sort_order' => 'nullable|integer|min:0',
-            'seo_title' => 'nullable|string|max:255',
-            'seo_description' => 'nullable|string',
-            'seo_keywords' => 'nullable|string',
+            'short_description' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:1024',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'featured' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',
+            'sort_order' => 'nullable|integer',
+            'meta_title' => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string|max:255',
+            'meta_keywords' => 'nullable|string|max:255',
         ];
     }
 }
