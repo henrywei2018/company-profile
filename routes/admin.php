@@ -1,3 +1,5 @@
+<?php
+
 use App\Http\Controllers\Admin\ServiceController;
 
 // Services Management
