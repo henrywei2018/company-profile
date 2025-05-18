@@ -1,7 +1,7 @@
 <!-- resources/views/components/admin/admin-header.blade.php -->
-<header class="sticky top-0 inset-x-0 flex flex-wrap md:justify-start md:flex-nowrap z-48 w-full bg-white border-b border-gray-200 text-sm py-2.5 lg:ps-64 dark:bg-neutral-800 dark:border-neutral-700">
-    <nav class="px-4 sm:px-6 flex basis-full items-center w-full mx-auto">
-        <div class="me-5 lg:me-0 lg:hidden flex items-center">
+<header class="sticky top-0 inset-x-0 flex flex-wrap md:justify-start md:flex-nowrap z-50 w-full bg-white border-b border-gray-200 text-sm py-3 sm:py-0 lg:ps-64 dark:bg-gray-800 dark:border-gray-700">
+    <nav class="relative w-full mx-auto py-2.5 px-4 sm:flex sm:items-center sm:justify-between sm:px-6 lg:px-8" aria-label="Global">
+      <div class="me-5 lg:me-0 lg:hidden flex items-center">
             <!-- Logo -->
             <a class="flex-none rounded-md text-xl inline-block font-semibold focus:outline-hidden focus:opacity-80" href="{{ route('admin.dashboard') }}" aria-label="{{ config('app.name') }}">
                 @if (isset($companyProfile) && $companyProfile->logo)
@@ -100,7 +100,7 @@
                 </button>
 
                 <!-- User Dropdown -->
-                <div class="hs-dropdown [--placement:bottom-right] relative inline-flex">
+                <div class="hs-dropdown relative inline-flex">
                     <button id="hs-dropdown-account" type="button" class="size-8 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 focus:outline-hidden disabled:opacity-50 disabled:pointer-events-none dark:text-white" aria-haspopup="menu" aria-expanded="false" aria-label="Dropdown">
                         <img class="shrink-0 size-7 rounded-full" src="{{ Auth::user()->avatar ?? 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=facearea&facepad=2&w=320&h=320&q=80' }}" alt="Avatar">
                     </button>
@@ -159,5 +159,55 @@
             localStorage.setItem('hs_theme', 'dark');
         }
     }
+
+    // Initialize Preline UI dropdown
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check if HSDropdown exists before initializing
+        if (typeof HSDropdown !== 'undefined') {
+            HSDropdown.autoInit();
+        } else {
+            // If HSDropdown is not available, use a manual implementation
+            const dropdownTriggers = document.querySelectorAll('.hs-dropdown button');
+            
+            dropdownTriggers.forEach(trigger => {
+                trigger.addEventListener('click', function() {
+                    const dropdown = this.closest('.hs-dropdown');
+                    const menu = dropdown.querySelector('.hs-dropdown-menu');
+                    
+                    // Toggle the dropdown
+                    if (menu.classList.contains('hidden')) {
+                        closeAllDropdowns();
+                        menu.classList.remove('hidden');
+                        menu.classList.add('block');
+                        this.setAttribute('aria-expanded', 'true');
+                    } else {
+                        menu.classList.add('hidden');
+                        menu.classList.remove('block');
+                        this.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            });
+            
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!event.target.closest('.hs-dropdown')) {
+                    closeAllDropdowns();
+                }
+            });
+            
+            function closeAllDropdowns() {
+                const dropdowns = document.querySelectorAll('.hs-dropdown-menu');
+                dropdowns.forEach(menu => {
+                    menu.classList.add('hidden');
+                    menu.classList.remove('block');
+                    
+                    const trigger = menu.closest('.hs-dropdown').querySelector('button');
+                    if (trigger) {
+                        trigger.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            }
+        }
+    });
 </script>
 @endpush

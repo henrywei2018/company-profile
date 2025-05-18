@@ -1,5 +1,5 @@
 <!-- resources/views/components/admin/admin-footer.blade.php -->
-<footer class="w-full py-3 px-4 mt-auto bg-white dark:bg-neutral-800 border-t border-gray-200 dark:border-gray-700 text-sm">
+<footer class="bg-white border-t border-gray-200 py-3 px-4 mt-auto dark:bg-gray-800 dark:border-gray-700">
     <div class="flex flex-col md:flex-row justify-between items-center gap-2">
         <div class="text-center md:text-left">
             <p class="text-xs text-gray-500 dark:text-gray-400">

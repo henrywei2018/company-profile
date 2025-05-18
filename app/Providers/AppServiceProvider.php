@@ -26,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Schema::defaultStringLength(191);
-        View::composer(['admin.*', 'components.layouts.admin.*', 'layouts.admin'], function ($view) {
+        View::composer(['admin.*', 'admin.dashboard.*', 'layouts.admin'], function ($view) {
             $view->with('companyProfile', CompanyProfile::getInstance());
         });
     }

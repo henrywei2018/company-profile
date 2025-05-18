@@ -6,7 +6,7 @@
         
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <!-- Projects Stat -->
-            <x-stat-card 
+            <x-admin.stat-card 
                 title="Total Projects" 
                 value="{{ $totalProjects }}" 
                 icon="<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z' />"
@@ -17,7 +17,7 @@
             />
             
             <!-- Clients Stat -->
-            <x-stat-card 
+            <x-admin.stat-card 
                 title="Active Clients" 
                 value="{{ $activeClients }}" 
                 icon="<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' />"
@@ -28,7 +28,7 @@
             />
             
             <!-- Messages Stat -->
-            <x-stat-card 
+            <x-admin.stat-card 
                 title="Unread Messages" 
                 value="{{ $unreadMessages }}" 
                 icon="<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' />"
@@ -38,7 +38,7 @@
             />
             
             <!-- Quotations Stat -->
-            <x-stat-card 
+            <x-admin.stat-card 
                 title="Pending Quotations" 
                 value="{{ $pendingQuotations }}" 
                 icon="<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' />"
