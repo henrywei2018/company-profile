@@ -14,15 +14,18 @@
 
 @php
     $id = $id ?? $name;
+    $errorState = $errors->has($name);
 @endphp
 
-<div class="mb-4">
-    <label for="{{ $id }}" class="block text-sm font-medium mb-2 {{ $disabled ? 'text-gray-400 dark:text-neutral-500' : 'text-gray-700 dark:text-neutral-300' }}">
-        {{ $label }}
-        @if($required)
-            <span class="text-red-500">*</span>
-        @endif
-    </label>
+<div class="mb-4 w-full">
+    @if ($label)
+        <label for="{{ $id }}" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+            {{ $label }}
+            @if($required)
+                <span class="text-red-500">*</span>
+            @endif
+        </label>
+    @endif
     
     <div 
         x-data="{ 
@@ -62,27 +65,71 @@
                     this.$refs.editor.classList.add('dark:bg-neutral-900');
                     this.$refs.editor.classList.add('cursor-not-allowed');
                 }
+                
+                // Apply text color to match textarea
+                this.$refs.editor.querySelector('.ql-editor').classList.add('text-gray-700');
+                this.$refs.editor.querySelector('.ql-editor').classList.add('dark:text-white');
             }
         }"
     >
-        <div class="border border-gray-300 dark:border-neutral-700 rounded-md overflow-hidden">
+        <div class="rounded-md shadow-sm overflow-hidden {{ $errorState ? 'border border-red-500' : 'border border-gray-300 dark:border-neutral-700' }}">
             <div x-ref="editor" class="bg-white dark:bg-neutral-800" style="min-height: {{ $minHeight }}"></div>
             <input type="hidden" id="{{ $id }}" name="{{ $name }}" x-ref="input" x-model="content" {{ $required ? 'required' : '' }}>
         </div>
         
-        @if($helper && !$errors->has($name))
+        @if($helper && !$errorState)
             <div class="mt-1">
                 <span class="text-xs text-gray-500 dark:text-neutral-400">{{ $helper }}</span>
             </div>
         @endif
         
         @error($name)
-            <div class="mt-1">
-                <span class="text-xs text-red-600 dark:text-red-500">{{ $message }}</span>
-            </div>
+            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
         @enderror
     </div>
 </div>
+
+<style>
+    /* Custom Quill styling to match textarea */
+    .ql-toolbar.ql-snow {
+        border-color: inherit;
+        border-top-left-radius: 0.375rem;
+        border-top-right-radius: 0.375rem;
+        background-color: #f9fafb; /* gray-50 */
+    }
+    
+    .ql-container.ql-snow {
+        border-color: inherit;
+        border-bottom-left-radius: 0.375rem;
+        border-bottom-right-radius: 0.375rem;
+    }
+    
+    /* Focus state to match textarea */
+    .ql-container.ql-snow:focus-within {
+        border-color: #3b82f6; /* blue-500 */
+        box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5); /* focus:ring focus:ring-blue-500 focus:ring-opacity-50 */
+    }
+    
+    /* Dark mode adjustments */
+    .dark .ql-toolbar.ql-snow {
+        background-color: #1f2937; /* gray-800 */
+        border-color: #374151; /* gray-700 */
+    }
+    
+    .dark .ql-toolbar.ql-snow .ql-picker,
+    .dark .ql-toolbar.ql-snow .ql-stroke {
+        color: #e5e7eb; /* gray-200 */
+        stroke: #e5e7eb; /* gray-200 */
+    }
+    
+    .dark .ql-toolbar.ql-snow .ql-fill {
+        fill: #e5e7eb; /* gray-200 */
+    }
+    
+    .dark .ql-editor.ql-blank::before {
+        color: #9ca3af; /* gray-400 */
+    }
+</style>
 
 @once
 @push('styles')

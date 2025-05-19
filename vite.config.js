@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
+import path from 'path';
 
 export default defineConfig({
     plugins: [
@@ -13,7 +14,14 @@ export default defineConfig({
     ],
     resolve: {
         alias: {
-            // Define aliases here if needed
+            // Allow clean imports like "@/components/..." from resources/js
+            '@': path.resolve(__dirname, 'resources/js'),
         },
+    },
+    server: {
+        host: 'localhost',
+        port: 5173,
+        strictPort: true,
+        https: false,
     },
 });

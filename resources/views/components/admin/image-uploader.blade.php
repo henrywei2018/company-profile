@@ -218,5 +218,4 @@
             <span class="text-xs text-red-600 dark:text-red-500">{{ $message }}</span>
         </div>
     @enderror
-</div>"
-  }
+</div>  

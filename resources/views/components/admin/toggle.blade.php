@@ -1,4 +1,4 @@
-<!-- resources/views/components/admin/toggle.blade.php -->
+<!-- resources/views/components/admin/toggle.blade.php - Fixed Button Implementation -->
 @props([
     'name',
     'label' => null,
@@ -16,7 +16,16 @@
 
 @php
     $id = $id ?? $name;
-    $isChecked = old($name, $checked);
+    
+    // Convert string "true"/"false" to boolean if needed
+    if (is_string($checked)) {
+        $isChecked = $checked === 'true' || $checked === '1';
+    } else {
+        $isChecked = (bool)$checked;
+    }
+    
+    // Also check if there's an old input value
+    $isChecked = old($name, $isChecked);
     
     // Size classes
     $sizeClasses = [
@@ -24,13 +33,6 @@
         'md' => 'h-6 w-11',
         'lg' => 'h-7 w-14'
     ][$size] ?? 'h-6 w-11';
-    
-    // Toggle position classes
-    $togglePositionClasses = [
-        'sm' => $isChecked ? 'translate-x-4' : 'translate-x-0',
-        'md' => $isChecked ? 'translate-x-5' : 'translate-x-0',
-        'lg' => $isChecked ? 'translate-x-7' : 'translate-x-0'
-    ][$size] ?? ($isChecked ? 'translate-x-5' : 'translate-x-0');
     
     // Toggle size classes
     $toggleSizeClasses = [
@@ -41,12 +43,15 @@
     
     // Color classes for the background
     $colorClasses = [
-        'blue' => $isChecked ? 'bg-blue-600 dark:bg-blue-700' : 'bg-gray-200 dark:bg-gray-700',
-        'green' => $isChecked ? 'bg-green-600 dark:bg-green-700' : 'bg-gray-200 dark:bg-gray-700',
-        'red' => $isChecked ? 'bg-red-600 dark:bg-red-700' : 'bg-gray-200 dark:bg-gray-700',
-        'amber' => $isChecked ? 'bg-amber-600 dark:bg-amber-700' : 'bg-gray-200 dark:bg-gray-700',
-        'gray' => $isChecked ? 'bg-gray-600 dark:bg-gray-500' : 'bg-gray-200 dark:bg-gray-700'
+        'blue' => 'bg-blue-600 dark:bg-blue-700',
+        'green' => 'bg-green-600 dark:bg-green-700',
+        'red' => 'bg-red-600 dark:bg-red-700',
+        'amber' => 'bg-amber-600 dark:bg-amber-700',
+        'gray' => 'bg-gray-600 dark:bg-gray-500'
     ][$color] ?? 'bg-blue-600 dark:bg-blue-700';
+    
+    // Background for unchecked state
+    $bgUnchecked = 'bg-gray-200 dark:bg-gray-700';
     
     // Focus ring color
     $focusRingColor = [
@@ -61,36 +66,37 @@
 <div class="mb-4">
     <div class="flex items-center {{ $labelPosition === 'left' ? 'flex-row-reverse justify-end' : '' }} {{ $labelPosition === 'left' ? 'space-x-reverse space-x-3' : 'space-x-3' }}">
         <div>
-            <button 
-                type="button" 
-                role="switch"
-                aria-checked="{{ $isChecked ? 'true' : 'false' }}"
-                {{ $disabled ? 'disabled' : '' }}
-                x-data="{ checked: {{ $isChecked ? 'true' : 'false' }} }"
-                x-init="$watch('checked', value => { 
-                    $refs.hiddenInput.checked = value;
-                    @if($onChange) {{ $onChange }}(value); @endif
-                })"
-                @click="checked = !checked"
-                :class="{ '{{ $colorClasses }}': true }"
-                class="relative inline-flex shrink-0 {{ $sizeClasses }} border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 {{ $focusRingColor }} focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 {{ $disabled ? 'opacity-50 cursor-not-allowed' : '' }}"
-            >
-                <span 
-                    aria-hidden="true"
-                    :class="{ '{{ $togglePositionClasses }}': true }"
-                    class="pointer-events-none inline-block {{ $toggleSizeClasses }} rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200"
-                ></span>
-            </button>
-            <input 
-                type="checkbox"
-                id="{{ $id }}"
-                name="{{ $name }}"
-                value="{{ $value }}"
-                {{ $isChecked ? 'checked' : '' }}
-                {{ $disabled ? 'disabled' : '' }}
-                x-ref="hiddenInput"
-                class="hidden"
-            >
+            <div x-data="{ checked: {{ $isChecked ? 'true' : 'false' }} }">
+                <button 
+                    type="button" 
+                    role="switch"
+                    aria-checked="{{ $isChecked ? 'true' : 'false' }}"
+                    {{ $disabled ? 'disabled' : '' }}
+                    @click="checked = !checked"
+                    x-init="$watch('checked', value => { 
+                        $refs.hiddenInput.checked = value;
+                        @if($onChange) {{ $onChange }}(value); @endif
+                    })"
+                    :class="checked ? '{{ $colorClasses }}' : '{{ $bgUnchecked }}'"
+                    class="relative inline-flex shrink-0 {{ $sizeClasses }} border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 {{ $focusRingColor }} focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 {{ $disabled ? 'opacity-50 cursor-not-allowed' : '' }}"
+                >
+                    <span 
+                        aria-hidden="true"
+                        :class="checked ? 'translate-x-5' : 'translate-x-0'"
+                        class="pointer-events-none inline-block {{ $toggleSizeClasses }} rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200"
+                    ></span>
+                </button>
+                <input 
+                    type="checkbox"
+                    id="{{ $id }}"
+                    name="{{ $name }}"
+                    value="{{ $value }}"
+                    {{ $isChecked ? 'checked' : '' }}
+                    {{ $disabled ? 'disabled' : '' }}
+                    x-ref="hiddenInput"
+                    class="hidden"
+                >
+            </div>
         </div>
         
         @if($label)

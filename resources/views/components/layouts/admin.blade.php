@@ -96,10 +96,7 @@
     </div>
     <!-- ========== END MAIN CONTENT ========== -->
 
-    <!-- ========== FOOTER ========== -->
-    <x-admin.admin-footer />
-    <!-- ========== END FOOTER ========== -->
-
+<script src="https://cdn.jsdelivr.net/npm/preline/dist/index.js"></script>
     @if ($enableCharts)
         <!-- Charts Libraries -->
         <script src="https://cdn.jsdelivr.net/npm/lodash/lodash.min.js"></script>
