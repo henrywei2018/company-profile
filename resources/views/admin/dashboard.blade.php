@@ -127,39 +127,5 @@
         </div>
     </div>
 
-    <!-- Quick Actions Implementation -->
-@php
-$quickActions = [
-    [
-        'title' => 'Add New Project',
-        'description' => 'Create a new client project',
-        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />',
-        'href' => route('admin.projects.create'),
-        'color_classes' => 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800'
-    ],
-    [
-        'title' => 'Add New Service',
-        'description' => 'Create a new service offering',
-        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />',
-        'href' => route('admin.services.create'),
-        'color_classes' => 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800'
-    ],
-    [
-        'title' => 'New Blog Post',
-        'description' => 'Write a new article',
-        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />',
-        'href' => route('admin.blog.create'),
-        'color_classes' => 'bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800'
-    ],
-    [
-        'title' => 'Update Company',
-        'description' => 'Manage company information',
-        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />',
-        'href' => route('admin.company.edit'),
-        'color_classes' => 'bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-800'
-    ]
-];
-@endphp
-
-<x-admin.floating-action-button :actions="$quickActions" />
+    
 </x-layouts.admin>

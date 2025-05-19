@@ -18,6 +18,35 @@ class ProjectController extends Controller
      */
     public function index(Request $request)
     {
+        $query = Project::with('client', 'testimonial', 'images')
+            ->when($request->filled('category'), function ($query) use ($request) {
+                return $query->where('category', $request->category);
+            })
+            ->when($request->filled('status'), function ($query) use ($request) {
+                return $query->where('status', $request->status);
+            })
+            ->when($request->filled('year'), function ($query) use ($request) {
+                // Filter by project year field
+                return $query->where('year', $request->year);
+            })
+            ->when($request->filled('search'), function ($query) use ($request) {
+                return $query->where(function ($q) use ($request) {
+                    $q->where('title', 'like', "%{$request->search}%")
+                        ->orWhere('description', 'like', "%{$request->search}%")
+                        ->orWhere('location', 'like', "%{$request->search}%");
+                });
+            });
+
+        // Apply sorting if provided
+        if ($request->filled('sort')) {
+            $direction = $request->input('direction', 'asc');
+            $query->orderBy($request->sort, $direction);
+        } else {
+            // Default sorting
+            $query->latest();
+        }
+
+        $projects = $query->paginate(10)->withQueryString();
         // Apply filters and pagination
         $projects = Project::with('images')
             ->filter($request->only(['category', 'year', 'status', 'search']))
