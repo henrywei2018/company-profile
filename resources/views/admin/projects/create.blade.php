@@ -14,7 +14,7 @@
     </x-slot>
     
     <div class="max-w-4xl mx-auto">
-        <x-card>
+        <x-admin.card>
             <x-slot name="header">
                 <h2 class="text-lg font-medium text-gray-900 dark:text-white">
                     Create New Project
@@ -24,11 +24,7 @@
                 </p>
             </x-slot>
             
-            <x-admin.projects.form 
-                :clients="$clients" 
-                :categories="$categories" 
-                action="{{ route('admin.projects.store') }}" 
-            />
-        </x-card>
+            @include('admin.projects.form')
+        </x-admin.card>
     </div>
 </x-layouts.admin>

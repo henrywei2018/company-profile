@@ -9,7 +9,7 @@
     
     <div class="space-y-6">
         <!-- Basic Information Section -->
-        <x-form-section title="Basic Information" description="Enter the basic details of the project.">
+        <x-admin.form-section title="Basic Information" description="Enter the basic details of the project.">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                     <x-form.input 
@@ -48,10 +48,10 @@
                     />
                 </div>
             </div>
-        </x-form-section>
+        </x-admin.form-section>
         
         <!-- Client and Category Section -->
-        <x-form-section title="Client & Category" description="Associate the project with a client and category.">
+        <x-admin.form-section title="Client & Category" description="Associate the project with a client and category.">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                     <x-form.select 
@@ -73,10 +73,10 @@
                     />
                 </div>
             </div>
-        </x-form-section>
+        </x-admin.form-section>
         
         <!-- Timeline Section -->
-        <x-form-section title="Timeline" description="Set the project timeline.">
+        <x-admin.form-section title="Timeline" description="Set the project timeline.">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                     <x-form.date-picker 
@@ -119,10 +119,10 @@
                     />
                 </div>
             </div>
-        </x-form-section>
+        </x-admin.form-section>
         
         <!-- Images Section -->
-        <x-form-section title="Images" description="Upload images showcasing the project.">
+        <x-admin.form-section title="Images" description="Upload images showcasing the project.">
             <div>
                 <x-form.file-input 
                     name="featured_image" 
@@ -134,24 +134,31 @@
                     Upload a main image for the project
                 </x-form.file-input>
                 
-                <x-image-gallery 
-                    name="gallery" 
-                    label="Project Gallery" 
-                    :images="$project && $project->images ? $project->images->map(function($img) {
-                        return [
-                            'id' => $img->id,
-                            'name' => $img->filename,
-                            'url' => $img->url
-                        ];
-                    })->toArray() : []" 
-                    maxFiles="10"
-                    helper="Upload up to 10 images showcasing different aspects of the project"
-                />
+                <x-admin.image-gallery 
+    :images="$formattedImages"
+    :columns="$columns"
+    :lightbox="$lightbox"
+    aspectRatio="4:3"
+    showActions="true"
+>
+    @if($project->images->count() > 0)
+        <x-slot name="actions">
+            <!-- Custom action buttons for each image -->
+            <div class="flex gap-2">
+                <a href="#" class="p-2 bg-white/90 rounded-full text-gray-800 hover:bg-white transition-colors duration-200">
+                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                </a>
             </div>
-        </x-form-section>
+        </x-slot>
+    @endif
+</x-admin.image-gallery>
+            </div>
+        </x-admin.form-section>
         
         <!-- Challenge & Solution Section -->
-        <x-form-section title="Challenge & Solution" description="Describe the project challenge and your solution.">
+        <x-admin.form-section title="Challenge & Solution" description="Describe the project challenge and your solution.">
             <div class="space-y-6">
                 <x-form.rich-editor 
                     name="challenge" 
@@ -174,10 +181,10 @@
                     placeholder="Describe the outcomes and benefits of the project..."
                 />
             </div>
-        </x-form-section>
+        </x-admin.form-section>
         
         <!-- SEO Section -->
-        <x-form-section title="SEO Information" description="Optimize the project page for search engines.">
+        <x-admin.form-section title="SEO Information" description="Optimize the project page for search engines.">
             <div class="space-y-6">
                 <x-form.input 
                     name="meta_title" 
@@ -201,7 +208,7 @@
                     helper="Comma-separated keywords related to the project"
                 />
             </div>
-        </x-form-section>
+        </x-admin.form-section>
         
         <!-- Form Buttons -->
         <div class="flex justify-end">

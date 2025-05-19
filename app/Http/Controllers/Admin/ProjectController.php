@@ -13,61 +13,91 @@ use Illuminate\Support\Facades\Storage;
 
 class ProjectController extends Controller
 {
+
     /**
      * Display a listing of the projects.
      */
-    public function index(Request $request)
-    {
-        $query = Project::with('client', 'testimonial', 'images')
-            ->when($request->filled('category'), function ($query) use ($request) {
-                return $query->where('category', $request->category);
-            })
-            ->when($request->filled('status'), function ($query) use ($request) {
-                return $query->where('status', $request->status);
-            })
-            ->when($request->filled('year'), function ($query) use ($request) {
-                // Filter by project year field
-                return $query->where('year', $request->year);
-            })
-            ->when($request->filled('search'), function ($query) use ($request) {
-                return $query->where(function ($q) use ($request) {
-                    $q->where('title', 'like', "%{$request->search}%")
-                        ->orWhere('description', 'like', "%{$request->search}%")
-                        ->orWhere('location', 'like', "%{$request->search}%");
-                });
-            });
-
-        // Apply sorting if provided
-        if ($request->filled('sort')) {
-            $direction = $request->input('direction', 'asc');
-            $query->orderBy($request->sort, $direction);
-        } else {
-            // Default sorting
-            $query->latest();
-        }
-
-        $projects = $query->paginate(10)->withQueryString();
-        // Apply filters and pagination
-        $projects = Project::with('images')
-            ->filter($request->only(['category', 'year', 'status', 'search']))
-            ->latest()
-            ->paginate(10);
-        
-        // Get categories for filter dropdown
-        $categories = Project::select('category')
-            ->distinct()
-            ->pluck('category')
-            ->filter();
-        
-        // Get years for filter dropdown
-        $years = Project::select('year')
-            ->distinct()
-            ->orderBy('year', 'desc')
-            ->pluck('year')
-            ->filter();
-        
-        return view('admin.projects.index', compact('projects', 'categories', 'years'));
+    /**
+     * Display a listing of the projects.
+     */
+    /**
+     * Display a listing of the projects.
+     */
+    /**
+ * Display a listing of the projects.
+ */
+public function index(Request $request)
+{
+    // Start with a clean query builder
+    $query = Project::with(['client', 'testimonial', 'images']);
+    
+    // Apply filters
+    if ($request->filled('category')) {
+        $query->where('category', $request->category);
     }
+    
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+    }
+    
+    // IMPORTANT FIX: Ensure we're using the actual value for year filtering
+    if ($request->filled('year')) {
+        $query->where('year', (int)$request->year);
+    }
+    
+    // Search filter
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function($q) use ($search) {
+            $q->where('title', 'like', "%{$search}%")
+              ->orWhere('description', 'like', "%{$search}%")
+              ->orWhere('location', 'like', "%{$search}%");
+        });
+    }
+    
+    // Apply sorting
+    if ($request->filled('sort')) {
+        $direction = $request->input('direction', 'asc');
+        $query->orderBy($request->sort, $direction);
+    } else {
+        $query->latest();
+    }
+    
+    // Get projects with pagination
+    $projects = $query->paginate(10)->withQueryString();
+    
+    // FORMAT OPTIONS FOR x-admin.select COMPONENT
+    
+    // Get distinct categories and format for select component
+    $categoriesCollection = Project::select('category')
+        ->whereNotNull('category')
+        ->distinct()
+        ->get()
+        ->pluck('category');
+    
+    $categories = [];
+    foreach ($categoriesCollection as $category) {
+        $categories[$category] = $category;
+    }
+    
+    // Get distinct years and format for select component
+    $yearsCollection = Project::select('year')
+        ->whereNotNull('year')
+        ->distinct()
+        ->orderBy('year', 'desc')
+        ->get()
+        ->pluck('year');
+    
+    // Create associative array with year as both key and value
+    $years = [];
+    foreach ($yearsCollection as $year) {
+        // Convert year to string to ensure compatibility with component
+        $yearValue = (string)$year;
+        $years[$yearValue] = $yearValue;
+    }
+    
+    return view('admin.projects.index', compact('projects', 'categories', 'years'));
+}
 
     /**
      * Show the form for creating a new project.
@@ -84,12 +114,12 @@ class ProjectController extends Controller
     {
         // Create the project
         $project = Project::create($request->validated());
-        
+
         // Handle images
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $index => $image) {
                 $path = $image->store('projects', 'public');
-                
+
                 ProjectImage::create([
                     'project_id' => $project->id,
                     'image_path' => $path,
@@ -99,7 +129,7 @@ class ProjectController extends Controller
                 ]);
             }
         }
-        
+
         // Handle SEO
         if ($request->filled('seo_title') || $request->filled('seo_description') || $request->filled('seo_keywords')) {
             $project->updateSeo([
@@ -108,7 +138,7 @@ class ProjectController extends Controller
                 'keywords' => $request->seo_keywords,
             ]);
         }
-        
+
         return redirect()->route('admin.projects.index')
             ->with('success', 'Project created successfully!');
     }
@@ -119,7 +149,7 @@ class ProjectController extends Controller
     public function show(Project $project)
     {
         $project->load('images', 'client', 'testimonial');
-        
+
         return view('admin.projects.show', compact('project'));
     }
 
@@ -129,7 +159,7 @@ class ProjectController extends Controller
     public function edit(Project $project)
     {
         $project->load('images', 'seo');
-        
+
         return view('admin.projects.edit', compact('project'));
     }
 
@@ -140,14 +170,14 @@ class ProjectController extends Controller
     {
         // Update the project
         $project->update($request->validated());
-        
+
         // Handle existing images
         if ($request->has('existing_images')) {
             foreach ($project->images as $image) {
                 if (!in_array($image->id, $request->existing_images)) {
                     // Delete image file
                     Storage::disk('public')->delete($image->image_path);
-                    
+
                     // Delete image record
                     $image->delete();
                 } else {
@@ -161,14 +191,14 @@ class ProjectController extends Controller
                 }
             }
         }
-        
+
         // Handle new images
         if ($request->hasFile('new_images')) {
             $existingCount = $project->images->count();
-            
+
             foreach ($request->file('new_images') as $index => $image) {
                 $path = $image->store('projects', 'public');
-                
+
                 ProjectImage::create([
                     'project_id' => $project->id,
                     'image_path' => $path,
@@ -178,14 +208,14 @@ class ProjectController extends Controller
                 ]);
             }
         }
-        
+
         // Handle SEO
         $project->updateSeo([
             'title' => $request->seo_title,
             'description' => $request->seo_description,
             'keywords' => $request->seo_keywords,
         ]);
-        
+
         return redirect()->route('admin.projects.index')
             ->with('success', 'Project updated successfully!');
     }
@@ -199,14 +229,14 @@ class ProjectController extends Controller
         foreach ($project->images as $image) {
             Storage::disk('public')->delete($image->image_path);
         }
-        
+
         // Delete the project (will cascade delete images and SEO due to relationships)
         $project->delete();
-        
+
         return redirect()->route('admin.projects.index')
             ->with('success', 'Project deleted successfully!');
     }
-    
+
     /**
      * Update feature status
      */
@@ -215,7 +245,7 @@ class ProjectController extends Controller
         $project->update([
             'featured' => !$project->featured
         ]);
-        
+
         return redirect()->back()
             ->with('success', 'Project featured status updated!');
     }
