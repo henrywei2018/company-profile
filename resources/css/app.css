@@ -1,4 +1,18 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-@import "./node_modules/preline/variants.css";
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Dark mode styles */
+.dark body {
+    @apply bg-neutral-900 text-white;
+}
+
+/* Custom component styles can go here */
+@layer components {
+    /* Add your custom component styles here */
+}
+
+/* Custom utility classes */
+@layer utilities {
+    /* Add your custom utility classes here */
+}

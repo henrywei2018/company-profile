@@ -72,8 +72,7 @@
 
 <span {{ $attributes->merge(['class' => "inline-flex items-center font-medium $colorClasses $sizeClasses $roundedClasses"]) }}>
     @if($dot)
-    <span class=\"shrink-0 size-1.5 {{ $dotColors }} rounded-full mr-1.5\"></span>
+    <span class="shrink-0 size-1.5 {{ $dotColors }} rounded-full mr-1.5"></span>
     @endif
     {{ $slot }}
-</span>"
-  }
+</span>

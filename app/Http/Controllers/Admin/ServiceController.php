@@ -36,33 +36,31 @@ class ServiceController extends Controller
      * Display a listing of the services.
      */
     public function index(Request $request)
-    {
-        // Apply filters and pagination
-        $query = Service::with('category')
-            ->when($request->filled('category'), function ($query) use ($request) {
-                return $query->where('category_id', $request->category);
-            })
-            ->when($request->filled('status'), function ($query) use ($request) {
-                return $query->where('is_active', $request->status === 'active');
-            })
-            ->when($request->filled('search'), function ($query) use ($request) {
-                return $query->where(function ($q) use ($request) {
-                    $q->where('title', 'like', "%{$request->search}%")
-                        ->orWhere('short_description', 'like', "%{$request->search}%");
-                });
+{
+    $query = Service::with('category')
+        ->when($request->filled('category_id'), function ($query) use ($request) {
+            return $query->where('category_id', $request->category_id);
+        })
+        ->when($request->filled('status'), function ($query) use ($request) {
+            return $query->where('is_active', $request->status === 'active');
+        })
+        ->when($request->filled('search'), function ($query) use ($request) {
+            return $query->where(function ($q) use ($request) {
+                $q->where('title', 'like', "%{$request->search}%")
+                    ->orWhere('short_description', 'like', "%{$request->search}%");
             });
+        });
 
-        $services = $query->ordered()->paginate(10);
-        
-        // Get categories for filter dropdown
-        $categories = ServiceCategory::active()->get();
-        
-        // Get unread messages and pending quotations counts for header notifications
-        $unreadMessages = \App\Models\Message::unread()->count();
-        $pendingQuotations = \App\Models\Quotation::pending()->count();
-        
-        return view('admin.services.index', compact('services', 'categories', 'unreadMessages', 'pendingQuotations'));
-    }
+    $services = $query->ordered()->paginate(10)->withQueryString();
+
+    $categories = ServiceCategory::active()->get();
+
+    $unreadMessages = \App\Models\Message::unread()->count();
+    $pendingQuotations = \App\Models\Quotation::pending()->count();
+
+    return view('admin.services.index', compact('services', 'categories', 'unreadMessages', 'pendingQuotations'));
+}
+
 
     /**
      * Show the form for creating a new service.

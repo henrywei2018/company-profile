@@ -1,56 +1,17 @@
 <!-- resources/views/admin/projects/index.blade.php -->
 <x-admin-layout :title="'Projects'">
     <!-- Page Header -->
-    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
-        <h2 class="text-xl font-semibold text-gray-900">Manage Projects</h2>
-        <div class="mt-4 md:mt-0 flex flex-col md:flex-row gap-3">
-            <form action="{{ route('admin.projects.index') }}" method="GET" class="flex items-center space-x-2">
-                <div class="relative">
-                    <input
-                        type="text"
-                        name="search"
-                        placeholder="Search projects..."
-                        value="{{ request()->get('search') }}"
-                        class="w-full md:w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    />
-                    <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-                        <button type="submit" class="text-gray-400 hover:text-gray-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <select
-                    name="category"
-                    class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    onchange="this.form.submit()"
-                >
-                    <option value="">All Categories</option>
-                    <option value="residential" {{ request()->get('category') === 'residential' ? 'selected' : '' }}>Residential</option>
-                    <option value="commercial" {{ request()->get('category') === 'commercial' ? 'selected' : '' }}>Commercial</option>
-                    <option value="industrial" {{ request()->get('category') === 'industrial' ? 'selected' : '' }}>Industrial</option>
-                    <option value="infrastructure" {{ request()->get('category') === 'infrastructure' ? 'selected' : '' }}>Infrastructure</option>
-                </select>
-                <select
-                    name="status"
-                    class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    onchange="this.form.submit()"
-                >
-                    <option value="">All Status</option>
-                    <option value="completed" {{ request()->get('status') === 'completed' ? 'selected' : '' }}>Completed</option>
-                    <option value="in_progress" {{ request()->get('status') === 'in_progress' ? 'selected' : '' }}>In Progress</option>
-                    <option value="planned" {{ request()->get('status') === 'planned' ? 'selected' : '' }}>Planned</option>
-                </select>
-            </form>
-            <a href="{{ route('admin.projects.create') }}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                Add Project
-            </a>
+    <d<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+            <x-admin.breadcrumb :items="[
+                'Services Management' => route('admin.projects.index')
+            ]" />
+            
+            <div class="mt-4 md:mt-0">
+                <x-admin.button href="{{ route('admin.projetcs.create') }}" icon='<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>'>
+                    Add New Service
+                </x-admin.button>
+            </div>
         </div>
-    </div>
 
     <!-- Projects Table -->
     <div class="bg-white shadow rounded-lg overflow-hidden">
@@ -158,7 +119,7 @@
                 </tbody>
             </table>
             <div class="p-4 border-t border-gray-200">
-                {{ $projects->links('components.pagination') }}
+                {{ $projects->links('components.admin.pagination') }}
             </div>
         @else
             <div class="p-8 text-center">

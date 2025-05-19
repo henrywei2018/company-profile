@@ -77,9 +77,10 @@
                     </svg>
                     <span class="sr-only">Activity</span>
                 </button>
+                
+                <!-- Theme Toggle Button -->
                 <button type="button" class="size-8 relative inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                    id="theme-toggle"
-                    onclick="toggleTheme()">
+                    id="theme-toggle">
                     <!-- Sun icon (shown in dark mode) -->
                     <svg class="hidden dark:block size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="5" />
@@ -100,12 +101,12 @@
                 </button>
 
                 <!-- User Dropdown -->
-                <div class="hs-dropdown relative inline-flex">
-                    <button id="hs-dropdown-account" type="button" class="size-8 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 focus:outline-hidden disabled:opacity-50 disabled:pointer-events-none dark:text-white" aria-haspopup="menu" aria-expanded="false" aria-label="Dropdown">
+                <div class="hs-dropdown relative inline-flex" data-hs-dropdown-placement="bottom-right">
+                    <button id="hs-dropdown-account" type="button" class="size-8 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 focus:outline-hidden disabled:opacity-50 disabled:pointer-events-none dark:text-white" data-hs-dropdown-toggle aria-expanded="false">
                         <img class="shrink-0 size-7 rounded-full" src="{{ Auth::user()->avatar ?? 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=facearea&facepad=2&w=320&h=320&q=80' }}" alt="Avatar">
                     </button>
 
-                    <div class="hs-dropdown-menu transition-[opacity,margin] duration hs-dropdown-open:opacity-100 opacity-0 hidden min-w-60 bg-white shadow-md rounded-lg mt-2 dark:bg-neutral-800 dark:border dark:border-neutral-700 dark:divide-neutral-700 after:h-4 after:absolute after:-bottom-4 after:start-0 after:w-full before:h-4 before:absolute before:-top-4 before:start-0 before:w-full" role="menu" aria-orientation="vertical" aria-labelledby="hs-dropdown-account">
+                    <div class="hs-dropdown-menu transition-[opacity,margin] duration hs-dropdown-open:opacity-100 opacity-0 hidden min-w-60 bg-white shadow-md rounded-lg mt-2 dark:bg-neutral-800 dark:border dark:border-neutral-700 dark:divide-neutral-700 after:h-4 after:absolute after:-bottom-4 after:start-0 after:w-full before:h-4 before:absolute before:-top-4 before:start-0 before:w-full" aria-labelledby="hs-dropdown-account">
                         <div class="py-3 px-5 bg-gray-100 rounded-t-lg dark:bg-neutral-700">
                             <p class="text-sm text-gray-500 dark:text-neutral-500">Signed in as</p>
                             <p class="text-sm font-medium text-gray-800 dark:text-neutral-200">{{ Auth::user()->email }}</p>
@@ -146,68 +147,3 @@
         </div>
     </nav>
 </header>
-@push('scripts')
-<script>
-    function toggleTheme() {
-        if (document.documentElement.classList.contains('dark')) {
-            // Switch to light mode
-            document.documentElement.classList.remove('dark');
-            localStorage.setItem('hs_theme', 'light');
-        } else {
-            // Switch to dark mode
-            document.documentElement.classList.add('dark');
-            localStorage.setItem('hs_theme', 'dark');
-        }
-    }
-
-    // Initialize Preline UI dropdown
-    document.addEventListener('DOMContentLoaded', function() {
-        // Check if HSDropdown exists before initializing
-        if (typeof HSDropdown !== 'undefined') {
-            HSDropdown.autoInit();
-        } else {
-            // If HSDropdown is not available, use a manual implementation
-            const dropdownTriggers = document.querySelectorAll('.hs-dropdown button');
-            
-            dropdownTriggers.forEach(trigger => {
-                trigger.addEventListener('click', function() {
-                    const dropdown = this.closest('.hs-dropdown');
-                    const menu = dropdown.querySelector('.hs-dropdown-menu');
-                    
-                    // Toggle the dropdown
-                    if (menu.classList.contains('hidden')) {
-                        closeAllDropdowns();
-                        menu.classList.remove('hidden');
-                        menu.classList.add('block');
-                        this.setAttribute('aria-expanded', 'true');
-                    } else {
-                        menu.classList.add('hidden');
-                        menu.classList.remove('block');
-                        this.setAttribute('aria-expanded', 'false');
-                    }
-                });
-            });
-            
-            // Close dropdowns when clicking outside
-            document.addEventListener('click', function(event) {
-                if (!event.target.closest('.hs-dropdown')) {
-                    closeAllDropdowns();
-                }
-            });
-            
-            function closeAllDropdowns() {
-                const dropdowns = document.querySelectorAll('.hs-dropdown-menu');
-                dropdowns.forEach(menu => {
-                    menu.classList.add('hidden');
-                    menu.classList.remove('block');
-                    
-                    const trigger = menu.closest('.hs-dropdown').querySelector('button');
-                    if (trigger) {
-                        trigger.setAttribute('aria-expanded', 'false');
-                    }
-                });
-            }
-        }
-    });
-</script>
-@endpush

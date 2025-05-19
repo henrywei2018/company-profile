@@ -106,7 +106,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     
     // Services management
     Route::resource('services', App\Http\Controllers\Admin\ServiceController::class);
-    Route::patch('/services/{service}/toggle-status', [App\Http\Controllers\Admin\ServiceController::class, 'toggleActive'])->name('services.toggle-status');
+    Route::post('/services/{service}/toggle-status', [ServiceController::class, 'toggleActive'])
+    ->name('services.toggle-status');
     Route::patch('/services/{service}/toggle-featured', [App\Http\Controllers\Admin\ServiceController::class, 'toggleFeatured'])->name('services.toggle-featured');
     Route::post('/services/update-order', [App\Http\Controllers\Admin\ServiceController::class, 'updateOrder'])->name('services.update-order');
     

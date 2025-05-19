@@ -1,4 +1,3 @@
-<!-- resources/views/components/admin/admin-sidebar.blade.php -->
 @props(['unreadMessagesCount' => 0, 'pendingQuotationsCount' => 0])
 
 <div id="hs-application-sidebar" 
@@ -23,7 +22,7 @@
 
         <!-- Navigation -->
         <div class="flex-1 overflow-y-auto p-4">
-            <ul class="space-y-1.5">
+            <ul class="space-y-1.5 hs-accordion-group" data-hs-accordion-always-open>
                 <!-- Dashboard -->
                 <li>
                     <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.dashboard') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}" 
@@ -186,3 +185,63 @@
         <!-- End Footer -->
     </div>
 </div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize accordion functionality
+        initAccordion();
+    });
+
+    function initAccordion() {
+        // Check if Preline HSAccordion is available
+        if (typeof HSAccordion !== 'undefined') {
+            // Use Preline's HSAccordion to initialize
+            HSAccordion.init(document.querySelectorAll('.hs-accordion'));
+        } else {
+            // Fallback to manual implementation
+            const accordionToggles = document.querySelectorAll('.hs-accordion-toggle');
+            
+            accordionToggles.forEach(toggle => {
+                toggle.addEventListener('click', function() {
+                    const accordion = this.closest('.hs-accordion');
+                    const content = accordion.querySelector('.hs-accordion-content');
+                    const isActive = accordion.classList.contains('active');
+                    
+                    // Close all accordions if not using multiple
+                    if (!document.querySelector('.hs-accordion-group').hasAttribute('data-hs-accordion-always-open')) {
+                        document.querySelectorAll('.hs-accordion').forEach(acc => {
+                            if (acc !== accordion) {
+                                acc.classList.remove('active');
+                                const accContent = acc.querySelector('.hs-accordion-content');
+                                accContent.style.display = 'none';
+                                acc.querySelector('.hs-accordion-toggle').setAttribute('aria-expanded', 'false');
+                            }
+                        });
+                    }
+                    
+                    // Toggle current accordion
+                    if (isActive) {
+                        accordion.classList.remove('active');
+                        content.style.display = 'none';
+                        this.setAttribute('aria-expanded', 'false');
+                    } else {
+                        accordion.classList.add('active');
+                        content.style.display = 'block';
+                        this.setAttribute('aria-expanded', 'true');
+                    }
+                });
+            });
+            
+            // Initialize based on route
+            document.querySelectorAll('.hs-accordion').forEach(accordion => {
+                const content = accordion.querySelector('.hs-accordion-content');
+                if (content.classList.contains('block')) {
+                    accordion.classList.add('active');
+                    accordion.querySelector('.hs-accordion-toggle').setAttribute('aria-expanded', 'true');
+                }
+            });
+        }
+    }
+</script>
+@endpush
