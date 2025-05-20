@@ -5,12 +5,27 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ServiceCategory;
+use App\Http\Requests\StoreServiceCategoryRequest;
+use App\Http\Requests\UpdateServiceCategoryRequest;
+use App\Repositories\Interfaces\ServiceCategoryRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 
 class ServiceCategoryController extends Controller
 {
+    protected $serviceCategoryRepository;
+
+    /**
+     * Create a new controller instance.
+     *
+     * @param ServiceCategoryRepositoryInterface $serviceCategoryRepository
+     */
+    public function __construct(ServiceCategoryRepositoryInterface $serviceCategoryRepository)
+    {
+        $this->serviceCategoryRepository = $serviceCategoryRepository;
+    }
+
     /**
      * Display a listing of the categories.
      */
@@ -18,7 +33,11 @@ class ServiceCategoryController extends Controller
     {
         $categories = ServiceCategory::withCount('services')->paginate(10);
         
-        return view('admin.service-categories.index', compact('categories'));
+        // Get notification counts for header
+        $unreadMessages = \App\Models\Message::unread()->count();
+        $pendingQuotations = \App\Models\Quotation::pending()->count();
+        
+        return view('admin.service-categories.index', compact('categories', 'unreadMessages', 'pendingQuotations'));
     }
 
     /**
@@ -26,26 +45,25 @@ class ServiceCategoryController extends Controller
      */
     public function create()
     {
-        return view('admin.service-categories.create');
+        // Get notification counts for header
+        $unreadMessages = \App\Models\Message::unread()->count();
+        $pendingQuotations = \App\Models\Quotation::pending()->count();
+        
+        return view('admin.service-categories.create', compact('unreadMessages', 'pendingQuotations'));
     }
 
     /**
      * Store a newly created category.
      */
-    public function store(Request $request)
+    public function store(StoreServiceCategoryRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'icon' => 'nullable|image|max:1024',
-            'description' => 'nullable|string',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $request->validated();
         
         // Generate slug from name
         $validated['slug'] = Str::slug($validated['name']);
         
         // Create category
-        $category = ServiceCategory::create($validated);
+        $category = $this->serviceCategoryRepository->create($validated);
         
         // Handle icon
         if ($request->hasFile('icon')) {
@@ -62,26 +80,25 @@ class ServiceCategoryController extends Controller
      */
     public function edit(ServiceCategory $serviceCategory)
     {
-        return view('admin.service-categories.edit', compact('serviceCategory'));
+        // Get notification counts for header
+        $unreadMessages = \App\Models\Message::unread()->count();
+        $pendingQuotations = \App\Models\Quotation::pending()->count();
+        
+        return view('admin.service-categories.edit', compact('serviceCategory', 'unreadMessages', 'pendingQuotations'));
     }
 
     /**
      * Update the specified category.
      */
-    public function update(Request $request, ServiceCategory $serviceCategory)
+    public function update(UpdateServiceCategoryRequest $request, ServiceCategory $serviceCategory)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'icon' => 'nullable|image|max:1024',
-            'description' => 'nullable|string',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $request->validated();
         
         // Generate slug from name
         $validated['slug'] = Str::slug($validated['name']);
         
         // Update category
-        $serviceCategory->update($validated);
+        $this->serviceCategoryRepository->update($serviceCategory, $validated);
         
         // Handle icon
         if ($request->hasFile('icon')) {
@@ -116,7 +133,7 @@ class ServiceCategoryController extends Controller
         }
         
         // Delete category
-        $serviceCategory->delete();
+        $this->serviceCategoryRepository->delete($serviceCategory);
         
         return redirect()->route('admin.service-categories.index')
             ->with('success', 'Category deleted successfully!');
@@ -127,9 +144,7 @@ class ServiceCategoryController extends Controller
      */
     public function toggleActive(ServiceCategory $serviceCategory)
     {
-        $serviceCategory->update([
-            'is_active' => !$serviceCategory->is_active
-        ]);
+        $this->serviceCategoryRepository->toggleActive($serviceCategory);
         
         return redirect()->back()
             ->with('success', 'Category status updated!');

@@ -1,13 +1,13 @@
-<!-- resources/views/admin/service-categories/index.blade.php -->
-<x-layouts.admin title="Service Categories" :unreadMessages="$unreadMessages" :pendingQuotations="$pendingQuotations">
+<!-- resources/views/admin/project-categories/index.blade.php -->
+<x-layouts.admin title="Project Categories" :unreadMessages="$unreadMessages" :pendingQuotations="$pendingQuotations">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <x-admin.breadcrumb :items="[
-            'Service Categories' => route('admin.service-categories.index')
+            'Project Categories' => route('admin.project-categories.index')
         ]" />
         
         <div class="mt-4 md:mt-0">
-            <x-admin.button href="{{ route('admin.service-categories.create') }}" icon='<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>'>
+            <x-admin.button href="{{ route('admin.project-categories.create') }}" icon='<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>'>
                 Add New Category
             </x-admin.button>
         </div>
@@ -24,7 +24,7 @@
                 <x-slot name="columns">
                     <x-admin.table-column sortable="true" field="name" direction="{{ request('sort') === 'name' ? request('direction', 'asc') : null }}">Name</x-admin.table-column>
                     <x-admin.table-column>Description</x-admin.table-column>
-                    <x-admin.table-column>Services</x-admin.table-column>
+                    <x-admin.table-column>Projects</x-admin.table-column>
                     <x-admin.table-column>Status</x-admin.table-column>
                     <x-admin.table-column sortable="true" field="created_at" direction="{{ request('sort') === 'created_at' ? request('direction', 'asc') : null }}">Created</x-admin.table-column>
                     <x-admin.table-column>Actions</x-admin.table-column>
@@ -41,12 +41,12 @@
                                 @else
                                     <div class="flex-shrink-0 h-10 w-10 flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded">
                                         <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0 1 12 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2m4 6h.01M5 20h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                                         </svg>
                                     </div>
                                 @endif
                                 <div class="ml-4">
-                                    <a href="{{ route('admin.service-categories.edit', $category) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                    <a href="{{ route('admin.project-categories.edit', $category) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
                                         {{ $category->name }}
                                     </a>
                                 </div>
@@ -61,7 +61,7 @@
                         
                         <x-admin.table-cell>
                             <x-admin.badge>
-                                {{ $category->services_count }}
+                                {{ $category->projects_count }}
                             </x-admin.badge>
                         </x-admin.table-cell>
                         
@@ -80,7 +80,7 @@
                         <x-admin.table-cell>
                             <div class="flex items-center space-x-2">
                                 <x-admin.icon-button 
-                                    href="{{ route('admin.service-categories.edit', $category) }}"
+                                    href="{{ route('admin.project-categories.edit', $category) }}"
                                     tooltip="Edit category"
                                     color="primary"
                                     size="sm"
@@ -90,7 +90,7 @@
                                     </svg>
                                 </x-admin.icon-button>
                                 
-                                <form action="{{ route('admin.service-categories.destroy', $category) }}" method="POST" class="inline">
+                                <form action="{{ route('admin.project-categories.destroy', $category) }}" method="POST" class="inline">
                                     @csrf
                                     @method('DELETE')
                                     <x-admin.icon-button 
@@ -106,7 +106,7 @@
                                     </x-admin.icon-button>
                                 </form>
                                 
-                                <form action="{{ route('admin.service-categories.toggle-active', $category) }}" method="POST" class="inline">
+                                <form action="{{ route('admin.project-categories.toggle-active', $category) }}" method="POST" class="inline">
                                     @csrf
                                     @method('PATCH')
                                     <x-admin.icon-button 
@@ -138,10 +138,10 @@
         @else
             <x-admin.empty-state 
                 title="No categories found" 
-                description="There are no service categories yet."
-                icon='<svg class="w-10 h-10 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0 1 12 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2m4 6h.01M5 20h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" /></svg>'
+                description="There are no project categories yet."
+                icon='<svg class="w-10 h-10 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>'
                 actionText="Add New Category"
-                :actionUrl="route('admin.service-categories.create')"
+                :actionUrl="route('admin.project-categories.create')"
             />
         @endif
     </x-admin.card>

@@ -81,6 +81,11 @@ class Project extends Model
     {
         return $this->hasMany(ProjectImage::class)->orderBy('sort_order');
     }
+
+    public function category()
+    {
+        return $this->belongsTo(ProjectCategory::class);
+    }
     
     /**
      * Get the client associated with the project.
