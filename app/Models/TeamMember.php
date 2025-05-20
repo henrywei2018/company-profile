@@ -4,13 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\FilterableTrait;
 use App\Traits\HasActiveTrait;
+use App\Traits\HasSlugTrait;
 use App\Traits\HasSortOrderTrait;
+use App\Traits\SeoableTrait;
 use App\Traits\ImageableTrait;
 
 class TeamMember extends Model
 {
-    use HasFactory, HasActiveTrait, HasSortOrderTrait, ImageableTrait;
+    use HasFactory, FilterableTrait, HasActiveTrait, HasSlugTrait, HasSortOrderTrait, SeoableTrait, ImageableTrait;
 
     /**
      * The attributes that are mass assignable.
@@ -19,21 +22,20 @@ class TeamMember extends Model
      */
     protected $fillable = [
         'name',
+        'slug',
         'position',
+        'department',
         'bio',
         'email',
         'phone',
+        'photo',
+        'facebook',
+        'twitter',
         'linkedin',
-        'image',
+        'instagram',
+        'featured',
         'is_active',
         'sort_order',
-        'department',
-        'social_linkedin',
-        'social_twitter',
-        'social_facebook',
-        'social_instagram',
-        'is_featured',
-        'photo',
     ];
     
     /**
@@ -42,8 +44,32 @@ class TeamMember extends Model
      * @var array
      */
     protected $casts = [
+        'featured' => 'boolean',
         'is_active' => 'boolean',
-        'is_featured' => 'boolean',
+    ];
+    
+    /**
+     * The filterable attributes for the model.
+     *
+     * @var array
+     */
+    protected $filterable = [
+        'department',
+        'featured',
+        'is_active',
+        'search',
+    ];
+    
+    /**
+     * The searchable attributes for the model.
+     *
+     * @var array
+     */
+    protected $searchable = [
+        'name',
+        'position',
+        'department',
+        'bio',
     ];
     
     /**
@@ -51,15 +77,7 @@ class TeamMember extends Model
      */
     public function scopeFeatured($query)
     {
-        return $query->where('is_featured', true);
-    }
-    
-    /**
-     * Scope a query to only exclude featured team members.
-     */
-    public function scopeNotFeatured($query)
-    {
-        return $query->where('is_featured', false);
+        return $query->where('featured', true);
     }
     
     /**
@@ -71,10 +89,40 @@ class TeamMember extends Model
             return asset('storage/' . $this->photo);
         }
         
-        if ($this->image) {
-            return asset('storage/' . $this->image);
+        return asset('images/default-profile.png');
+    }
+
+    /**
+     * Check if team member has social links.
+     */
+    public function hasSocialLinks()
+    {
+        return $this->facebook || $this->twitter || $this->linkedin || $this->instagram;
+    }
+    
+    /**
+     * Get active social links.
+     */
+    public function getSocialLinksAttribute()
+    {
+        $links = [];
+        
+        if ($this->facebook) {
+            $links['facebook'] = $this->facebook;
         }
         
-        return asset('images/default-team-member.jpg');
+        if ($this->twitter) {
+            $links['twitter'] = $this->twitter;
+        }
+        
+        if ($this->linkedin) {
+            $links['linkedin'] = $this->linkedin;
+        }
+        
+        if ($this->instagram) {
+            $links['instagram'] = $this->instagram;
+        }
+        
+        return $links;
     }
 }

@@ -1,29 +1,46 @@
-<!-- resources/views/admin/team/create.blade.php -->
-<x-layouts.admin title="Add Team Member" :unreadMessages="$unreadMessages" :pendingQuotations="$pendingQuotations">
+<!-- resources/views/admin/team/edit.blade.php -->
+<x-layouts.admin title="Edit Team Member" :unreadMessages="$unreadMessages" :pendingQuotations="$pendingQuotations">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <x-admin.breadcrumb :items="[
             'Team Management' => route('admin.team.index'),
-            'Add Team Member' => route('admin.team.create'),
+            'Edit Team Member' => route('admin.team.edit', $teamMember)
         ]" />
+        
+        <div class="mt-4 md:mt-0 flex flex-wrap gap-2">
+            <form action="{{ route('admin.team.destroy', $teamMember) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this team member?')">
+                @csrf
+                @method('DELETE')
+                <x-admin.button
+                    type="submit"
+                    color="danger"
+                >
+                    <svg class="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete Team Member
+                </x-admin.button>
+            </form>
+        </div>
     </div>
-
-    <form action="{{ route('admin.team.store') }}" method="POST" enctype="multipart/form-data">
+    
+    <form action="{{ route('admin.team.update', $teamMember) }}" method="POST" enctype="multipart/form-data">
         @csrf
-
+        @method('PUT')
+        
         <!-- Personal Information -->
-        <x-admin.form-section title="Personal Information" description="Enter the personal details of the team member.">
+        <x-admin.form-section title="Personal Information" description="Update the personal details of the team member.">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <x-admin.input name="name" label="Full Name" placeholder="Enter full name" required />
+                    <x-admin.input name="name" label="Full Name" placeholder="Enter full name" :value="$teamMember->name" required />
                 </div>
 
                 <div>
-                    <x-admin.input name="email" label="Email" type="email" placeholder="Enter email address" />
+                    <x-admin.input name="email" label="Email" type="email" placeholder="Enter email address" :value="$teamMember->email" />
                 </div>
 
                 <div>
-                    <x-admin.input name="position" label="Position" placeholder="Enter job position" required />
+                    <x-admin.input name="position" label="Position" placeholder="Enter job position" :value="$teamMember->position" required />
                 </div>
 
                 <div>
@@ -32,31 +49,32 @@
                         label="Department" 
                         :options="$departments->pluck('name', 'id')->toArray()"
                         placeholder="Select a department"
+                        :value="$teamMember->department_id"
                     />
                 </div>
                 
                 <div>
-                    <x-admin.input name="phone" label="Phone Number" placeholder="Enter phone number" />
+                    <x-admin.input name="phone" label="Phone Number" placeholder="Enter phone number" :value="$teamMember->phone" />
                 </div>
 
                 <div>
-                    <x-admin.input name="sort_order" label="Sort Order" type="number" placeholder="0" helper="Lower numbers appear first" />
+                    <x-admin.input name="sort_order" label="Sort Order" type="number" placeholder="0" :value="$teamMember->sort_order" helper="Lower numbers appear first" />
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <div>
-                    <x-admin.toggle name="is_active" label="Active Status" checked="true" helper="Set team member as active/inactive" />
+                    <x-admin.toggle name="is_active" label="Active Status" :checked="$teamMember->is_active" helper="Set team member as active/inactive" />
                 </div>
                 
                 <div>
-                    <x-admin.toggle name="featured" label="Featured Member" helper="Display this member prominently on the website" />
+                    <x-admin.toggle name="featured" label="Featured Member" :checked="$teamMember->featured" helper="Display this member prominently on the website" />
                 </div>
             </div>
         </x-admin.form-section>
 
         <!-- Profile Photo -->
-        <x-admin.form-section title="Profile Photo" description="Upload a profile photo of the team member." class="mt-8">
+        <x-admin.form-section title="Profile Photo" description="Update the profile photo of the team member." class="mt-8">
             <div>
                 <x-admin.image-uploader 
                     name="photo" 
@@ -65,39 +83,42 @@
                     helper="Recommended size: 400x400px. Max 2MB."
                     maxFileSize="2"
                     aspectRatio="1:1"
+                    :preview="$teamMember->photo ? asset('storage/' . $teamMember->photo) : null"
                 />
             </div>
         </x-admin.form-section>
 
         <!-- Biography & Additional Information -->
-        <x-admin.form-section title="Biography & Additional Information" description="Enter biography and additional information about the team member." class="mt-8">
+        <x-admin.form-section title="Biography & Additional Information" description="Update biography and additional information about the team member." class="mt-8">
             <div class="grid grid-cols-1 gap-6">
                 <div>
                     <x-admin.rich-editor 
                         name="biography" 
                         label="Biography" 
                         placeholder="Enter team member biography"
+                        :value="$teamMember->biography"
                     />
                 </div>
                 
                 <div>
-                    <x-admin.input name="education" label="Education" placeholder="Enter education background" />
+                    <x-admin.input name="education" label="Education" placeholder="Enter education background" :value="$teamMember->education" />
                 </div>
                 
                 <div>
-                    <x-admin.input name="expertise" label="Areas of Expertise" placeholder="Enter areas of expertise (comma separated)" />
+                    <x-admin.input name="expertise" label="Areas of Expertise" placeholder="Enter areas of expertise (comma separated)" :value="$teamMember->expertise" />
                 </div>
             </div>
         </x-admin.form-section>
 
         <!-- Social Media Links -->
-        <x-admin.form-section title="Social Media Links" description="Enter social media profile links of the team member." class="mt-8">
+        <x-admin.form-section title="Social Media Links" description="Update social media profile links of the team member." class="mt-8">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <x-admin.input 
                         name="linkedin" 
                         label="LinkedIn Profile" 
                         placeholder="https://linkedin.com/in/username"
+                        :value="$teamMember->linkedin"
                         prefix='<svg class="w-4 h-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>'
                     />
                 </div>
@@ -105,8 +126,9 @@
                 <div>
                     <x-admin.input 
                         name="twitter" 
-                        label="Twitter Profile" 
+                        label="Twitter/X Profile" 
                         placeholder="https://twitter.com/username"
+                        :value="$teamMember->twitter"
                         prefix='<svg class="w-4 h-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg>'
                     />
                 </div>
@@ -116,6 +138,7 @@
                         name="facebook" 
                         label="Facebook Profile" 
                         placeholder="https://facebook.com/username"
+                        :value="$teamMember->facebook"
                         prefix='<svg class="w-4 h-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/></svg>'
                     />
                 </div>
@@ -125,6 +148,7 @@
                         name="instagram" 
                         label="Instagram Profile" 
                         placeholder="https://instagram.com/username"
+                        :value="$teamMember->instagram"
                         prefix='<svg class="w-4 h-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>'
                     />
                 </div>
@@ -138,7 +162,7 @@
             </x-admin.button>
             
             <x-admin.button type="submit" color="primary">
-                Add Team Member
+                Update Team Member
             </x-admin.button>
         </div>
     </form>
