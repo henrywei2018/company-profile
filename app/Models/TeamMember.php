@@ -79,6 +79,10 @@ class TeamMember extends Model
     {
         return $query->where('featured', true);
     }
+    public function department()
+    {
+        return $this->belongsTo(TeamMemberDepartment::class, 'department_id');
+    }
     
     /**
      * Get photo URL.
