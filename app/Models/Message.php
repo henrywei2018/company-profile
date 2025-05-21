@@ -4,101 +4,96 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\MessageTrait;
 
 class Message extends Model
 {
-    use HasFactory;
+    use HasFactory, MessageTrait;
 
     /**
      * The attributes that are mass assignable.
      *
-     * @var array
+     * @var array<int, string>
      */
     protected $fillable = [
+        'type',
         'name',
         'email',
         'phone',
-        'company',
         'subject',
         'message',
-        'type',
-        'is_read',
-        'user_id',
-        'read_at',
         'client_id',
-        'is_read_by_client',
         'parent_id',
+        'is_read',
+        'read_at',
+        'ip_address',
+        'user_agent',
     ];
-    
+
     /**
      * The attributes that should be cast.
      *
-     * @var array
+     * @var array<string, string>
      */
     protected $casts = [
         'is_read' => 'boolean',
-        'is_read_by_client' => 'boolean',
         'read_at' => 'datetime',
     ];
-    
+
     /**
-     * Get the user associated with the message.
+     * The model's default values for attributes.
+     *
+     * @var array
      */
-    public function user()
+    protected $attributes = [
+        'is_read' => false,
+    ];
+
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array
+     */
+    protected $appends = [
+        'date_formatted',
+        'short_message',
+    ];
+
+    /**
+     * Get the formatted date attribute.
+     *
+     * @return string
+     */
+    public function getDateFormattedAttribute()
     {
-        return $this->belongsTo(User::class);
+        return $this->created_at->format('M d, Y H:i');
     }
-    
+
     /**
-     * Get the client associated with the message.
+     * Get the short message attribute.
+     *
+     * @return string
      */
-    public function client()
+    public function getShortMessageAttribute()
     {
-        return $this->belongsTo(User::class, 'client_id');
+        return \Illuminate\Support\Str::limit(strip_tags($this->message), 100);
     }
-    
+
     /**
-     * Get the parent message.
+     * Save a new message attachment.
+     *
+     * @param  \Illuminate\Http\UploadedFile  $file
+     * @return \App\Models\MessageAttachment
      */
-    public function parent()
+    public function addAttachment($file)
     {
-        return $this->belongsTo(Message::class, 'parent_id');
-    }
-    
-    /**
-     * Get the replies to this message.
-     */
-    public function replies()
-    {
-        return $this->hasMany(Message::class, 'parent_id');
-    }
-    
-    /**
-     * Get message attachments.
-     */
-    public function attachments()
-    {
-        return $this->morphMany(Attachment::class, 'attachable');
-    }
-    
-    /**
-     * Scope a query to only include unread messages.
-     */
-    public function scopeUnread($query)
-    {
-        return $query->where('is_read', false);
-    }
-    
-    /**
-     * Mark message as read.
-     */
-    public function markAsRead()
-    {
-        $this->update([
-            'is_read' => true,
-            'read_at' => now(),
-        ]);
+        $path = $file->store('message-attachments', 'public');
         
-        return $this;
+        return $this->attachments()->create([
+            'file_path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'file_size' => $file->getSize(),
+            'mime_type' => $file->getMimeType(),
+        ]);
     }
 }

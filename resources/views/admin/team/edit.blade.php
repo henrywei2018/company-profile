@@ -44,12 +44,13 @@
                 </div>
 
                 <div>
-                    <x-admin.select 
-                        name="department_id" 
-                        label="Department" 
-                        :options="$departments->pluck('name', 'id')->toArray()"
+                    <x-admin.select
+                        name="department_id"
+                        label="Department"
+                        :options="App\Models\TeamMemberDepartment::where('is_active', true)->orderBy('name')->pluck('name', 'id')->toArray()"
                         placeholder="Select a department"
-                        :value="$teamMember->department_id"
+                        :value="$teamMember->department_id ?? null"
+                        helper="Select the department this team member belongs to. You can manage departments in the Team Departments section."
                     />
                 </div>
                 

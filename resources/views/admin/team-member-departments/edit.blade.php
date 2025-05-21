@@ -1,10 +1,11 @@
-<!-- resources/views/admin/team-departments/edit.blade.php -->
+<!-- resources/views/admin/team-member-departments/edit.blade.php -->
 <x-layouts.admin title="Edit Department">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <x-admin.breadcrumb :items="[
-            'Team Departments Management' => route('admin.team-member-departments.index'),
-            'Edit Department' => route('admin.team-member-departments.edit', $teamMemberDepartment)
+            'Team Management' => route('admin.team.index'),
+            'Departments' => route('admin.team-member-departments.index'),
+            'Edit Department' => '#'
         ]" />
         
         <div class="mt-4 md:mt-0 flex flex-wrap gap-2">
@@ -28,8 +29,8 @@
         @csrf
         @method('PUT')
         
-        <!-- Basic Information -->
-        <x-admin.form-section title="Department Information" description="Update the details of the department.">
+        <!-- Department Information -->
+        <x-admin.form-section title="Department Information" description="Update the department details.">
             <div class="grid grid-cols-1 gap-6">
                 <div>
                     <x-admin.input
@@ -42,33 +43,12 @@
                 </div>
                 
                 <div>
-                    <x-admin.input
-                        name="slug"
-                        label="Slug"
-                        placeholder="department-slug"
-                        :value="$teamMemberDepartment->slug"
-                        helper="Leave empty to auto-generate from name."
-                    />
-                </div>
-
-                <div>
                     <x-admin.textarea
                         name="description"
                         label="Description"
-                        placeholder="Enter department description"
-                        rows="3"
+                        placeholder="Enter department description (optional)"
+                        rows="4"
                         :value="$teamMemberDepartment->description"
-                    />
-                </div>
-                
-                <div>
-                    <x-admin.input
-                        name="sort_order"
-                        label="Sort Order"
-                        type="number"
-                        placeholder="0"
-                        :value="$teamMemberDepartment->sort_order"
-                        helper="Lower numbers appear first"
                     />
                 </div>
                 

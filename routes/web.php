@@ -141,7 +141,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     
     // Team department routes
     Route::resource('team-member-departments', App\Http\Controllers\Admin\TeamMemberDepartmentController::class);
-    Route::patch('/team-member-departments/{teamMemberDepartment}/toggle-active', [App\Http\Controllers\Admin\TeamMemberDepartmentController::class, 'toggleActive'])->name('team-member-departments.toggle-active');
+Route::patch('/team-member-departments/{teamMemberDepartment}/toggle-active', [App\Http\Controllers\Admin\TeamMemberDepartmentController::class, 'toggleActive'])->name('team-member-departments.toggle-active');
     Route::post('/team-member-departments/update-order', [App\Http\Controllers\Admin\TeamMemberDepartmentController::class, 'updateOrder'])->name('team-member-departments.update-order');
     // Testimonials management
     Route::resource('testimonials', App\Http\Controllers\Admin\TestimonialController::class);
