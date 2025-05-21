@@ -2,136 +2,114 @@
 
 namespace App\Traits;
 
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 trait MessageTrait
 {
     /**
-     * Mark the message as read.
+     * Get messages from the client.
      *
-     * @return bool
-     */
-    public function markAsRead()
-    {
-        return $this->update([
-            'is_read' => true,
-            'read_at' => now(),
-        ]);
-    }
-
-    /**
-     * Mark the message as unread.
-     *
-     * @return bool
-     */
-    public function markAsUnread()
-    {
-        return $this->update([
-            'is_read' => false,
-            'read_at' => null,
-        ]);
-    }
-
-    /**
-     * Toggle read status.
-     *
-     * @return bool
-     */
-    public function toggleReadStatus()
-    {
-        if ($this->is_read) {
-            return $this->markAsUnread();
-        }
-        
-        return $this->markAsRead();
-    }
-
-    /**
-     * Scope a query to only include read messages.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param \Illuminate\Database\Eloquent\Builder $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    public function scopeRead(Builder $query)
-    {
-        return $query->where('is_read', true);
-    }
-
-    /**
-     * Scope a query to only include unread messages.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopeUnread(Builder $query)
-    {
-        return $query->where('is_read', false);
-    }
-
-    /**
-     * Scope a query to only include contact form messages.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopeContactForm(Builder $query)
-    {
-        return $query->where('type', 'contact_form');
-    }
-
-    /**
-     * Scope a query to only include client messages.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopeClientMessages(Builder $query)
+    public function scopeFromClient($query)
     {
         return $query->where('type', 'client_to_admin');
     }
 
     /**
-     * Scope a query to only include admin messages.
+     * Get messages from the admin.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param \Illuminate\Database\Eloquent\Builder $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    public function scopeAdminMessages(Builder $query)
+    public function scopeFromAdmin($query)
     {
         return $query->where('type', 'admin_to_client');
     }
 
     /**
-     * Scope a query to filter by sender/recipient.
+     * Get unread messages.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @param  string  $email
+     * @param \Illuminate\Database\Eloquent\Builder $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    public function scopeByEmail(Builder $query, $email)
+    public function scopeUnread($query)
     {
-        return $query->where('email', $email);
+        return $query->where('is_read', false);
     }
 
     /**
-     * Scope a query to search messages.
+     * Get read messages.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @param  string  $search
+     * @param \Illuminate\Database\Eloquent\Builder $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    public function scopeSearch(Builder $query, $search)
+    public function scopeRead($query)
     {
-        return $query->where(function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%")
-                ->orWhere('subject', 'like', "%{$search}%")
-                ->orWhere('message', 'like', "%{$search}%");
+        return $query->where('is_read', true);
+    }
+
+    /**
+     * Get contact form messages.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeContactForm($query)
+    {
+        return $query->where('type', 'contact_form');
+    }
+
+    /**
+     * Search messages.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param string $search
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeSearch($query, $search)
+    {
+        return $query->where(function($query) use ($search) {
+            $query->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('subject', 'like', "%{$search}%")
+                  ->orWhere('message', 'like', "%{$search}%");
         });
     }
 
     /**
-     * Get client user if the message is from a client.
+     * Mark the message as read.
+     *
+     * @return $this
+     */
+    public function markAsRead()
+    {
+        $this->update([
+            'is_read' => true,
+            'read_at' => now(),
+        ]);
+
+        return $this;
+    }
+
+    /**
+     * Toggle the read status of the message.
+     *
+     * @return $this
+     */
+    public function toggleReadStatus()
+    {
+        $this->update([
+            'is_read' => !$this->is_read,
+            'read_at' => !$this->is_read ? now() : null,
+        ]);
+
+        return $this;
+    }
+
+    /**
+     * Get the client that owns the message.
      */
     public function client()
     {
@@ -139,15 +117,7 @@ trait MessageTrait
     }
 
     /**
-     * Get attachments for the message.
-     */
-    public function attachments()
-    {
-        return $this->hasMany(\App\Models\MessageAttachment::class);
-    }
-
-    /**
-     * Get parent message if this is a reply.
+     * Get the parent message.
      */
     public function parent()
     {
@@ -155,11 +125,19 @@ trait MessageTrait
     }
 
     /**
-     * Get replies to this message.
+     * Get the reply messages.
      */
     public function replies()
     {
         return $this->hasMany(\App\Models\Message::class, 'parent_id');
+    }
+
+    /**
+     * Get the attachments for the message.
+     */
+    public function attachments()
+    {
+        return $this->hasMany(\App\Models\MessageAttachment::class);
     }
 
     /**
@@ -169,65 +147,23 @@ trait MessageTrait
      */
     public function getThreadMessages()
     {
-        // If this message has a parent, start from the parent
-        $rootMessage = $this->parent_id ? $this->parent : $this;
+        $rootId = $this->parent_id ?? $this->id;
         
-        // Get all messages in this thread (parent and all its replies)
-        return static::where(function ($query) use ($rootMessage) {
-            $query->where('id', $rootMessage->id)
-                ->orWhere('parent_id', $rootMessage->id);
-        })
-        ->orderBy('created_at', 'desc')
-        ->get();
-    }
-
-    /**
-     * Check if the message is a reply.
-     *
-     * @return bool
-     */
-    public function isReply()
-    {
-        return !is_null($this->parent_id);
-    }
-
-    /**
-     * Check if the message has replies.
-     *
-     * @return bool
-     */
-    public function hasReplies()
-    {
-        return $this->replies()->count() > 0;
-    }
-
-    /**
-     * Check if the message is from contact form.
-     *
-     * @return bool
-     */
-    public function isContactForm()
-    {
-        return $this->type === 'contact_form';
-    }
-
-    /**
-     * Check if the message is from client to admin.
-     *
-     * @return bool
-     */
-    public function isClientToAdmin()
-    {
-        return $this->type === 'client_to_admin';
-    }
-
-    /**
-     * Check if the message is from admin to client.
-     *
-     * @return bool
-     */
-    public function isAdminToClient()
-    {
-        return $this->type === 'admin_to_client';
+        // If this is a reply, get the root message
+        if ($this->parent_id) {
+            $rootMessage = $this->parent;
+            while ($rootMessage && $rootMessage->parent_id) {
+                $rootMessage = $rootMessage->parent;
+                $rootId = $rootMessage->id;
+            }
+        }
+        
+        return static::where(function($query) use ($rootId) {
+            $query->where('id', $rootId)
+                  ->orWhere('parent_id', $rootId);
+        })->orWhere(function($query) {
+            $query->where('id', $this->id)
+                  ->orWhere('parent_id', $this->id);
+        })->orderBy('created_at', 'desc')->get();
     }
 }

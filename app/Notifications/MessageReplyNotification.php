@@ -7,7 +7,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 class MessageReplyNotification extends Notification implements ShouldQueue
 {
@@ -39,7 +39,7 @@ class MessageReplyNotification extends Notification implements ShouldQueue
      */
     public function via($notifiable)
     {
-        return ['mail', 'database'];
+        return ['mail'];
     }
 
     /**
@@ -50,28 +50,22 @@ class MessageReplyNotification extends Notification implements ShouldQueue
      */
     public function toMail($notifiable)
     {
-        $mail = (new MailMessage)
-            ->subject($this->message->subject)
-            ->greeting('Hello ' . ($notifiable->name ?? ''))
-            ->line('You have received a reply to your message:')
-            ->line(new HtmlString('<strong>' . $this->message->subject . '</strong>'))
-            ->line(new HtmlString('<div style="padding: 10px; background-color: #f8f9fa; border-left: 4px solid #3490dc; margin: 15px 0;">' . nl2br(e($this->message->message)) . '</div>'));
+        $mailMessage = (new MailMessage)
+            ->subject('New message: ' . $this->message->subject)
+            ->greeting('Hello ' . $notifiable->name . ',')
+            ->line('You have received a new message from ' . config('app.name') . ':')
+            ->line('Subject: ' . $this->message->subject)
+            ->line('Message:')
+            ->line(Str::limit(strip_tags($this->message->message), 300))
+            ->action('View Message', route('client.messages.show', $this->message))
+            ->line('Thank you for using our application!');
 
         // Add attachments if any
-        if ($this->message->attachments && $this->message->attachments->count() > 0) {
-            $mail->line('Attachments are included in this message. You can view them by logging into your account.');
+        if ($this->message->attachments->count() > 0) {
+            $mailMessage->line('This message has ' . $this->message->attachments->count() . ' attachment(s). Please log in to view them.');
         }
 
-        // If the notifiable is a User, add a link to view the message in the client portal
-        if (method_exists($notifiable, 'hasRole') && $notifiable->hasRole('client')) {
-            $mail->action('View Message', route('client.messages.show', $this->message));
-        } else {
-            $mail->line('If you wish to reply to this message, please do so by replying to this email or visit our website.');
-        }
-
-        $mail->line('Thank you for contacting us!');
-
-        return $mail;
+        return $mailMessage;
     }
 
     /**
@@ -86,9 +80,6 @@ class MessageReplyNotification extends Notification implements ShouldQueue
             'message_id' => $this->message->id,
             'subject' => $this->message->subject,
             'sender' => $this->message->name,
-            'sender_email' => $this->message->email,
-            'preview' => substr(strip_tags($this->message->message), 0, 100),
-            'created_at' => $this->message->created_at->toIso8601String(),
         ];
     }
 }

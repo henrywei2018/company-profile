@@ -1,43 +1,49 @@
 <?php
-// File: app/Http/Controllers/Client/MessageController.php
 
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Message;
-use App\Models\Project;
-use App\Services\MessageService;
+use App\Models\MessageAttachment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class MessageController extends Controller
 {
-    protected $messageService;
-
-    /**
-     * Create a new controller instance.
-     *
-     * @param MessageService $messageService
-     */
-    public function __construct(MessageService $messageService)
-    {
-        $this->messageService = $messageService;
-    }
-
     /**
      * Display a listing of the client's messages.
      */
     public function index(Request $request)
     {
-        $user = auth()->user();
+        $query = Message::where(function ($query) {
+            $query->where('client_id', Auth::id())
+                  ->orWhere('email', Auth::user()->email);
+        })
+        ->when($request->filled('search'), function ($query) use ($request) {
+            $query->search($request->search);
+        })
+        ->when($request->filled('read'), function ($query) use ($request) {
+            $query->where('is_read', $request->read === 'read');
+        })
+        ->when($request->filled('type'), function ($query) use ($request) {
+            $query->where('type', $request->type);
+        });
 
-        // Use service to get filtered messages
-        $messages = $this->messageService->getClientMessages(
-            $user,
-            $request->only(['read', 'search'])
-        );
+        // Apply sorting if requested
+        if ($request->filled('sort') && $request->filled('direction')) {
+            $query->orderBy($request->sort, $request->direction);
+        } else {
+            $query->latest(); // Default sort by latest
+        }
 
-        return view('client.messages.index', compact('messages'));
+        $messages = $query->paginate(10)->withQueryString();
+        
+        // Get unread messages count for notifications
+        $unreadMessages = Message::unread()->count();
+        $pendingQuotations = \App\Models\Quotation::pending()->count();
+
+        return view('client.messages.index', compact('messages', 'unreadMessages', 'pendingQuotations'));
     }
 
     /**
@@ -45,45 +51,44 @@ class MessageController extends Controller
      */
     public function create()
     {
-        // Get client's projects for dropdown
-        $projects = Project::where('client_id', auth()->id())->get();
+        // Get unread messages count for notifications
+        $unreadMessages = Message::unread()->count();
+        $pendingQuotations = \App\Models\Quotation::pending()->count();
         
-        return view('client.messages.create', compact('projects'));
+        return view('client.messages.create', compact('unreadMessages', 'pendingQuotations'));
     }
 
     /**
-     * Store a newly created message.
+     * Store a newly created message in storage.
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
-            'project_id' => 'nullable|exists:projects,id',
-            'attachments.*' => 'nullable|file|max:10240', // 10MB max
+            'attachments.*' => 'nullable|file|max:2048', // 2MB max per file
         ]);
-        
-        $user = auth()->user();
 
-        // Prepare message data
-        $messageData = [
-            'client_id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'phone' => $user->phone,
-            'subject' => $validated['subject'],
-            'message' => $validated['message'],
-            'project_id' => $validated['project_id'] ?? null,
-            'is_read' => false,
-            'is_read_by_client' => true, // Client sent it, so they've "read" it
+        // Create the message
+        $message = Message::create([
             'type' => 'client_to_admin',
-        ];
+            'name' => Auth::user()->name,
+            'email' => Auth::user()->email,
+            'phone' => Auth::user()->phone,
+            'subject' => $request->subject,
+            'message' => $request->message,
+            'client_id' => Auth::id(),
+            'is_read' => false,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
 
-        // Use service to create message with attachments
-        $message = $this->messageService->createMessage(
-            $messageData,
-            $request->file('attachments') ?? []
-        );
+        // Handle attachments
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $message->addAttachment($file);
+            }
+        }
 
         return redirect()->route('client.messages.index')
             ->with('success', 'Message sent successfully!');
@@ -94,18 +99,24 @@ class MessageController extends Controller
      */
     public function show(Message $message)
     {
-        // Ensure the message belongs to the authenticated client
-        $this->authorize('view', $message);
-
-        // Mark as read if not already
-        if (!$message->is_read_by_client) {
-            $this->messageService->markAsRead($message, 'client');
+        // Security check - make sure the message belongs to the authenticated client
+        if ($message->client_id !== Auth::id() && $message->email !== Auth::user()->email) {
+            abort(403, 'Unauthorized access to message');
         }
 
-        // Get all related messages (thread)
-        $thread = $this->getMessageThread($message);
+        // Mark message as read if not already read and it's from admin to client
+        if (!$message->is_read && $message->type === 'admin_to_client') {
+            $message->markAsRead();
+        }
 
-        return view('client.messages.show', compact('message', 'thread'));
+        // Get related messages (thread)
+        $relatedMessages = $message->getThreadMessages()->where('id', '!=', $message->id);
+
+        // Get unread messages count for notifications
+        $unreadMessages = Message::unread()->count();
+        $pendingQuotations = \App\Models\Quotation::pending()->count();
+
+        return view('client.messages.show', compact('message', 'relatedMessages', 'unreadMessages', 'pendingQuotations'));
     }
 
     /**
@@ -113,55 +124,41 @@ class MessageController extends Controller
      */
     public function reply(Request $request, Message $message)
     {
-        // Ensure the message belongs to the authenticated client
-        $this->authorize('reply', $message);
+        // Security check - make sure the message belongs to the authenticated client
+        if ($message->client_id !== Auth::id() && $message->email !== Auth::user()->email) {
+            abort(403, 'Unauthorized access to message');
+        }
 
-        $validated = $request->validate([
-            'reply_message' => 'required|string',
-            'attachments.*' => 'nullable|file|max:10240', // 10MB max
+        $request->validate([
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string',
+            'attachments.*' => 'nullable|file|max:2048', // 2MB max per file
         ]);
 
-        $user = auth()->user();
-
-        // Create a new message as reply
-        $replyData = [
-            'client_id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'phone' => $user->phone,
-            'subject' => 'RE: ' . $message->subject,
-            'message' => $validated['reply_message'],
-            'parent_id' => $message->id,
-            'project_id' => $message->project_id,
-            'is_read' => false,
-            'is_read_by_client' => true,
+        // Create the reply message
+        $reply = Message::create([
             'type' => 'client_to_admin',
-        ];
+            'name' => Auth::user()->name,
+            'email' => Auth::user()->email,
+            'phone' => Auth::user()->phone,
+            'subject' => $request->subject,
+            'message' => $request->message,
+            'parent_id' => $message->id,
+            'client_id' => Auth::id(),
+            'is_read' => false,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
 
-        // Use service to create reply with attachments
-        $reply = $this->messageService->createMessage(
-            $replyData,
-            $request->file('attachments') ?? []
-        );
+        // Handle attachments
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $reply->addAttachment($file);
+            }
+        }
 
-        return redirect()->route('client.messages.show', $message->id)
+        return redirect()->route('client.messages.show', $reply)
             ->with('success', 'Reply sent successfully!');
-    }
-
-    /**
-     * Download attachment
-     */
-    public function downloadAttachment(Message $message, $attachmentId)
-    {
-        // Ensure the message belongs to the authenticated client
-        $this->authorize('view', $message);
-        
-        $attachment = $message->attachments()->findOrFail($attachmentId);
-        
-        return Storage::disk('public')->download(
-            $attachment->file_path,
-            $attachment->file_name
-        );
     }
 
     /**
@@ -169,10 +166,12 @@ class MessageController extends Controller
      */
     public function markAsRead(Message $message)
     {
-        // Ensure the message belongs to the authenticated client
-        $this->authorize('update', $message);
+        // Security check
+        if ($message->client_id !== Auth::id() && $message->email !== Auth::user()->email) {
+            abort(403, 'Unauthorized access to message');
+        }
 
-        $this->messageService->markAsRead($message, 'client');
+        $message->markAsRead();
 
         return redirect()->back()
             ->with('success', 'Message marked as read.');
@@ -183,35 +182,45 @@ class MessageController extends Controller
      */
     public function markAsUnread(Message $message)
     {
-        // Ensure the message belongs to the authenticated client
-        $this->authorize('update', $message);
+        // Security check
+        if ($message->client_id !== Auth::id() && $message->email !== Auth::user()->email) {
+            abort(403, 'Unauthorized access to message');
+        }
 
-        $this->messageService->markAsUnread($message, 'client');
+        $message->update([
+            'is_read' => false,
+            'read_at' => null,
+        ]);
 
         return redirect()->back()
             ->with('success', 'Message marked as unread.');
     }
-    
+
     /**
-     * Get complete message thread (parent and replies)
+     * Download an attachment file.
      */
-    protected function getMessageThread(Message $message)
+    public function downloadAttachment(Message $message, $attachmentId)
     {
-        // If message has a parent, start with the parent
-        if ($message->parent_id) {
-            $rootMessage = Message::find($message->parent_id);
-        } else {
-            $rootMessage = $message;
+        // Security check
+        if ($message->client_id !== Auth::id() && $message->email !== Auth::user()->email) {
+            abort(403, 'Unauthorized access to message');
+        }
+
+        $attachment = MessageAttachment::findOrFail($attachmentId);
+        
+        // Security check - make sure the attachment belongs to the message
+        if ($attachment->message_id !== $message->id) {
+            abort(403, 'Unauthorized access to attachment');
         }
         
-        // Get all replies to the root message
-        $thread = Message::where(function($query) use ($rootMessage) {
-                $query->where('id', $rootMessage->id)
-                      ->orWhere('parent_id', $rootMessage->id);
-            })
-            ->orderBy('created_at')
-            ->get();
-            
-        return $thread;
+        // Check if the file exists
+        if (!Storage::disk('public')->exists($attachment->file_path)) {
+            abort(404, 'Attachment file not found');
+        }
+        
+        return Storage::disk('public')->download(
+            $attachment->file_path, 
+            $attachment->file_name
+        );
     }
 }

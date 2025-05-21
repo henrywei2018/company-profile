@@ -141,7 +141,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     
     // Team department routes
     Route::resource('team-member-departments', App\Http\Controllers\Admin\TeamMemberDepartmentController::class);
-Route::patch('/team-member-departments/{teamMemberDepartment}/toggle-active', [App\Http\Controllers\Admin\TeamMemberDepartmentController::class, 'toggleActive'])->name('team-member-departments.toggle-active');
+    Route::patch('/team-member-departments/{teamMemberDepartment}/toggle-active', [App\Http\Controllers\Admin\TeamMemberDepartmentController::class, 'toggleActive'])->name('team-member-departments.toggle-active');
     Route::post('/team-member-departments/update-order', [App\Http\Controllers\Admin\TeamMemberDepartmentController::class, 'updateOrder'])->name('team-member-departments.update-order');
     // Testimonials management
     Route::resource('testimonials', App\Http\Controllers\Admin\TestimonialController::class);
@@ -218,15 +218,15 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
     Route::get('/quotations/{quotation}/decline', [App\Http\Controllers\Client\QuotationController::class, 'showDeclineForm'])->name('quotations.decline.form');
     Route::post('/quotations/{quotation}/decline', [App\Http\Controllers\Client\QuotationController::class, 'decline'])->name('quotations.decline');
     
-    // Messages
+    // Messages routes
     Route::get('/messages', [App\Http\Controllers\Client\MessageController::class, 'index'])->name('messages.index');
     Route::get('/messages/create', [App\Http\Controllers\Client\MessageController::class, 'create'])->name('messages.create');
     Route::post('/messages', [App\Http\Controllers\Client\MessageController::class, 'store'])->name('messages.store');
     Route::get('/messages/{message}', [App\Http\Controllers\Client\MessageController::class, 'show'])->name('messages.show');
     Route::post('/messages/{message}/reply', [App\Http\Controllers\Client\MessageController::class, 'reply'])->name('messages.reply');
-    Route::get('/messages/{message}/attachments/{attachmentId}/download', [App\Http\Controllers\Client\MessageController::class, 'downloadAttachment'])->name('messages.attachments.download');
     Route::post('/messages/{message}/mark-read', [App\Http\Controllers\Client\MessageController::class, 'markAsRead'])->name('messages.mark-read');
     Route::post('/messages/{message}/mark-unread', [App\Http\Controllers\Client\MessageController::class, 'markAsUnread'])->name('messages.mark-unread');
+    Route::get('/messages/{message}/attachments/{attachmentId}/download', [App\Http\Controllers\Client\MessageController::class, 'downloadAttachment'])->name('messages.attachments.download');
     
     // Profile
     Route::get('/profile', [App\Http\Controllers\Client\ProfileController::class, 'show'])->name('profile.show');
