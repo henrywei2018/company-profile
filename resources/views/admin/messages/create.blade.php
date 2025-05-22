@@ -63,11 +63,12 @@
                             Select Client <span class="text-red-500" x-show="recipientType === 'existing_client'">*</span>
                         </label>
                         
-                        <!-- Search Input -->
+                        <!-- Search Input Container with Proper Positioning -->
                         <div class="relative">
                             <input 
                                 type="text" 
                                 x-model="searchQuery"
+                                x-ref="searchInput"
                                 @focus="showDropdown = true"
                                 @input="filterClients()"
                                 @keydown.escape="showDropdown = false"
@@ -97,6 +98,66 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
+                            
+                            <!-- FIXED: Dropdown with proper z-index to escape container clipping -->
+                            <div 
+                                x-show="showDropdown && filteredClients.length > 0"
+                                x-transition:enter="transition ease-out duration-100"
+                                x-transition:enter-start="opacity-0 scale-95"
+                                x-transition:enter-end="opacity-100 scale-100"
+                                x-transition:leave="transition ease-in duration-75"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-95"
+                                @click.away="showDropdown = false"
+                                class="absolute mt-1 w-full bg-white border border-gray-300 dark:bg-neutral-800 dark:border-neutral-700 rounded-md shadow-lg max-h-60 overflow-y-auto"
+                                style="z-index: 9999; position: fixed; width: inherit; left: auto; right: auto;"
+                                x-anchor="$refs.searchInput"
+                            >
+                                <template x-for="(client, index) in filteredClients" :key="client.id">
+                                    <div 
+                                        @click="selectClient(client)"
+                                        @mouseenter="highlightedIndex = index"
+                                        :class="{
+                                            'bg-blue-50 dark:bg-blue-900/30': highlightedIndex === index,
+                                            'hover:bg-gray-50 dark:hover:bg-neutral-700': highlightedIndex !== index
+                                        }"
+                                        class="px-3 py-2 cursor-pointer border-b border-gray-100 dark:border-neutral-700 last:border-b-0"
+                                    >
+                                        <div class="flex items-center space-x-3">
+                                            <!-- Avatar -->
+                                            <div class="flex-shrink-0 h-7 w-7 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                                                <span class="text-xs font-medium text-blue-600 dark:text-blue-400" x-text="client.name.charAt(0).toUpperCase()"></span>
+                                            </div>
+
+                                            <!-- Client Info -->
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-center justify-between">
+                                                    <div class="flex-1 min-w-0">
+                                                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate" x-text="client.name"></p>
+                                                        <div class="flex items-center space-x-2 mt-0.5">
+                                                            <p class="text-xs text-gray-500 dark:text-neutral-400 truncate" x-text="client.email"></p>
+                                                            <span x-show="client.company" class="text-xs text-gray-400 dark:text-neutral-500">•</span>
+                                                            <p x-show="client.company" class="text-xs text-gray-400 dark:text-neutral-500 truncate" x-text="client.company"></p>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Verification Badge -->
+                                                    <div class="flex-shrink-0 ml-2">
+                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                            ✓
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                                
+                                <!-- No Results -->
+                                <div x-show="filteredClients.length === 0 && searchQuery.length > 0" class="px-3 py-2 text-sm text-gray-500 dark:text-neutral-400 text-center">
+                                    No clients found matching "<span x-text="searchQuery" class="font-medium"></span>"
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- Hidden Input for Form Submission -->
@@ -107,60 +168,7 @@
                             :required="recipientType === 'existing_client'"
                         >
                         
-                        <!-- Dropdown Results -->
-                        <div 
-                            x-show="showDropdown && filteredClients.length > 0"
-                            x-transition:enter="transition ease-out duration-100"
-                            x-transition:enter-start="opacity-0 scale-95"
-                            x-transition:enter-end="opacity-100 scale-100"
-                            x-transition:leave="transition ease-in duration-75"
-                            x-transition:leave-start="opacity-100 scale-100"
-                            x-transition:leave-end="opacity-0 scale-95"
-                            @click.away="showDropdown = false"
-                            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto dark:bg-neutral-800 dark:border-neutral-700"
-                        >
-                            <template x-for="(client, index) in filteredClients" :key="client.id">
-                                <div 
-                                    @click="selectClient(client)"
-                                    @mouseenter="highlightedIndex = index"
-                                    :class="{
-                                        'bg-blue-50 dark:bg-blue-900/30': highlightedIndex === index,
-                                        'hover:bg-gray-50 dark:hover:bg-neutral-700': highlightedIndex !== index
-                                    }"
-                                    class="px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-neutral-700 last:border-b-0"
-                                >
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex-1 min-w-0">
-                                            <div class="flex items-center">
-                                                <!-- Avatar -->
-                                                <div class="flex-shrink-0 h-8 w-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                                                    <span class="text-sm font-medium text-blue-600 dark:text-blue-400" x-text="client.name.charAt(0).toUpperCase()"></span>
-                                                </div>
-                                                
-                                                <!-- Client Info -->
-                                                <div class="ml-3 flex-1 min-w-0">
-                                                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate" x-text="client.name"></p>
-                                                    <p class="text-sm text-gray-500 dark:text-neutral-400 truncate" x-text="client.email"></p>
-                                                    <p x-show="client.company" class="text-xs text-gray-400 dark:text-neutral-500 truncate" x-text="client.company"></p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Verification Badge -->
-                                        <div class="flex-shrink-0 ml-2">
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                                                Verified
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </template>
-                            
-                            <!-- No Results -->
-                            <div x-show="filteredClients.length === 0 && searchQuery.length > 0" class="px-4 py-3 text-sm text-gray-500 dark:text-neutral-400">
-                                No clients found matching "<span x-text="searchQuery"></span>"
-                            </div>
-                        </div>
+                        <!-- REMOVED: The separate dropdown that was causing positioning issues -->
                         
                         <!-- Selected Client Display -->
                         <div x-show="selectedClient" class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md dark:bg-blue-900/30 dark:border-blue-800">
@@ -406,12 +414,10 @@
             message: @js(old('message', '')),
             
             get isFormValid() {
-                // Check basic required fields
                 if (!this.subject.trim() || !this.message.trim()) {
                     return false;
                 }
                 
-                // Check recipient validation based on type
                 if (this.recipientType === 'existing_client') {
                     return !!this.selectedUserId;
                 } else if (this.recipientType === 'custom_email') {
@@ -465,13 +471,11 @@
             },
             
             init() {
-                // Watch for changes and clear opposite fields
                 this.$watch('recipientType', (value) => {
                     if (value === 'existing_client') {
                         this.customName = '';
                         this.customEmail = '';
                         this.$nextTick(() => {
-                            // Focus on search input if it exists
                             const searchInput = document.querySelector('input[x-model="searchQuery"]');
                             if (searchInput) searchInput.focus();
                         });
@@ -484,7 +488,6 @@
                     }
                 });
                 
-                // Update selectedUserId when client search component selects a client
                 this.$watch('selectedUserId', (value) => {
                     // This will be updated by the clientSearch component
                 });
@@ -516,6 +519,24 @@
                     const parentData = this.$el.closest('[x-data*="messageForm"]').__x.$data;
                     if (parentData) {
                         parentData.selectedUserId = value;
+                    }
+                });
+                
+                // Position dropdown correctly relative to input
+                this.$watch('showDropdown', (value) => {
+                    if (value) {
+                        this.$nextTick(() => {
+                            const dropdown = this.$el.querySelector('[x-show*="showDropdown"]');
+                            const input = this.$refs.searchInput;
+                            if (dropdown && input) {
+                                const rect = input.getBoundingClientRect();
+                                dropdown.style.position = 'fixed';
+                                dropdown.style.top = (rect.bottom + 4) + 'px';
+                                dropdown.style.left = rect.left + 'px';
+                                dropdown.style.width = rect.width + 'px';
+                                dropdown.style.zIndex = '9999';
+                            }
+                        });
                     }
                 });
             },
@@ -582,6 +603,11 @@
 </script>
 
 <style>
+    [x-cloak] { 
+        display: none !important; 
+    }
+    
+    /* Simplified CSS - dropdown now correctly positioned */
     [x-cloak] { 
         display: none !important; 
     }
