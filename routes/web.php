@@ -124,7 +124,66 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     
     // Quotations management
     Route::resource('quotations', App\Http\Controllers\Admin\QuotationController::class);
-    Route::post('/quotations/{quotation}/update-status', [App\Http\Controllers\Admin\QuotationController::class, 'updateStatus'])->name('quotations.update-status');
+    
+    // Enhanced quotation routes
+    Route::prefix('quotations')->name('quotations.')->group(function () {
+        
+        // Status management routes
+        Route::post('/{quotation}/update-status', [App\Http\Controllers\Admin\QuotationController::class, 'updateStatus'])
+            ->name('update-status');
+        
+        // Email response routes
+        Route::post('/{quotation}/send-response', [App\Http\Controllers\Admin\QuotationController::class, 'sendResponse'])
+            ->name('send-response');
+        
+        // Project creation from quotation
+        Route::get('/{quotation}/create-project', [App\Http\Controllers\Admin\QuotationController::class, 'createProject'])
+            ->name('create-project');
+        
+        // Quotation duplication
+        Route::post('/{quotation}/duplicate', [App\Http\Controllers\Admin\QuotationController::class, 'duplicate'])
+            ->name('duplicate');
+        
+        // Export functionality
+        Route::get('/export', [App\Http\Controllers\Admin\QuotationController::class, 'export'])
+            ->name('export');
+        
+        // Bulk actions
+        Route::post('/bulk-action', [App\Http\Controllers\Admin\QuotationController::class, 'bulkAction'])
+            ->name('bulk-action');
+        
+        // Statistics and analytics
+        Route::get('/statistics', [App\Http\Controllers\Admin\QuotationController::class, 'statistics'])
+            ->name('statistics');
+        
+        // Quick approve/reject routes (for faster actions)
+        Route::post('/{quotation}/approve', [App\Http\Controllers\Admin\QuotationController::class, 'quickApprove'])
+            ->name('approve');
+        
+        Route::post('/{quotation}/reject', [App\Http\Controllers\Admin\QuotationController::class, 'quickReject'])
+            ->name('reject');
+        
+        // Mark as reviewed
+        Route::post('/{quotation}/mark-reviewed', [App\Http\Controllers\Admin\QuotationController::class, 'markAsReviewed'])
+            ->name('mark-reviewed');
+        
+        // Attachment management
+        Route::get('/{quotation}/attachments/{attachment}/download', [App\Http\Controllers\Admin\QuotationController::class, 'downloadAttachment'])
+            ->name('attachments.download')
+            ->where('attachment', '[0-9]+');
+        
+        // Priority management
+        Route::post('/{quotation}/priority', [App\Http\Controllers\Admin\QuotationController::class, 'updatePriority'])
+            ->name('update-priority');
+        
+        // Client linking
+        Route::post('/{quotation}/link-client', [App\Http\Controllers\Admin\QuotationController::class, 'linkClient'])
+            ->name('link-client');
+        
+        // Communication history
+        Route::get('/{quotation}/communications', [App\Http\Controllers\Admin\QuotationController::class, 'communications'])
+            ->name('communications');
+    });
     
     // Messages management - Updated section
     Route::resource('messages', App\Http\Controllers\Admin\MessageController::class);
