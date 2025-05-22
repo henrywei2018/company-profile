@@ -7,9 +7,12 @@ use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\User;
 use App\Notifications\MessageReplyNotification;
+use App\Notifications\DirectMessageNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class MessageController extends Controller
 {
@@ -18,33 +21,17 @@ class MessageController extends Controller
      */
     public function index(Request $request)
     {
-        // Debug: Log the incoming parameters
-        \Log::info('Message filter parameters:', $request->all());
-        
         $query = Message::query()
-            ->with(['user', 'attachments', 'repliedBy']) // Eager load relationships
-            // Exclude admin-to-client messages from main listing
+            ->with(['user', 'attachments', 'repliedBy'])
             ->excludeAdminMessages();
-            
-        // Debug: Check what types exist in database
-        $allTypes = Message::distinct()->pluck('type')->toArray();
-        \Log::info('All message types in database:', $allTypes);
-        
-        // Debug: Count messages by type
-        foreach($allTypes as $type) {
-            $count = Message::where('type', $type)->count();
-            \Log::info("Type '{$type}': {$count} messages");
-        }
         
         // Apply search filter
         if ($request->filled('search')) {
-            \Log::info('Applying search filter:', ['search' => $request->search]);
             $query->search($request->search);
         }
         
         // Apply status filter  
         if ($request->filled('status')) {
-            \Log::info('Applying status filter:', ['status' => $request->status]);
             switch ($request->status) {
                 case 'unread':
                     $query->where('is_read', false);
@@ -66,46 +53,27 @@ class MessageController extends Controller
         
         // Apply type filter
         if ($request->filled('type')) {
-            \Log::info('Applying type filter:', ['type' => $request->type]);
             $query->where('type', $request->type);
         }
         
-        // Apply date range filter - FIX: Check for both start and end dates properly
+        // Apply date range filter
         if ($request->filled('created_from') || $request->filled('created_to')) {
-            \Log::info('Applying date filter:', [
-                'created_from' => $request->created_from,
-                'created_to' => $request->created_to
-            ]);
-            
             if ($request->filled('created_from') && $request->filled('created_to')) {
-                // Both dates provided
                 $query->whereBetween('created_at', [
                     $request->created_from . ' 00:00:00', 
                     $request->created_to . ' 23:59:59'
                 ]);
             } elseif ($request->filled('created_from')) {
-                // Only start date provided
                 $query->where('created_at', '>=', $request->created_from . ' 00:00:00');
             } elseif ($request->filled('created_to')) {
-                // Only end date provided
                 $query->where('created_at', '<=', $request->created_to . ' 23:59:59');
             }
         }
 
-        // Debug: Log the final query before execution
-        $sql = $query->toSql();
-        $bindings = $query->getBindings();
-        \Log::info('Final SQL query:', ['sql' => $sql, 'bindings' => $bindings]);
-        
-        // Debug: Count results before pagination
-        $totalBeforePagination = $query->count();
-        \Log::info('Total results before pagination:', ['count' => $totalBeforePagination]);
-
-        // Apply sorting if requested
+        // Apply sorting
         if ($request->filled('sort') && $request->filled('direction')) {
             $query->orderBy($request->sort, $request->direction);
         } else {
-            // Default sort by priority (unreplied first), then by latest
             $query->orderByRaw('
                 CASE 
                     WHEN is_replied = 0 AND is_read = 0 THEN 1
@@ -117,15 +85,6 @@ class MessageController extends Controller
         }
 
         $messages = $query->paginate(15)->withQueryString();
-        
-        // Debug: Log pagination results
-        \Log::info('Pagination results:', [
-            'total' => $messages->total(),
-            'current_page' => $messages->currentPage(),
-            'per_page' => $messages->perPage(),
-            'from' => $messages->firstItem(),
-            'to' => $messages->lastItem()
-        ]);
 
         // Get counts for different statuses
         $statusCounts = [
@@ -134,11 +93,7 @@ class MessageController extends Controller
             'unreplied' => Message::excludeAdminMessages()->unreplied()->count(),
             'unread_unreplied' => Message::excludeAdminMessages()->unread()->unreplied()->count(),
         ];
-        
-        // Debug: Log status counts
-        \Log::info('Status counts:', $statusCounts);
 
-        // Get unread messages and pending quotations counts for header notifications
         $unreadMessages = Message::excludeAdminMessages()->unread()->count();
         $pendingQuotations = \App\Models\Quotation::where('status', 'pending')->count();
 
@@ -146,19 +101,221 @@ class MessageController extends Controller
     }
 
     /**
+     * Show the form for creating a new direct message to a client.
+     */
+    public function create(Request $request)
+    {
+        // Get all verified users with 'client' role using Spatie
+        $clients = User::whereHas('roles', function ($query) {
+                $query->where('name', 'client');
+            })
+            ->whereNotNull('email_verified_at')
+            ->where('is_active', true) // Only active clients
+            ->orderBy('name')
+            ->get();
+
+        // If user_id is provided in query, pre-select that client
+        $selectedClient = null;
+        if ($request->filled('user_id')) {
+            $selectedClient = User::find($request->user_id);
+            // Verify the user is actually a client
+            if ($selectedClient && !$selectedClient->hasRole('client')) {
+                $selectedClient = null;
+            }
+        }
+
+        // If email is provided, try to find existing client
+        $selectedEmail = $request->get('email');
+
+        $unreadMessages = Message::excludeAdminMessages()->unread()->count();
+        $pendingQuotations = \App\Models\Quotation::where('status', 'pending')->count();
+
+        return view('admin.messages.create', compact('clients', 'selectedClient', 'selectedEmail', 'unreadMessages', 'pendingQuotations'));
+    }
+
+    /**
+     * Store a newly created direct message.
+     */
+    public function store(Request $request)
+    {
+        // Comprehensive validation with custom rules
+        $validated = $request->validate([
+            'recipient_type' => 'required|in:existing_client,custom_email',
+            'user_id' => [
+                'required_if:recipient_type,existing_client',
+                'nullable',
+                'exists:users,id',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->recipient_type === 'existing_client' && $value) {
+                        $user = User::find($value);
+                        if (!$user) {
+                            $fail('The selected user does not exist.');
+                            return;
+                        }
+                        if (!$user->hasRole('client')) {
+                            $fail('The selected user must be a registered client.');
+                            return;
+                        }
+                        if (!$user->email_verified_at) {
+                            $fail('The selected client must have a verified email address.');
+                            return;
+                        }
+                        if (!$user->is_active) {
+                            $fail('The selected client account is not active.');
+                            return;
+                        }
+                    }
+                },
+            ],
+            'custom_email' => [
+                'required_if:recipient_type,custom_email',
+                'nullable',
+                'email:rfc,dns',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->recipient_type === 'custom_email' && $value) {
+                        // Check if email already exists as a registered client
+                        $existingUser = User::where('email', strtolower(trim($value)))->first();
+                        if ($existingUser && $existingUser->hasRole('client')) {
+                            $fail('This email belongs to a registered client. Please select them from the client list instead.');
+                        }
+                    }
+                },
+            ],
+            'custom_name' => 'required_if:recipient_type,custom_email|nullable|string|max:255|min:2',
+            'subject' => 'required|string|max:255|min:3',
+            'message' => 'required|string|min:10|max:10000',
+            'attachments.*' => 'nullable|file|max:2048|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif,zip,rar',
+            'attachments' => 'nullable|array|max:5',
+        ], [
+            'user_id.required_if' => 'Please select a client when sending to an existing client.',
+            'custom_email.required_if' => 'Email address is required when sending to a custom email.',
+            'custom_email.email' => 'Please enter a valid email address.',
+            'custom_email.dns' => 'The email domain does not exist.',
+            'custom_name.required_if' => 'Recipient name is required when sending to a custom email.',
+            'custom_name.min' => 'Recipient name must be at least 2 characters.',
+            'subject.min' => 'Subject must be at least 3 characters.',
+            'subject.max' => 'Subject cannot exceed 255 characters.',
+            'message.min' => 'Message must be at least 10 characters.',
+            'message.max' => 'Message cannot exceed 10,000 characters.',
+            'attachments.max' => 'You can attach a maximum of 5 files.',
+            'attachments.*.max' => 'Each file must be smaller than 2MB.',
+            'attachments.*.mimes' => 'Only PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, ZIP, and RAR files are allowed.',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Determine recipient details
+            if ($validated['recipient_type'] === 'existing_client') {
+                $client = User::findOrFail($validated['user_id']);
+                
+                // Final verification of client role
+                if (!$client->hasRole('client')) {
+                    throw new \Exception('Selected user is not a client.');
+                }
+                
+                $recipientName = $client->name;
+                $recipientEmail = $client->email;
+                $userId = $client->id;
+            } else {
+                $recipientName = trim($validated['custom_name']);
+                $recipientEmail = strtolower(trim($validated['custom_email']));
+                $userId = null;
+            }
+
+            // Create the direct message
+            $message = Message::create([
+                'type' => 'admin_to_client',
+                'name' => auth()->user()->name ?? 'Admin',
+                'email' => config('mail.from.address', 'admin@company.com'),
+                'subject' => trim($validated['subject']),
+                'message' => trim($validated['message']),
+                'user_id' => $userId,
+                'is_read' => true, // Admin messages are read by default
+                'is_replied' => false,
+                'read_at' => now(),
+                'replied_by' => auth()->id(),
+            ]);
+
+            // Handle file attachments
+            $attachmentCount = 0;
+            if ($request->hasFile('attachments')) {
+                foreach ($request->file('attachments') as $file) {
+                    if ($file->isValid() && $attachmentCount < 5) {
+                        try {
+                            $message->addAttachment($file);
+                            $attachmentCount++;
+                        } catch (\Exception $e) {
+                            Log::error('Failed to add attachment: ' . $e->getMessage());
+                            // Continue with other attachments
+                        }
+                    }
+                }
+            }
+
+            // Send email notification
+            try {
+                if ($userId) {
+                    $client->notify(new DirectMessageNotification($message));
+                    $logMessage = "Direct message sent to registered client: {$recipientName} ({$recipientEmail})";
+                } else {
+                    Notification::route('mail', $recipientEmail)
+                        ->notify(new DirectMessageNotification($message));
+                    $logMessage = "Direct message sent to custom email: {$recipientName} ({$recipientEmail})";
+                }
+                
+                Log::info($logMessage, [
+                    'message_id' => $message->id,
+                    'sent_by' => auth()->id(),
+                    'attachments' => $attachmentCount
+                ]);
+                
+            } catch (\Exception $e) {
+                Log::error('Failed to send direct message notification: ' . $e->getMessage(), [
+                    'message_id' => $message->id,
+                    'recipient_email' => $recipientEmail
+                ]);
+                
+                // Still commit the transaction but show warning
+                DB::commit();
+                
+                return redirect()->route('admin.messages.index')
+                    ->with('warning', "Message saved successfully but there was an issue sending the email notification to {$recipientName}. Please check your email configuration.");
+            }
+
+            DB::commit();
+
+            // Success message
+            $successMessage = "Direct message sent successfully to {$recipientName}!";
+            if ($attachmentCount > 0) {
+                $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
+            }
+
+            return redirect()->route('admin.messages.index')
+                ->with('success', $successMessage);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to create direct message: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->withErrors(['error' => 'Failed to send message. Please try again.'])
+                ->withInput();
+        }
+    }
+
+    /**
      * Display the specified message.
      */
     public function show(Message $message)
     {
-        // Load relationships
         $message->load(['user', 'attachments', 'parent', 'replies', 'repliedBy']);
 
-        // Mark message as read if not already and it's not an admin message
         if (!$message->is_read && $message->type !== 'admin_to_client') {
             $message->markAsRead();
         }
 
-        // Get related messages (thread) - only if parent_id exists in database
         $relatedMessages = collect();
         try {
             $relatedMessages = $message->getThreadMessages()
@@ -166,12 +323,9 @@ class MessageController extends Controller
                 ->with(['attachments'])
                 ->get();
         } catch (\Exception $e) {
-            // If there's an issue with threading, just get empty collection
             $relatedMessages = collect();
         }
 
-        // Get other messages from this client/email (limited to 5)
-        // Exclude admin messages from this listing too
         $clientMessages = Message::where('email', $message->email)
             ->where('id', '!=', $message->id)
             ->excludeAdminMessages()
@@ -183,7 +337,6 @@ class MessageController extends Controller
             ->excludeAdminMessages()
             ->count();
 
-        // Get unread messages and pending quotations counts for header notifications
         $unreadMessages = Message::excludeAdminMessages()->unread()->count();
         $pendingQuotations = \App\Models\Quotation::where('status', 'pending')->count();
 
@@ -203,9 +356,16 @@ class MessageController extends Controller
     public function toggleRead(Message $message)
     {
         $message->toggleReadStatus();
+        return redirect()->back()->with('success', 'Message status updated!');
+    }
 
-        return redirect()->back()
-            ->with('success', 'Message status updated!');
+    /**
+     * Mark a specific message as unread.
+     */
+    public function markAsUnread(Message $message)
+    {
+        $message->markAsUnread();
+        return redirect()->back()->with('success', 'Message marked as unread!');
     }
 
     /**
@@ -213,18 +373,30 @@ class MessageController extends Controller
      */
     public function destroy(Message $message)
     {
-        // Load attachments relationship
-        $message->load('attachments');
-
-        // Delete all attachments (the model will handle file deletion)
-        foreach ($message->attachments as $attachment) {
-            $attachment->delete();
+        try {
+            DB::beginTransaction();
+            
+            $message->load('attachments');
+            
+            // Delete all attachments
+            foreach ($message->attachments as $attachment) {
+                $attachment->delete();
+            }
+            
+            $message->delete();
+            
+            DB::commit();
+            
+            return redirect()->route('admin.messages.index')
+                ->with('success', 'Message deleted successfully!');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to delete message: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'Failed to delete message. Please try again.');
         }
-
-        $message->delete();
-
-        return redirect()->route('admin.messages.index')
-            ->with('success', 'Message deleted successfully!');
     }
 
     /**
@@ -233,56 +405,79 @@ class MessageController extends Controller
     public function reply(Request $request, Message $message)
     {
         $request->validate([
-            'subject' => 'required|string|max:255',
-            'message' => 'required|string',
-            'attachments.*' => 'nullable|file|max:2048|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif,zip,rar', // 2MB max per file
+            'subject' => 'required|string|max:255|min:3',
+            'message' => 'required|string|min:10|max:10000',
+            'attachments.*' => 'nullable|file|max:2048|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif,zip,rar',
+            'attachments' => 'nullable|array|max:5',
         ]);
 
-        // Create the reply message
-        $reply = Message::create([
-            'type' => 'admin_to_client',
-            'name' => auth()->user()->name ?? 'Admin',
-            'email' => config('mail.from.address'),
-            'subject' => $request->subject,
-            'message' => $request->message,
-            'parent_id' => $message->id,
-            'user_id' => $message->user_id,
-            'is_read' => true, // Admin replies are marked as read by default
-            'is_replied' => false, // Admin messages don't need reply status
-            'read_at' => now(),
-            'replied_by' => auth()->id(),
-        ]);
+        try {
+            DB::beginTransaction();
 
-        // Mark the original message as replied
-        if (!$message->is_replied) {
-            $message->markAsReplied(auth()->id());
-        }
+            $reply = Message::create([
+                'type' => 'admin_to_client',
+                'name' => auth()->user()->name ?? 'Admin',
+                'email' => config('mail.from.address', 'admin@company.com'),
+                'subject' => trim($request->subject),
+                'message' => trim($request->message),
+                'parent_id' => $message->id,
+                'user_id' => $message->user_id,
+                'is_read' => true,
+                'is_replied' => false,
+                'read_at' => now(),
+                'replied_by' => auth()->id(),
+            ]);
 
-        // Handle attachments
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                if ($file->isValid()) {
-                    $reply->addAttachment($file);
+            // Mark the original message as replied
+            if (!$message->is_replied) {
+                $message->markAsReplied(auth()->id());
+            }
+
+            // Handle attachments
+            $attachmentCount = 0;
+            if ($request->hasFile('attachments')) {
+                foreach ($request->file('attachments') as $file) {
+                    if ($file->isValid() && $attachmentCount < 5) {
+                        try {
+                            $reply->addAttachment($file);
+                            $attachmentCount++;
+                        } catch (\Exception $e) {
+                            Log::error('Failed to add reply attachment: ' . $e->getMessage());
+                        }
+                    }
                 }
             }
-        }
 
-        // Send notification to the client if it's a registered user
-        try {
-            if ($message->user) {
-                $message->user->notify(new MessageReplyNotification($reply));
-            } else {
-                // For contact form messages, send an email directly
-                Notification::route('mail', $message->email)
-                    ->notify(new MessageReplyNotification($reply));
+            // Send notification
+            try {
+                if ($message->user) {
+                    $message->user->notify(new MessageReplyNotification($reply));
+                } else {
+                    Notification::route('mail', $message->email)
+                        ->notify(new MessageReplyNotification($reply));
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send reply notification: ' . $e->getMessage());
             }
-        } catch (\Exception $e) {
-            // Log the error but don't stop the process
-            \Log::error('Failed to send email notification: ' . $e->getMessage());
-        }
 
-        return redirect()->route('admin.messages.show', $message)
-            ->with('success', 'Reply sent successfully!');
+            DB::commit();
+
+            $successMessage = 'Reply sent successfully!';
+            if ($attachmentCount > 0) {
+                $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
+            }
+
+            return redirect()->route('admin.messages.show', $message)
+                ->with('success', $successMessage);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to send reply: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'Failed to send reply. Please try again.')
+                ->withInput();
+        }
     }
 
     /**
@@ -290,17 +485,23 @@ class MessageController extends Controller
      */
     public function markAsRead(Request $request)
     {
-        // Only mark messages where it makes sense (client to admin or contact form)
-        // Exclude admin messages from bulk operations
-        Message::excludeAdminMessages()
-            ->where('is_read', false)
-            ->update([
-                'is_read' => true,
-                'read_at' => now(),
-            ]);
+        try {
+            $count = Message::excludeAdminMessages()
+                ->where('is_read', false)
+                ->update([
+                    'is_read' => true,
+                    'read_at' => now(),
+                ]);
 
-        return redirect()->back()
-            ->with('success', 'All messages marked as read.');
+            return redirect()->back()
+                ->with('success', "{$count} messages marked as read.");
+
+        } catch (\Exception $e) {
+            Log::error('Failed to mark messages as read: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'Failed to update messages. Please try again.');
+        }
     }
 
     /**
@@ -308,38 +509,43 @@ class MessageController extends Controller
      */
     public function destroyMultiple(Request $request)
     {
-        $request->validate([
-            'ids' => 'required|string',
-        ]);
+        $request->validate(['ids' => 'required|string']);
 
-        $ids = explode(',', $request->ids);
-        $ids = array_filter($ids); // Remove empty values
+        $ids = array_filter(explode(',', $request->ids));
         
         if (empty($ids)) {
-            return redirect()->back()
-                ->with('error', 'No messages selected for deletion.');
+            return redirect()->back()->with('error', 'No messages selected for deletion.');
         }
 
-        // Get messages with their attachments, but exclude admin messages from bulk delete
-        $messages = Message::whereIn('id', $ids)
-            ->excludeAdminMessages()
-            ->with('attachments')
-            ->get();
-        
-        // Delete attachments first
-        foreach ($messages as $message) {
-            foreach ($message->attachments as $attachment) {
-                $attachment->delete(); // This will handle file deletion via model event
+        try {
+            DB::beginTransaction();
+
+            $messages = Message::whereIn('id', $ids)
+                ->excludeAdminMessages()
+                ->with('attachments')
+                ->get();
+            
+            $count = 0;
+            foreach ($messages as $message) {
+                foreach ($message->attachments as $attachment) {
+                    $attachment->delete();
+                }
+                $message->delete();
+                $count++;
             }
-        }
-        
-        // Delete the messages
-        $count = Message::whereIn('id', $ids)
-            ->excludeAdminMessages()
-            ->delete();
+            
+            DB::commit();
 
-        return redirect()->back()
-            ->with('success', $count . ' messages deleted successfully.');
+            return redirect()->back()
+                ->with('success', "{$count} messages deleted successfully.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to delete multiple messages: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'Failed to delete messages. Please try again.');
+        }
     }
 
     /**
@@ -349,20 +555,25 @@ class MessageController extends Controller
     {
         $attachment = MessageAttachment::findOrFail($attachmentId);
         
-        // Security check - make sure the attachment belongs to the message
         if ($attachment->message_id !== $message->id) {
             abort(403, 'Unauthorized access to attachment');
         }
         
-        // Check if the file exists
         if (!Storage::disk('public')->exists($attachment->file_path)) {
             abort(404, 'Attachment file not found');
         }
         
-        return Storage::disk('public')->download(
-            $attachment->file_path, 
-            $attachment->file_name
-        );
+        return Storage::disk('public')->download($attachment->file_path, $attachment->file_name);
+    }
+
+    /**
+     * Handle email reply webhook (for external email replies).
+     */
+    public function handleEmailReply(Request $request)
+    {
+        // This would handle incoming emails from external providers
+        // Implementation depends on your email service provider
+        return response()->json(['success' => true]);
     }
 
     /**

@@ -126,15 +126,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::resource('quotations', App\Http\Controllers\Admin\QuotationController::class);
     Route::post('/quotations/{quotation}/update-status', [App\Http\Controllers\Admin\QuotationController::class, 'updateStatus'])->name('quotations.update-status');
     
-    // Messages management
-    Route::resource('messages', App\Http\Controllers\Admin\MessageController::class)->except(['create', 'store', 'edit', 'update']);
+    // Messages management - Updated section
+    Route::resource('messages', App\Http\Controllers\Admin\MessageController::class);
     Route::post('/messages/{message}/reply', [App\Http\Controllers\Admin\MessageController::class, 'reply'])->name('messages.reply');
     Route::post('/messages/{message}/toggle-read', [App\Http\Controllers\Admin\MessageController::class, 'toggleRead'])->name('messages.toggle-read');
+    Route::post('/messages/{message}/mark-unread', [App\Http\Controllers\Admin\MessageController::class, 'markAsUnread'])->name('messages.mark-unread');
     Route::post('/messages/mark-read', [App\Http\Controllers\Admin\MessageController::class, 'markAsRead'])->name('messages.mark-read');
     Route::delete('/messages/delete-multiple', [App\Http\Controllers\Admin\MessageController::class, 'destroyMultiple'])->name('messages.destroy-multiple');
     Route::get('/messages/{message}/attachments/{attachmentId}/download', [App\Http\Controllers\Admin\MessageController::class, 'downloadAttachment'])
         ->name('messages.attachments.download')
         ->where('attachmentId', '[0-9]+');
+
+    // Email reply webhook (for external email providers)
+    Route::post('/messages/email-reply-webhook', [App\Http\Controllers\Admin\MessageController::class, 'handleEmailReply'])
+        ->name('messages.email-reply-webhook')
+        ->middleware('throttle:100,1');
     // Team management
     Route::resource('team', App\Http\Controllers\Admin\TeamController::class);
     Route::post('/team/{teamMember}/toggle-active', [App\Http\Controllers\Admin\TeamController::class, 'toggleActive'])->name('team.toggle-active');
@@ -232,6 +238,7 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
     Route::get('/messages/{message}/attachments/{attachmentId}/download', [App\Http\Controllers\Admin\MessageController::class, 'downloadAttachment'])
         ->name('messages.attachments.download')
         ->where('attachmentId', '[0-9]+');
+    
     // Profile
     Route::get('/profile', [App\Http\Controllers\Client\ProfileController::class, 'show'])->name('profile.show');
     Route::get('/profile/edit', [App\Http\Controllers\Client\ProfileController::class, 'edit'])->name('profile.edit');
