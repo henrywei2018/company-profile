@@ -117,7 +117,7 @@
                             x-transition:leave-start="opacity-100 scale-100"
                             x-transition:leave-end="opacity-0 scale-95"
                             @click.away="showDropdown = false"
-                            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto dark:bg-neutral-800 dark:border-neutral-700"
+                            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto dark:bg-neutral-800 dark:border-neutral-700"
                         >
                             <template x-for="(client, index) in filteredClients" :key="client.id">
                                 <div 
@@ -127,64 +127,58 @@
                                         'bg-blue-50 dark:bg-blue-900/30': highlightedIndex === index,
                                         'hover:bg-gray-50 dark:hover:bg-neutral-700': highlightedIndex !== index
                                     }"
-                                    class="px-3 py-2 cursor-pointer border-b border-gray-100 dark:border-neutral-700 last:border-b-0"
+                                    class="px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-neutral-700 last:border-b-0"
                                 >
-                                    <div class="flex items-center space-x-3">
-                                        <!-- Avatar -->
-                                        <div class="flex-shrink-0 h-7 w-7 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                                            <span class="text-xs font-medium text-blue-600 dark:text-blue-400" x-text="client.name.charAt(0).toUpperCase()"></span>
-                                        </div>
-                                        
-                                        <!-- Client Info -->
+                                    <div class="flex items-center justify-between">
                                         <div class="flex-1 min-w-0">
-                                            <div class="flex items-center justify-between">
-                                                <div class="flex-1 min-w-0">
-                                                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate" x-text="client.name"></p>
-                                                    <div class="flex items-center space-x-2 mt-0.5">
-                                                        <p class="text-xs text-gray-500 dark:text-neutral-400 truncate" x-text="client.email"></p>
-                                                        <span x-show="client.company" class="text-xs text-gray-400 dark:text-neutral-500">•</span>
-                                                        <p x-show="client.company" class="text-xs text-gray-400 dark:text-neutral-500 truncate" x-text="client.company"></p>
-                                                    </div>
+                                            <div class="flex items-center">
+                                                <!-- Avatar -->
+                                                <div class="flex-shrink-0 h-8 w-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                                                    <span class="text-sm font-medium text-blue-600 dark:text-blue-400" x-text="client.name.charAt(0).toUpperCase()"></span>
                                                 </div>
                                                 
-                                                <!-- Verification Badge -->
-                                                <div class="flex-shrink-0 ml-2">
-                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                                        ✓
-                                                    </span>
+                                                <!-- Client Info -->
+                                                <div class="ml-3 flex-1 min-w-0">
+                                                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate" x-text="client.name"></p>
+                                                    <p class="text-sm text-gray-500 dark:text-neutral-400 truncate" x-text="client.email"></p>
+                                                    <p x-show="client.company" class="text-xs text-gray-400 dark:text-neutral-500 truncate" x-text="client.company"></p>
                                                 </div>
                                             </div>
+                                        </div>
+                                        
+                                        <!-- Verification Badge -->
+                                        <div class="flex-shrink-0 ml-2">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                                Verified
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
                             </template>
                             
                             <!-- No Results -->
-                            <div x-show="filteredClients.length === 0 && searchQuery.length > 0" class="px-3 py-2 text-sm text-gray-500 dark:text-neutral-400 text-center">
-                                No clients found matching "<span x-text="searchQuery" class="font-medium"></span>"
+                            <div x-show="filteredClients.length === 0 && searchQuery.length > 0" class="px-4 py-3 text-sm text-gray-500 dark:text-neutral-400">
+                                No clients found matching "<span x-text="searchQuery"></span>"
                             </div>
                         </div>
                         
                         <!-- Selected Client Display -->
-                        <div x-show="selectedClient" class="mt-2 p-2.5 bg-blue-50 border border-blue-200 rounded-md dark:bg-blue-900/30 dark:border-blue-800">
+                        <div x-show="selectedClient" class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md dark:bg-blue-900/30 dark:border-blue-800">
                             <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-2.5">
-                                    <div class="flex-shrink-0 h-6 w-6 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                                        <span class="text-xs font-medium text-blue-600 dark:text-blue-400" x-text="selectedClient ? selectedClient.name.charAt(0).toUpperCase() : ''"></span>
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-8 w-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                                        <span class="text-sm font-medium text-blue-600 dark:text-blue-400" x-text="selectedClient ? selectedClient.name.charAt(0).toUpperCase() : ''"></span>
                                     </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-medium text-blue-900 dark:text-blue-300 truncate" x-text="selectedClient ? selectedClient.name : ''"></p>
-                                        <div class="flex items-center space-x-1.5">
-                                            <p class="text-xs text-blue-700 dark:text-blue-400 truncate" x-text="selectedClient ? selectedClient.email : ''"></p>
-                                            <span x-show="selectedClient && selectedClient.company" class="text-xs text-blue-600 dark:text-blue-500">•</span>
-                                            <p x-show="selectedClient && selectedClient.company" class="text-xs text-blue-600 dark:text-blue-500 truncate" x-text="selectedClient ? selectedClient.company : ''"></p>
-                                        </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm font-medium text-blue-900 dark:text-blue-300" x-text="selectedClient ? selectedClient.name : ''"></p>
+                                        <p class="text-xs text-blue-700 dark:text-blue-400" x-text="selectedClient ? selectedClient.email : ''"></p>
+                                        <p x-show="selectedClient && selectedClient.company" class="text-xs text-blue-600 dark:text-blue-500" x-text="selectedClient ? selectedClient.company : ''"></p>
                                     </div>
                                 </div>
                                 <button 
                                     type="button"
                                     @click="clearSelection()"
-                                    class="flex-shrink-0 ml-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                                    class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                                 >
                                     <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
