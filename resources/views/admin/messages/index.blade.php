@@ -53,21 +53,7 @@
     <!-- Filters -->
     <x-admin.filter action="{{ route('admin.messages.index') }}" method="GET" :resetRoute="route('admin.messages.index')">
         <x-admin.input name="search" label="Search" placeholder="Search by name, email or subject"
-            value="{{ request('search') }}" />
-
-        <x-admin.select name="status" label="Status" :options="[
-            'unread_unreplied' => 'Urgent (Unreplied & Unread)',
-            'unreplied' => 'Needs Reply',
-            'unread' => 'Unread',
-            'read' => 'Read',
-            'replied' => 'Replied'
-        ]" placeholder="All Statuses" value="{{ request('status') }}" />
-
-        <x-admin.select name="type" label="Type" :options="[
-            'contact_form' => 'Contact Form',
-            'client_to_admin' => 'Client Message',
-        ]" placeholder="All Types"
-            value="{{ request('type') }}" />
+            value="{{ request('search') }}" />        
 
         <x-admin.date-range-picker name="date_range" label="Date Range" startName="created_from" endName="created_to"
             :startDate="request('created_from')" :endDate="request('created_to')" placeholder="Select date range" />
