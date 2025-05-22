@@ -132,7 +132,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/messages/{message}/toggle-read', [App\Http\Controllers\Admin\MessageController::class, 'toggleRead'])->name('messages.toggle-read');
     Route::post('/messages/mark-read', [App\Http\Controllers\Admin\MessageController::class, 'markAsRead'])->name('messages.mark-read');
     Route::delete('/messages/delete-multiple', [App\Http\Controllers\Admin\MessageController::class, 'destroyMultiple'])->name('messages.destroy-multiple');
-    
+    Route::get('/messages/{message}/attachments/{attachmentId}/download', [App\Http\Controllers\Admin\MessageController::class, 'downloadAttachment'])
+        ->name('messages.attachments.download')
+        ->where('attachmentId', '[0-9]+');
     // Team management
     Route::resource('team', App\Http\Controllers\Admin\TeamController::class);
     Route::post('/team/{teamMember}/toggle-active', [App\Http\Controllers\Admin\TeamController::class, 'toggleActive'])->name('team.toggle-active');
@@ -227,7 +229,9 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
     Route::post('/messages/{message}/mark-read', [App\Http\Controllers\Client\MessageController::class, 'markAsRead'])->name('messages.mark-read');
     Route::post('/messages/{message}/mark-unread', [App\Http\Controllers\Client\MessageController::class, 'markAsUnread'])->name('messages.mark-unread');
     Route::get('/messages/{message}/attachments/{attachmentId}/download', [App\Http\Controllers\Client\MessageController::class, 'downloadAttachment'])->name('messages.attachments.download');
-    
+    Route::get('/messages/{message}/attachments/{attachmentId}/download', [App\Http\Controllers\Admin\MessageController::class, 'downloadAttachment'])
+        ->name('messages.attachments.download')
+        ->where('attachmentId', '[0-9]+');
     // Profile
     Route::get('/profile', [App\Http\Controllers\Client\ProfileController::class, 'show'])->name('profile.show');
     Route::get('/profile/edit', [App\Http\Controllers\Client\ProfileController::class, 'edit'])->name('profile.edit');

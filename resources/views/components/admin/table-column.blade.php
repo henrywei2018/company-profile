@@ -6,7 +6,7 @@
     'field' => null
 ])
 
-<th scope="col" {{ $attributes->merge(['class' => 'px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider']) }}>
+<th scope="col" {{ $attributes->merge(['class' => 'px-2 py-2 text-start text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider']) }}>
     @if($sortable && $field)
         <a href="{{ request()->fullUrlWithQuery(['sort' => $field, 'direction' => $direction === 'asc' ? 'desc' : 'asc']) }}" class="group inline-flex items-center gap-x-2">
             <span>{{ $slot }}</span>

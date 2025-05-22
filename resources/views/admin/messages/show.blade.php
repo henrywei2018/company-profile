@@ -178,7 +178,7 @@
                                             {{ $attachment->file_name }}
                                         </p>
                                         <div class="flex items-center space-x-3 text-xs text-gray-500 dark:text-neutral-400 mt-1">
-                                            <span class="font-medium">{{ human_filesize($attachment->file_size) }}</span>
+                                            <span class="font-medium">{{ $attachment->file_size_formatted }}</span>
                                             <span class="uppercase font-bold">{{ $extension }}</span>
                                         </div>
                                     </div>
@@ -198,7 +198,7 @@
                 @endif
             </div>
             
-            <!-- Reply Form Section with enhanced styling -->
+            <!-- Reply Form Section with enhanced styling and functional file upload -->
             @if(in_array($message->type, ['client_to_admin', 'contact_form']))
                 <div class="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-200 dark:border-neutral-700 overflow-hidden">
                     <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-4 py-3 border-b border-gray-200 dark:border-neutral-700">
@@ -213,7 +213,7 @@
                         <p class="text-sm text-gray-600 dark:text-neutral-400 mt-2">Respond to this message</p>
                     </div>
                     
-                    <form action="{{ route('admin.messages.reply', $message) }}" method="POST" enctype="multipart/form-data" class="p-4">
+                    <form action="{{ route('admin.messages.reply', $message) }}" method="POST" enctype="multipart/form-data" class="p-4" id="reply-form">
                         @csrf
                         
                         <div class="space-y-3">
@@ -240,12 +240,19 @@
                                 ></textarea>
                             </div>
                             
-                            <!-- Enhanced file upload area -->
-                            <div class="space-y-3">
+                            <!-- Enhanced file upload area with working JavaScript -->
+                            <div class="space-y-3" x-data="fileUploader()">
                                 <label class="block text-sm font-semibold text-gray-700 dark:text-neutral-300">
                                     Attachments (Optional)
                                 </label>
-                                <div class="border-2 border-dashed border-gray-300 dark:border-neutral-700 rounded-xl p-8 text-center hover:border-blue-400 dark:hover:border-blue-600 transition-colors bg-gray-50 dark:bg-neutral-800/50">
+                                <div 
+                                    class="border-2 border-dashed border-gray-300 dark:border-neutral-700 rounded-xl p-8 text-center hover:border-blue-400 dark:hover:border-blue-600 transition-colors bg-gray-50 dark:bg-neutral-800/50"
+                                    @click="$refs.fileInput.click()"
+                                    @dragover.prevent="isDragging = true"
+                                    @dragleave.prevent="isDragging = false"
+                                    @drop.prevent="handleDrop($event)"
+                                    :class="{ 'border-blue-400 bg-blue-50 dark:border-blue-600 dark:bg-blue-900/30': isDragging }"
+                                >
                                     <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                                         <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -255,9 +262,59 @@
                                         <span class="text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">Click to upload</span> or drag and drop
                                     </p>
                                     <p class="text-sm text-gray-500 dark:text-neutral-500">
-                                        You can attach up to 5 files. Maximum size per file: 2MB
+                                        PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, ZIP, RAR up to 2MB each (Max 5 files)
                                     </p>
-                                    <input type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar" class="hidden">
+                                    <input 
+                                        type="file" 
+                                        name="attachments[]" 
+                                        multiple 
+                                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar" 
+                                        class="hidden"
+                                        x-ref="fileInput"
+                                        @change="handleFileSelect($event)"
+                                    >
+                                </div>
+                                
+                                <!-- File preview area -->
+                                <div x-show="files.length > 0" class="mt-4">
+                                    <h4 class="text-sm font-medium text-gray-700 dark:text-neutral-300 mb-3">Selected Files:</h4>
+                                    <div class="space-y-2">
+                                        <template x-for="(file, index) in files" :key="index">
+                                            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-neutral-800/50 rounded-lg border border-gray-200 dark:border-neutral-700">
+                                                <div class="flex items-center space-x-3">
+                                                    <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                                        <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                        </svg>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-sm font-medium text-gray-900 dark:text-white" x-text="file.name"></p>
+                                                        <p class="text-xs text-gray-500 dark:text-neutral-500" x-text="formatFileSize(file.size)"></p>
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    type="button" 
+                                                    @click="removeFile(index)"
+                                                    class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                                >
+                                                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                                
+                                <!-- Error messages -->
+                                <div x-show="errors.length > 0" class="mt-2">
+                                    <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                                        <ul class="text-sm text-red-600 dark:text-red-400 space-y-1">
+                                            <template x-for="error in errors" :key="error">
+                                                <li x-text="error"></li>
+                                            </template>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -270,11 +327,9 @@
                                 class="text-base font-semibold shadow-lg"
                             >
                             <div class="flex items-center justify-center">
-                            
                                 <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                                 </svg>
-                                
                                 Send Reply
                             </div>
                             </x-admin.button>
@@ -338,7 +393,7 @@
                                                 </p>
                                             @endif
                                             
-                                            <div class="text-sm text-gray-700 dark:text-neutral-300 ">
+                                            <div class="text-sm text-gray-700 dark:text-neutral-300">
                                                 {{ $relatedMessage->message }}
                                             </div>
                                             
@@ -602,3 +657,99 @@
         </div>
     </div>
 </x-layouts.admin>
+
+<script>
+    // File uploader component
+    function fileUploader() {
+        return {
+            files: [],
+            isDragging: false,
+            errors: [],
+            maxFiles: 5,
+            maxFileSize: 2 * 1024 * 1024, // 2MB
+            allowedTypes: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/jpeg', 'image/png', 'image/jpg', 'application/zip', 'application/x-rar-compressed'],
+            
+            handleFileSelect(event) {
+                this.addFiles(event.target.files);
+            },
+            
+            handleDrop(event) {
+                this.isDragging = false;
+                this.addFiles(event.dataTransfer.files);
+            },
+            
+            addFiles(fileList) {
+                this.errors = [];
+                const newFiles = Array.from(fileList);
+                
+                // Check total file count
+                if (this.files.length + newFiles.length > this.maxFiles) {
+                    this.errors.push(`Maximum ${this.maxFiles} files allowed.`);
+                    return;
+                }
+                
+                // Validate each file
+                newFiles.forEach(file => {
+                    // Check file size
+                    if (file.size > this.maxFileSize) {
+                        this.errors.push(`${file.name} exceeds the maximum file size of 2MB.`);
+                        return;
+                    }
+                    
+                    // Check file type
+                    if (!this.allowedTypes.includes(file.type)) {
+                        // Also check by extension for some types
+                        const extension = file.name.split('.').pop().toLowerCase();
+                        const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'zip', 'rar'];
+                        if (!allowedExtensions.includes(extension)) {
+                            this.errors.push(`${file.name} has an unsupported file type.`);
+                            return;
+                        }
+                    }
+                    
+                    // Add file if validation passes
+                    this.files.push(file);
+                });
+                
+                // Update the actual file input
+                this.updateFileInput();
+            },
+            
+            removeFile(index) {
+                this.files.splice(index, 1);
+                this.updateFileInput();
+            },
+            
+            updateFileInput() {
+                // Create a new DataTransfer object and add our files
+                const dt = new DataTransfer();
+                this.files.forEach(file => dt.items.add(file));
+                
+                // Update the file input
+                const fileInput = this.$refs.fileInput;
+                fileInput.files = dt.files;
+            },
+            
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+        }
+    }
+</script>
+
+@if (function_exists('human_filesize'))
+@else
+@php
+    if (!function_exists('human_filesize')) {
+        function human_filesize($bytes, $decimals = 2) {
+            $size = array('B','KB','MB','GB','TB','PB','EB','ZB','YB');
+            $factor = floor((strlen($bytes) - 1) / 3);
+            return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . @$size[$factor];
+        }
+    }
+@endphp
+@endif

@@ -23,9 +23,12 @@ class Message extends Model
         'message',
         'type',
         'is_read',
+        'is_replied',
         'user_id',
         'parent_id',
         'read_at',
+        'replied_at',
+        'replied_by',
     ];
 
     /**
@@ -35,7 +38,9 @@ class Message extends Model
      */
     protected $casts = [
         'is_read' => 'boolean',
+        'is_replied' => 'boolean',
         'read_at' => 'datetime',
+        'replied_at' => 'datetime',
     ];
 
     /**
@@ -45,6 +50,7 @@ class Message extends Model
      */
     protected $attributes = [
         'is_read' => false,
+        'is_replied' => false,
         'type' => 'contact_form',
     ];
 
@@ -62,6 +68,14 @@ class Message extends Model
     public function client()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Get the admin user who replied to this message.
+     */
+    public function repliedBy()
+    {
+        return $this->belongsTo(User::class, 'replied_by');
     }
 
     /**
@@ -102,6 +116,46 @@ class Message extends Model
     public function scopeRead($query)
     {
         return $query->where('is_read', true);
+    }
+
+    /**
+     * Scope a query to only include unreplied messages.
+     */
+    public function scopeUnreplied($query)
+    {
+        return $query->where('is_replied', false);
+    }
+
+    /**
+     * Scope a query to only include replied messages.
+     */
+    public function scopeReplied($query)
+    {
+        return $query->where('is_replied', true);
+    }
+
+    /**
+     * Scope a query to exclude admin messages from listings.
+     */
+    public function scopeExcludeAdminMessages($query)
+    {
+        return $query->whereNotIn('type', ['admin_to_client']);
+    }
+
+    /**
+     * Scope a query to only include client messages.
+     */
+    public function scopeClientMessages($query)
+    {
+        return $query->whereIn('type', ['client_to_admin', 'contact_form']);
+    }
+
+    /**
+     * Scope a query to only include admin messages.
+     */
+    public function scopeAdminMessages($query)
+    {
+        return $query->where('type', 'admin_to_client');
     }
 
     /**
@@ -153,6 +207,30 @@ class Message extends Model
     }
 
     /**
+     * Check if this message is from admin.
+     */
+    public function isFromAdmin()
+    {
+        return $this->type === 'admin_to_client';
+    }
+
+    /**
+     * Check if this message is from client.
+     */
+    public function isFromClient()
+    {
+        return in_array($this->type, ['client_to_admin', 'contact_form']);
+    }
+
+    /**
+     * Check if this message has been replied to.
+     */
+    public function hasBeenReplied()
+    {
+        return $this->is_replied;
+    }
+
+    /**
      * Mark message as read.
      */
     public function markAsRead()
@@ -179,6 +257,34 @@ class Message extends Model
     }
 
     /**
+     * Mark message as replied.
+     */
+    public function markAsReplied($repliedBy = null)
+    {
+        if (!$this->is_replied) {
+            $this->update([
+                'is_replied' => true,
+                'replied_at' => now(),
+                'replied_by' => $repliedBy ?: auth()->id(),
+            ]);
+        }
+    }
+
+    /**
+     * Mark message as unreplied.
+     */
+    public function markAsUnreplied()
+    {
+        if ($this->is_replied) {
+            $this->update([
+                'is_replied' => false,
+                'replied_at' => null,
+                'replied_by' => null,
+            ]);
+        }
+    }
+
+    /**
      * Toggle read status.
      */
     public function toggleReadStatus()
@@ -187,6 +293,22 @@ class Message extends Model
             $this->markAsUnread();
         } else {
             $this->markAsRead();
+        }
+    }
+
+    /**
+     * Get status priority for sorting (unreplied and unread are higher priority).
+     */
+    public function getStatusPriorityAttribute()
+    {
+        if (!$this->is_replied && !$this->is_read) {
+            return 1; // Highest priority - unreplied and unread
+        } elseif (!$this->is_replied) {
+            return 2; // High priority - unreplied but read
+        } elseif (!$this->is_read) {
+            return 3; // Medium priority - replied but unread
+        } else {
+            return 4; // Lowest priority - replied and read
         }
     }
 
@@ -222,6 +344,16 @@ class Message extends Model
     }
 
     /**
+     * Get human readable file size.
+     */
+    public static function humanFileSize($bytes, $decimals = 2)
+    {
+        $size = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        $factor = floor((strlen($bytes) - 1) / 3);
+        return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . ' ' . @$size[$factor];
+    }
+
+    /**
      * Boot the model.
      */
     protected static function boot()
@@ -233,6 +365,16 @@ class Message extends Model
             $message->attachments()->each(function ($attachment) {
                 $attachment->delete(); // This will trigger the attachment's deleting event
             });
+        });
+
+        // Auto-mark parent message as replied when admin creates a reply
+        static::created(function ($message) {
+            if ($message->type === 'admin_to_client' && $message->parent_id) {
+                $parentMessage = Message::find($message->parent_id);
+                if ($parentMessage && !$parentMessage->is_replied) {
+                    $parentMessage->markAsReplied($message->replied_by ?: auth()->id());
+                }
+            }
         });
     }
 }

@@ -19,15 +19,29 @@ class MessageController extends Controller
     public function index(Request $request)
     {
         $query = Message::query()
-            ->with(['user', 'attachments']) // Eager load relationships
+            ->with(['user', 'attachments', 'repliedBy']) // Eager load relationships
+            // Exclude admin-to-client messages from main listing
+            ->excludeAdminMessages()
             ->when($request->filled('search'), function ($query) use ($request) {
                 $query->search($request->search);
             })
-            ->when($request->filled('read'), function ($query) use ($request) {
-                if ($request->read === 'read') {
-                    $query->where('is_read', true);
-                } elseif ($request->read === 'unread') {
-                    $query->where('is_read', false);
+            ->when($request->filled('status'), function ($query) use ($request) {
+                switch ($request->status) {
+                    case 'unread':
+                        $query->where('is_read', false);
+                        break;
+                    case 'read':
+                        $query->where('is_read', true);
+                        break;
+                    case 'unreplied':
+                        $query->where('is_replied', false);
+                        break;
+                    case 'replied':
+                        $query->where('is_replied', true);
+                        break;
+                    case 'unread_unreplied':
+                        $query->where('is_read', false)->where('is_replied', false);
+                        break;
                 }
             })
             ->when($request->filled('type'), function ($query) use ($request) {
@@ -44,16 +58,32 @@ class MessageController extends Controller
         if ($request->filled('sort') && $request->filled('direction')) {
             $query->orderBy($request->sort, $request->direction);
         } else {
-            $query->latest(); // Default sort by latest
+            // Default sort by priority (unreplied first), then by latest
+            $query->orderByRaw('
+                CASE 
+                    WHEN is_replied = 0 AND is_read = 0 THEN 1
+                    WHEN is_replied = 0 AND is_read = 1 THEN 2  
+                    WHEN is_replied = 1 AND is_read = 0 THEN 3
+                    ELSE 4
+                END ASC, created_at DESC
+            ');
         }
 
         $messages = $query->paginate(15)->withQueryString();
 
+        // Get counts for different statuses
+        $statusCounts = [
+            'total' => Message::excludeAdminMessages()->count(),
+            'unread' => Message::excludeAdminMessages()->unread()->count(),
+            'unreplied' => Message::excludeAdminMessages()->unreplied()->count(),
+            'unread_unreplied' => Message::excludeAdminMessages()->unread()->unreplied()->count(),
+        ];
+
         // Get unread messages and pending quotations counts for header notifications
-        $unreadMessages = Message::unread()->count();
+        $unreadMessages = Message::excludeAdminMessages()->unread()->count();
         $pendingQuotations = \App\Models\Quotation::where('status', 'pending')->count();
 
-        return view('admin.messages.index', compact('messages', 'unreadMessages', 'pendingQuotations'));
+        return view('admin.messages.index', compact('messages', 'statusCounts', 'unreadMessages', 'pendingQuotations'));
     }
 
     /**
@@ -62,10 +92,10 @@ class MessageController extends Controller
     public function show(Message $message)
     {
         // Load relationships
-        $message->load(['user', 'attachments', 'parent', 'replies']);
+        $message->load(['user', 'attachments', 'parent', 'replies', 'repliedBy']);
 
-        // Mark message as read if not already
-        if (!$message->is_read) {
+        // Mark message as read if not already and it's not an admin message
+        if (!$message->is_read && $message->type !== 'admin_to_client') {
             $message->markAsRead();
         }
 
@@ -82,16 +112,20 @@ class MessageController extends Controller
         }
 
         // Get other messages from this client/email (limited to 5)
+        // Exclude admin messages from this listing too
         $clientMessages = Message::where('email', $message->email)
             ->where('id', '!=', $message->id)
+            ->excludeAdminMessages()
             ->latest()
             ->take(5)
             ->get();
         
-        $totalClientMessages = Message::where('email', $message->email)->count();
+        $totalClientMessages = Message::where('email', $message->email)
+            ->excludeAdminMessages()
+            ->count();
 
         // Get unread messages and pending quotations counts for header notifications
-        $unreadMessages = Message::unread()->count();
+        $unreadMessages = Message::excludeAdminMessages()->unread()->count();
         $pendingQuotations = \App\Models\Quotation::where('status', 'pending')->count();
 
         return view('admin.messages.show', compact(
@@ -142,7 +176,7 @@ class MessageController extends Controller
         $request->validate([
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
-            'attachments.*' => 'nullable|file|max:2048', // 2MB max per file
+            'attachments.*' => 'nullable|file|max:2048|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif,zip,rar', // 2MB max per file
         ]);
 
         // Create the reply message
@@ -155,8 +189,15 @@ class MessageController extends Controller
             'parent_id' => $message->id,
             'user_id' => $message->user_id,
             'is_read' => true, // Admin replies are marked as read by default
+            'is_replied' => false, // Admin messages don't need reply status
             'read_at' => now(),
+            'replied_by' => auth()->id(),
         ]);
+
+        // Mark the original message as replied
+        if (!$message->is_replied) {
+            $message->markAsReplied(auth()->id());
+        }
 
         // Handle attachments
         if ($request->hasFile('attachments')) {
@@ -181,7 +222,7 @@ class MessageController extends Controller
             \Log::error('Failed to send email notification: ' . $e->getMessage());
         }
 
-        return redirect()->route('admin.messages.show', $reply)
+        return redirect()->route('admin.messages.show', $message)
             ->with('success', 'Reply sent successfully!');
     }
 
@@ -191,7 +232,8 @@ class MessageController extends Controller
     public function markAsRead(Request $request)
     {
         // Only mark messages where it makes sense (client to admin or contact form)
-        Message::whereIn('type', ['client_to_admin', 'contact_form'])
+        // Exclude admin messages from bulk operations
+        Message::excludeAdminMessages()
             ->where('is_read', false)
             ->update([
                 'is_read' => true,
@@ -219,8 +261,11 @@ class MessageController extends Controller
                 ->with('error', 'No messages selected for deletion.');
         }
 
-        // Get messages with their attachments
-        $messages = Message::whereIn('id', $ids)->with('attachments')->get();
+        // Get messages with their attachments, but exclude admin messages from bulk delete
+        $messages = Message::whereIn('id', $ids)
+            ->excludeAdminMessages()
+            ->with('attachments')
+            ->get();
         
         // Delete attachments first
         foreach ($messages as $message) {
@@ -230,7 +275,9 @@ class MessageController extends Controller
         }
         
         // Delete the messages
-        $count = Message::whereIn('id', $ids)->delete();
+        $count = Message::whereIn('id', $ids)
+            ->excludeAdminMessages()
+            ->delete();
 
         return redirect()->back()
             ->with('success', $count . ' messages deleted successfully.');
@@ -257,5 +304,19 @@ class MessageController extends Controller
             $attachment->file_path, 
             $attachment->file_name
         );
+    }
+
+    /**
+     * Get dashboard statistics for messages.
+     */
+    public function getStats()
+    {
+        return [
+            'total_messages' => Message::excludeAdminMessages()->count(),
+            'unread_messages' => Message::excludeAdminMessages()->unread()->count(),
+            'unreplied_messages' => Message::excludeAdminMessages()->unreplied()->count(),
+            'today_messages' => Message::excludeAdminMessages()->whereDate('created_at', today())->count(),
+            'urgent_messages' => Message::excludeAdminMessages()->unread()->unreplied()->count(),
+        ];
     }
 }
