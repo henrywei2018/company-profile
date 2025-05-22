@@ -141,5 +141,110 @@ $quickActions = [
 
     @stack('scripts')
 </body>
+<style>
+    .admin-table {
+    @apply w-full border-collapse;
+}
+
+.admin-table th,
+.admin-table td {
+    @apply px-6 py-3 text-left;
+}
+
+.admin-table thead th {
+    @apply bg-gray-50 dark:bg-neutral-800 font-medium text-xs text-gray-500 dark:text-neutral-400 uppercase tracking-wider border-b border-gray-200 dark:border-neutral-700;
+}
+
+.admin-table tbody td {
+    @apply bg-white dark:bg-neutral-800 border-b border-gray-200 dark:border-neutral-700 text-sm;
+}
+
+.admin-table tbody tr:hover td {
+    @apply bg-gray-50 dark:bg-neutral-700;
+}
+
+/* Header Actions Alignment */
+.table-header-actions {
+    @apply flex items-center justify-between w-full px-6 py-4 bg-gray-50 dark:bg-neutral-800/50 border-b border-gray-200 dark:border-neutral-700;
+}
+
+.table-header-actions .left-actions {
+    @apply flex items-center space-x-3;
+}
+
+.table-header-actions .right-info {
+    @apply flex items-center space-x-4 text-sm text-gray-600 dark:text-neutral-400;
+}
+
+/* Pagination Spacing */
+.table-pagination {
+    @apply px-6 py-4 bg-gray-50 dark:bg-neutral-800/50 border-t border-gray-200 dark:border-neutral-700;
+}
+
+/* Priority Indicators */
+.message-row-urgent {
+    @apply border-l-4 border-red-500 bg-red-50 dark:bg-red-900/10;
+}
+
+.message-row-needs-reply {
+    @apply border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-900/10;
+}
+
+.message-row-unread {
+    @apply border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/10;
+}
+
+/* Compact Badge Styles */
+.status-badges {
+    @apply flex flex-col space-y-1;
+}
+
+.status-badges .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+}
+
+/* Action Buttons Spacing */
+.action-buttons {
+    @apply flex items-center space-x-1;
+}
+
+.action-buttons .btn-icon {
+    @apply p-1.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors;
+}
+
+/* Responsive Table Adjustments */
+@media (max-width: 768px) {
+    .admin-table th,
+    .admin-table td {
+        @apply px-3 py-2;
+    }
+    
+    .table-header-actions {
+        @apply px-3 py-3 flex-col space-y-3;
+    }
+    
+    .table-header-actions .left-actions,
+    .table-header-actions .right-info {
+        @apply w-full justify-center;
+    }
+}
+
+/* Fix for cards with tables */
+.card-with-table {
+    @apply bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl overflow-hidden shadow-sm;
+}
+
+.card-with-table .card-header {
+    @apply px-6 py-4 bg-gray-50 dark:bg-neutral-800/50 border-b border-gray-200 dark:border-neutral-700;
+}
+
+.card-with-table .card-body {
+    @apply p-0; /* Remove padding for tables */
+}
+
+.card-with-table .card-footer {
+    @apply px-6 py-4 bg-gray-50 dark:bg-neutral-800/50 border-t border-gray-200 dark:border-neutral-700;
+}
+</style>
 
 </html>

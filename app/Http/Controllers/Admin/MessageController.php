@@ -18,41 +18,88 @@ class MessageController extends Controller
      */
     public function index(Request $request)
     {
+        // Debug: Log the incoming parameters
+        \Log::info('Message filter parameters:', $request->all());
+        
         $query = Message::query()
             ->with(['user', 'attachments', 'repliedBy']) // Eager load relationships
             // Exclude admin-to-client messages from main listing
-            ->excludeAdminMessages()
-            ->when($request->filled('search'), function ($query) use ($request) {
-                $query->search($request->search);
-            })
-            ->when($request->filled('status'), function ($query) use ($request) {
-                switch ($request->status) {
-                    case 'unread':
-                        $query->where('is_read', false);
-                        break;
-                    case 'read':
-                        $query->where('is_read', true);
-                        break;
-                    case 'unreplied':
-                        $query->where('is_replied', false);
-                        break;
-                    case 'replied':
-                        $query->where('is_replied', true);
-                        break;
-                    case 'unread_unreplied':
-                        $query->where('is_read', false)->where('is_replied', false);
-                        break;
-                }
-            })
-            ->when($request->filled('type'), function ($query) use ($request) {
-                $query->where('type', $request->type);
-            })
-            ->when($request->filled('created_from') && $request->filled('created_to'), function ($query) use ($request) {
+            ->excludeAdminMessages();
+            
+        // Debug: Check what types exist in database
+        $allTypes = Message::distinct()->pluck('type')->toArray();
+        \Log::info('All message types in database:', $allTypes);
+        
+        // Debug: Count messages by type
+        foreach($allTypes as $type) {
+            $count = Message::where('type', $type)->count();
+            \Log::info("Type '{$type}': {$count} messages");
+        }
+        
+        // Apply search filter
+        if ($request->filled('search')) {
+            \Log::info('Applying search filter:', ['search' => $request->search]);
+            $query->search($request->search);
+        }
+        
+        // Apply status filter  
+        if ($request->filled('status')) {
+            \Log::info('Applying status filter:', ['status' => $request->status]);
+            switch ($request->status) {
+                case 'unread':
+                    $query->where('is_read', false);
+                    break;
+                case 'read':
+                    $query->where('is_read', true);
+                    break;
+                case 'unreplied':
+                    $query->where('is_replied', false);
+                    break;
+                case 'replied':
+                    $query->where('is_replied', true);
+                    break;
+                case 'unread_unreplied':
+                    $query->where('is_read', false)->where('is_replied', false);
+                    break;
+            }
+        }
+        
+        // Apply type filter
+        if ($request->filled('type')) {
+            \Log::info('Applying type filter:', ['type' => $request->type]);
+            $query->where('type', $request->type);
+        }
+        
+        // Apply date range filter - FIX: Check for both start and end dates properly
+        if ($request->filled('created_from') || $request->filled('created_to')) {
+            \Log::info('Applying date filter:', [
+                'created_from' => $request->created_from,
+                'created_to' => $request->created_to
+            ]);
+            
+            if ($request->filled('created_from') && $request->filled('created_to')) {
+                // Both dates provided
                 $query->whereBetween('created_at', [
                     $request->created_from . ' 00:00:00', 
                     $request->created_to . ' 23:59:59'
                 ]);
-            });
+            } elseif ($request->filled('created_from')) {
+                // Only start date provided
+                $query->where('created_at', '>=', $request->created_from . ' 00:00:00');
+            } elseif ($request->filled('created_to')) {
+                // Only end date provided
+                $query->where('created_at', '<=', $request->created_to . ' 23:59:59');
+            }
+        }
+
+        // Debug: Log the final query before execution
+        $sql = $query->toSql();
+        $bindings = $query->getBindings();
+        \Log::info('Final SQL query:', ['sql' => $sql, 'bindings' => $bindings]);
+        
+        // Debug: Count results before pagination
+        $totalBeforePagination = $query->count();
+        \Log::info('Total results before pagination:', ['count' => $totalBeforePagination]);
 
         // Apply sorting if requested
         if ($request->filled('sort') && $request->filled('direction')) {
@@ -70,6 +117,15 @@ class MessageController extends Controller
         }
 
         $messages = $query->paginate(15)->withQueryString();
+        
+        // Debug: Log pagination results
+        \Log::info('Pagination results:', [
+            'total' => $messages->total(),
+            'current_page' => $messages->currentPage(),
+            'per_page' => $messages->perPage(),
+            'from' => $messages->firstItem(),
+            'to' => $messages->lastItem()
+        ]);
 
         // Get counts for different statuses
         $statusCounts = [
@@ -78,6 +134,9 @@ class MessageController extends Controller
             'unreplied' => Message::excludeAdminMessages()->unreplied()->count(),
             'unread_unreplied' => Message::excludeAdminMessages()->unread()->unreplied()->count(),
         ];
+        
+        // Debug: Log status counts
+        \Log::info('Status counts:', $statusCounts);
 
         // Get unread messages and pending quotations counts for header notifications
         $unreadMessages = Message::excludeAdminMessages()->unread()->count();

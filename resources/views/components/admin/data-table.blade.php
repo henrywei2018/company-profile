@@ -11,12 +11,11 @@
 
 <div class="w-full">
     @if($header)
-    <div class="px-2 py-2 grid gap-3 md:flex md:justify-between md:items-center border-b border-gray-200 dark:border-neutral-700">
+    <div class="px-6 py-3 flex flex-wrap justify-between items-center gap-3 border-b border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800/50">
         {{ $header }}
     </div>
     @endif
     
-    <!-- Fixed: Removed nested overflow containers that caused double scrollbars -->
     <div class="{{ $bordered ? 'border border-gray-200 dark:border-neutral-700 rounded-xl overflow-hidden' : '' }}">
         @if($responsive)
         <div class="overflow-x-auto">
@@ -26,9 +25,9 @@
                 <thead class="bg-gray-50 dark:bg-neutral-800">
                     <tr>
                         @if($checkbox)
-                        <th scope="col" class="ps-6 py-3 text-start">
-                            <div class="flex">
-                                <input id="hs-at-with-checkboxes-main" type="checkbox" class="shrink-0 border-gray-300 rounded-sm text-blue-600 focus:ring-blue-500 checked:border-blue-500 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-800 dark:border-neutral-700 dark:checked:bg-blue-500 dark:checked:border-blue-500 dark:focus:ring-offset-gray-800">
+                        <th scope="col" class="px-6 py-3 text-start w-12">
+                            <div class="flex items-center">
+                                <input id="hs-at-with-checkboxes-main" type="checkbox" class="shrink-0 border-gray-300 rounded text-blue-600 focus:ring-blue-500 checked:border-blue-500 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-800 dark:border-neutral-700 dark:checked:bg-blue-500 dark:checked:border-blue-500 dark:focus:ring-offset-gray-800">
                                 <label for="hs-at-with-checkboxes-main" class="sr-only">Checkbox</label>
                             </div>
                         </th>
@@ -39,7 +38,7 @@
                 </thead>
                 @endif
                 
-                <tbody class="{{ $striped ? 'divide-y divide-gray-200 dark:divide-neutral-700' : '' }}">
+                <tbody class="{{ $striped ? 'divide-y divide-gray-200 dark:divide-neutral-700' : '' }} bg-white dark:bg-neutral-800">
                     {{ $slot }}
                 </tbody>
             </table>
@@ -49,7 +48,7 @@
     </div>
     
     @if($footer)
-    <div class="px-6 py-4 grid gap-3 md:flex md:justify-between md:items-center border-t border-gray-200 dark:border-neutral-700">
+    <div class="px-6 py-4 flex flex-wrap justify-between items-center gap-3 border-t border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800/50">
         {{ $footer }}
     </div>
     @endif
