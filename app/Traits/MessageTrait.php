@@ -2,37 +2,65 @@
 
 namespace App\Traits;
 
-use Illuminate\Support\Str;
+use App\Models\MessageAttachment;
 
 trait MessageTrait
 {
     /**
-     * Get messages from the client.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * Boot the trait.
      */
-    public function scopeFromClient($query)
+    protected static function bootMessageTrait()
     {
-        return $query->where('type', 'client_to_admin');
+        // Clean up attachments when message is deleted
+        static::deleting(function ($message) {
+            $message->attachments()->each(function ($attachment) {
+                $attachment->delete(); // This will trigger the attachment's deleting event
+            });
+        });
     }
 
     /**
-     * Get messages from the admin.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * Get all attachments for this message.
      */
-    public function scopeFromAdmin($query)
+    public function attachments()
     {
-        return $query->where('type', 'admin_to_client');
+        return $this->hasMany(MessageAttachment::class);
     }
 
     /**
-     * Get unread messages.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * Get the user that owns the message (if it's from a registered user).
+     */
+    public function user()
+    {
+        return $this->belongsTo(\App\Models\User::class);
+    }
+
+    /**
+     * Get the client that owns the message (alias for user relationship).
+     */
+    public function client()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'user_id');
+    }
+
+    /**
+     * Get the parent message (for replies).
+     */
+    public function parent()
+    {
+        return $this->belongsTo(static::class, 'parent_id');
+    }
+
+    /**
+     * Get the child messages (replies to this message).
+     */
+    public function replies()
+    {
+        return $this->hasMany(static::class, 'parent_id')->orderBy('created_at');
+    }
+
+    /**
+     * Scope a query to only include unread messages.
      */
     public function scopeUnread($query)
     {
@@ -40,10 +68,7 @@ trait MessageTrait
     }
 
     /**
-     * Get read messages.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * Scope a query to only include read messages.
      */
     public function scopeRead($query)
     {
@@ -51,26 +76,11 @@ trait MessageTrait
     }
 
     /**
-     * Get contact form messages.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopeContactForm($query)
-    {
-        return $query->where('type', 'contact_form');
-    }
-
-    /**
-     * Search messages.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param string $search
-     * @return \Illuminate\Database\Eloquent\Builder
+     * Scope a query to search messages.
      */
     public function scopeSearch($query, $search)
     {
-        return $query->where(function($query) use ($search) {
+        return $query->where(function ($query) use ($search) {
             $query->where('name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
                   ->orWhere('subject', 'like', "%{$search}%")
@@ -79,91 +89,85 @@ trait MessageTrait
     }
 
     /**
-     * Mark the message as read.
-     *
-     * @return $this
-     */
-    public function markAsRead()
-    {
-        $this->update([
-            'is_read' => true,
-            'read_at' => now(),
-        ]);
-
-        return $this;
-    }
-
-    /**
-     * Toggle the read status of the message.
-     *
-     * @return $this
-     */
-    public function toggleReadStatus()
-    {
-        $this->update([
-            'is_read' => !$this->is_read,
-            'read_at' => !$this->is_read ? now() : null,
-        ]);
-
-        return $this;
-    }
-
-    /**
-     * Get the client that owns the message.
-     */
-    public function client()
-    {
-        return $this->belongsTo(\App\Models\User::class, 'client_id');
-    }
-
-    /**
-     * Get the parent message.
-     */
-    public function parent()
-    {
-        return $this->belongsTo(\App\Models\Message::class, 'parent_id');
-    }
-
-    /**
-     * Get the reply messages.
-     */
-    public function replies()
-    {
-        return $this->hasMany(\App\Models\Message::class, 'parent_id');
-    }
-
-    /**
-     * Get the attachments for the message.
-     */
-    public function attachments()
-    {
-        return $this->hasMany(\App\Models\MessageAttachment::class);
-    }
-
-    /**
-     * Get all messages in the same thread.
-     *
-     * @return \Illuminate\Database\Eloquent\Collection
+     * Get thread messages (all messages in the same conversation).
      */
     public function getThreadMessages()
     {
-        $rootId = $this->parent_id ?? $this->id;
+        // If this message has a parent, get the root message
+        $rootMessage = $this->parent_id ? $this->parent : $this;
         
-        // If this is a reply, get the root message
-        if ($this->parent_id) {
-            $rootMessage = $this->parent;
-            while ($rootMessage && $rootMessage->parent_id) {
-                $rootMessage = $rootMessage->parent;
-                $rootId = $rootMessage->id;
-            }
+        // Get all messages in this thread (root + all its replies)
+        return static::where('id', $rootMessage->id)
+                     ->orWhere('parent_id', $rootMessage->id)
+                     ->orderBy('created_at');
+    }
+
+    /**
+     * Get the root message of this thread.
+     */
+    public function getRootMessage()
+    {
+        return $this->parent_id ? $this->parent : $this;
+    }
+
+    /**
+     * Check if this message is a reply.
+     */
+    public function isReply()
+    {
+        return !is_null($this->parent_id);
+    }
+
+    /**
+     * Mark message as read.
+     */
+    public function markAsRead()
+    {
+        if (!$this->is_read) {
+            $this->update([
+                'is_read' => true,
+                'read_at' => now(),
+            ]);
         }
+    }
+
+    /**
+     * Mark message as unread.
+     */
+    public function markAsUnread()
+    {
+        if ($this->is_read) {
+            $this->update([
+                'is_read' => false,
+                'read_at' => null,
+            ]);
+        }
+    }
+
+    /**
+     * Toggle read status.
+     */
+    public function toggleReadStatus()
+    {
+        if ($this->is_read) {
+            $this->markAsUnread();
+        } else {
+            $this->markAsRead();
+        }
+    }
+
+    /**
+     * Save a new message attachment.
+     */
+    public function addAttachment($file)
+    {
+        $path = $file->store('message-attachments', 'public');
         
-        return static::where(function($query) use ($rootId) {
-            $query->where('id', $rootId)
-                  ->orWhere('parent_id', $rootId);
-        })->orWhere(function($query) {
-            $query->where('id', $this->id)
-                  ->orWhere('parent_id', $this->id);
-        })->orderBy('created_at', 'desc')->get();
+        return $this->attachments()->create([
+            'file_path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'file_size' => $file->getSize(),
+            'file_type' => $file->getMimeType(),
+        ]);
     }
 }

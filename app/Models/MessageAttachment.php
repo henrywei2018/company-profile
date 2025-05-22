@@ -19,8 +19,8 @@ class MessageAttachment extends Model
         'message_id',
         'file_path',
         'file_name',
+        'file_type',
         'file_size',
-        'mime_type',
     ];
 
     /**
@@ -58,14 +58,25 @@ class MessageAttachment extends Model
      */
     public function getFileSizeFormattedAttribute()
     {
-        $bytes = $this->file_size;
+        return $this->formatBytes($this->file_size);
+    }
+
+    /**
+     * Format bytes to human readable format.
+     *
+     * @param int $bytes
+     * @param int $precision
+     * @return string
+     */
+    protected function formatBytes($bytes, $precision = 2)
+    {
         $units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
         
         for ($i = 0; $bytes > 1024; $i++) {
             $bytes /= 1024;
         }
         
-        return round($bytes, 2) . ' ' . $units[$i];
+        return round($bytes, $precision) . ' ' . $units[$i];
     }
 
     /**
@@ -77,7 +88,9 @@ class MessageAttachment extends Model
     {
         static::deleting(function ($attachment) {
             // Delete the file from storage when the attachment is deleted
-            Storage::disk('public')->delete($attachment->file_path);
+            if (Storage::disk('public')->exists($attachment->file_path)) {
+                Storage::disk('public')->delete($attachment->file_path);
+            }
         });
     }
 }

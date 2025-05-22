@@ -1,5 +1,4 @@
 <?php
-// Enhanced version of app/Http/Controllers/Admin/MessageController.php
 
 namespace App\Http\Controllers\Admin;
 
@@ -20,11 +19,16 @@ class MessageController extends Controller
     public function index(Request $request)
     {
         $query = Message::query()
+            ->with(['user', 'attachments']) // Eager load relationships
             ->when($request->filled('search'), function ($query) use ($request) {
                 $query->search($request->search);
             })
             ->when($request->filled('read'), function ($query) use ($request) {
-                $query->where('is_read', $request->read === 'read');
+                if ($request->read === 'read') {
+                    $query->where('is_read', true);
+                } elseif ($request->read === 'unread') {
+                    $query->where('is_read', false);
+                }
             })
             ->when($request->filled('type'), function ($query) use ($request) {
                 $query->where('type', $request->type);
@@ -47,7 +51,7 @@ class MessageController extends Controller
 
         // Get unread messages and pending quotations counts for header notifications
         $unreadMessages = Message::unread()->count();
-        $pendingQuotations = \App\Models\Quotation::pending()->count();
+        $pendingQuotations = \App\Models\Quotation::where('status', 'pending')->count();
 
         return view('admin.messages.index', compact('messages', 'unreadMessages', 'pendingQuotations'));
     }
@@ -57,13 +61,25 @@ class MessageController extends Controller
      */
     public function show(Message $message)
     {
+        // Load relationships
+        $message->load(['user', 'attachments', 'parent', 'replies']);
+
         // Mark message as read if not already
         if (!$message->is_read) {
             $message->markAsRead();
         }
 
-        // Get related messages (thread)
-        $relatedMessages = $message->getThreadMessages()->where('id', '!=', $message->id);
+        // Get related messages (thread) - only if parent_id exists in database
+        $relatedMessages = collect();
+        try {
+            $relatedMessages = $message->getThreadMessages()
+                ->where('id', '!=', $message->id)
+                ->with(['attachments'])
+                ->get();
+        } catch (\Exception $e) {
+            // If there's an issue with threading, just get empty collection
+            $relatedMessages = collect();
+        }
 
         // Get other messages from this client/email (limited to 5)
         $clientMessages = Message::where('email', $message->email)
@@ -76,7 +92,7 @@ class MessageController extends Controller
 
         // Get unread messages and pending quotations counts for header notifications
         $unreadMessages = Message::unread()->count();
-        $pendingQuotations = \App\Models\Quotation::pending()->count();
+        $pendingQuotations = \App\Models\Quotation::where('status', 'pending')->count();
 
         return view('admin.messages.show', compact(
             'message', 
@@ -104,9 +120,11 @@ class MessageController extends Controller
      */
     public function destroy(Message $message)
     {
-        // Delete all attachments
+        // Load attachments relationship
+        $message->load('attachments');
+
+        // Delete all attachments (the model will handle file deletion)
         foreach ($message->attachments as $attachment) {
-            Storage::disk('public')->delete($attachment->file_path);
             $attachment->delete();
         }
 
@@ -130,37 +148,37 @@ class MessageController extends Controller
         // Create the reply message
         $reply = Message::create([
             'type' => 'admin_to_client',
-            'name' => auth()->user()->name,
+            'name' => auth()->user()->name ?? 'Admin',
             'email' => config('mail.from.address'),
             'subject' => $request->subject,
             'message' => $request->message,
             'parent_id' => $message->id,
-            'client_id' => $message->client_id,
+            'user_id' => $message->user_id,
             'is_read' => true, // Admin replies are marked as read by default
             'read_at' => now(),
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
         ]);
 
         // Handle attachments
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
-                $reply->addAttachment($file);
+                if ($file->isValid()) {
+                    $reply->addAttachment($file);
+                }
             }
         }
 
         // Send notification to the client if it's a registered user
-        if ($message->client) {
-            $message->client->notify(new MessageReplyNotification($reply));
-        } else {
-            // For contact form messages, send an email directly
-            try {
+        try {
+            if ($message->user) {
+                $message->user->notify(new MessageReplyNotification($reply));
+            } else {
+                // For contact form messages, send an email directly
                 Notification::route('mail', $message->email)
                     ->notify(new MessageReplyNotification($reply));
-            } catch (\Exception $e) {
-                // Log the error but don't stop the process
-                \Log::error('Failed to send email notification: ' . $e->getMessage());
             }
+        } catch (\Exception $e) {
+            // Log the error but don't stop the process
+            \Log::error('Failed to send email notification: ' . $e->getMessage());
         }
 
         return redirect()->route('admin.messages.show', $reply)
@@ -190,16 +208,25 @@ class MessageController extends Controller
     public function destroyMultiple(Request $request)
     {
         $request->validate([
-            'ids' => 'required',
+            'ids' => 'required|string',
         ]);
 
         $ids = explode(',', $request->ids);
+        $ids = array_filter($ids); // Remove empty values
         
-        // Delete attachments for these messages first
-        $attachments = MessageAttachment::whereIn('message_id', $ids)->get();
-        foreach ($attachments as $attachment) {
-            Storage::disk('public')->delete($attachment->file_path);
-            $attachment->delete();
+        if (empty($ids)) {
+            return redirect()->back()
+                ->with('error', 'No messages selected for deletion.');
+        }
+
+        // Get messages with their attachments
+        $messages = Message::whereIn('id', $ids)->with('attachments')->get();
+        
+        // Delete attachments first
+        foreach ($messages as $message) {
+            foreach ($message->attachments as $attachment) {
+                $attachment->delete(); // This will handle file deletion via model event
+            }
         }
         
         // Delete the messages
