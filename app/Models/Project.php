@@ -21,34 +21,18 @@ class Project extends Model
         'title',
         'slug',
         'description',
-        'short_description',
         'client_id',
         'quotation_id', // Added this field
         'project_category_id',
         'service_id',
         'status',
-        'priority',
         'start_date',
         'end_date',
-        'estimated_completion_date',
-        'actual_completion_date',
-        'budget',
-        'actual_cost',
-        'progress_percentage',
         'featured',
-        'is_active',
         'location',
         'challenge',
         'solution',
         'results',
-        'technologies_used',
-        'team_members',
-        'client_feedback',
-        'lessons_learned',
-        'meta_title',
-        'meta_description',
-        'meta_keywords',
-        'display_order',
     ];
 
     /**
@@ -59,18 +43,9 @@ class Project extends Model
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
-        'estimated_completion_date' => 'date',
-        'actual_completion_date' => 'date',
-        'budget' => 'decimal:2',
-        'actual_cost' => 'decimal:2',
-        'progress_percentage' => 'integer',
         'featured' => 'boolean',
-        'is_active' => 'boolean',
-        'technologies_used' => 'array',
-        'team_members' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
     ];
 
     /**
@@ -85,7 +60,6 @@ class Project extends Model
         'service_id',
         'client_id',
         'featured',
-        'is_active',
         'search',
     ];
 
@@ -221,7 +195,7 @@ class Project extends Model
      */
     public function images()
     {
-        return $this->morphMany(Image::class, 'imageable');
+        return $this->morphMany(ProjectImage::class, 'imageable');
     }
 
     /**
@@ -238,14 +212,6 @@ class Project extends Model
     public function testimonials()
     {
         return $this->hasMany(Testimonial::class);
-    }
-
-    /**
-     * Get the project updates/milestones.
-     */
-    public function updates()
-    {
-        return $this->hasMany(ProjectUpdate::class)->orderBy('created_at', 'desc');
     }
 
     /**

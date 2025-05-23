@@ -58,6 +58,9 @@ class Quotation extends Model
         'last_communication_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'project_created' => 'boolean',
+        'project_created_at' => 'datetime',
+        
     ];
     
     /**
@@ -72,6 +75,8 @@ class Quotation extends Model
         'client_id',
         'source',
         'search',
+        'project_created',
+        'project_created_at',
     ];
     
     /**
@@ -364,7 +369,11 @@ class Quotation extends Model
      */
     public function hasProject(): bool
     {
-        return $this->project()->exists();
+        return $this->project_created || $this->project()->exists();
+    }
+    public function canCreateProject(): bool
+    {
+        return $this->status === 'approved' && !$this->hasProject();
     }
     
     /**
