@@ -1,144 +1,423 @@
-<x-layouts.admin title="Quotation Details">
-    <div class="space-y-6">
-        <!-- Breadcrumb -->
-        <x-admin.breadcrumb :items="[
-            'Quotations' => route('admin.quotations.index'),
-            'Quotation #' . $quotation->id => null
-        ]" />
-
-        <!-- Header -->
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-                    Quotation Request #{{ $quotation->id }}
-                </h1>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Received {{ $quotation->created_at->format('F j, Y \a\t g:i A') }}
-                    @if($quotation->created_at->diffInDays() <= 7)
-                        <span class="text-amber-600">({{ $quotation->created_at->diffForHumans() }})</span>
-                    @endif
-                </p>
-            </div>
-            
-            <div class="mt-4 lg:mt-0 flex items-center space-x-3">
-                @if($quotation->status === 'approved' && !$quotation->client_approved)
-                    <x-admin.button href="{{ route('admin.projects.create', ['from_quotation' => $quotation->id]) }}" color="success">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                        Create Project
-                    </x-admin.button>
-                @endif
-                
-                <x-admin.button href="{{ route('admin.quotations.edit', $quotation) }}" color="light">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Edit Quotation
-                </x-admin.button>
-                
-                <x-admin.dropdown>
-                    <x-slot name="trigger">
-                        <x-admin.button color="light">
-                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                            </svg>
-                            More Actions
-                        </x-admin.button>
-                    </x-slot>
-                    
-                    <x-admin.dropdown-item href="{{ route('admin.quotations.duplicate', $quotation) }}">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                        Duplicate
-                    </x-admin.dropdown-item>
-                    
-                    <x-admin.dropdown-item 
-                        type="form"
-                        action="{{ route('admin.quotations.destroy', $quotation) }}"
-                        method="DELETE"
-                        confirm="true"
-                        confirmMessage="Are you sure you want to delete this quotation?"
-                    >
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Delete
-                    </x-admin.dropdown-item>
-                </x-admin.dropdown>
-            </div>
+<!-- resources/views/admin/quotations/show.blade.php -->
+<x-layouts.admin title="Quotation Details" :unreadMessages="$unreadMessages" :pendingQuotations="$pendingQuotations">
+    <!-- Header -->
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
+        <div class="mb-4 lg:mb-0">
+            <x-admin.breadcrumb :items="[
+                'Quotations' => route('admin.quotations.index'),
+                'Quotation #' . $quotation->id => '#'
+            ]" />
         </div>
+        
+        <div class="flex flex-wrap gap-3">
+            @if($quotation->status === 'approved' && !$quotation->hasProject())
+                <x-admin.button href="{{ route('admin.projects.create', ['from_quotation' => $quotation->id]) }}" color="success" size="sm">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Create Project
+                </x-admin.button>
+            @endif
+            
+            <x-admin.button href="{{ route('admin.quotations.edit', $quotation) }}" color="primary" size="sm">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit Quotation
+            </x-admin.button>
+            
+            <x-admin.button href="{{ route('admin.quotations.duplicate', $quotation) }}" color="light" size="sm">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Duplicate
+            </x-admin.button>
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        <!-- Main Content -->
+        <div class="xl:col-span-3 space-y-6">
+            <!-- Header Information Card -->
+            <x-admin.card>
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-neutral-700">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                                Quotation Request #{{ $quotation->id }}
+                            </h1>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-neutral-400">
+                                Received {{ $quotation->created_at->format('F j, Y \a\t g:i A') }}
+                                @if($quotation->daysSinceCreation <= 7)
+                                    <span class="text-blue-600 dark:text-blue-400">({{ $quotation->created_at->diffForHumans() }})</span>
+                                @endif
+                            </p>
+                        </div>
+                        
+                        <div class="flex flex-col items-end space-y-2">
+                            <x-admin.badge 
+                                :type="match($quotation->status) {
+                                    'pending' => 'warning',
+                                    'reviewed' => 'info',
+                                    'approved' => 'success',
+                                    'rejected' => 'danger',
+                                    default => 'default'
+                                }"
+                                size="lg"
+                            >
+                                {{ $quotation->formattedStatus }}
+                            </x-admin.badge>
+                            
+                            @if($quotation->priority !== 'normal')
+                                <x-admin.badge 
+                                    :type="match($quotation->priority) {
+                                        'low' => 'gray',
+                                        'high' => 'warning',
+                                        'urgent' => 'danger',
+                                        default => 'info'
+                                    }"
+                                    size="sm"
+                                >
+                                    {{ $quotation->formattedPriority }} Priority
+                                </x-admin.badge>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">Project Type</h3>
+                            <p class="text-base font-semibold text-gray-900 dark:text-white">
+                                {{ $quotation->project_type ?: 'General Inquiry' }}
+                            </p>
+                        </div>
+                        
+                        @if($quotation->service)
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">Service</h3>
+                                <p class="text-base font-semibold text-gray-900 dark:text-white">
+                                    {{ $quotation->service->title }}
+                                </p>
+                            </div>
+                        @endif
+                        
+                        @if($quotation->budget_range)
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">Budget Range</h3>
+                                <p class="text-base font-semibold text-gray-900 dark:text-white">
+                                    {{ $quotation->budget_range }}
+                                </p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </x-admin.card>
 
-        <!-- Status and Quick Actions -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Status Card -->
-            <x-admin.card title="Status">
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Current Status</span>
-                        <x-admin.badge 
-                            :type="match($quotation->status) {
-                                'pending' => 'warning',
-                                'reviewed' => 'info',
-                                'approved' => 'success',
-                                'rejected' => 'danger',
-                                default => 'default'
-                            }"
-                        >
-                            {{ ucfirst($quotation->status) }}
-                        </x-admin.badge>
+            <!-- Client Information -->
+            <x-admin.card title="Client Information">
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-700 dark:text-neutral-300">Full Name</h3>
+                                <p class="mt-1 text-base text-gray-900 dark:text-white">{{ $quotation->name }}</p>
+                            </div>
+                            
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-700 dark:text-neutral-300">Email Address</h3>
+                                <p class="mt-1">
+                                    <a href="mailto:{{ $quotation->email }}" 
+                                       class="text-base text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                                        {{ $quotation->email }}
+                                    </a>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-700 dark:text-neutral-300">Phone Number</h3>
+                                <p class="mt-1 text-base text-gray-900 dark:text-white">
+                                    @if($quotation->phone)
+                                        <a href="tel:{{ $quotation->phone }}" 
+                                           class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                                            {{ $quotation->phone }}
+                                        </a>
+                                    @else
+                                        <span class="text-gray-500 dark:text-neutral-500">Not provided</span>
+                                    @endif
+                                </p>
+                            </div>
+                            
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-700 dark:text-neutral-300">Company</h3>
+                                <p class="mt-1 text-base text-gray-900 dark:text-white">
+                                    {{ $quotation->company ?: 'Not provided' }}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                     
-                    @if($quotation->client_approved !== null)
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Client Response</span>
-                            <x-admin.badge :type="$quotation->client_approved ? 'success' : 'danger'">
-                                {{ $quotation->client_approved ? 'Approved' : 'Declined' }}
-                            </x-admin.badge>
-                        </div>
-                    @endif
-                    
-                    <!-- Quick Status Update -->
-                    @if($quotation->status === 'pending')
-                        <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-                            <form action="{{ route('admin.quotations.update-status', $quotation) }}" method="POST" class="space-y-3">
-                                @csrf
-                                <div class="flex space-x-2">
-                                    <button type="submit" name="status" value="approved" class="flex-1 bg-green-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-green-700">
-                                        Approve
-                                    </button>
-                                    <button type="submit" name="status" value="rejected" class="flex-1 bg-red-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-red-700">
-                                        Reject
-                                    </button>
+                    @if($quotation->client)
+                        <div class="mt-6 pt-6 border-t border-gray-200 dark:border-neutral-700">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-sm font-medium text-gray-700 dark:text-neutral-300">Linked Client Account</h3>
+                                    <p class="mt-1 text-base text-gray-900 dark:text-white">
+                                        {{ $quotation->client->name }}
+                                        <x-admin.badge type="success" size="sm" class="ml-2">Verified</x-admin.badge>
+                                    </p>
                                 </div>
-                            </form>
+                                <x-admin.button 
+                                    href="{{ route('admin.users.show', $quotation->client) }}" 
+                                    color="light" 
+                                    size="sm"
+                                >
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    View Profile
+                                </x-admin.button>
+                            </div>
                         </div>
                     @endif
                 </div>
             </x-admin.card>
-            
-            <!-- Timeline -->
-            <div class="lg:col-span-2">
-                <x-admin.card title="Timeline">
+
+            <!-- Project Requirements -->
+            <x-admin.card title="Project Requirements">
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        @if($quotation->location)
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-700 dark:text-neutral-300">Location</h3>
+                                <p class="mt-1 text-base text-gray-900 dark:text-white">{{ $quotation->location }}</p>
+                            </div>
+                        @endif
+                        
+                        @if($quotation->start_date)
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-700 dark:text-neutral-300">Desired Start Date</h3>
+                                <p class="mt-1 text-base text-gray-900 dark:text-white">
+                                    {{ $quotation->start_date->format('F j, Y') }}
+                                </p>
+                            </div>
+                        @endif
+                    </div>
+                    
+                    @if($quotation->requirements)
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2">Detailed Requirements</h3>
+                            <div class="prose prose-sm max-w-none dark:prose-invert">
+                                <div class="bg-gray-50 dark:bg-neutral-800/50 rounded-lg p-4 text-gray-900 dark:text-white">
+                                    {!! nl2br(e($quotation->requirements)) !!}
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </x-admin.card>
+
+            <!-- Admin Response Section -->
+            <x-admin.card title="Admin Response & Estimates">
+                <form action="{{ route('admin.quotations.update', $quotation) }}" method="POST" class="p-6">
+                    @csrf
+                    @method('PUT')
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <x-admin.input 
+                            label="Estimated Cost" 
+                            name="estimated_cost" 
+                            :value="$quotation->estimated_cost"
+                            placeholder="e.g., $5,000 - $7,500"
+                        />
+                        
+                        <x-admin.input 
+                            label="Estimated Timeline" 
+                            name="estimated_timeline" 
+                            :value="$quotation->estimated_timeline"
+                            placeholder="e.g., 6-8 weeks"
+                        />
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <x-admin.textarea 
+                            label="Internal Notes" 
+                            name="internal_notes" 
+                            :value="$quotation->internal_notes"
+                            rows="4"
+                            helper="These notes are for internal use only"
+                        />
+                        
+                        <x-admin.textarea 
+                            label="Client Notes" 
+                            name="admin_notes" 
+                            :value="$quotation->admin_notes"
+                            rows="4"
+                            helper="These notes may be shared with the client"
+                        />
+                    </div>
+                    
+                    <div class="flex justify-end">
+                        <x-admin.button type="submit" color="primary">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            Update Information
+                        </x-admin.button>
+                    </div>
+                </form>
+            </x-admin.card>
+
+            <!-- Send Email Response -->
+            <x-admin.card title="Send Email Response">
+                <form action="{{ route('admin.quotations.send-response', $quotation) }}" method="POST" class="p-6" x-data="{ showPreview: false }">
+                    @csrf
+                    
+                    <div class="space-y-6">
+                        <x-admin.input 
+                            label="Email Subject" 
+                            name="email_subject" 
+                            :value="old('email_subject', 'Response to Your Quotation Request - ' . $quotation->project_type)"
+                            required
+                        />
+                        
+                        <x-admin.textarea 
+                            label="Email Message" 
+                            name="email_message" 
+                            rows="8"
+                            :value="old('email_message', 'Dear ' . $quotation->name . ',\n\nThank you for your quotation request regarding ' . $quotation->project_type . '. We have reviewed your requirements and are pleased to provide you with the following information...\n\nPlease let us know if you have any questions or if you would like to proceed.\n\nBest regards,\nCV Usaha Prima Lestari Team')"
+                            required
+                        />
+                        
+                        <div class="flex items-center">
+                            <input type="checkbox" 
+                                   name="include_quotation" 
+                                   id="include_quotation"
+                                   checked
+                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <label for="include_quotation" class="ml-2 block text-sm text-gray-700 dark:text-neutral-300">
+                                Include quotation details in email
+                            </label>
+                        </div>
+                        
+                        <div class="flex justify-between">
+                            <x-admin.button type="button" color="light" @click="showPreview = !showPreview">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Preview Email
+                            </x-admin.button>
+                            
+                            <x-admin.button type="submit" color="primary">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                Send Email Response
+                            </x-admin.button>
+                        </div>
+                    </div>
+                </form>
+            </x-admin.card>
+
+            <!-- Attachments -->
+            @if($quotation->attachments && $quotation->attachments->count() > 0)
+                <x-admin.card title="Attachments ({{ $quotation->attachments->count() }})">
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            @foreach($quotation->attachments as $attachment)
+                                @php
+                                    $iconClass = get_file_icon_class($attachment->file_name);
+                                @endphp
+                                
+                                <div class="flex items-center p-4 bg-gray-50 dark:bg-neutral-800/50 rounded-lg border border-gray-200 dark:border-neutral-700 hover:shadow-md transition-all duration-200">
+                                    <div class="flex-shrink-0 mr-3">
+                                        <div class="w-10 h-10 rounded-lg {{ $iconClass }} flex items-center justify-center">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                            {{ $attachment->file_name }}
+                                        </p>
+                                        <p class="text-xs text-gray-500 dark:text-neutral-500">
+                                            {{ human_filesize($attachment->file_size) }}
+                                        </p>
+                                    </div>
+                                    <div class="flex-shrink-0 ml-2">
+                                        <a href="{{ route('admin.quotations.attachments.download', ['quotation' => $quotation->id, 'attachment' => $attachment->id]) }}" 
+                                           class="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </x-admin.card>
+            @endif
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="xl:col-span-1 space-y-6">
+            <!-- Quick Actions -->
+            <x-admin.card title="Quick Actions">
+                <div class="p-6 space-y-3">
+                    @if($quotation->status === 'pending')
+                        <form action="{{ route('admin.quotations.update-status', $quotation) }}" method="POST" class="space-y-3">
+                            @csrf
+                            <button type="submit" name="status" value="approved" 
+                                    class="w-full flex items-center justify-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Approve Quotation
+                            </button>
+                            
+                            <button type="submit" name="status" value="rejected"
+                                    class="w-full flex items-center justify-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Reject Quotation
+                            </button>
+                        </form>
+                    @endif
+                    
+                    <a href="mailto:{{ $quotation->email }}?subject=RE: {{ urlencode($quotation->project_type) }}" 
+                       class="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Send Email
+                    </a>
+                </div>
+            </x-admin.card>
+
+            <!-- Status & Timeline -->
+            <x-admin.card title="Status & Timeline">
+                <div class="p-6">
                     <div class="flow-root">
                         <ul class="-mb-8">
                             <li>
                                 <div class="relative pb-8">
-                                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-600" aria-hidden="true"></span>
+                                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-neutral-600"></span>
                                     <div class="relative flex space-x-3">
-                                        <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white dark:ring-gray-800">
+                                        <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
                                             <svg class="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                                             </svg>
                                         </div>
                                         <div class="min-w-0 flex-1 pt-1.5">
                                             <div>
-                                                <p class="text-sm text-gray-900 dark:text-white">Quotation received</p>
-                                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $quotation->created_at->format('M j, Y g:i A') }}</p>
-                                            </div>
-                                            <div class="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                                                <p>From {{ $quotation->name }} ({{ $quotation->email }})</p>
+                                                <p class="text-sm font-medium text-gray-900 dark:text-white">Received</p>
+                                                <p class="text-xs text-gray-500 dark:text-neutral-500">{{ $quotation->created_at->format('M j, Y g:i A') }}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -148,17 +427,17 @@
                             @if($quotation->reviewed_at)
                                 <li>
                                     <div class="relative pb-8">
-                                        <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-600" aria-hidden="true"></span>
+                                        <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-neutral-600"></span>
                                         <div class="relative flex space-x-3">
-                                            <div class="h-8 w-8 rounded-full bg-yellow-500 flex items-center justify-center ring-8 ring-white dark:ring-gray-800">
+                                            <div class="h-8 w-8 rounded-full bg-yellow-500 flex items-center justify-center">
                                                 <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 </svg>
                                             </div>
                                             <div class="min-w-0 flex-1 pt-1.5">
                                                 <div>
-                                                    <p class="text-sm text-gray-900 dark:text-white">Quotation reviewed</p>
-                                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $quotation->reviewed_at->format('M j, Y g:i A') }}</p>
+                                                    <p class="text-sm font-medium text-gray-900 dark:text-white">Reviewed</p>
+                                                    <p class="text-xs text-gray-500 dark:text-neutral-500">{{ $quotation->reviewed_at->format('M j, Y g:i A') }}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -170,15 +449,15 @@
                                 <li>
                                     <div class="relative">
                                         <div class="relative flex space-x-3">
-                                            <div class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center ring-8 ring-white dark:ring-gray-800">
+                                            <div class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center">
                                                 <svg class="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                                                 </svg>
                                             </div>
                                             <div class="min-w-0 flex-1 pt-1.5">
                                                 <div>
-                                                    <p class="text-sm text-gray-900 dark:text-white">Quotation approved</p>
-                                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $quotation->approved_at->format('M j, Y g:i A') }}</p>
+                                                    <p class="text-sm font-medium text-gray-900 dark:text-white">Approved</p>
+                                                    <p class="text-xs text-gray-500 dark:text-neutral-500">{{ $quotation->approved_at->format('M j, Y g:i A') }}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -187,225 +466,102 @@
                             @endif
                         </ul>
                     </div>
-                </x-admin.card>
-            </div>
-        </div>
-
-        <!-- Main Content -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Client Information -->
-            <x-admin.card title="Client Information">
-                <div class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $quotation->name }}</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white">
-                                <a href="mailto:{{ $quotation->email }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400">
-                                    {{ $quotation->email }}
-                                </a>
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white">
-                                @if($quotation->phone)
-                                    <a href="tel:{{ $quotation->phone }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400">
-                                        {{ $quotation->phone }}
-                                    </a>
-                                @else
-                                    <span class="text-gray-500 dark:text-gray-400">Not provided</span>
-                                @endif
-                            </p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Company</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white">
-                                {{ $quotation->company ?: 'Not provided' }}
-                            </p>
-                        </div>
-                    </div>
-                    
-                    @if($quotation->client_id)
-                        <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Registered Client</label>
-                            <p class="mt-1">
-                                <a href="{{ route('admin.users.show', $quotation->client) }}" class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
-                                    View Client Profile
-                                </a>
-                            </p>
-                        </div>
-                    @endif
                 </div>
             </x-admin.card>
-            
-            <!-- Project Details -->
-            <x-admin.card title="Project Details">
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Type</label>
-                        <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $quotation->project_type ?: 'General Inquiry' }}</p>
-                    </div>
-                    
-                    @if($quotation->service)
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Service</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $quotation->service->title }}</p>
+
+            <!-- Client Response -->
+            @if($quotation->client_approved !== null)
+                <x-admin.card title="Client Response">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <x-admin.badge :type="$quotation->client_approved ? 'success' : 'danger'" size="lg">
+                                {{ $quotation->client_approved ? 'Approved' : 'Declined' }}
+                            </x-admin.badge>
+                            
+                            @if($quotation->client_approved_at)
+                                <span class="text-xs text-gray-500 dark:text-neutral-500">
+                                    {{ $quotation->client_approved_at->format('M j, Y g:i A') }}
+                                </span>
+                            @endif
                         </div>
-                    @endif
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Location</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $quotation->location ?: 'Not specified' }}</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Budget Range</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $quotation->budget_range ?: 'Not specified' }}</p>
-                        </div>
-                    </div>
-                    
-                    @if($quotation->start_date)
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Desired Start Date</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $quotation->start_date->format('F j, Y') }}</p>
-                        </div>
-                    @endif
-                    
-                    @if($quotation->requirements)
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Requirements</label>
-                            <div class="mt-1 text-sm text-gray-900 dark:text-white prose prose-sm max-w-none">
-                                {!! nl2br(e($quotation->requirements)) !!}
+                        
+                        @if(!$quotation->client_approved && $quotation->client_decline_reason)
+                            <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                                <h4 class="text-sm font-medium text-red-800 dark:text-red-400 mb-2">Decline Reason</h4>
+                                <p class="text-sm text-red-700 dark:text-red-300">{{ $quotation->client_decline_reason }}</p>
                             </div>
+                        @endif
+                    </div>
+                </x-admin.card>
+            @endif
+
+            <!-- Related Projects -->
+            @if($quotation->project)
+                <x-admin.card title="Related Project">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $quotation->project->title }}</p>
+                                <p class="text-xs text-gray-500 dark:text-neutral-500">Created {{ $quotation->project->created_at->format('M j, Y') }}</p>
+                            </div>
+                            <x-admin.button href="{{ route('admin.projects.show', $quotation->project) }}" color="light" size="sm">
+                                View Project
+                            </x-admin.button>
+                        </div>
+                    </div>
+                </x-admin.card>
+            @endif
+
+            <!-- Statistics -->
+            <x-admin.card title="Statistics">
+                <div class="p-6 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-700 dark:text-neutral-300">Days Since Received</span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ $quotation->daysSinceCreation }}</span>
+                    </div>
+                    
+                    @if($quotation->responseTime)
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-700 dark:text-neutral-300">Response Time</span>
+                            <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ $quotation->responseTime }} days</span>
+                        </div>
+                    @endif
+                    
+                    @if($quotation->approvalTime)
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-700 dark:text-neutral-300">Approval Time</span>
+                            <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ $quotation->approvalTime }} days</span>
+                        </div>
+                    @endif
+                    
+                    @if($quotation->source)
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-700 dark:text-neutral-300">Source</span>
+                            <x-admin.badge type="info" size="sm">{{ ucfirst(str_replace('_', ' ', $quotation->source)) }}</x-admin.badge>
                         </div>
                     @endif
                 </div>
             </x-admin.card>
         </div>
+    </div>
 
-        <!-- Admin Response Section -->
-        <x-admin.card title="Admin Response & Notes">
-            <form action="{{ route('admin.quotations.update', $quotation) }}" method="POST" class="space-y-6">
-                @csrf
-                @method('PUT')
-                
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div>
-                        <x-admin.textarea 
-                            label="Internal Notes" 
-                            name="internal_notes" 
-                            :value="$quotation->internal_notes"
-                            rows="4"
-                            helper="These notes are for internal use only and will not be visible to the client."
-                        />
-                    </div>
-                    
-                    <div>
-                        <x-admin.textarea 
-                            label="Admin Notes" 
-                            name="admin_notes" 
-                            :value="$quotation->admin_notes"
-                            rows="4"
-                            helper="These notes may be included in client communications."
-                        />
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div>
-                        <x-admin.input 
-                            label="Estimated Cost" 
-                            name="estimated_cost" 
-                            :value="$quotation->estimated_cost"
-                            placeholder="e.g., $2,500 - $3,500"
-                        />
-                    </div>
-                    
-                    <div>
-                        <x-admin.input 
-                            label="Estimated Timeline" 
-                            name="estimated_timeline" 
-                            :value="$quotation->estimated_timeline"
-                            placeholder="e.g., 4-6 weeks"
-                        />
-                    </div>
-                </div>
-                
-                <div class="flex justify-end">
-                    <x-admin.button type="submit">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                        Update Information
-                    </x-admin.button>
-                </div>
-            </form>
-        </x-admin.card>
-
-        <!-- Send Email Response -->
-        <x-admin.card title="Send Email Response">
-            <form action="{{ route('admin.quotations.send-response', $quotation) }}" method="POST" class="space-y-6">
-                @csrf
-                
-                <x-admin.input 
-                    label="Email Subject" 
-                    name="email_subject" 
-                    :value="old('email_subject', 'Response to Your Quotation Request - ' . $quotation->project_type)"
-                    required
-                />
-                
-                <x-admin.textarea 
-                    label="Email Message" 
-                    name="email_message" 
-                    rows="8"
-                    :value="old('email_message', 'Dear ' . $quotation->name . ',\n\nThank you for your quotation request regarding ' . $quotation->project_type . '. We have reviewed your requirements and are pleased to provide you with the following information...\n\nPlease let us know if you have any questions or if you would like to proceed.\n\nBest regards,\nCV Usaha Prima Lestari Team')"
-                    required
-                />
-                
-                <x-admin.checkbox 
-                    label="Include quotation details in email" 
-                    name="include_quotation" 
-                    :checked="true"
-                    helper="This will include the project details, estimated cost, and timeline in the email."
-                />
-                
-                <div class="flex justify-end">
-                    <x-admin.button type="submit">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        Send Email Response
-                    </x-admin.button>
-                </div>
-            </form>
-        </x-admin.card>
-
-        <!-- Related Information -->
-        @if($relatedQuotations && $relatedQuotations->count() > 0)
+    <!-- Related Quotations -->
+    @if(isset($relatedQuotations) && $relatedQuotations->count() > 0)
+        <div class="mt-8">
             <x-admin.card title="Other Quotations from This Client">
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead class="bg-gray-50 dark:bg-gray-800">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-neutral-700">
+                        <thead class="bg-gray-50 dark:bg-neutral-800">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Project Type</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Project Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        <tbody class="bg-white dark:bg-neutral-800 divide-y divide-gray-200 dark:divide-neutral-700">
                             @foreach($relatedQuotations as $related)
-                                <tr>
+                                <tr class="hover:bg-gray-50 dark:hover:bg-neutral-700">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                         {{ $related->project_type ?: 'General Inquiry' }}
                                     </td>
@@ -413,21 +569,23 @@
                                         <x-admin.badge 
                                             :type="match($related->status) {
                                                 'pending' => 'warning',
+                                                'reviewed' => 'info',
                                                 'approved' => 'success',
                                                 'rejected' => 'danger',
                                                 default => 'default'
                                             }"
+                                            size="sm"
                                         >
                                             {{ ucfirst($related->status) }}
                                         </x-admin.badge>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-neutral-400">
                                         {{ $related->created_at->format('M j, Y') }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <a href="{{ route('admin.quotations.show', $related) }}" class="text-blue-600 hover:text-blue-900 dark:text-blue-400">
+                                        <x-admin.button href="{{ route('admin.quotations.show', $related) }}" color="light" size="sm">
                                             View
-                                        </a>
+                                        </x-admin.button>
                                     </td>
                                 </tr>
                             @endforeach
@@ -435,6 +593,6 @@
                     </table>
                 </div>
             </x-admin.card>
-        @endif
-    </div>
+        </div>
+    @endif
 </x-layouts.admin>
