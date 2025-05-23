@@ -23,7 +23,7 @@
         </div>
 
         <div class="flex-shrink-0 rounded-md p-3 {{ $iconBg }}">
-            <svg class="h-6 w-6 {{ $iconColor }}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <svg class="h-5 w-5 {{ $iconColor }}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 {!! $icon !!}
             </svg>
         </div>

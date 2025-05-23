@@ -1,5 +1,5 @@
 <?php
-// File: app/Models/Attachment.php
+// File: app/Models/QuotationAttachment.php
 
 namespace App\Models;
 
@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
-class Attachment extends Model
+class QuotationAttachment extends Model
 {
     use HasFactory;
 
@@ -17,20 +17,11 @@ class Attachment extends Model
      * @var array
      */
     protected $fillable = [
-        'attachable_id',
-        'attachable_type',
-        'file_name',
+        'quotation_id',
         'file_path',
+        'file_name',
         'file_type',
         'file_size',
-        'original_name',
-        'disk',
-        'metadata',
-        'uploaded_by',
-        'category',
-        'description',
-        'is_public',
-        'is_active',
     ];
 
     /**
@@ -39,50 +30,15 @@ class Attachment extends Model
      * @var array
      */
     protected $casts = [
-        'metadata' => 'array',
-        'is_public' => 'boolean',
-        'is_active' => 'boolean',
         'file_size' => 'integer',
     ];
 
     /**
-     * Get the parent attachable model (quotation, message, etc.).
+     * Get the quotation that owns the attachment.
      */
-    public function attachable()
+    public function quotation()
     {
-        return $this->morphTo();
-    }
-
-    /**
-     * Get the user who uploaded this attachment.
-     */
-    public function uploadedBy()
-    {
-        return $this->belongsTo(User::class, 'uploaded_by');
-    }
-
-    /**
-     * Scope for active attachments.
-     */
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
-    }
-
-    /**
-     * Scope for public attachments.
-     */
-    public function scopePublic($query)
-    {
-        return $query->where('is_public', true);
-    }
-
-    /**
-     * Scope for specific category.
-     */
-    public function scopeCategory($query, $category)
-    {
-        return $query->where('category', $category);
+        return $this->belongsTo(Quotation::class);
     }
 
     /**
@@ -90,11 +46,7 @@ class Attachment extends Model
      */
     public function getUrlAttribute()
     {
-        if ($this->disk === 'public') {
-            return Storage::disk('public')->url($this->file_path);
-        }
-        
-        return Storage::disk($this->disk)->url($this->file_path);
+        return Storage::disk('public')->url($this->file_path);
     }
 
     /**
@@ -102,7 +54,7 @@ class Attachment extends Model
      */
     public function getFullPathAttribute()
     {
-        return Storage::disk($this->disk)->path($this->file_path);
+        return Storage::disk('public')->path($this->file_path);
     }
 
     /**
@@ -110,7 +62,7 @@ class Attachment extends Model
      */
     public function exists()
     {
-        return Storage::disk($this->disk)->exists($this->file_path);
+        return Storage::disk('public')->exists($this->file_path);
     }
 
     /**
@@ -183,7 +135,7 @@ class Attachment extends Model
         static::deleting(function ($attachment) {
             // Delete the actual file from storage
             if ($attachment->exists()) {
-                Storage::disk($attachment->disk)->delete($attachment->file_path);
+                Storage::disk('public')->delete($attachment->file_path);
             }
         });
     }
@@ -205,39 +157,22 @@ class Attachment extends Model
     /**
      * Create attachment from uploaded file.
      */
-    public static function createFromUploadedFile($file, $attachable, $category = null, $description = null)
+    public static function createFromUploadedFile($file, $quotation)
     {
         // Generate unique filename
         $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
         
-        // Determine storage path based on attachable type
-        $folder = match(class_basename($attachable)) {
-            'Quotation' => 'quotation_attachments',
-            'Message' => 'message_attachments',
-            'Project' => 'project_attachments',
-            default => 'attachments'
-        };
-        
-        $path = $folder . '/' . $attachable->id;
-        
         // Store the file
+        $path = 'quotation_attachments/' . $quotation->id;
         $filePath = $file->storeAs($path, $filename, 'public');
         
         // Create attachment record
         return self::create([
-            'attachable_id' => $attachable->id,
-            'attachable_type' => get_class($attachable),
-            'file_name' => $filename,
+            'quotation_id' => $quotation->id,
             'file_path' => $filePath,
+            'file_name' => $file->getClientOriginalName(),
             'file_type' => $file->getMimeType(),
             'file_size' => $file->getSize(),
-            'original_name' => $file->getClientOriginalName(),
-            'disk' => 'public',
-            'uploaded_by' => auth()->id(),
-            'category' => $category,
-            'description' => $description,
-            'is_public' => false,
-            'is_active' => true,
         ]);
     }
 }

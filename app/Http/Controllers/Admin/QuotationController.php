@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Quotation;
+use App\Models\QuotationAttachment;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\Project;
@@ -26,7 +27,7 @@ class QuotationController extends Controller
     }
 
     /**
-     * Display a listing of quotations with enhanced filtering
+     * Display a listing of quotations with enhanced filtering (following message management approach)
      */
     public function index(Request $request)
     {
@@ -36,6 +37,12 @@ class QuotationController extends Controller
             })
             ->when($request->filled('service'), function ($q) use ($request) {
                 return $q->where('service_id', $request->service);
+            })
+            ->when($request->filled('priority'), function ($q) use ($request) {
+                if ($request->priority === 'high') {
+                    return $q->whereIn('priority', ['high', 'urgent']);
+                }
+                return $q->where('priority', $request->priority);
             })
             ->when($request->filled('date_range'), function ($q) use ($request) {
                 $range = $request->date_range;
@@ -50,13 +57,20 @@ class QuotationController extends Controller
                     default => $q
                 };
             })
+            ->when($request->filled('created_from') && $request->filled('created_to'), function ($q) use ($request) {
+                return $q->whereBetween('created_at', [
+                    Carbon::parse($request->created_from)->startOfDay(),
+                    Carbon::parse($request->created_to)->endOfDay()
+                ]);
+            })
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->search;
                 return $q->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
                           ->orWhere('email', 'like', "%{$search}%")
                           ->orWhere('company', 'like', "%{$search}%")
-                          ->orWhere('project_type', 'like', "%{$search}%");
+                          ->orWhere('project_type', 'like', "%{$search}%")
+                          ->orWhere('requirements', 'like', "%{$search}%");
                 });
             })
             ->when($request->filled('client_approved'), function ($q) use ($request) {
@@ -74,20 +88,47 @@ class QuotationController extends Controller
         
         $quotations = $query->orderBy($sortField, $sortDirection)->paginate(15);
         
-        // Statistics
-        $stats = [
+        // Enhanced statistics similar to message management
+        $statusCounts = [
             'total' => Quotation::count(),
             'pending' => Quotation::where('status', 'pending')->count(),
             'reviewed' => Quotation::where('status', 'reviewed')->count(),
             'approved' => Quotation::where('status', 'approved')->count(),
             'rejected' => Quotation::where('status', 'rejected')->count(),
             'client_approved' => Quotation::where('client_approved', true)->count(),
-            'this_month' => Quotation::whereMonth('created_at', Carbon::now()->month)->count(),
+            'this_month' => Quotation::whereMonth('created_at', Carbon::now()->month)
+                ->whereYear('created_at', Carbon::now()->year)
+                ->count(),
+            'this_week' => Quotation::whereBetween('created_at', [
+                Carbon::now()->startOfWeek(),
+                Carbon::now()->endOfWeek()
+            ])->count(),
+            'today' => Quotation::whereDate('created_at', Carbon::today())->count(),
         ];
+        
+        // Calculate needs attention (high priority + overdue)
+        $statusCounts['urgent'] = Quotation::where('priority', 'urgent')
+            ->where('status', 'pending')
+            ->count();
+            
+        $statusCounts['high_priority'] = Quotation::whereIn('priority', ['high', 'urgent'])
+            ->where('status', 'pending')
+            ->count();
+            
+        $statusCounts['overdue'] = Quotation::where('status', 'pending')
+            ->where('created_at', '<', Carbon::now()->subDays(3))
+            ->count();
+            
+        $statusCounts['needs_attention'] = Quotation::where('status', 'pending')
+            ->where(function($query) {
+                $query->whereIn('priority', ['high', 'urgent'])
+                      ->orWhere('created_at', '<', Carbon::now()->subDays(3));
+            })
+            ->count();
         
         $services = Service::all();
         
-        return view('admin.quotations.index', compact('quotations', 'services', 'stats'));
+        return view('admin.quotations.index', compact('quotations', 'services', 'statusCounts'));
     }
 
     /**
@@ -96,6 +137,14 @@ class QuotationController extends Controller
     public function show(Quotation $quotation)
     {
         $quotation->load(['service', 'client', 'attachments']);
+        
+        // Mark as reviewed if it's the first time viewing
+        if ($quotation->status === 'pending' && !$quotation->reviewed_at) {
+            $quotation->update([
+                'reviewed_at' => now(),
+                'status' => 'reviewed'
+            ]);
+        }
         
         // Get related quotations from same client
         $relatedQuotations = null;
@@ -154,10 +203,12 @@ class QuotationController extends Controller
             'budget_range' => 'nullable|string|max:100',
             'start_date' => 'nullable|date',
             'status' => 'required|in:pending,reviewed,approved,rejected',
+            'priority' => 'nullable|in:low,normal,high,urgent',
             'admin_notes' => 'nullable|string',
             'estimated_cost' => 'nullable|string|max:255',
             'estimated_timeline' => 'nullable|string|max:255',
             'internal_notes' => 'nullable|string',
+            'additional_info' => 'nullable|string',
         ]);
         
         $oldStatus = $quotation->status;
@@ -172,12 +223,18 @@ class QuotationController extends Controller
             }
         }
         
+        // Handle continue editing vs redirect to show
+        if ($request->has('action') && $request->action === 'save_and_continue') {
+            return redirect()->route('admin.quotations.edit', $quotation)
+                ->with('success', 'Quotation updated successfully! Continue editing...');
+        }
+        
         return redirect()->route('admin.quotations.show', $quotation)
             ->with('success', 'Quotation updated successfully!');
     }
 
     /**
-     * Quick status update
+     * Quick status update (similar to message toggle-read)
      */
     public function updateStatus(Request $request, Quotation $quotation)
     {
@@ -188,18 +245,32 @@ class QuotationController extends Controller
         
         $oldStatus = $quotation->status;
         
-        $quotation->update([
+        $updateData = [
             'status' => $request->status,
-            'admin_notes' => $request->admin_notes,
-            'reviewed_at' => $request->status === 'reviewed' ? now() : $quotation->reviewed_at,
-            'approved_at' => $request->status === 'approved' ? now() : $quotation->approved_at,
-        ]);
+            'last_communication_at' => now(),
+        ];
+        
+        // Add admin notes if provided
+        if ($request->filled('admin_notes')) {
+            $updateData['admin_notes'] = $request->admin_notes;
+        }
+        
+        // Add timestamp for specific statuses
+        if ($request->status === 'reviewed' && $oldStatus !== 'reviewed') {
+            $updateData['reviewed_at'] = now();
+        } elseif ($request->status === 'approved' && $oldStatus !== 'approved') {
+            $updateData['approved_at'] = now();
+        }
+        
+        $quotation->update($updateData);
         
         // Send notification email
-        try {
-            Mail::to($quotation->email)->send(new QuotationStatusUpdated($quotation));
-        } catch (\Exception $e) {
-            \Log::error('Failed to send quotation status email: ' . $e->getMessage());
+        if ($oldStatus !== $request->status) {
+            try {
+                Mail::to($quotation->email)->send(new QuotationStatusUpdated($quotation));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send quotation status email: ' . $e->getMessage());
+            }
         }
         
         // If approved, offer to create project
@@ -208,7 +279,7 @@ class QuotationController extends Controller
         }
         
         return redirect()->back()
-            ->with('success', 'Quotation status updated to ' . ucfirst($request->status));
+            ->with('success', 'Quotation status updated to ' . ucfirst($request->status) . '!');
     }
 
     /**
@@ -248,6 +319,138 @@ class QuotationController extends Controller
         }
     }
 
+    public function store(Request $request)
+{
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|max:255',
+        'phone' => 'nullable|string|max:20',
+        'company' => 'nullable|string|max:255',
+        'service_id' => 'nullable|exists:services,id',
+        'project_type' => 'required|string|max:255',
+        'location' => 'nullable|string|max:255',
+        'requirements' => 'required|string',
+        'budget_range' => 'nullable|string|max:100',
+        'start_date' => 'nullable|date|after:today',
+        'attachments.*' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png', // 10MB max per file
+    ]);
+
+    // Link to existing user if authenticated
+    if (auth()->check()) {
+        $validated['client_id'] = auth()->id();
+    } else {
+        // Check if user with this email already exists
+        $existingUser = User::where('email', $validated['email'])->first();
+        if ($existingUser) {
+            $validated['client_id'] = $existingUser->id;
+        }
+    }
+
+    // Set default values
+    $validated['status'] = 'pending';
+    $validated['priority'] = 'normal';
+    $validated['source'] = 'website';
+
+    // Create the quotation
+    $quotation = Quotation::create($validated);
+
+    // Handle file attachments using QuotationAttachment
+    if ($request->hasFile('attachments')) {
+        foreach ($request->file('attachments') as $file) {
+            QuotationAttachment::createFromUploadedFile($file, $quotation);
+        }
+    }
+
+    // Send notification emails
+    try {
+        // Send confirmation to client
+        Mail::to($quotation->email)->send(new \App\Mail\QuotationReceived($quotation));
+        
+        // Send notification to admin
+        $adminEmail = config('mail.admin_email', 'admin@usahaprimalestari.com');
+        Mail::to($adminEmail)->send(new \App\Mail\QuotationReceived($quotation, true));
+        
+    } catch (\Exception $e) {
+        \Log::error('Failed to send quotation notification emails: ' . $e->getMessage());
+        // Don't fail the request if email fails
+    }
+
+    // Store success message in session
+    session()->flash('quotation_success', [
+        'id' => $quotation->id,
+        'name' => $quotation->name,
+        'email' => $quotation->email,
+        'created_at' => $quotation->created_at
+    ]);
+
+    return redirect()->route('quotation.thank-you');
+}
+
+/**
+ * Admin store method for creating quotations from admin panel.
+ */
+public function adminStore(Request $request)
+{
+    $validated = $request->validate([
+        'client_id' => 'nullable|exists:users,id',
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|max:255',
+        'phone' => 'nullable|string|max:20',
+        'company' => 'nullable|string|max:255',
+        'service_id' => 'nullable|exists:services,id',
+        'project_type' => 'required|string|max:255',
+        'location' => 'nullable|string|max:255',
+        'requirements' => 'required|string',
+        'budget_range' => 'nullable|string|max:100',
+        'start_date' => 'nullable|date',
+        'status' => 'required|in:pending,reviewed,approved,rejected',
+        'priority' => 'required|in:low,normal,high,urgent',
+        'source' => 'required|string|max:50',
+        'estimated_cost' => 'nullable|string|max:255',
+        'estimated_timeline' => 'nullable|string|max:255',
+        'admin_notes' => 'nullable|string',
+        'internal_notes' => 'nullable|string',
+        'additional_info' => 'nullable|string',
+        'attachments.*' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png',
+    ]);
+
+    // Set timestamps based on status
+    if ($validated['status'] === 'reviewed') {
+        $validated['reviewed_at'] = now();
+    } elseif ($validated['status'] === 'approved') {
+        $validated['approved_at'] = now();
+        $validated['reviewed_at'] = now();
+    }
+
+    // Create the quotation
+    $quotation = Quotation::create($validated);
+
+    // Handle file attachments using QuotationAttachment
+    if ($request->hasFile('attachments')) {
+        foreach ($request->file('attachments') as $file) {
+            QuotationAttachment::createFromUploadedFile($file, $quotation);
+        }
+    }
+
+    // Send notification email to client if status is not pending
+    if ($validated['status'] !== 'pending') {
+        try {
+            Mail::to($quotation->email)->send(new QuotationStatusUpdated($quotation));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send quotation status email: ' . $e->getMessage());
+        }
+    }
+
+    // Handle continue editing vs redirect to show
+    if ($request->has('action') && $request->action === 'save_and_continue') {
+        return redirect()->route('admin.quotations.edit', $quotation)
+            ->with('success', 'Quotation created successfully! Continue editing...');
+    }
+
+    return redirect()->route('admin.quotations.show', $quotation)
+        ->with('success', 'Quotation created successfully!');
+}
+
     /**
      * Create project from quotation
      */
@@ -263,6 +466,8 @@ class QuotationController extends Controller
         ])->with('info', 'Creating project from quotation...');
     }
 
+    
+
     /**
      * Duplicate quotation
      */
@@ -270,11 +475,14 @@ class QuotationController extends Controller
     {
         $newQuotation = $quotation->replicate();
         $newQuotation->status = 'pending';
+        $newQuotation->priority = 'normal';
         $newQuotation->admin_notes = null;
+        $newQuotation->internal_notes = null;
         $newQuotation->client_approved = null;
         $newQuotation->client_approved_at = null;
         $newQuotation->reviewed_at = null;
         $newQuotation->approved_at = null;
+        $newQuotation->last_communication_at = null;
         $newQuotation->created_at = now();
         $newQuotation->save();
         
@@ -283,24 +491,36 @@ class QuotationController extends Controller
     }
 
     /**
-     * Export quotations
+     * Export quotations with current filters
      */
     public function export(Request $request)
     {
-        $quotations = Quotation::with(['service', 'client'])
+        $query = Quotation::with(['service', 'client'])
             ->when($request->filled('status'), function ($q) use ($request) {
                 return $q->where('status', $request->status);
             })
-            ->when($request->filled('date_from'), function ($q) use ($request) {
-                return $q->whereDate('created_at', '>=', $request->date_from);
+            ->when($request->filled('service'), function ($q) use ($request) {
+                return $q->where('service_id', $request->service);
             })
-            ->when($request->filled('date_to'), function ($q) use ($request) {
-                return $q->whereDate('created_at', '<=', $request->date_to);
+            ->when($request->filled('created_from') && $request->filled('created_to'), function ($q) use ($request) {
+                return $q->whereBetween('created_at', [
+                    Carbon::parse($request->created_from)->startOfDay(),
+                    Carbon::parse($request->created_to)->endOfDay()
+                ]);
             })
-            ->get();
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->search;
+                return $q->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                          ->orWhere('email', 'like', "%{$search}%")
+                          ->orWhere('company', 'like', "%{$search}%")
+                          ->orWhere('project_type', 'like', "%{$search}%");
+                });
+            });
+        
+        $quotations = $query->get();
         
         $filename = 'quotations_' . now()->format('Y-m-d_H-i-s') . '.csv';
-        
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -313,7 +533,7 @@ class QuotationController extends Controller
             fputcsv($file, [
                 'ID', 'Name', 'Email', 'Company', 'Phone', 'Service', 
                 'Project Type', 'Location', 'Budget Range', 'Status', 
-                'Client Approved', 'Created At', 'Updated At'
+                'Priority', 'Client Approved', 'Created At', 'Updated At'
             ]);
             
             foreach ($quotations as $quotation) {
@@ -328,7 +548,8 @@ class QuotationController extends Controller
                     $quotation->location,
                     $quotation->budget_range,
                     $quotation->status,
-                    $quotation->client_approved ? 'Yes' : 'No',
+                    $quotation->priority,
+                    $quotation->client_approved ? 'Yes' : ($quotation->client_approved === false ? 'No' : 'Pending'),
                     $quotation->created_at->format('Y-m-d H:i:s'),
                     $quotation->updated_at->format('Y-m-d H:i:s'),
                 ]);
@@ -341,47 +562,96 @@ class QuotationController extends Controller
     }
 
     /**
-     * Bulk actions
+     * Bulk actions (similar to message bulk actions)
      */
     public function bulkAction(Request $request)
     {
         $request->validate([
             'action' => 'required|in:approve,reject,delete,change_status',
-            'quotation_ids' => 'required|array',
-            'quotation_ids.*' => 'exists:quotations,id',
+            'quotation_ids' => 'required|string', // Comma-separated IDs
             'new_status' => 'required_if:action,change_status|in:pending,reviewed,approved,rejected',
         ]);
         
-        $quotations = Quotation::whereIn('id', $request->quotation_ids)->get();
+        // Parse comma-separated IDs
+        $quotationIds = array_filter(explode(',', $request->quotation_ids));
+        
+        if (empty($quotationIds)) {
+            return redirect()->back()->with('error', 'No quotations selected.');
+        }
+        
+        $quotations = Quotation::whereIn('id', $quotationIds)->get();
         $count = $quotations->count();
+        
+        if ($count === 0) {
+            return redirect()->back()->with('error', 'Selected quotations not found.');
+        }
         
         switch ($request->action) {
             case 'approve':
                 $quotations->each(function ($quotation) {
-                    $quotation->update(['status' => 'approved', 'approved_at' => now()]);
+                    $quotation->update([
+                        'status' => 'approved', 
+                        'approved_at' => now(),
+                        'last_communication_at' => now()
+                    ]);
+                    
+                    // Send notification email
+                    try {
+                        Mail::to($quotation->email)->send(new QuotationStatusUpdated($quotation));
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to send approval email for quotation ' . $quotation->id);
+                    }
                 });
-                $message = "{$count} quotations approved successfully!";
+                $message = "{$count} quotation(s) approved successfully!";
                 break;
                 
             case 'reject':
                 $quotations->each(function ($quotation) {
-                    $quotation->update(['status' => 'rejected']);
+                    $quotation->update([
+                        'status' => 'rejected',
+                        'last_communication_at' => now()
+                    ]);
+                    
+                    // Send notification email
+                    try {
+                        Mail::to($quotation->email)->send(new QuotationStatusUpdated($quotation));
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to send rejection email for quotation ' . $quotation->id);
+                    }
                 });
-                $message = "{$count} quotations rejected successfully!";
+                $message = "{$count} quotation(s) rejected successfully!";
                 break;
                 
             case 'change_status':
                 $quotations->each(function ($quotation) use ($request) {
-                    $quotation->update(['status' => $request->new_status]);
+                    $updateData = [
+                        'status' => $request->new_status,
+                        'last_communication_at' => now()
+                    ];
+                    
+                    if ($request->new_status === 'reviewed') {
+                        $updateData['reviewed_at'] = now();
+                    } elseif ($request->new_status === 'approved') {
+                        $updateData['approved_at'] = now();
+                    }
+                    
+                    $quotation->update($updateData);
                 });
-                $message = "{$count} quotations status updated successfully!";
+                $message = "{$count} quotation(s) status updated successfully!";
                 break;
                 
             case 'delete':
                 $quotations->each(function ($quotation) {
+                    // Delete attachments first
+                    if ($quotation->attachments()->count() > 0) {
+                        foreach ($quotation->attachments as $attachment) {
+                            Storage::disk('public')->delete($attachment->file_path);
+                            $attachment->delete();
+                        }
+                    }
                     $quotation->delete();
                 });
-                $message = "{$count} quotations deleted successfully!";
+                $message = "{$count} quotation(s) deleted successfully!";
                 break;
         }
         
@@ -393,13 +663,8 @@ class QuotationController extends Controller
      */
     public function destroy(Quotation $quotation)
     {
-        // Delete attachments
-        if ($quotation->attachments()->count() > 0) {
-            foreach ($quotation->attachments as $attachment) {
-                Storage::disk('public')->delete($attachment->file_path);
-                $attachment->delete();
-            }
-        }
+        // Delete attachments (this will also delete files from storage due to model boot method)
+        $quotation->attachments()->delete();
         
         $quotation->delete();
         
@@ -407,8 +672,22 @@ class QuotationController extends Controller
             ->with('success', 'Quotation deleted successfully!');
     }
 
+    public function downloadAttachment(Quotation $quotation, $attachmentId)
+    {
+        $attachment = $quotation->attachments()->findOrFail($attachmentId);
+        
+        if (!$attachment->exists()) {
+            abort(404, 'File not found');
+        }
+        
+        return response()->download(
+            storage_path('app/public/' . $attachment->file_path),
+            $attachment->file_name
+        );
+    }
+
     /**
-     * Generate quotation statistics
+     * Generate quotation statistics for dashboard
      */
     public function statistics()
     {
@@ -418,6 +697,12 @@ class QuotationController extends Controller
             'approved' => Quotation::where('status', 'approved')->count(),
             'rejected' => Quotation::where('status', 'rejected')->count(),
             'client_approved' => Quotation::where('client_approved', true)->count(),
+            'needs_attention' => Quotation::where('status', 'pending')
+                ->where(function($query) {
+                    $query->whereIn('priority', ['high', 'urgent'])
+                          ->orWhere('created_at', '<', Carbon::now()->subDays(3));
+                })
+                ->count(),
             'monthly_stats' => Quotation::selectRaw('MONTH(created_at) as month, COUNT(*) as count')
                 ->whereYear('created_at', Carbon::now()->year)
                 ->groupBy('month')

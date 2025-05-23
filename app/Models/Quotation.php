@@ -127,6 +127,11 @@ class Quotation extends Model
             self::STATUS_REJECTED => 'Rejected',
         ];
     }
+
+    public function attachments()
+    {
+        return $this->hasMany(QuotationAttachment::class);
+    }
     
     /**
      * Get all available priorities
@@ -173,14 +178,6 @@ class Quotation extends Model
     public function client()
     {
         return $this->belongsTo(User::class, 'client_id');
-    }
-    
-    /**
-     * Get quotation attachments.
-     */
-    public function attachments()
-    {
-        return $this->morphMany(Attachment::class, 'attachable');
     }
     
     /**
