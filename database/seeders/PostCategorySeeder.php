@@ -2,50 +2,46 @@
 
 namespace Database\Seeders;
 
-use App\Models\PostCategory;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class PostCategorySeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $categories = [
             [
-                'name' => 'Company News',
-                'description' => 'Latest updates and news about CV Usaha Prima Lestari.',
+                'name' => 'Berita Perusahaan',
+                'slug' => 'berita-perusahaan',
+                'description' => 'Update terbaru tentang perkembangan perusahaan, pencapaian, dan milestone penting.',
             ],
             [
-                'name' => 'Construction Trends',
-                'description' => 'Insights into current and emerging trends in the construction industry.',
+                'name' => 'Proyek Terbaru',
+                'slug' => 'proyek-terbaru',
+                'description' => 'Informasi tentang proyek-proyek terbaru yang sedang dikerjakan atau telah selesai.',
             ],
             [
-                'name' => 'Project Highlights',
-                'description' => 'Spotlight on our notable projects and achievements.',
+                'name' => 'Tips & Tutorial',
+                'slug' => 'tips-tutorial',
+                'description' => 'Tips praktis dan tutorial seputar konstruksi, maintenance, dan teknologi bangunan.',
             ],
             [
-                'name' => 'Building Technology',
-                'description' => 'Information about new technologies and innovations in building and construction.',
+                'name' => 'Teknologi Konstruksi',
+                'slug' => 'teknologi-konstruksi',
+                'description' => 'Artikel tentang perkembangan teknologi terbaru dalam industri konstruksi.',
             ],
             [
-                'name' => 'Sustainable Construction',
-                'description' => 'Topics related to eco-friendly building practices and sustainable development.',
-            ],
-            [
-                'name' => 'Industry Insights',
-                'description' => 'Expert perspectives and analysis of the construction and supply industry.',
+                'name' => 'Keselamatan Kerja',
+                'slug' => 'keselamatan-kerja',
+                'description' => 'Informasi dan panduan tentang K3 (Kesehatan dan Keselamatan Kerja) di konstruksi.',
             ],
         ];
 
         foreach ($categories as $category) {
-            PostCategory::create([
-                'name' => $category['name'],
-                'slug' => Str::slug($category['name']),
-                'description' => $category['description'],
-            ]);
+            DB::table('post_categories')->insert(array_merge($category, [
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]));
         }
     }
 }

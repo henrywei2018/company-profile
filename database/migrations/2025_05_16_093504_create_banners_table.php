@@ -6,14 +6,11 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('banners', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('banner_category_id')->constrained()->onDelete('cascade');
+            $table->foreignId('banner_category_id')->constrained()->cascadeOnDelete();
             $table->string('title');
             $table->text('subtitle')->nullable();
             $table->text('description')->nullable();
@@ -27,12 +24,13 @@ return new class extends Migration
             $table->dateTime('start_date')->nullable();
             $table->dateTime('end_date')->nullable();
             $table->timestamps();
+            
+            $table->index(['is_active', 'display_order']);
+            $table->index(['banner_category_id', 'is_active']);
+            $table->index(['start_date', 'end_date']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('banners');

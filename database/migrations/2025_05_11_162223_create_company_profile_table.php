@@ -4,9 +4,9 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateCompanyProfileTable extends Migration
+return new class extends Migration
 {
-    public function up()
+    public function up(): void
     {
         Schema::create('company_profile', function (Blueprint $table) {
             $table->id();
@@ -20,7 +20,7 @@ class CreateCompanyProfileTable extends Migration
             $table->string('logo')->nullable();
             $table->string('phone')->nullable();
             $table->string('email')->nullable();
-            $table->string('address')->nullable();
+            $table->text('address')->nullable();
             $table->string('city')->nullable();
             $table->string('postal_code')->nullable();
             $table->string('country')->nullable();
@@ -36,8 +36,8 @@ class CreateCompanyProfileTable extends Migration
         });
     }
 
-    public function down()
+    public function down(): void
     {
         Schema::dropIfExists('company_profile');
     }
-}
+};

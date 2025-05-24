@@ -2,76 +2,168 @@
 
 namespace Database\Seeders;
 
-use App\Models\Quotation;
-use App\Models\Service;
-use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class QuotationSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // Get service IDs
-        $services = Service::pluck('id')->toArray();
-        
-        // Get client IDs
-        $clients = User::role('client')->pluck('id')->toArray();
-        
-        $statuses = ['pending', 'reviewed', 'approved', 'rejected'];
-        $projectTypes = ['New Construction', 'Renovation', 'Expansion', 'Maintenance', 'Infrastructure'];
-        $locations = ['Jakarta', 'Bandung', 'Surabaya', 'Medan', 'Makassar', 'Bali', 'Yogyakarta'];
-        $budgetRanges = ['Under Rp 100 Million', 'Rp 100-500 Million', 'Rp 500 Million-1 Billion', 'Over Rp 1 Billion'];
-        
-        // Create quotations from clients
-        foreach ($clients as $clientId) {
-            $client = User::find($clientId);
-            $status = $statuses[array_rand($statuses)];
-            $serviceId = $services[array_rand($services)];
-            
-            Quotation::create([
-                'name' => $client->name,
-                'email' => $client->email,
-                'phone' => $client->phone,
-                'company' => $client->company,
-                'service_id' => $serviceId,
-                'project_type' => $projectTypes[array_rand($projectTypes)],
-                'location' => $client->city ?? $locations[array_rand($locations)],
-                'requirements' => 'We need a ' . $projectTypes[array_rand($projectTypes)] . ' project completed within the next 6 months. The project involves ' . Service::find($serviceId)->title . ' and requires professional expertise.',
-                'budget_range' => $budgetRanges[array_rand($budgetRanges)],
-                'start_date' => now()->addMonths(rand(1, 3))->format('Y-m-d'),
-                'status' => $status,
-                'client_id' => $clientId,
-                'admin_notes' => $status !== 'pending' ? 'Quote reviewed by admin. ' . ($status === 'approved' ? 'Approved and ready for client review.' : ($status === 'rejected' ? 'Rejected due to scope incompatibility.' : 'Under review by management.')) : null,
-                'client_approved' => $status === 'approved' ? (rand(0, 1) ? true : null) : null,
-                'client_decline_reason' => $status === 'approved' && rand(0, 1) && !isset($client_approved) ? 'Budget constraints require us to postpone this project.' : null,
-                'client_approved_at' => $status === 'approved' && isset($client_approved) && $client_approved ? now()->subDays(rand(1, 5)) : null,
-                'additional_info' => rand(0, 1) ? 'We prefer to use eco-friendly materials where possible. Also, we need the work to be done during weekends to minimize disruption to our operations.' : null,
-            ]);
-        }
-        
-        // Create quotations from non-clients
-        for ($i = 0; $i < 5; $i++) {
-            $status = $statuses[array_rand($statuses)];
-            $serviceId = $services[array_rand($services)];
-            
-            Quotation::create([
-                'name' => fake()->name(),
-                'email' => fake()->safeEmail(),
-                'phone' => '+62 8' . rand(10, 99) . ' ' . rand(1000, 9999) . ' ' . rand(1000, 9999),
-                'company' => rand(0, 1) ? fake()->company() : null,
-                'service_id' => $serviceId,
-                'project_type' => $projectTypes[array_rand($projectTypes)],
-                'location' => $locations[array_rand($locations)],
-                'requirements' => 'I am interested in getting a quote for a ' . $projectTypes[array_rand($projectTypes)] . ' project. We need ' . Service::find($serviceId)->title . ' and would like to discuss the details with your team.',
-                'budget_range' => $budgetRanges[array_rand($budgetRanges)],
-                'start_date' => now()->addMonths(rand(1, 6))->format('Y-m-d'),
-                'status' => $status,
+        $quotations = [
+            [
+                'quotation_number' => 'QUO-2024-001',
+                'name' => 'Agus Prasetyo',
+                'email' => 'agus.prasetyo@perusahaan.com',
+                'phone' => '+62 813 2345678',
+                'company' => 'PT Berkembang Maju',
+                'service_id' => 1, // Konstruksi Gedung Perkantoran
+                'project_type' => 'Gedung Kantor 4 Lantai',
+                'location' => 'Jakarta Barat',
+                'requirements' => 'Pembangunan gedung kantor 4 lantai dengan luas total 2000 m². Membutuhkan design modern dengan sistem MEP lengkap, parking area, dan landscape. Requirement green building preferred.',
+                'budget_range' => 'Rp 8.000.000.000 - Rp 12.000.000.000',
+                'estimated_cost' => 'Rp 10.500.000.000',
+                'estimated_timeline' => '12-14 bulan',
+                'start_date' => '2024-08-01',
+                'status' => 'approved',
+                'priority' => 'high',
+                'source' => 'website',
                 'client_id' => null,
-                'admin_notes' => $status !== 'pending' ? 'Quotation ' . ($status === 'approved' ? 'approved' : ($status === 'rejected' ? 'rejected due to unclear requirements' : 'under review')) . '.' : null,
-            ]);
+                'admin_notes' => 'Client sangat interested dengan portfolio green building kami. Follow up meeting sudah dijadwalkan.',
+                'internal_notes' => 'Profit margin 18%. Team sudah siap untuk survey lokasi.',
+                'client_approved' => true,
+                'client_approved_at' => now()->subDays(5),
+                'reviewed_at' => now()->subDays(10),
+                'approved_at' => now()->subDays(5),
+                'last_communication_at' => now()->subDays(3),
+                'project_created' => true,
+                'project_created_at' => now()->subDays(2),
+                'additional_info' => 'Client memiliki timeline yang fleksibel dan budget yang realistis.',
+            ],
+            [
+                'quotation_number' => 'QUO-2024-002',
+                'name' => 'Siti Rahayu',
+                'email' => 'siti.rahayu@koprasi.com',
+                'phone' => '+62 821 3456789',
+                'company' => 'Koperasi Sejahtera Bersama',
+                'service_id' => 2, // Konstruksi Rumah Tinggal
+                'project_type' => 'Perumahan Bersubsidi',
+                'location' => 'Depok, Jawa Barat',
+                'requirements' => 'Pembangunan 50 unit rumah bersubsidi type 36/72. Spesifikasi sesuai standar pemerintah dengan kualitas yang baik. Dibutuhkan penyelesaian bertahap.',
+                'budget_range' => 'Rp 15.000.000.000 - Rp 20.000.000.000',
+                'estimated_cost' => 'Rp 17.500.000.000',
+                'estimated_timeline' => '8-10 bulan',
+                'start_date' => '2024-09-15',
+                'status' => 'reviewed',
+                'priority' => 'normal',
+                'source' => 'referral',
+                'client_id' => null,
+                'admin_notes' => 'Proyek volume besar dengan sistem pembayaran bertahap. Perlu koordinasi dengan bank yang memberikan KPR.',
+                'internal_notes' => 'Margin tipis tapi volume besar. Cocok untuk maintain cash flow.',
+                'reviewed_at' => now()->subDays(3),
+                'last_communication_at' => now()->subDays(1),
+                'additional_info' => 'Client sudah memiliki IMB dan siap mulai konstruksi.',
+            ],
+            [
+                'quotation_number' => 'QUO-2024-003',
+                'name' => 'Hendri Kurniawan',
+                'email' => 'hendri.k@manufacturing.co.id',
+                'phone' => '+62 812 4567890',
+                'company' => 'PT Industri Manufacturing',
+                'service_id' => 4, // Pembangunan Jalan Raya
+                'project_type' => 'Jalan Internal Pabrik',
+                'location' => 'Karawang, Jawa Barat',
+                'requirements' => 'Pembangunan jalan internal pabrik sepanjang 1.5 km dengan lebar 8 meter. Harus mampu menahan beban heavy truck. Termasuk marking dan drainage.',
+                'budget_range' => 'Rp 3.000.000.000 - Rp 4.500.000.000',
+                'estimated_cost' => 'Rp 3.750.000.000',
+                'estimated_timeline' => '4-5 bulan',
+                'start_date' => '2024-07-01',
+                'status' => 'pending',
+                'priority' => 'urgent',
+                'source' => 'phone',
+                'client_id' => null,
+                'admin_notes' => 'Client membutuhkan penyelesaian cepat karena akan ada ekspansi pabrik. Timeline sangat tight.',
+                'internal_notes' => 'Perlu mobilisasi equipment khusus. Check availability concrete plant terdekat.',
+                'last_communication_at' => now()->subHours(6),
+                'additional_info' => 'Client bersedia memberikan down payment 40% untuk mempercepat mobilisasi.',
+            ],
+            [
+                'quotation_number' => 'QUO-2024-004',
+                'name' => 'Diana Kartika',
+                'email' => 'diana.kartika@gmail.com',
+                'phone' => '+62 856 7890123',
+                'company' => 'Pribadi',
+                'service_id' => 7, // Maintenance Bangunan
+                'project_type' => 'Renovasi Rumah Pribadi',
+                'location' => 'Bekasi, Jawa Barat',
+                'requirements' => 'Renovasi rumah 2 lantai meliputi waterproofing, cat ulang, upgrade electrical system, dan renovasi kamar mandi. Rumah berusia 15 tahun.',
+                'budget_range' => 'Rp 200.000.000 - Rp 400.000.000',
+                'estimated_cost' => 'Rp 325.000.000',
+                'estimated_timeline' => '2-3 bulan',
+                'start_date' => '2024-10-01',
+                'status' => 'reviewed',
+                'priority' => 'low',
+                'source' => 'website',
+                'client_id' => null,
+                'admin_notes' => 'Project kecil tapi bisa jadi referensi untuk neighborhood. Client sangat detail oriented.',
+                'internal_notes' => 'Assign ke team renovation. Profit margin 25%.',
+                'reviewed_at' => now()->subDays(2),
+                'last_communication_at' => now()->subDays(1),
+                'additional_info' => 'Client flexible dengan jadwal dan ingin kualitas terbaik.',
+            ],
+            [
+                'quotation_number' => 'QUO-2024-005',
+                'name' => 'Robertus Sinaga',
+                'email' => 'robert.sinaga@developer.com',
+                'phone' => '+62 817 5678901',
+                'company' => 'Sinaga Property Development',
+                'service_id' => 1, // Konstruksi Gedung Perkantoran
+                'project_type' => 'Mixed Use Building',
+                'location' => 'Tangerang Selatan',
+                'requirements' => 'Pembangunan mixed use building 12 lantai (8 lantai office, 4 lantai retail). Total luas 15.000 m². Requirement mall standard untuk retail area.',
+                'budget_range' => 'Rp 35.000.000.000 - Rp 50.000.000.000',
+                'estimated_cost' => 'Rp 42.000.000.000',
+                'estimated_timeline' => '18-24 bulan',
+                'start_date' => '2025-01-15',
+                'status' => 'pending',
+                'priority' => 'high',
+                'source' => 'email',
+                'client_id' => null,
+                'admin_notes' => 'Project sangat besar. Client sudah memiliki track record yang baik. Perlu proposal detail dan presentasi khusus.',
+                'internal_notes' => 'Flagship project potential. Libatkan director dalam negotiation.',
+                'last_communication_at' => now()->subHours(12),
+                'additional_info' => 'Client tertarik dengan portfolio gedung tinggi kami dan ingin site visit ke project yang sedang berjalan.',
+            ],
+            [
+                'quotation_number' => 'QUO-2024-006',
+                'name' => 'Ahmad Soleh',
+                'email' => 'ahmad.soleh@masjid.org',
+                'phone' => '+62 822 6789012',
+                'company' => 'Yayasan Masjid Al-Ikhlas',
+                'service_id' => 1, // Konstruksi Gedung Perkantoran
+                'project_type' => 'Pembangunan Masjid',
+                'location' => 'Bogor, Jawa Barat',
+                'requirements' => 'Pembangunan masjid 2 lantai dengan kapasitas 500 jamaah. Lantai 1 untuk sholat, lantai 2 untuk TPA dan aula. Termasuk wudhu area dan parking.',
+                'budget_range' => 'Rp 3.000.000.000 - Rp 5.000.000.000',
+                'estimated_cost' => 'Rp 4.200.000.000',
+                'estimated_timeline' => '8-10 bulan',
+                'start_date' => '2024-11-01',
+                'status' => 'rejected',
+                'priority' => 'normal',
+                'source' => 'referral',
+                'client_id' => null,
+                'admin_notes' => 'Quotation di-reject karena budget tidak sesuai dengan scope pekerjaan. Client memiliki budget terbatas.',
+                'internal_notes' => 'Sudah coba optimize tapi tetap tidak feasible dengan budget yang ada.',
+                'reviewed_at' => now()->subDays(7),
+                'last_communication_at' => now()->subDays(5),
+                'additional_info' => 'Client menghargai transparansi kami dan berharap bisa bekerja sama di project future dengan budget yang lebih realistis.',
+            ],
+        ];
+
+        foreach ($quotations as $quotation) {
+            DB::table('quotations')->insert(array_merge($quotation, [
+                'created_at' => now()->subDays(rand(1, 30)),
+                'updated_at' => now()->subDays(rand(0, 5)),
+            ]));
         }
     }
 }

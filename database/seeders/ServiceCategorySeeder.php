@@ -2,64 +2,51 @@
 
 namespace Database\Seeders;
 
-use App\Models\ServiceCategory;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class ServiceCategorySeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $categories = [
             [
-                'name' => 'Construction Services',
-                'description' => 'Professional construction services for commercial, residential, and industrial projects.',
-                'icon' => 'bi bi-building',
-                'is_active' => true,
+                'name' => 'Konstruksi Bangunan',
+                'slug' => 'konstruksi-bangunan',
+                'icon' => 'building',
+                'description' => 'Layanan konstruksi bangunan gedung komersial, residential, dan industrial dengan standar kualitas tinggi.',
                 'sort_order' => 1,
             ],
             [
-                'name' => 'General Supplier',
-                'description' => 'Quality construction materials and equipment supply services.',
-                'icon' => 'bi bi-box-seam',
-                'is_active' => true,
+                'name' => 'Konstruksi Infrastruktur',
+                'slug' => 'konstruksi-infrastruktur',
+                'icon' => 'road',
+                'description' => 'Pembangunan infrastruktur jalan, jembatan, dan saluran air dengan teknologi modern.',
                 'sort_order' => 2,
             ],
             [
-                'name' => 'Building Maintenance',
-                'description' => 'Regular maintenance services to keep your buildings in optimal condition.',
-                'icon' => 'bi bi-tools',
-                'is_active' => true,
+                'name' => 'Perawatan & Pemeliharaan',
+                'slug' => 'perawatan-pemeliharaan',
+                'icon' => 'tools',
+                'description' => 'Layanan perawatan dan pemeliharaan bangunan dan infrastruktur untuk menjaga kualitas dan daya tahan.',
                 'sort_order' => 3,
             ],
             [
-                'name' => 'Project Management',
-                'description' => 'End-to-end project management services for construction projects.',
-                'icon' => 'bi bi-clipboard-check',
-                'is_active' => true,
+                'name' => 'Penjualan Peralatan',
+                'slug' => 'penjualan-peralatan',
+                'icon' => 'truck',
+                'description' => 'Penjualan peralatan teknik dan mesin konstruksi berkualitas untuk mendukung proyek konstruksi.',
                 'sort_order' => 4,
-            ],
-            [
-                'name' => 'Renovation',
-                'description' => 'High-quality renovation services for residential and commercial properties.',
-                'icon' => 'bi bi-house-gear',
-                'is_active' => true,
-                'sort_order' => 5,
             ],
         ];
 
         foreach ($categories as $category) {
-            ServiceCategory::create([
-                'name' => $category['name'],
-                'slug' => Str::slug($category['name']),
-                'description' => $category['description'],
-                'icon' => $category['icon'],
-                'is_active' => $category['is_active'],
-                'sort_order' => $category['sort_order'],
-            ]);
+            DB::table('service_categories')->insert(array_merge($category, [
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]));
         }
     }
 }

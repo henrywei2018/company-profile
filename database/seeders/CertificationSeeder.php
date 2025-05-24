@@ -2,101 +2,62 @@
 
 namespace Database\Seeders;
 
-use App\Models\Certification;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class CertificationSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $certifications = [
             [
                 'name' => 'ISO 9001:2015',
-                'issuer' => 'International Organization for Standardization',
-                'description' => 'Quality Management System certification demonstrating our commitment to consistently providing products and services that meet customer and regulatory requirements.',
-                'issue_date' => '2020-06-15',
-                'expiry_date' => '2023-06-14',
-                'is_active' => true,
+                'issuer' => 'Badan Sertifikasi Internasional',
+                'description' => 'Sertifikasi Sistem Manajemen Mutu yang menjamin konsistensi kualitas layanan dan produk konstruksi sesuai standar internasional.',
+                'issue_date' => '2022-03-15',
+                'expiry_date' => '2025-03-15',
                 'sort_order' => 1,
             ],
             [
-                'name' => 'ISO 14001:2015',
-                'issuer' => 'International Organization for Standardization',
-                'description' => 'Environmental Management System certification showing our dedication to environmental responsibility and sustainable practices in construction.',
-                'issue_date' => '2021-03-22',
-                'expiry_date' => '2024-03-21',
-                'is_active' => true,
+                'name' => 'ISO 45001:2018',
+                'issuer' => 'Badan Sertifikasi K3',
+                'description' => 'Sertifikasi Sistem Manajemen Kesehatan dan Keselamatan Kerja (K3) yang memastikan keselamatan dalam setiap proyek konstruksi.',
+                'issue_date' => '2022-06-20',
+                'expiry_date' => '2025-06-20',
                 'sort_order' => 2,
             ],
             [
-                'name' => 'OHSAS 18001',
-                'issuer' => 'Occupational Health and Safety Assessment Series',
-                'description' => 'Occupational Health and Safety Management certification confirming our commitment to providing a safe and healthy workplace.',
-                'issue_date' => '2019-11-10',
-                'expiry_date' => '2022-11-09',
-                'is_active' => true,
+                'name' => 'Sertifikat Badan Usaha Konstruksi Kualifikasi Besar',
+                'issuer' => 'Lembaga Pengembangan Jasa Konstruksi (LPJK)',
+                'description' => 'Sertifikasi resmi sebagai kontraktor berkualifikasi besar untuk menangani proyek-proyek konstruksi skala besar.',
+                'issue_date' => '2021-09-10',
+                'expiry_date' => '2024-09-10',
                 'sort_order' => 3,
             ],
             [
-                'name' => 'Green Building Certification',
-                'issuer' => 'Green Building Council Indonesia',
-                'description' => 'Recognition of our expertise in constructing environmentally sustainable buildings that meet green building standards.',
-                'issue_date' => '2021-09-05',
-                'expiry_date' => '2024-09-04',
-                'is_active' => true,
+                'name' => 'Keanggotaan Asosiasi Kontraktor Indonesia (AKI)',
+                'issuer' => 'Asosiasi Kontraktor Indonesia',
+                'description' => 'Keanggotaan aktif dalam asosiasi profesi kontraktor yang menunjukkan komitmen terhadap standar industri.',
+                'issue_date' => '2020-01-15',
+                'expiry_date' => null, // Permanent membership
                 'sort_order' => 4,
             ],
             [
-                'name' => 'Professional Contractor License - Class A',
-                'issuer' => 'Indonesian Construction Services Development Board',
-                'description' => 'License to undertake large-scale construction projects in Indonesia, demonstrating our technical capabilities and financial strength.',
-                'issue_date' => '2018-04-30',
-                'expiry_date' => '2023-04-29',
-                'is_active' => true,
+                'name' => 'Sertifikat Kepatuhan SNI',
+                'issuer' => 'Badan Standardisasi Nasional',
+                'description' => 'Sertifikasi kepatuhan terhadap Standar Nasional Indonesia dalam pelaksanaan konstruksi.',
+                'issue_date' => '2022-11-30',
+                'expiry_date' => '2025-11-30',
                 'sort_order' => 5,
-            ],
-            [
-                'name' => 'LEED Accredited Professional',
-                'issuer' => 'U.S. Green Building Council',
-                'description' => 'Certification for professionals who have demonstrated expertise in sustainable building practices and the LEED rating system.',
-                'issue_date' => '2022-01-18',
-                'expiry_date' => '2025-01-17',
-                'is_active' => true,
-                'sort_order' => 6,
-            ],
-            [
-                'name' => 'Project Management Professional (PMP)',
-                'issuer' => 'Project Management Institute',
-                'description' => 'Globally recognized certification for project management professionals, demonstrating our expertise in leading complex construction projects.',
-                'issue_date' => '2020-10-12',
-                'expiry_date' => '2023-10-11',
-                'is_active' => true,
-                'sort_order' => 7,
-            ],
-            [
-                'name' => 'Industry Safety Excellence Award',
-                'issuer' => 'Indonesian Construction Safety Association',
-                'description' => 'Recognition of our outstanding safety record and commitment to maintaining high safety standards on all projects.',
-                'issue_date' => '2022-05-20',
-                'expiry_date' => null,
-                'is_active' => true,
-                'sort_order' => 8,
             ],
         ];
 
         foreach ($certifications as $certification) {
-            Certification::create([
-                'name' => $certification['name'],
-                'issuer' => $certification['issuer'],
-                'description' => $certification['description'],
-                'issue_date' => $certification['issue_date'],
-                'expiry_date' => $certification['expiry_date'],
-                'is_active' => $certification['is_active'],
-                'sort_order' => $certification['sort_order'],
-            ]);
+            DB::table('certifications')->insert(array_merge($certification, [
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]));
         }
     }
 }
