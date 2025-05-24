@@ -20,7 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'client' => \App\Http\Middleware\ClientMiddleware::class,
-            'admin.data' => \App\Http\Middleware\AdminDataMiddleware::class,
+            'rbac' => \App\Http\Middleware\RoleBasedAccessControl::class,
+            'require.all.permissions' => \App\Http\Middleware\RequireAllPermissions::class,
+            'require.any.permission' => \App\Http\Middleware\RequireAnyPermission::class,
+            'require.role' => \App\Http\Middleware\RequireRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

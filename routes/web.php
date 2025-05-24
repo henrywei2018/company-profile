@@ -104,6 +104,44 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
     
+// Roles Management
+    Route::resource('roles', App\Http\Controllers\Admin\RoleController::class);
+    Route::get('/roles/{role}/permissions', [App\Http\Controllers\Admin\RoleController::class, 'permissions'])
+        ->name('roles.permissions');
+    Route::put('/roles/{role}/permissions', [App\Http\Controllers\Admin\RoleController::class, 'updatePermissions'])
+        ->name('roles.permissions.update');
+    Route::get('/roles/{role}/users', [App\Http\Controllers\Admin\RoleController::class, 'users'])
+        ->name('roles.users');
+    Route::post('/roles/{role}/duplicate', [App\Http\Controllers\Admin\RoleController::class, 'duplicate'])
+        ->name('roles.duplicate');
+
+    // Permissions Management
+    Route::resource('permissions', App\Http\Controllers\Admin\PermissionController::class);
+    Route::get('/permissions/bulk-create', [App\Http\Controllers\Admin\PermissionController::class, 'showBulkCreate'])
+        ->name('permissions.bulk-create');
+    Route::post('/permissions/bulk-create', [App\Http\Controllers\Admin\PermissionController::class, 'bulkCreate'])
+        ->name('permissions.bulk-store');
+    Route::get('/permissions/{permission}/roles', [App\Http\Controllers\Admin\PermissionController::class, 'roles'])
+        ->name('permissions.roles');
+
+    // Enhanced User Management with Role Assignment
+    Route::get('/users/{user}/roles', [App\Http\Controllers\Admin\UserController::class, 'showRoles'])
+        ->name('users.roles');
+    Route::put('/users/{user}/roles', [App\Http\Controllers\Admin\UserController::class, 'updateRoles'])
+        ->name('users.roles.update');
+    Route::post('/users/{user}/assign-role', [App\Http\Controllers\Admin\UserController::class, 'assignRole'])
+        ->name('users.assign-role');
+    Route::delete('/users/{user}/remove-role/{role}', [App\Http\Controllers\Admin\UserController::class, 'removeRole'])
+        ->name('users.remove-role');
+
+    // RBAC Dashboard/Statistics
+    Route::get('/rbac/dashboard', [App\Http\Controllers\Admin\RBACController::class, 'dashboard'])
+        ->name('rbac.dashboard');
+    Route::get('/rbac/audit-log', [App\Http\Controllers\Admin\RBACController::class, 'auditLog'])
+        ->name('rbac.audit-log');
+    Route::post('/rbac/clear-cache', [App\Http\Controllers\Admin\RBACController::class, 'clearCache'])
+        ->name('rbac.clear-cache');
+
     // Services management
     Route::resource('services', App\Http\Controllers\Admin\ServiceController::class);
     Route::post('/services/{service}/toggle-status', [ServiceController::class, 'toggleActive'])
