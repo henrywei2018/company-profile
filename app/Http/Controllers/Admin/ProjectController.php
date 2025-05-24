@@ -26,33 +26,33 @@ class ProjectController extends Controller
      * Display a listing of projects.
      */
     public function index(Request $request)
-    {
-        $query = Project::with(['client', 'category', 'service'])
-            ->when($request->filled('status'), function ($q) use ($request) {
-                return $q->where('status', $request->status);
-            })
-            ->when($request->filled('category'), function ($q) use ($request) {
-                return $q->where('project_category_id', $request->category);
-            })
-            ->when($request->filled('client'), function ($q) use ($request) {
-                return $q->where('client_id', $request->client);
-            })
-            ->when($request->filled('search'), function ($q) use ($request) {
-                $search = $request->search;
-                return $q->where(function ($query) use ($search) {
-                    $query->where('title', 'like', "%{$search}%")
-                          ->orWhere('description', 'like', "%{$search}%")
-                          ->orWhere('location', 'like', "%{$search}%");
-                });
+{
+    $query = Project::with(['client', 'category', 'service'])
+        ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
+        ->when($request->filled('category'), fn($q) => $q->where('project_category_id', $request->category))
+        ->when($request->filled('client'), fn($q) => $q->where('client_id', $request->client))
+        ->when($request->filled('search'), function ($q) use ($request) {
+            $search = $request->search;
+            return $q->where(function ($query) use ($search) {
+                $query->where('title', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%")
+                      ->orWhere('location', 'like', "%{$search}%");
             });
+        });
 
-        $projects = $query->orderBy('created_at', 'desc')->paginate(15);
-        
-        $categories = ProjectCategory::all();
-        $clients = User::role('client')->get();
-        
-        return view('admin.projects.index', compact('projects', 'categories', 'clients'));
-    }
+    $projects = $query->orderBy('created_at', 'desc')->paginate(15);
+
+    $categories = ProjectCategory::all();
+    $clients = User::role('client')->get();
+    $years = Project::selectRaw('YEAR(created_at) as year')
+                ->distinct()
+                ->orderByDesc('year')
+                ->pluck('year', 'year')
+                ->toArray();
+
+    return view('admin.projects.index', compact('projects', 'categories', 'clients', 'years'));
+}
+
 
     /**
      * Show the form for creating a new project.

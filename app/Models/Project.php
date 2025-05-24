@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\FilterableTrait;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class Project extends Model
 {
-    use HasFactory, SoftDeletes, FilterableTrait;
+    use HasFactory, FilterableTrait;
 
     /**
      * The attributes that are mass assignable.
@@ -26,6 +27,7 @@ class Project extends Model
         'project_category_id',
         'service_id',
         'status',
+        'year',
         'start_date',
         'end_date',
         'featured',
@@ -108,6 +110,17 @@ class Project extends Model
             self::STATUS_CANCELLED => 'Cancelled',
         ];
     }
+    public function getFeaturedImageUrlAttribute(): ?string
+{
+    $image = $this->images()->orderByDesc('is_featured')->orderBy('id')->first();
+
+    if ($image && $image->file_path && Storage::disk('public')->exists($image->file_path)) {
+        return Storage::url($image->file_path);
+    }
+
+    return null;
+}
+
 
     /**
      * Get all available priorities
@@ -195,8 +208,9 @@ class Project extends Model
      */
     public function images()
     {
-        return $this->morphMany(ProjectImage::class, 'imageable');
+        return $this->hasMany(ProjectImage::class);
     }
+
 
     /**
      * Get the project attachments.
