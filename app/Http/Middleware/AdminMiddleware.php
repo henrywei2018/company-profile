@@ -1,28 +1,29 @@
 <?php
-
+// app/Http/Middleware/AdminMiddleware.php
 namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\Response;
 
 class AdminMiddleware
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
-     * @return mixed
-     */
-    public function handle(Request $request, Closure $next)
+    public function handle(Request $request, Closure $next): Response
     {
-        if (!Auth::check() || !Auth::user()->hasRole('admin')) {
-            if ($request->expectsJson()) {
-                return response()->json(['error' => 'Unauthorized'], 403);
-            }
-            
-            return redirect()->route('login')->with('error', 'You do not have permission to access this area.');
+        if (!auth()->check()) {
+            return redirect()->route('login');
+        }
+
+        $user = auth()->user();
+        
+        // Check if user has admin access (super-admin, admin, or editor roles)
+        if (!$user->hasAnyRole(['super-admin', 'admin', 'editor'])) {
+            abort(403, 'Access denied. Admin privileges required.');
+        }
+
+        // Check if user has permission to view admin dashboard
+        if (!$user->can('view admin-dashboard')) {
+            abort(403, 'Access denied. Insufficient permissions.');
         }
 
         return $next($request);
