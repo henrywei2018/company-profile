@@ -264,6 +264,7 @@ class UserController extends Controller
             ->with('success', 'Password changed successfully!');
     }
     
+    
     /**
      * Toggle user active status.
      */

@@ -2,21 +2,22 @@
 <x-layouts.admin>
     <x-slot name="title">Company Profile</x-slot>
     
-    <form action="{{ route('admin.company.update') }}" method="POST" enctype="multipart/form-data">
+    <form action="{{ route('admin.company-profile.update') }}" method="POST" enctype="multipart/form-data">
         @csrf
         @method('PUT')
         
         <div class="space-y-6">
             <!-- Company Information Section -->
-            <x-form-section title="Company Information" description="Update your company's basic information.">
+            <x-admin.form-section title="Company Information" description="Update your company's basic information.">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div>
                         <x-form.input 
-                            name="name" 
+                            name="legal_name" 
                             label="Company Name" 
-                            :value="$companyProfile->name ?? config('app.name')" 
+                            :value="$companyProfile->legal_name ?? config('app.name')" 
                             required 
                         />
+
                     </div>
                     
                     <div>
@@ -71,10 +72,10 @@
                         />
                     </div>
                 </div>
-            </x-form-section>
+            </x-admin.form-section>
             
             <!-- Vision & Mission -->
-            <x-form-section title="Vision & Mission" description="Define your company's vision and mission statements.">
+            <x-admin.form-section title="Vision & Mission" description="Define your company's vision and mission statements.">
                 <div class="space-y-6">
                     <x-form.textarea 
                         name="vision" 
@@ -92,10 +93,10 @@
                         helper="Your company's mission statement"
                     />
                 </div>
-            </x-form-section>
+            </x-admin.form-section>
             
             <!-- Contact Information -->
-            <x-form-section title="Contact Information" description="Update your company's contact details.">
+            <x-admin.form-section title="Contact Information" description="Update your company's contact details.">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div>
                         <x-form.input 
@@ -149,10 +150,10 @@
                         />
                     </div>
                 </div>
-            </x-form-section>
+            </x-admin.form-section>
             
             <!-- Social Media Links -->
-            <x-form-section title="Social Media Links" description="Add links to your company's social media profiles.">
+            <x-admin.form-section title="Social Media Links" description="Add links to your company's social media profiles.">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div>
                         <x-form.input 
@@ -213,10 +214,10 @@
                         />
                     </div>
                 </div>
-            </x-form-section>
+            </x-admin.form-section>
             
             <!-- Legal Information -->
-            <x-form-section title="Legal Information" description="Add your company's legal details.">
+            <x-admin.form-section title="Legal Information" description="Add your company's legal details.">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div>
                         <x-form.input 
@@ -257,10 +258,10 @@
                         />
                     </div>
                 </div>
-            </x-form-section>
+            </x-admin.form-section>
             
             <!-- Map Information -->
-            <x-form-section title="Map Information" description="Add your location on the map.">
+            <x-admin.form-section title="Map Information" description="Add your location on the map.">
                 <div class="grid grid-cols-1 gap-6">
                     <div>
                         <x-form.input 
@@ -302,10 +303,10 @@
                         </div>
                     @endif
                 </div>
-            </x-form-section>
+            </x-admin.form-section>
             
             <!-- Business Hours -->
-            <x-form-section title="Business Hours" description="Set your company's operating hours.">
+            <x-admin.form-section title="Business Hours" description="Set your company's operating hours.">
                 <div class="space-y-4">
                     @php
                         $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -360,7 +361,7 @@
                         </div>
                     @endforeach
                 </div>
-            </x-form-section>
+            </x-admin.form-section>
             
             <!-- Form Buttons -->
             <div class="flex justify-end">

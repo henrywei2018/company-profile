@@ -10,9 +10,11 @@ use Illuminate\Support\Str;
 
 class CompanyProfileController extends Controller
 {
-    /**
-     * Display the company profile form.
-     */
+    public function index()
+    {
+        $profile = CompanyProfile::firstOrFail();
+        return view('admin.company.index', compact('profile'));
+    }
     public function edit()
     {
         $companyProfile = CompanyProfile::getInstance();
@@ -26,69 +28,50 @@ class CompanyProfileController extends Controller
     public function update(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'legal_name' => 'required|string|max:255',
             'tagline' => 'nullable|string|max:255',
-            'about' => 'nullable|string',
+            'about' => 'nullable|string|max:200',
             'description' => 'nullable|string',
             'vision' => 'nullable|string',
             'mission' => 'nullable|string',
             'email' => 'required|email|max:255',
             'alternative_email' => 'nullable|email|max:255',
-            'phone' => 'required|string|max:20',
-            'alternative_phone' => 'nullable|string|max:20',
-            'address' => 'required|string',
-            'facebook' => 'nullable|url|max:255',
-            'twitter' => 'nullable|url|max:255',
-            'instagram' => 'nullable|url|max:255',
-            'linkedin' => 'nullable|url|max:255',
-            'youtube' => 'nullable|url|max:255',
-            'whatsapp' => 'nullable|string|max:20',
-            'legal_name' => 'nullable|string|max:255',
-            'tax_id' => 'nullable|string|max:50',
-            'registration_number' => 'nullable|string|max:50',
+            'phone' => 'required|string|max:25',
+            'alternative_phone' => 'nullable|string|max:25',
+            'address' => 'required|string|max:255',
+            'facebook' => 'nullable|url',
+            'twitter' => 'nullable|url',
+            'instagram' => 'nullable|url',
+            'linkedin' => 'nullable|url',
+            'youtube' => 'nullable|url',
+            'whatsapp' => 'nullable|string|max:25',
+            'tax_id' => 'nullable|string|max:100',
+            'registration_number' => 'nullable|string|max:100',
             'established' => 'nullable|integer|min:1900|max:' . date('Y'),
-            'latitude' => 'nullable|string|max:20',
-            'longitude' => 'nullable|string|max:20',
             'map_embed' => 'nullable|string',
+            'latitude' => 'nullable|string|max:50',
+            'longitude' => 'nullable|string|max:50',
             'business_hours' => 'nullable|array',
-            'business_hours.*' => 'array',
-            'logo' => 'nullable|image|max:2048',
-            'logo_white' => 'nullable|image|max:2048',
+            'business_hours.*.open' => 'nullable|string',
+            'business_hours.*.close' => 'nullable|string',
+            'business_hours.*.closed' => 'nullable|boolean',
+            'logo' => 'nullable|image',
+            'logo_white' => 'nullable|image',
         ]);
-        
-        // Handle logo upload
+
+        $companyProfile = CompanyProfile::firstOrFail();
+
         if ($request->hasFile('logo')) {
-            // Delete old logo if exists
-            if ($request->company_has_logo) {
-                Storage::disk('public')->delete($request->company_old_logo);
-            }
-            
-            $path = $request->file('logo')->store('company', 'public');
-            $validated['logo'] = $path;
+            $validated['logo'] = $request->file('logo')->store('company', 'public');
         }
-        
-        // Handle white logo upload
+
         if ($request->hasFile('logo_white')) {
-            // Delete old white logo if exists
-            if ($request->company_has_logo_white) {
-                Storage::disk('public')->delete($request->company_old_logo_white);
-            }
-            
-            $path = $request->file('logo_white')->store('company', 'public');
-            $validated['logo_white'] = $path;
+            $validated['logo_white'] = $request->file('logo_white')->store('company', 'public');
         }
-        
-        // Convert business hours to JSON
-        if (isset($validated['business_hours']) && is_array($validated['business_hours'])) {
-            $validated['business_hours'] = json_encode($validated['business_hours']);
-        }
-        
-        // Update company profile
-        $companyProfile = CompanyProfile::getInstance();
+
         $companyProfile->update($validated);
-        
-        return redirect()->route('admin.company.edit')
-            ->with('success', 'Company profile updated successfully!');
+
+        return redirect()->route('admin.company.edit')->with('success', 'Company profile updated successfully.');
     }
     
     /**

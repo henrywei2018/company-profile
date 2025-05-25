@@ -268,21 +268,27 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/certifications/update-order', [App\Http\Controllers\Admin\CertificationController::class, 'updateOrder'])->name('certifications.update-order');
     
     // Blog management
-    Route::get('/blog', [App\Http\Controllers\Admin\BlogController::class, 'index'])->name('blog.index');
-    Route::get('/blog/create', [App\Http\Controllers\Admin\BlogController::class, 'create'])->name('blog.create');
-    Route::post('/blog', [App\Http\Controllers\Admin\BlogController::class, 'store'])->name('blog.store');
-    Route::get('/blog/{post}', [App\Http\Controllers\Admin\BlogController::class, 'show'])->name('blog.show');
-    Route::get('/blog/{post}/edit', [App\Http\Controllers\Admin\BlogController::class, 'edit'])->name('blog.edit');
-    Route::put('/blog/{post}', [App\Http\Controllers\Admin\BlogController::class, 'update'])->name('blog.update');
-    Route::delete('/blog/{post}', [App\Http\Controllers\Admin\BlogController::class, 'destroy'])->name('blog.destroy');
-    Route::post('/blog/{post}/toggle-featured', [App\Http\Controllers\Admin\BlogController::class, 'toggleFeatured'])->name('blog.toggle-featured');
-    Route::post('/blog/{post}/change-status', [App\Http\Controllers\Admin\BlogController::class, 'changeStatus'])->name('blog.change-status');
-    
-    // Blog categories
-    Route::resource('blog/categories', App\Http\Controllers\Admin\BlogCategoryController::class)->names('blog.categories');
-        
+    Route::get('/posts', [App\Http\Controllers\Admin\PostController::class, 'index'])->name('posts.index');
+    Route::get('/posts/create', [App\Http\Controllers\Admin\PostController::class, 'create'])->name('posts.create');
+    Route::post('/posts', [App\Http\Controllers\Admin\PostController::class, 'store'])->name('posts.store');
+    Route::get('/posts/{post}', [App\Http\Controllers\Admin\PostController::class, 'show'])->name('posts.show');
+    Route::get('/posts/{post}/edit', [App\Http\Controllers\Admin\PostController::class, 'edit'])->name('posts.edit');
+    Route::put('/posts/{post}', [App\Http\Controllers\Admin\PostController::class, 'update'])->name('posts.update');
+    Route::delete('/posts/{post}', [App\Http\Controllers\Admin\PostController::class, 'destroy'])->name('posts.destroy');
+    Route::post('/posts/{post}/toggle-featured', [App\Http\Controllers\Admin\PostController::class, 'toggleFeatured'])->name('posts.toggle-featured');
+    Route::post('/posts/{post}/change-status', [App\Http\Controllers\Admin\PostController::class, 'changeStatus'])->name('posts.change-status');   
+    // Post category management
+    Route::get('/post-categories', [App\Http\Controllers\Admin\PostCategoryController::class, 'index'])->name('post-categories.index');
+    Route::get('/post-categories/create', [App\Http\Controllers\Admin\PostCategoryController::class, 'create'])->name('post-categories.create');
+    Route::post('/post-categories', [App\Http\Controllers\Admin\PostCategoryController::class, 'store'])->name('post-categories.store');
+    Route::get('/post-categories/{postCategory}', [App\Http\Controllers\Admin\PostCategoryController::class, 'show'])->name('post-categories.show');
+    Route::get('/post-categories/{postCategory}/edit', [App\Http\Controllers\Admin\PostCategoryController::class, 'edit'])->name('post-categories.edit');
+    Route::put('/post-categories/{postCategory}', [App\Http\Controllers\Admin\PostCategoryController::class, 'update'])->name('post-categories.update');
+    Route::delete('/post-categories/{postCategory}', [App\Http\Controllers\Admin\PostCategoryController::class, 'destroy'])->name('post-categories.destroy');
+            
     // Company profile
     Route::get('/company-profile', [App\Http\Controllers\Admin\CompanyProfileController::class, 'index'])->name('company-profile.index');
+    Route::get('/company-profile/edit', [App\Http\Controllers\Admin\CompanyProfileController::class, 'edit'])->name('company-profile.edit');
     Route::put('/company-profile', [App\Http\Controllers\Admin\CompanyProfileController::class, 'update'])->name('company-profile.update');
     Route::get('/company-profile/seo', [App\Http\Controllers\Admin\CompanyProfileController::class, 'seo'])->name('company-profile.seo');
     Route::put('/company-profile/seo', [App\Http\Controllers\Admin\CompanyProfileController::class, 'updateSeo'])->name('company-profile.seo.update');
