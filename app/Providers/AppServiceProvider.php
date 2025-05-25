@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\CompanyProfile;
 use App\Models\Message;
 use App\Models\Quotation;
+use App\Models\Post;
+use App\Models\PostCategory;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -115,8 +117,11 @@ class AppServiceProvider extends ServiceProvider
                     'overdueQuotationsCount' => $quotationStats['overdue'],
                     'needsAttentionCount' => $quotationStats['needs_attention'],
                     
-                    // Additional stats for dashboard use
                     'quotationStats' => $quotationStats,
+                    'totalPostsCount' => Post::count(),
+                    'draftPostsCount' => Post::where('status', 'draft')->count(),
+                    'publishedPostsCount' => Post::where('status', 'published')->count(),
+                    'categoriesCount' => PostCategory::count(),
                 ]);
             } else {
                 $view->with([

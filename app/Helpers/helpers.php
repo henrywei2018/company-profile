@@ -1,5 +1,7 @@
 <?php
-// File: app/helpers.php
+
+use App\Models\Setting;
+use Illuminate\Support\Facades\Cache;
 
 if (!function_exists('human_filesize')) {
     /**
@@ -98,4 +100,156 @@ if (!function_exists('get_file_type_name')) {
             default => strtoupper($extension) . ' File'
         };
     }
+
+    if (!function_exists('settings')) {
+    /**
+     * Get a setting value
+     *
+     * @param string|null $key
+     * @param mixed $default
+     * @return mixed
+     */
+    function settings($key = null, $default = null)
+    {
+        if (is_null($key)) {
+            return Cache::remember('settings', 3600, function () {
+                try {
+                    return Setting::pluck('value', 'key')->toArray();
+                } catch (\Exception $e) {
+                    return [];
+                }
+            });
+        }
+
+        $settings = Cache::remember('settings', 3600, function () {
+            try {
+                return Setting::pluck('value', 'key')->toArray();
+            } catch (\Exception $e) {
+                return [];
+            }
+        });
+
+        return $settings[$key] ?? $default;
+    }
+}
+
+if (!function_exists('update_setting')) {
+    /**
+     * Update a setting value
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return bool
+     */
+    function update_setting($key, $value): bool
+    {
+        try {
+            $setting = Setting::updateOrCreate(
+                ['key' => $key],
+                ['value' => $value]
+            );
+
+            // Clear cache
+            Cache::forget('settings');
+
+            // Return true if the setting was created or updated successfully
+            return $setting !== null;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+}
+
+if (!function_exists('get_setting')) {
+    /**
+     * Get a single setting value (alias for settings function)
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    function get_setting($key, $default = null)
+    {
+        return settings($key, $default);
+    }
+}
+
+if (!function_exists('has_setting')) {
+    /**
+     * Check if a setting exists
+     *
+     * @param string $key
+     * @return bool
+     */
+    function has_setting($key): bool
+    {
+        try {
+            $settings = settings();
+            return array_key_exists($key, $settings);
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+}
+
+if (!function_exists('remove_setting')) {
+    /**
+     * Remove a setting
+     *
+     * @param string $key
+     * @return bool
+     */
+    function remove_setting($key): bool
+    {
+        try {
+            $deleted = Setting::where('key', $key)->delete();
+            
+            // Clear cache
+            Cache::forget('settings');
+            
+            return $deleted > 0;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+}
+
+if (!function_exists('settings_array')) {
+    /**
+     * Get all settings as an array
+     *
+     * @return array
+     */
+    function settings_array(): array
+    {
+        return settings() ?? [];
+    }
+}
+
+if (!function_exists('bulk_update_settings')) {
+    /**
+     * Update multiple settings at once
+     *
+     * @param array $settings
+     * @return bool
+     */
+    function bulk_update_settings(array $settings): bool
+    {
+        try {
+            foreach ($settings as $key => $value) {
+                Setting::updateOrCreate(
+                    ['key' => $key],
+                    ['value' => $value]
+                );
+            }
+            
+            // Clear cache
+            Cache::forget('settings');
+            
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+}
 }

@@ -9,7 +9,6 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\TeamController;
-use App\Http\Controllers\BlogController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
 
@@ -43,12 +42,7 @@ Route::get('/portfolio/{slug}', [PortfolioController::class, 'show'])->name('por
 Route::get('/team', [TeamController::class, 'index'])->name('team.index');
 Route::get('/team/{slug}', [TeamController::class, 'show'])->name('team.show');
 
-// Blog routes
-Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
-Route::get('/blog/category/{slug}', [BlogController::class, 'category'])->name('blog.category');
-Route::get('/blog/archive/{year}/{month?}', [BlogController::class, 'archive'])->name('blog.archive');
-Route::get('/blog/search', [BlogController::class, 'search'])->name('blog.search');
-Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
+
 
 // Contact
 Route::get('/contact', [ContactController::class, 'index'])->name('contact.index');
@@ -267,7 +261,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/certifications/{certification}/toggle-active', [App\Http\Controllers\Admin\CertificationController::class, 'toggleActive'])->name('certifications.toggle-active');
     Route::post('/certifications/update-order', [App\Http\Controllers\Admin\CertificationController::class, 'updateOrder'])->name('certifications.update-order');
     
-    // Blog management
+    // Post management
     Route::get('/posts', [App\Http\Controllers\Admin\PostController::class, 'index'])->name('posts.index');
     Route::get('/posts/create', [App\Http\Controllers\Admin\PostController::class, 'create'])->name('posts.create');
     Route::post('/posts', [App\Http\Controllers\Admin\PostController::class, 'store'])->name('posts.store');
@@ -300,9 +294,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // Settings
     Route::get('/settings', [App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
     Route::post('/settings', [App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
-    Route::get('/settings/email', [App\Http\Controllers\Admin\SettingController::class, 'email'])->name('settings.email');
-    Route::post('/settings/email', [App\Http\Controllers\Admin\SettingController::class, 'updateEmail'])->name('settings.email.update');
-    Route::post('/settings/email/test', [App\Http\Controllers\Admin\SettingController::class, 'sendTestEmail'])->name('settings.email.test');
+    Route::get('/settings/email', [App\Http\Controllers\Admin\EmailSettingsController::class, 'index'])->name('settings.email');
+    Route::post('/settings/email', [App\Http\Controllers\Admin\EmailSettingsController::class, 'update'])->name('settings.email.update');
+    Route::post('/settings/email/test-connection', [App\Http\Controllers\Admin\EmailSettingsController::class, 'testConnection'])->name('settings.email.test-connection');
+    Route::post('/settings/email/test', [App\Http\Controllers\Admin\EmailSettingsController::class, 'sendTestEmail'])->name('settings.email.test');
+    Route::get('/settings/email/statistics', [App\Http\Controllers\Admin\EmailSettingsController::class, 'statistics'])->name('settings.email.statistics');
     Route::get('/settings/seo', [App\Http\Controllers\Admin\SettingController::class, 'seo'])->name('settings.seo');
     Route::post('/settings/seo', [App\Http\Controllers\Admin\SettingController::class, 'updateSeo'])->name('settings.seo.update');
 });
