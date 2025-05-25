@@ -78,10 +78,10 @@
                 <x-admin.table-cell highlight>
                     <div class="flex items-center space-x-3">
                         <x-admin.badge 
-                            :type="$role->color ?? 'primary'" 
+                            :type="$role->badge_color ?? 'primary'" 
                             size="sm"
                         >
-                            {{ $role->formatted_name }}
+                            {{ $role->name }}
                         </x-admin.badge>
                     </div>
                 </x-admin.table-cell>
@@ -94,15 +94,15 @@
 
                 <x-admin.table-cell>
                     <div class="flex items-center space-x-2">
-                        <span class="text-sm font-medium">{{ $role->users_count }}</span>
-                        @if($role->users_count > 0)
+                        <span class="text-sm font-medium">{{ $role->users()->count() }}</span>
+                        @if($role->users()->count() > 0)
                         <x-admin.badge type="success" size="sm">Active</x-admin.badge>
                         @endif
                     </div>
                 </x-admin.table-cell>
 
                 <x-admin.table-cell>
-                    <span class="text-sm font-medium">{{ $role->permissions_count }}</span>
+                    <span class="text-sm font-medium">{{ $role->permissions()->count() }}</span>
                     <span class="text-xs text-gray-500">permissions</span>
                 </x-admin.table-cell>
 
@@ -111,7 +111,7 @@
                 </x-admin.table-cell>
 
                 <x-admin.table-cell>
-                    @if($role->is_system)
+                    @if($role->is_system ?? false)
                         <x-admin.badge type="warning" size="sm">System</x-admin.badge>
                     @else
                         <x-admin.badge type="light" size="sm">Custom</x-admin.badge>
@@ -119,64 +119,81 @@
                 </x-admin.table-cell>
 
                 <x-admin.table-cell>
-                    <x-admin.dropdown>
-                        <x-slot name="trigger">
-                            <x-admin.icon-button color="light" size="sm">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <div class="relative inline-block text-left">
+                        <div>
+                            <button type="button" 
+                                    class="inline-flex items-center justify-center w-8 h-8 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-neutral-800 dark:border-neutral-700 dark:hover:bg-neutral-700"
+                                    onclick="toggleDropdown('dropdown-{{ $role->id }}')">
+                                <svg class="w-4 h-4 text-gray-600 dark:text-neutral-400" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
                                 </svg>
-                            </x-admin.icon-button>
-                        </x-slot>
+                            </button>
+                        </div>
 
-                        @can('view roles')
-                        <x-admin.dropdown-item 
-                            href="{{ route('admin.roles.show', $role) }}"
-                            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>'
-                        >
-                            View Details
-                        </x-admin.dropdown-item>
-                        @endcan
+                        <div id="dropdown-{{ $role->id }}" 
+                             class="hidden absolute right-0 z-10 mt-2 w-48 origin-top-right bg-white border border-gray-200 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-neutral-800 dark:border-neutral-700">
+                            <div class="py-1">
+                                @can('view roles')
+                                <a href="{{ route('admin.roles.show', $role) }}" 
+                                   class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
+                                    <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                    View Details
+                                </a>
+                                @endcan
 
-                        @can('edit roles')
-                        <x-admin.dropdown-item 
-                            href="{{ route('admin.roles.edit', $role) }}"
-                            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>'
-                        >
-                            Edit Role
-                        </x-admin.dropdown-item>
+                                @can('edit roles')
+                                <a href="{{ route('admin.roles.edit', $role) }}" 
+                                   class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
+                                    <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                    Edit Role
+                                </a>
 
-                        <x-admin.dropdown-item 
-                            href="{{ route('admin.roles.permissions', $role) }}"
-                            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>'
-                        >
-                            Manage Permissions
-                        </x-admin.dropdown-item>
+                                <a href="{{ route('admin.roles.permissions', $role) }}" 
+                                   class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
+                                    <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                    </svg>
+                                    Manage Permissions
+                                </a>
 
-                        <x-admin.dropdown-item 
-                            type="form"
-                            action="{{ route('admin.roles.duplicate', $role) }}"
-                            method="POST"
-                            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>'
-                        >
-                            Duplicate Role
-                        </x-admin.dropdown-item>
-                        @endcan
+                                <form action="{{ route('admin.roles.duplicate', $role) }}" method="POST" class="inline">
+                                    @csrf
+                                    <button type="submit" 
+                                            class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
+                                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                        </svg>
+                                        Duplicate Role
+                                    </button>
+                                </form>
+                                @endcan
 
-                        @can('delete roles')
-                        @if(!$role->is_system && $role->users_count == 0)
-                        <x-admin.dropdown-item 
-                            type="form"
-                            action="{{ route('admin.roles.destroy', $role) }}"
-                            method="DELETE"
-                            :confirm="true"
-                            confirmMessage="Are you sure you want to delete this role? This action cannot be undone."
-                            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>'
-                        >
-                            Delete Role
-                        </x-admin.dropdown-item>
-                        @endif
-                        @endcan
-                    </x-admin.dropdown>
+                                @can('delete roles')
+                                @if(!($role->is_system ?? false) && $role->users()->count() == 0)
+                                <form action="{{ route('admin.roles.destroy', $role) }}" 
+                                      method="POST" 
+                                      class="inline" 
+                                      onsubmit="return confirm('Are you sure you want to delete this role? This action cannot be undone.')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" 
+                                            class="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20">
+                                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                        Delete Role
+                                    </button>
+                                </form>
+                                @endif
+                                @endcan
+                            </div>
+                        </div>
+                    </div>
                 </x-admin.table-cell>
             </x-admin.table-row>
             @empty
@@ -228,10 +245,36 @@
 
         <x-admin.stat-card
             title="Active Users"
-            :value="$roles->sum('users_count')"
+            :value="$roles->sum(function($role) { return $role->users()->count(); })"
             icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>'
             iconColor="text-purple-500"
             iconBg="bg-purple-100 dark:bg-purple-800/30"
         />
     </div>
+
+    @push('scripts')
+    <script>
+        function toggleDropdown(dropdownId) {
+            // Close all other dropdowns first
+            document.querySelectorAll('[id^="dropdown-"]').forEach(dropdown => {
+                if (dropdown.id !== dropdownId) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+            
+            // Toggle the clicked dropdown
+            const dropdown = document.getElementById(dropdownId);
+            dropdown.classList.toggle('hidden');
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.relative')) {
+                document.querySelectorAll('[id^="dropdown-"]').forEach(dropdown => {
+                    dropdown.classList.add('hidden');
+                });
+            }
+        });
+    </script>
+    @endpush
 </x-layouts.admin>

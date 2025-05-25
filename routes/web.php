@@ -104,7 +104,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
     
-// Roles Management
+    // RBAC Management - Roles and Permissions
     Route::resource('roles', App\Http\Controllers\Admin\RoleController::class);
     Route::get('/roles/{role}/permissions', [App\Http\Controllers\Admin\RoleController::class, 'permissions'])
         ->name('roles.permissions');
@@ -124,7 +124,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/permissions/{permission}/roles', [App\Http\Controllers\Admin\PermissionController::class, 'roles'])
         ->name('permissions.roles');
 
+    // RBAC Dashboard/Statistics
+    Route::get('/rbac/dashboard', [App\Http\Controllers\Admin\RBACController::class, 'dashboard'])
+        ->name('rbac.dashboard');
+    Route::get('/rbac/audit-log', [App\Http\Controllers\Admin\RBACController::class, 'auditLog'])
+        ->name('rbac.audit-log');
+    Route::post('/rbac/clear-cache', [App\Http\Controllers\Admin\RBACController::class, 'clearCache'])
+        ->name('rbac.clear-cache');
+
     // Enhanced User Management with Role Assignment
+    Route::resource('users', App\Http\Controllers\Admin\UserController::class);
     Route::get('/users/{user}/roles', [App\Http\Controllers\Admin\UserController::class, 'showRoles'])
         ->name('users.roles');
     Route::put('/users/{user}/roles', [App\Http\Controllers\Admin\UserController::class, 'updateRoles'])
@@ -133,14 +142,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         ->name('users.assign-role');
     Route::delete('/users/{user}/remove-role/{role}', [App\Http\Controllers\Admin\UserController::class, 'removeRole'])
         ->name('users.remove-role');
-
-    // RBAC Dashboard/Statistics
-    Route::get('/rbac/dashboard', [App\Http\Controllers\Admin\RBACController::class, 'dashboard'])
-        ->name('rbac.dashboard');
-    Route::get('/rbac/audit-log', [App\Http\Controllers\Admin\RBACController::class, 'auditLog'])
-        ->name('rbac.audit-log');
-    Route::post('/rbac/clear-cache', [App\Http\Controllers\Admin\RBACController::class, 'clearCache'])
-        ->name('rbac.clear-cache');
+    Route::post('/users/{user}/toggle-active', [App\Http\Controllers\Admin\UserController::class, 'toggleActive'])
+        ->name('users.toggle-active');
+    Route::get('/users/{user}/change-password', [App\Http\Controllers\Admin\UserController::class, 'showChangePasswordForm'])
+        ->name('users.password.form');
+    Route::post('/users/{user}/change-password', [App\Http\Controllers\Admin\UserController::class, 'changePassword'])
+        ->name('users.password.update');
+    Route::post('/users/{user}/verify', [App\Http\Controllers\Admin\UserController::class, 'verifyClient'])
+        ->name('users.verify');
 
     // Services management
     Route::resource('services', App\Http\Controllers\Admin\ServiceController::class);
@@ -290,56 +299,4 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/settings/email/test', [App\Http\Controllers\Admin\SettingController::class, 'sendTestEmail'])->name('settings.email.test');
     Route::get('/settings/seo', [App\Http\Controllers\Admin\SettingController::class, 'seo'])->name('settings.seo');
     Route::post('/settings/seo', [App\Http\Controllers\Admin\SettingController::class, 'updateSeo'])->name('settings.seo.update');
-    
-    // Users management
-    Route::resource('users', App\Http\Controllers\Admin\UserController::class);
-    Route::post('/users/{user}/toggle-active', [App\Http\Controllers\Admin\UserController::class, 'toggleActive'])->name('users.toggle-active');
-    Route::get('/users/{user}/change-password', [App\Http\Controllers\Admin\UserController::class, 'showChangePasswordForm'])->name('users.password.form');
-    Route::post('/users/{user}/change-password', [App\Http\Controllers\Admin\UserController::class, 'changePassword'])->name('users.password.update');
-    Route::post('/users/{user}/verify', [App\Http\Controllers\Admin\UserController::class, 'verifyClient'])->name('users.verify');
-});
-
-// Client routes
-Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(function () {
-    // Dashboard
-    Route::get('/', [ClientDashboardController::class, 'index'])->name('dashboard');
-    
-    // Projects
-    Route::get('/projects', [App\Http\Controllers\Client\ProjectController::class, 'index'])->name('projects.index');
-    Route::get('/projects/{project}', [App\Http\Controllers\Client\ProjectController::class, 'show'])->name('projects.show');
-    Route::get('/projects/{project}/testimonial', [App\Http\Controllers\Client\ProjectController::class, 'showTestimonialForm'])->name('projects.testimonial.create');
-    Route::post('/projects/{project}/testimonial', [App\Http\Controllers\Client\ProjectController::class, 'storeTestimonial'])->name('projects.testimonial.store');
-    Route::get('/projects/{project}/files/{file}/download', [App\Http\Controllers\Client\ProjectController::class, 'downloadFile'])->name('projects.files.download');
-    
-    // Quotations
-    Route::get('/quotations', [App\Http\Controllers\Client\QuotationController::class, 'index'])->name('quotations.index');
-    Route::get('/quotations/create', [App\Http\Controllers\Client\QuotationController::class, 'create'])->name('quotations.create');
-    Route::post('/quotations', [App\Http\Controllers\Client\QuotationController::class, 'store'])->name('quotations.store');
-    Route::get('/quotations/{quotation}', [App\Http\Controllers\Client\QuotationController::class, 'show'])->name('quotations.show');
-    Route::get('/quotations/{quotation}/additional-info', [App\Http\Controllers\Client\QuotationController::class, 'showAdditionalInfoForm'])->name('quotations.additional-info.form');
-    Route::post('/quotations/{quotation}/additional-info', [App\Http\Controllers\Client\QuotationController::class, 'updateAdditionalInfo'])->name('quotations.additional-info.update');
-    Route::get('/quotations/{quotation}/attachments/{attachmentId}/download', [App\Http\Controllers\Client\QuotationController::class, 'downloadAttachment'])->name('quotations.attachments.download');
-    Route::post('/quotations/{quotation}/approve', [App\Http\Controllers\Client\QuotationController::class, 'approve'])->name('quotations.approve');
-    Route::get('/quotations/{quotation}/decline', [App\Http\Controllers\Client\QuotationController::class, 'showDeclineForm'])->name('quotations.decline.form');
-    Route::post('/quotations/{quotation}/decline', [App\Http\Controllers\Client\QuotationController::class, 'decline'])->name('quotations.decline');
-    
-    // Messages routes
-    Route::get('/messages', [App\Http\Controllers\Client\MessageController::class, 'index'])->name('messages.index');
-    Route::get('/messages/create', [App\Http\Controllers\Client\MessageController::class, 'create'])->name('messages.create');
-    Route::post('/messages', [App\Http\Controllers\Client\MessageController::class, 'store'])->name('messages.store');
-    Route::get('/messages/{message}', [App\Http\Controllers\Client\MessageController::class, 'show'])->name('messages.show');
-    Route::post('/messages/{message}/reply', [App\Http\Controllers\Client\MessageController::class, 'reply'])->name('messages.reply');
-    Route::post('/messages/{message}/mark-read', [App\Http\Controllers\Client\MessageController::class, 'markAsRead'])->name('messages.mark-read');
-    Route::post('/messages/{message}/mark-unread', [App\Http\Controllers\Client\MessageController::class, 'markAsUnread'])->name('messages.mark-unread');
-    Route::get('/messages/{message}/attachments/{attachmentId}/download', [App\Http\Controllers\Client\MessageController::class, 'downloadAttachment'])->name('messages.attachments.download');
-    Route::get('/messages/{message}/attachments/{attachmentId}/download', [App\Http\Controllers\Admin\MessageController::class, 'downloadAttachment'])
-        ->name('messages.attachments.download')
-        ->where('attachmentId', '[0-9]+');
-    
-    // Profile
-    Route::get('/profile', [App\Http\Controllers\Client\ProfileController::class, 'show'])->name('profile.show');
-    Route::get('/profile/edit', [App\Http\Controllers\Client\ProfileController::class, 'edit'])->name('profile.edit');
-    Route::put('/profile', [App\Http\Controllers\Client\ProfileController::class, 'update'])->name('profile.update');
-    Route::get('/profile/change-password', [App\Http\Controllers\Client\ProfileController::class, 'showChangePasswordForm'])->name('profile.password.form');
-    Route::post('/profile/change-password', [App\Http\Controllers\Client\ProfileController::class, 'changePassword'])->name('profile.password.update');
 });
