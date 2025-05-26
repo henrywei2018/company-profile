@@ -18,7 +18,9 @@ class EmailSettingsController extends Controller
     /**
      * Get setting value with fallback
      */
-    private function getSetting($key, $default = null)
+    
+    
+     private function getSetting($key, $default = null)
     {
         try {
             if (function_exists('settings')) {

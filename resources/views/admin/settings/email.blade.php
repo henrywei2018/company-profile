@@ -1,5 +1,5 @@
 {{-- resources/views/admin/settings/email.blade.php --}}
-<x-layouts.admin title="Email Settings">
+<x-layouts.admin title="Email Settings" >
     <!-- Breadcrumb -->
     <x-admin.breadcrumb :items="['Settings' => route('admin.settings.index'), 'Email Settings' => '']" />
 
@@ -23,59 +23,59 @@
             
             <!-- SMTP Configuration -->
             <x-admin.form-section title="SMTP Configuration" description="Configure your email server settings">
-                <div class="space-y-4">
-                    <x-admin.input 
-                        label="SMTP Host" 
-                        name="mail_host" 
-                        :value="old('mail_host', config('mail.mailers.smtp.host'))" 
-                        placeholder="smtp.gmail.com"
-                        required 
-                        helper="Your SMTP server hostname"
-                    />
+    <div class="space-y-4">
+        <x-admin.input 
+            label="SMTP Host" 
+            name="mail_host" 
+            :value="old('mail_host', config('mail.mailers.smtp.host'))" 
+            placeholder="smtp.gmail.com"
+            required 
+            helper="Your SMTP server hostname"
+        />
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <x-admin.input 
-                            label="SMTP Port" 
-                            name="mail_port" 
-                            type="number"
-                            :value="old('mail_port', config('mail.mailers.smtp.port'))" 
-                            placeholder="587"
-                            required 
-                        />
+        <div class="grid grid-cols-2 gap-4">
+            <x-admin.input 
+                label="SMTP Port" 
+                name="mail_port" 
+                type="number"
+                :value="old('mail_port', config('mail.mailers.smtp.port'))" 
+                placeholder="587"
+                required 
+            />
 
-                        <x-admin.select 
-                            label="Encryption" 
-                            name="mail_encryption" 
-                            :value="old('mail_encryption', config('mail.mailers.smtp.encryption'))"
-                            :options="[
-                                'tls' => 'TLS (Recommended)',
-                                'ssl' => 'SSL',
-                                'null' => 'None'
-                            ]"
-                            required
-                        />
-                    </div>
+            <x-admin.select 
+                label="Encryption" 
+                name="mail_encryption" 
+                :value="old('mail_encryption', config('mail.mailers.smtp.encryption'))"
+                :options="[
+                    'tls' => 'TLS (Recommended)',
+                    'ssl' => 'SSL',
+                    'null' => 'None'
+                ]"
+                required
+            />
+        </div>
 
-                    <x-admin.input 
-                        label="SMTP Username" 
-                        name="mail_username" 
-                        :value="old('mail_username', config('mail.mailers.smtp.username'))" 
-                        placeholder="your-email@gmail.com"
-                        required 
-                        helper="Usually your email address"
-                    />
+        <x-admin.input 
+            label="SMTP Username" 
+            name="mail_username" 
+            :value="old('mail_username', config('mail.mailers.smtp.username'))" 
+            placeholder="your-email@gmail.com"
+            required 
+            helper="Usually your email address"
+        />
 
-                    <x-admin.input 
-                        label="SMTP Password" 
-                        name="mail_password" 
-                        type="password"
-                        :value="old('mail_password', config('mail.mailers.smtp.password'))" 
-                        placeholder="Your app password or SMTP password"
-                        required 
-                        helper="For Gmail, use App Password, not your regular password"
-                    />
-                </div>
-            </x-admin.form-section>
+        <x-admin.input 
+            label="SMTP Password" 
+            name="mail_password" 
+            type="password"
+            :value="old('mail_password', config('mail.mailers.smtp.password'))" 
+            placeholder="Your app password or SMTP password"
+            required 
+            helper="For Gmail, use App Password, not your regular password"
+        />
+    </div>
+</x-admin.form-section>
 
             <!-- Email Addresses -->
             <x-admin.form-section title="Email Addresses" description="Configure sender and recipient email addresses">

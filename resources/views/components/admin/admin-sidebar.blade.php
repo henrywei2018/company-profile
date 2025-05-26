@@ -572,6 +572,12 @@
                                 </a>
                             </li>
                             <li>
+                                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.settings.email') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
+                                    href="{{ route('admin.settings.email') }}">
+                                    Email Settings
+                                </a>
+                            </li>
+                            <li>
                                 <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.settings.seo') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
                                     href="{{ route('admin.settings.seo') }}">
                                     SEO Settings

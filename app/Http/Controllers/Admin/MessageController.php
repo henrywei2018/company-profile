@@ -8,11 +8,14 @@ use App\Models\MessageAttachment;
 use App\Models\User;
 use App\Notifications\MessageReplyNotification;
 use App\Notifications\DirectMessageNotification;
+use App\Notifications\NewMessageNotification;
+use App\Notifications\MessageAutoReplyNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class MessageController extends Controller
 {
@@ -134,7 +137,7 @@ class MessageController extends Controller
     }
 
     /**
-     * Store a newly created direct message.
+     * Store a newly created direct message with integrated email settings.
      */
     public function store(Request $request)
     {
@@ -228,7 +231,7 @@ class MessageController extends Controller
             $message = Message::create([
                 'type' => 'admin_to_client',
                 'name' => auth()->user()->name ?? 'Admin',
-                'email' => config('mail.from.address', 'admin@company.com'),
+                'email' => settings('mail_from_address', config('mail.from.address', 'admin@company.com')),
                 'subject' => trim($validated['subject']),
                 'message' => trim($validated['message']),
                 'user_id' => $userId,
@@ -254,34 +257,41 @@ class MessageController extends Controller
                 }
             }
 
-            // Send email notification
-            try {
-                if ($userId) {
-                    $client->notify(new DirectMessageNotification($message));
-                    $logMessage = "Direct message sent to registered client: {$recipientName} ({$recipientEmail})";
-                } else {
-                    Notification::route('mail', $recipientEmail)
-                        ->notify(new DirectMessageNotification($message));
-                    $logMessage = "Direct message sent to custom email: {$recipientName} ({$recipientEmail})";
+            // Send email notification - Check if email is enabled
+            if (settings('message_email_enabled', true)) {
+                try {
+                    if ($userId) {
+                        $client->notify(new DirectMessageNotification($message));
+                        $logMessage = "Direct message sent to registered client: {$recipientName} ({$recipientEmail})";
+                    } else {
+                        Notification::route('mail', $recipientEmail)
+                            ->notify(new DirectMessageNotification($message));
+                        $logMessage = "Direct message sent to custom email: {$recipientName} ({$recipientEmail})";
+                    }
+                    
+                    Log::info($logMessage, [
+                        'message_id' => $message->id,
+                        'sent_by' => auth()->id(),
+                        'attachments' => $attachmentCount
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    Log::error('Failed to send direct message notification: ' . $e->getMessage(), [
+                        'message_id' => $message->id,
+                        'recipient_email' => $recipientEmail
+                    ]);
+                    
+                    // Still commit the transaction but show warning
+                    DB::commit();
+                    
+                    return redirect()->route('admin.messages.index')
+                        ->with('warning', "Message saved successfully but there was an issue sending the email notification to {$recipientName}. Please check your email configuration.");
                 }
-                
-                Log::info($logMessage, [
-                    'message_id' => $message->id,
-                    'sent_by' => auth()->id(),
-                    'attachments' => $attachmentCount
-                ]);
-                
-            } catch (\Exception $e) {
-                Log::error('Failed to send direct message notification: ' . $e->getMessage(), [
+            } else {
+                Log::info("Email sending disabled - message saved but not sent", [
                     'message_id' => $message->id,
                     'recipient_email' => $recipientEmail
                 ]);
-                
-                // Still commit the transaction but show warning
-                DB::commit();
-                
-                return redirect()->route('admin.messages.index')
-                    ->with('warning', "Message saved successfully but there was an issue sending the email notification to {$recipientName}. Please check your email configuration.");
             }
 
             DB::commit();
@@ -290,6 +300,9 @@ class MessageController extends Controller
             $successMessage = "Direct message sent successfully to {$recipientName}!";
             if ($attachmentCount > 0) {
                 $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
+            }
+            if (!settings('message_email_enabled', true)) {
+                $successMessage .= " (Note: Email sending is disabled in settings)";
             }
 
             return redirect()->route('admin.messages.index')
@@ -302,6 +315,110 @@ class MessageController extends Controller
             return redirect()->back()
                 ->withErrors(['error' => 'Failed to send message. Please try again.'])
                 ->withInput();
+        }
+    }
+
+    /**
+     * Store a message from public contact form with integrated email settings
+     */
+    public function storePublicMessage(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'phone' => 'nullable|string|max:20',
+            'company' => 'nullable|string|max:255',
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string|min:10',
+            'attachments.*' => 'nullable|file|max:5120|mimes:pdf,doc,docx,jpg,jpeg,png',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Check if user exists
+            $user = User::where('email', $validated['email'])->first();
+            
+            // Create the message
+            $message = Message::create([
+                'type' => 'contact_form',
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'] ?? null,
+                'company' => $validated['company'] ?? null,
+                'subject' => $validated['subject'],
+                'message' => $validated['message'],
+                'user_id' => $user?->id,
+                'is_read' => false,
+                'is_replied' => false,
+            ]);
+
+            // Handle attachments
+            $attachmentCount = 0;
+            if ($request->hasFile('attachments')) {
+                foreach ($request->file('attachments') as $file) {
+                    if ($file->isValid() && $attachmentCount < 3) {
+                        try {
+                            $message->addAttachment($file);
+                            $attachmentCount++;
+                        } catch (\Exception $e) {
+                            Log::error('Failed to add public message attachment: ' . $e->getMessage());
+                        }
+                    }
+                }
+            }
+
+            // Send notifications based on email settings
+            if (settings('message_email_enabled', true)) {
+                try {
+                    // Send auto-reply to sender if enabled
+                    if (settings('message_auto_reply_enabled', true)) {
+                        Notification::route('mail', $validated['email'])
+                            ->notify(new MessageAutoReplyNotification($message));
+                    }
+
+                    // Send notification to admin if enabled
+                    if (settings('notify_admin_new_message', true)) {
+                        $adminEmails = $this->getAdminNotificationEmails();
+                        foreach ($adminEmails as $adminEmail) {
+                            Notification::route('mail', $adminEmail)
+                                ->notify(new NewMessageNotification($message));
+                        }
+                    }
+
+                    Log::info('Public message received and notifications sent', [
+                        'message_id' => $message->id,
+                        'sender_email' => $validated['email'],
+                        'auto_reply_sent' => settings('message_auto_reply_enabled', true),
+                        'admin_notified' => settings('notify_admin_new_message', true)
+                    ]);
+
+                } catch (\Exception $e) {
+                    Log::error('Failed to send message notifications: ' . $e->getMessage(), [
+                        'message_id' => $message->id
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Thank you for your message! We will get back to you soon.',
+                'data' => [
+                    'id' => $message->id,
+                    'auto_reply_sent' => settings('message_auto_reply_enabled', true)
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to store public message: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send message. Please try again.'
+            ], 500);
         }
     }
 
@@ -351,6 +468,99 @@ class MessageController extends Controller
     }
 
     /**
+     * Reply to a message with integrated email settings.
+     */
+    public function reply(Request $request, Message $message)
+    {
+        $request->validate([
+            'subject' => 'required|string|max:255|min:3',
+            'message' => 'required|string|min:10|max:10000',
+            'attachments.*' => 'nullable|file|max:2048|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif,zip,rar',
+            'attachments' => 'nullable|array|max:5',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $reply = Message::create([
+                'type' => 'admin_to_client',
+                'name' => auth()->user()->name ?? 'Admin',
+                'email' => settings('mail_from_address', config('mail.from.address', 'admin@company.com')),
+                'subject' => trim($request->subject),
+                'message' => trim($request->message),
+                'parent_id' => $message->id,
+                'user_id' => $message->user_id,
+                'is_read' => true,
+                'is_replied' => false,
+                'read_at' => now(),
+                'replied_by' => auth()->id(),
+            ]);
+
+            // Mark the original message as replied
+            if (!$message->is_replied) {
+                $message->markAsReplied(auth()->id());
+            }
+
+            // Handle attachments
+            $attachmentCount = 0;
+            if ($request->hasFile('attachments')) {
+                foreach ($request->file('attachments') as $file) {
+                    if ($file->isValid() && $attachmentCount < 5) {
+                        try {
+                            $reply->addAttachment($file);
+                            $attachmentCount++;
+                        } catch (\Exception $e) {
+                            Log::error('Failed to add reply attachment: ' . $e->getMessage());
+                        }
+                    }
+                }
+            }
+
+            // Send notification if email is enabled
+            if (settings('message_email_enabled', true)) {
+                try {
+                    if ($message->user) {
+                        $message->user->notify(new MessageReplyNotification($reply));
+                    } else {
+                        Notification::route('mail', $message->email)
+                            ->notify(new MessageReplyNotification($reply));
+                    }
+
+                    Log::info('Message reply sent', [
+                        'reply_id' => $reply->id,
+                        'original_message_id' => $message->id,
+                        'recipient_email' => $message->email
+                    ]);
+
+                } catch (\Exception $e) {
+                    Log::error('Failed to send reply notification: ' . $e->getMessage());
+                }
+            }
+
+            DB::commit();
+
+            $successMessage = 'Reply sent successfully!';
+            if ($attachmentCount > 0) {
+                $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
+            }
+            if (!settings('message_email_enabled', true)) {
+                $successMessage .= " (Note: Email sending is disabled in settings)";
+            }
+
+            return redirect()->route('admin.messages.show', $message)
+                ->with('success', $successMessage);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to send reply: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'Failed to send reply. Please try again.')
+                ->withInput();
+        }
+    }
+
+    /**
      * Toggle the read status of the message.
      */
     public function toggleRead(Message $message)
@@ -396,87 +606,6 @@ class MessageController extends Controller
             
             return redirect()->back()
                 ->with('error', 'Failed to delete message. Please try again.');
-        }
-    }
-
-    /**
-     * Reply to a message.
-     */
-    public function reply(Request $request, Message $message)
-    {
-        $request->validate([
-            'subject' => 'required|string|max:255|min:3',
-            'message' => 'required|string|min:10|max:10000',
-            'attachments.*' => 'nullable|file|max:2048|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif,zip,rar',
-            'attachments' => 'nullable|array|max:5',
-        ]);
-
-        try {
-            DB::beginTransaction();
-
-            $reply = Message::create([
-                'type' => 'admin_to_client',
-                'name' => auth()->user()->name ?? 'Admin',
-                'email' => config('mail.from.address', 'admin@company.com'),
-                'subject' => trim($request->subject),
-                'message' => trim($request->message),
-                'parent_id' => $message->id,
-                'user_id' => $message->user_id,
-                'is_read' => true,
-                'is_replied' => false,
-                'read_at' => now(),
-                'replied_by' => auth()->id(),
-            ]);
-
-            // Mark the original message as replied
-            if (!$message->is_replied) {
-                $message->markAsReplied(auth()->id());
-            }
-
-            // Handle attachments
-            $attachmentCount = 0;
-            if ($request->hasFile('attachments')) {
-                foreach ($request->file('attachments') as $file) {
-                    if ($file->isValid() && $attachmentCount < 5) {
-                        try {
-                            $reply->addAttachment($file);
-                            $attachmentCount++;
-                        } catch (\Exception $e) {
-                            Log::error('Failed to add reply attachment: ' . $e->getMessage());
-                        }
-                    }
-                }
-            }
-
-            // Send notification
-            try {
-                if ($message->user) {
-                    $message->user->notify(new MessageReplyNotification($reply));
-                } else {
-                    Notification::route('mail', $message->email)
-                        ->notify(new MessageReplyNotification($reply));
-                }
-            } catch (\Exception $e) {
-                Log::error('Failed to send reply notification: ' . $e->getMessage());
-            }
-
-            DB::commit();
-
-            $successMessage = 'Reply sent successfully!';
-            if ($attachmentCount > 0) {
-                $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
-            }
-
-            return redirect()->route('admin.messages.show', $message)
-                ->with('success', $successMessage);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Failed to send reply: ' . $e->getMessage());
-            
-            return redirect()->back()
-                ->with('error', 'Failed to send reply. Please try again.')
-                ->withInput();
         }
     }
 
@@ -567,16 +696,6 @@ class MessageController extends Controller
     }
 
     /**
-     * Handle email reply webhook (for external email replies).
-     */
-    public function handleEmailReply(Request $request)
-    {
-        // This would handle incoming emails from external providers
-        // Implementation depends on your email service provider
-        return response()->json(['success' => true]);
-    }
-
-    /**
      * Get dashboard statistics for messages.
      */
     public function getStats()
@@ -588,5 +707,46 @@ class MessageController extends Controller
             'today_messages' => Message::excludeAdminMessages()->whereDate('created_at', today())->count(),
             'urgent_messages' => Message::excludeAdminMessages()->unread()->unreplied()->count(),
         ];
+    }
+
+    /**
+     * Get admin notification emails from settings
+     */
+    private function getAdminNotificationEmails(): array
+    {
+        $emails = [];
+        
+        // Primary admin email
+        if ($adminEmail = settings('admin_email')) {
+            $emails[] = $adminEmail;
+        }
+        
+        // Support email
+        if ($supportEmail = settings('support_email')) {
+            $emails[] = $supportEmail;
+        }
+        
+        // Additional notification emails from JSON setting
+        $notificationEmails = settings('notification_emails');
+        if ($notificationEmails) {
+            if (is_string($notificationEmails)) {
+                $notificationEmails = json_decode($notificationEmails, true);
+            }
+            if (is_array($notificationEmails)) {
+                $emails = array_merge($emails, $notificationEmails);
+            }
+        }
+        
+        // Remove duplicates and filter valid emails
+        $emails = array_unique(array_filter($emails, function($email) {
+            return filter_var($email, FILTER_VALIDATE_EMAIL);
+        }));
+        
+        // Fallback to config if no emails found
+        if (empty($emails)) {
+            $emails[] = config('mail.from.address', 'admin@example.com');
+        }
+        
+        return $emails;
     }
 }
