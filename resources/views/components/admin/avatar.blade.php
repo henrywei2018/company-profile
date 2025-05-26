@@ -78,6 +78,6 @@
     @endif
     
     @if($status)
-        <span class=\"absolute bottom-0 right-0 block rounded-full ring-2 ring-white dark:ring-neutral-800 {{ $statusSizeClasses }} {{ $statusColorClasses }}\"></span>
+        <span class="absolute bottom-0 right-0 block rounded-full ring-2 ring-white dark:ring-neutral-800 {{ $statusSizeClasses }} {{ $statusColorClasses }}"></span>
     @endif
 </div>
