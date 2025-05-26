@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\ChatController;
 
 /*
 |--------------------------------------------------------------------------
@@ -53,6 +54,15 @@ Route::prefix('posts')->name('api.posts.')->group(function () {
     Route::get('/archives', [PostController::class, 'archives'])->name('archives');
     Route::get('/{slug}', [PostController::class, 'show'])->name('show');
     Route::get('/{slug}/related', [PostController::class, 'related'])->name('related');
+});
+
+Route::prefix('chat')->group(function () {
+    Route::post('/start', [ChatController::class, 'start']);
+    Route::post('/send', [ChatController::class, 'sendMessage']);
+    Route::get('/messages', [ChatController::class, 'getMessages']);
+    Route::post('/visitor-info', [ChatController::class, 'updateVisitorInfo']);
+    Route::post('/close', [ChatController::class, 'close']);
+    Route::get('/session', [ChatController::class, 'getSession']);
 });
 
 // Contact and Quotation routes

@@ -163,6 +163,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::patch('/projects/{project}/toggle-featured', [App\Http\Controllers\Admin\ProjectController::class, 'toggleFeatured'])->name('projects.toggle-featured');
     Route::post('/projects/update-order', [App\Http\Controllers\Admin\ProjectController::class, 'updateOrder'])->name('projects.update-order');
     
+    //chat
+    Route::prefix('chat')->name('chat.')->group(function () {
+        Route::get('/', [App\Http\Controllers\ChatController::class, 'index'])->name('index');
+        Route::get('/settings', [App\Http\Controllers\ChatController::class, 'settings'])->name('settings');
+        Route::get('/{chatSession}', [App\Http\Controllers\ChatController::class, 'show'])->name('show');
+        Route::get('/api/statistics', [App\Http\Controllers\ChatController::class, 'statistics'])->name('statistics');
+    });
+    
+    
     // Quotations management
     Route::resource('quotations', App\Http\Controllers\Admin\QuotationController::class);
     

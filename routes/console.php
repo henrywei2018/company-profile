@@ -5,8 +5,11 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Illuminate\Support\Facades\Schedule;
 use App\Models\User;
+use App\Models\ChatSession;
 use Illuminate\Support\Facades\Hash;
+use Carbon\Carbon;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -185,3 +188,85 @@ Artisan::command('rbac:status {--detailed}', function () {
     }
     
 })->purpose('Display RBAC system status');
+
+Schedule::call(function () {
+    $days = 30; // Keep chat sessions for 30 days
+    $cutoffDate = Carbon::now()->subDays($days);
+    
+    // Delete old closed sessions
+    $deletedSessions = ChatSession::where('status', 'closed')
+        ->where('ended_at', '<', $cutoffDate)
+        ->count();
+        
+    ChatSession::where('status', 'closed')
+        ->where('ended_at', '<', $cutoffDate)
+        ->delete();
+    
+    \Log::info("Chat cleanup: Deleted {$deletedSessions} old chat sessions.");
+    
+    // Clean up orphaned sessions (no activity for 24+ hours)
+    $orphanedSessions = ChatSession::whereIn('status', ['active', 'waiting'])
+        ->where('last_activity_at', '<', Carbon::now()->subHours(24))
+        ->count();
+        
+    ChatSession::whereIn('status', ['active', 'waiting'])
+        ->where('last_activity_at', '<', Carbon::now()->subHours(24))
+        ->update(['status' => 'closed', 'ended_at' => now()]);
+    
+    \Log::info("Chat cleanup: Closed {$orphanedSessions} orphaned chat sessions.");
+    
+})->dailyAt('02:00')->name('chat-cleanup');
+
+Schedule::call(function () {
+    $stats = [
+        'total_sessions_today' => ChatSession::whereDate('created_at', today())->count(),
+        'active_sessions' => ChatSession::where('status', 'active')->count(),
+        'waiting_sessions' => ChatSession::where('status', 'waiting')->count(),
+        'avg_response_time' => 0, // You can calculate this
+    ];
+    
+    // Send email report to admin
+    $adminEmail = settings('admin_email', 'admin@usahaprimaestari.com');
+    
+    if ($adminEmail && $stats['total_sessions_today'] > 0) {
+        \Mail::to($adminEmail)->send(new \App\Mail\DailyChatReport($stats));
+    }
+    
+})->dailyAt('18:00')->name('daily-chat-report');
+
+// Clean up old chat messages (keep only last 1000 messages per session)
+Schedule::call(function () {
+    $sessions = ChatSession::withCount('messages')
+        ->having('messages_count', '>', 1000)
+        ->get();
+    
+    foreach ($sessions as $session) {
+        // Keep only the latest 1000 messages
+        $messagesToDelete = $session->messages()
+            ->orderBy('created_at', 'desc')
+            ->skip(1000)
+            ->pluck('id');
+            
+        if ($messagesToDelete->count() > 0) {
+            \App\Models\ChatMessage::whereIn('id', $messagesToDelete)->delete();
+            \Log::info("Cleaned up " . $messagesToDelete->count() . " old messages from session " . $session->session_id);
+        }
+    }
+    
+})->weekly()->name('chat-message-cleanup');
+
+// Check for stale sessions and send reminders
+Schedule::call(function () {
+    $staleSessions = ChatSession::where('status', 'waiting')
+        ->where('created_at', '<', Carbon::now()->subHours(2))
+        ->get();
+    
+    foreach ($staleSessions as $session) {
+        // Send reminder email to admin
+        $adminEmail = settings('admin_email');
+        if ($adminEmail) {
+            \Mail::to($adminEmail)->send(new \App\Mail\StaleChatNotificationMail($session));
+        }
+    }
+    
+})->hourly()->name('stale-chat-check');
