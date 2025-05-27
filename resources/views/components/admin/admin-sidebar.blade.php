@@ -439,7 +439,7 @@
                         </ul>
                     </div>
                 </li>
-                <!-- Live Chat -->
+                <!-- Updated Live Chat section for sidebar -->
                 <li class="hs-accordion" id="chat-accordion">
                     <button type="button"
                         class="hs-accordion-toggle w-full text-start flex items-center gap-x-3.5 py-2 px-3 text-sm {{ request()->routeIs('admin.chat.*') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }} rounded-md">
@@ -451,14 +451,25 @@
                         </svg>
                         Live Chat
                         @php
-                            // Get active chat sessions count (you can add this logic to your sidebar provider)
-                            $activeChatSessions = \App\Models\ChatSession::where('status', 'active')->count();
-                            $waitingChatSessions = \App\Models\ChatSession::where('status', 'waiting')->count();
-                            $totalActiveSessions = $activeChatSessions + $waitingChatSessions;
+                            // Get active chat sessions count
+                            try {
+                                $activeChatSessions = \App\Models\ChatSession::where('status', 'active')->count();
+                                $waitingChatSessions = \App\Models\ChatSession::where('status', 'waiting')->count();
+                                $totalActiveSessions = $activeChatSessions + $waitingChatSessions;
+
+                                // Get current user's operator status
+    $currentOperator = \App\Models\ChatOperator::where('user_id', auth()->id())->first();
+                                $isOperatorOnline = $currentOperator ? $currentOperator->is_online : false;
+                            } catch (\Exception $e) {
+                                $activeChatSessions = 0;
+                                $waitingChatSessions = 0;
+                                $totalActiveSessions = 0;
+                                $isOperatorOnline = false;
+                            }
                         @endphp
                         @if ($totalActiveSessions > 0)
                             <span
-                                class="inline-flex items-center py-0.5 px-1.5 rounded-full text-xs font-medium {{ $waitingChatSessions > 0 ? 'bg-red-500 text-white animate-pulse' : 'bg-green-500 text-white' }} ml-auto">
+                                class="inline-flex items-center py-0.5 px-1.5 rounded-full text-xs font-medium {{ $waitingChatSessions > 0 ? 'bg-red-500 text-white animate-pulse' : 'bg-green-500 text-white' }} ml-auto mr-2">
                                 {{ $totalActiveSessions }}
                             </span>
                         @endif
@@ -487,7 +498,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                     </svg>
-                                    Dashboard
+                                    Chat Dashboard
                                     @if ($totalActiveSessions > 0)
                                         <span
                                             class="inline-flex items-center py-0.5 px-1.5 rounded-full text-xs font-medium {{ $waitingChatSessions > 0 ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' }} ml-auto">
@@ -543,19 +554,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
-                                    Chat Settings
-                                </a>
-                            </li>
-
-                            <li>
-                                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.chat.templates') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
-                                    href="{{ route('admin.chat.templates') }}">
-                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    Quick Responses
+                                    Chat Settings                                    
                                 </a>
                             </li>
 
@@ -565,27 +564,35 @@
                             </li>
 
                             <li>
-                                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.chat-operators.*') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
-                                    href="{{ route('admin.chat-operators.index') }}">
-                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
-                                    Chat Operators
-                                </a>
-                            </li>
-
-                            <li>
                                 <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.chat.reports.*') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
-                                    href="{{ route('admin.chat.reports.daily') }}">
+                                    href="{{ route('admin.chat.reports.index') }}">
                                     <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                     </svg>
-                                    Chat Reports
+                                    Reports & Analytics                                    
                                 </a>
+                            </li>
+
+                            <li>
+                                <button type="button"
+                                    class="w-full flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900 transition-colors"
+                                    onclick="toggleOperatorStatus()" id="operator-toggle-btn">
+                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                    <span id="operator-status-text">
+                                        {{ $isOperatorOnline ? 'Go Offline' : 'Go Online' }}
+                                    </span>
+                                    <div class="ml-auto flex items-center">
+                                        <div id="operator-status-indicator"
+                                            class="w-2 h-2 rounded-full {{ $isOperatorOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-400' }}">
+                                        </div>
+                                    </div>
+                                </button>
                             </li>
                         </ul>
                     </div>
@@ -750,3 +757,130 @@
         <!-- End Footer -->
     </div>
 </div>
+@push('scripts')
+    <script>
+        // Initialize operator status from server-side data
+        let isOperatorOnline = {{ $isOperatorOnline ? 'true' : 'false' }};
+
+        async function toggleOperatorStatus() {
+            const btn = document.getElementById('operator-toggle-btn');
+            const statusText = document.getElementById('operator-status-text');
+            const statusIndicator = document.getElementById('operator-status-indicator');
+
+            // Disable button during request
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+
+            try {
+                const endpoint = isOperatorOnline ?
+                    '{{ route('admin.chat.operator.offline') }}' :
+                    '{{ route('admin.chat.operator.online') }}';
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
+                            'content')
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Update local state
+                    isOperatorOnline = !isOperatorOnline;
+
+                    // Update UI immediately
+                    updateOperatorStatusUI();
+
+                    // Show success message
+                    showNotification(
+                        isOperatorOnline ? 'You are now online for chat support' : 'You are now offline',
+                        'success'
+                    );
+
+                    // Optional: Update the dashboard statistics if on chat page
+                    if (window.location.pathname.includes('admin/chat')) {
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    }
+                } else {
+                    throw new Error(data.message || 'Failed to update status');
+                }
+            } catch (error) {
+                console.error('Failed to toggle operator status:', error);
+                showNotification('Failed to update operator status', 'error');
+            } finally {
+                // Re-enable button
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
+        }
+
+        function updateOperatorStatusUI() {
+            const statusText = document.getElementById('operator-status-text');
+            const statusIndicator = document.getElementById('operator-status-indicator');
+
+            if (isOperatorOnline) {
+                statusText.textContent = 'Go Offline';
+                statusIndicator.className = 'w-2 h-2 rounded-full bg-green-500 animate-pulse';
+            } else {
+                statusText.textContent = 'Go Online';
+                statusIndicator.className = 'w-2 h-2 rounded-full bg-gray-400';
+            }
+        }
+
+        function showNotification(message, type) {
+            // Remove any existing notifications
+            const existingNotifications = document.querySelectorAll('.chat-notification');
+            existingNotifications.forEach(n => n.remove());
+
+            // Create new notification
+            const notification = document.createElement('div');
+            notification.className = `chat-notification fixed top-4 right-4 px-4 py-2 rounded-md text-white z-50 transition-all duration-300 ${
+        type === 'success' ? 'bg-green-500' : 'bg-red-500'
+    }`;
+            notification.textContent = message;
+
+            document.body.appendChild(notification);
+
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        // Check operator status periodically (every 30 seconds)
+        setInterval(async function() {
+            try {
+                const response = await fetch('/admin/chat/operator/status', {
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
+                            'content')
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.is_online !== isOperatorOnline) {
+                        isOperatorOnline = data.is_online;
+                        updateOperatorStatusUI();
+                    }
+                }
+            } catch (error) {
+                console.log('Status check failed:', error);
+            }
+        }, 30000);
+
+        // Initialize UI on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateOperatorStatusUI();
+        });
+    </script>
+@endpush

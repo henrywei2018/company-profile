@@ -688,25 +688,375 @@ class ChatController extends Controller
         return redirect()->back()->with('success', 'Template created successfully!');
     }
 
-    /**
-     * Daily report
-     */
-    public function dailyReport()
+    public function reports(Request $request)
     {
         if (!auth()->user()->hasAdminAccess()) {
             abort(403, 'Admin access required');
         }
 
-        $today = today();
-        $stats = [
-            'sessions_today' => ChatSession::whereDate('created_at', $today)->count(),
-            'messages_today' => ChatMessage::whereDate('created_at', $today)->count(),
-            'avg_response_time' => $this->getAverageResponseTime(),
-            'active_sessions' => ChatSession::where('status', 'active')->count(),
-            'waiting_sessions' => ChatSession::where('status', 'waiting')->count(),
+        // Get all operators for filter dropdown
+        $operators = User::whereHas('roles', function ($q) {
+            $q->whereIn('name', ['super-admin', 'admin', 'manager', 'editor']);
+        })->get();
+
+        $reportData = null;
+        $sessions = null;
+
+        // Generate report if filters are applied
+        if ($request->hasAny(['date_range', 'status', 'priority', 'operator_id', 'report_type'])) {
+            $reportData = $this->generateReportData($request);
+
+            if ($request->get('report_type') === 'detailed') {
+                $sessions = $this->getDetailedSessions($request);
+            }
+        }
+
+        return view('admin.chat.reports.index', compact('operators', 'reportData', 'sessions'));
+    }
+
+    /**
+     * Generate report data based on filters
+     */
+    private function generateReportData(Request $request): array
+    {
+        $query = ChatSession::query();
+
+        // Apply date filters
+        $dateRange = $request->get('date_range', 'today');
+        $this->applyDateFilter($query, $dateRange, $request);
+
+        // Apply other filters
+        if ($request->filled('status')) {
+            $query->where('status', $request->get('status'));
+        }
+
+        if ($request->filled('priority')) {
+            $query->where('priority', $request->get('priority'));
+        }
+
+        if ($request->filled('operator_id')) {
+            $query->where('assigned_operator_id', $request->get('operator_id'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('user', function ($uq) use ($search) {
+                    $uq->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                })
+                    ->orWhere('visitor_info->name', 'like', "%{$search}%")
+                    ->orWhere('visitor_info->email', 'like', "%{$search}%")
+                    ->orWhereHas('messages', function ($mq) use ($search) {
+                        $mq->where('message', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $sessions = $query->with(['user', 'operator', 'messages'])->get();
+
+        // Calculate statistics
+        $totalSessions = $sessions->count();
+        $totalMessages = $sessions->sum(function ($session) {
+            return $session->messages->count();
+        });
+
+        $completedSessions = $sessions->where('status', 'closed');
+        $avgResponseTime = $completedSessions->isEmpty() ? 0 : $completedSessions->avg(function ($session) {
+            return $session->getDuration() ?? 0;
+        });
+
+        // Calculate satisfaction rate (placeholder - you can implement actual satisfaction tracking)
+        $satisfactionRate = 85.5; // Mock data
+
+        // Generate chart data
+        $chartData = $this->generateChartData($sessions, $dateRange);
+
+        return [
+            'total_sessions' => $totalSessions,
+            'total_messages' => $totalMessages,
+            'avg_response_time' => round($avgResponseTime, 1),
+            'satisfaction_rate' => $satisfactionRate,
+            'chart_labels' => $chartData['labels'],
+            'chart_sessions' => $chartData['sessions'],
+            'chart_response_times' => $chartData['response_times'],
+            'status_breakdown' => [
+                'active' => $sessions->where('status', 'active')->count(),
+                'waiting' => $sessions->where('status', 'waiting')->count(),
+                'closed' => $sessions->where('status', 'closed')->count(),
+            ],
+            'priority_breakdown' => [
+                'low' => $sessions->where('priority', 'low')->count(),
+                'normal' => $sessions->where('priority', 'normal')->count(),
+                'high' => $sessions->where('priority', 'high')->count(),
+                'urgent' => $sessions->where('priority', 'urgent')->count(),
+            ]
+        ];
+    }
+
+    /**
+     * Get detailed sessions for table view
+     */
+    private function getDetailedSessions(Request $request)
+    {
+        $query = ChatSession::with(['user', 'operator', 'messages']);
+
+        // Apply same filters as report data
+        $dateRange = $request->get('date_range', 'today');
+        $this->applyDateFilter($query, $dateRange, $request);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->get('status'));
+        }
+
+        if ($request->filled('priority')) {
+            $query->where('priority', $request->get('priority'));
+        }
+
+        if ($request->filled('operator_id')) {
+            $query->where('assigned_operator_id', $request->get('operator_id'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('user', function ($uq) use ($search) {
+                    $uq->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                })
+                    ->orWhere('visitor_info->name', 'like', "%{$search}%")
+                    ->orWhere('visitor_info->email', 'like', "%{$search}%")
+                    ->orWhereHas('messages', function ($mq) use ($search) {
+                        $mq->where('message', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        return $query->orderBy('created_at', 'desc')->paginate(15);
+    }
+
+    /**
+     * Apply date filter to query
+     */
+    private function applyDateFilter($query, string $dateRange, Request $request): void
+    {
+        $now = now();
+
+        switch ($dateRange) {
+            case 'today':
+                $query->whereDate('created_at', $now->toDateString());
+                break;
+            case 'yesterday':
+                $query->whereDate('created_at', $now->subDay()->toDateString());
+                break;
+            case 'this_week':
+                $query->whereBetween('created_at', [
+                    $now->startOfWeek()->toDateString(),
+                    $now->endOfWeek()->toDateString()
+                ]);
+                break;
+            case 'last_week':
+                $startOfLastWeek = $now->subWeek()->startOfWeek();
+                $endOfLastWeek = $now->subWeek()->endOfWeek();
+                $query->whereBetween('created_at', [
+                    $startOfLastWeek->toDateString(),
+                    $endOfLastWeek->toDateString()
+                ]);
+                break;
+            case 'this_month':
+                $query->whereMonth('created_at', $now->month)
+                    ->whereYear('created_at', $now->year);
+                break;
+            case 'last_month':
+                $lastMonth = $now->subMonth();
+                $query->whereMonth('created_at', $lastMonth->month)
+                    ->whereYear('created_at', $lastMonth->year);
+                break;
+            case 'last_30_days':
+                $query->where('created_at', '>=', $now->subDays(30));
+                break;
+            case 'last_90_days':
+                $query->where('created_at', '>=', $now->subDays(90));
+                break;
+            case 'custom':
+                if ($request->filled('date_from')) {
+                    $query->whereDate('created_at', '>=', $request->get('date_from'));
+                }
+                if ($request->filled('date_to')) {
+                    $query->whereDate('created_at', '<=', $request->get('date_to'));
+                }
+                break;
+        }
+    }
+
+    /**
+     * Generate chart data for reports
+     */
+    private function generateChartData($sessions, string $dateRange): array
+    {
+        $labels = [];
+        $sessionCounts = [];
+        $responseTimes = [];
+
+        // Group sessions by date/period based on date range
+        if (in_array($dateRange, ['today', 'yesterday'])) {
+            // Group by hour
+            $groupedSessions = $sessions->groupBy(function ($session) {
+                return $session->created_at->format('H:00');
+            });
+
+            for ($hour = 0; $hour < 24; $hour++) {
+                $hourLabel = sprintf('%02d:00', $hour);
+                $labels[] = $hourLabel;
+                $hourSessions = $groupedSessions->get($hourLabel, collect());
+                $sessionCounts[] = $hourSessions->count();
+                $responseTimes[] = $hourSessions->where('status', 'closed')->avg(function ($session) {
+                    return $session->getDuration() ?? 0;
+                }) ?? 0;
+            }
+        } else {
+            // Group by day
+            $groupedSessions = $sessions->groupBy(function ($session) {
+                return $session->created_at->format('M j');
+            });
+
+            $period = $this->getDatePeriod($dateRange);
+            foreach ($period as $date) {
+                $dateLabel = $date->format('M j');
+                $labels[] = $dateLabel;
+                $dateSessions = $groupedSessions->get($dateLabel, collect());
+                $sessionCounts[] = $dateSessions->count();
+                $responseTimes[] = $dateSessions->where('status', 'closed')->avg(function ($session) {
+                    return $session->getDuration() ?? 0;
+                }) ?? 0;
+            }
+        }
+
+        return [
+            'labels' => $labels,
+            'sessions' => $sessionCounts,
+            'response_times' => array_map(function ($time) {
+                return round($time, 1);
+            }, $responseTimes)
+        ];
+    }
+
+    /**
+     * Get date period for chart generation
+     */
+    private function getDatePeriod(string $dateRange): array
+    {
+        $now = now();
+        $dates = [];
+
+        switch ($dateRange) {
+            case 'this_week':
+            case 'last_week':
+                $start = $dateRange === 'this_week' ? $now->startOfWeek() : $now->subWeek()->startOfWeek();
+                for ($i = 0; $i < 7; $i++) {
+                    $dates[] = $start->copy()->addDays($i);
+                }
+                break;
+            case 'this_month':
+            case 'last_month':
+                $start = $dateRange === 'this_month' ? $now->startOfMonth() : $now->subMonth()->startOfMonth();
+                $end = $dateRange === 'this_month' ? $now->endOfMonth() : $now->subMonth()->endOfMonth();
+                $current = $start->copy();
+                while ($current->lte($end)) {
+                    $dates[] = $current->copy();
+                    $current->addDay();
+                }
+                break;
+            case 'last_30_days':
+                for ($i = 29; $i >= 0; $i--) {
+                    $dates[] = $now->copy()->subDays($i);
+                }
+                break;
+            case 'last_90_days':
+                for ($i = 89; $i >= 0; $i -= 7) { // Weekly intervals for 90 days
+                    $dates[] = $now->copy()->subDays($i);
+                }
+                break;
+        }
+
+        return $dates;
+    }
+
+    /**
+     * Export report data
+     */
+    public function exportReport(Request $request)
+    {
+        if (!auth()->user()->hasAdminAccess()) {
+            abort(403, 'Admin access required');
+        }
+
+        $reportData = $this->generateReportData($request);
+        $sessions = $this->getDetailedSessions($request);
+
+        $filename = 'chat_report_' . now()->format('Y-m-d_H-i-s') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ];
 
-        return view('admin.chat.reports.daily', compact('stats'));
+        $callback = function () use ($sessions, $reportData) {
+            $file = fopen('php://output', 'w');
+
+            // Add report summary
+            fputcsv($file, ['CHAT REPORT SUMMARY']);
+            fputcsv($file, ['Generated at', now()->format('Y-m-d H:i:s')]);
+            fputcsv($file, ['']);
+            fputcsv($file, ['Total Sessions', $reportData['total_sessions']]);
+            fputcsv($file, ['Total Messages', $reportData['total_messages']]);
+            fputcsv($file, ['Average Response Time (min)', $reportData['avg_response_time']]);
+            fputcsv($file, ['Satisfaction Rate (%)', $reportData['satisfaction_rate']]);
+            fputcsv($file, ['']);
+
+            // Add detailed sessions
+            fputcsv($file, ['DETAILED SESSIONS']);
+            fputcsv($file, [
+                'Session ID',
+                'Client Name',
+                'Client Email',
+                'Started At',
+                'Ended At',
+                'Duration (min)',
+                'Messages Count',
+                'Operator',
+                'Status',
+                'Priority'
+            ]);
+
+            foreach ($sessions as $session) {
+                fputcsv($file, [
+                    $session->session_id,
+                    $session->getVisitorName(),
+                    $session->getVisitorEmail(),
+                    $session->started_at->format('Y-m-d H:i:s'),
+                    $session->ended_at ? $session->ended_at->format('Y-m-d H:i:s') : '',
+                    $session->getDuration() ?? '',
+                    $session->messages->count(),
+                    $session->operator ? $session->operator->name : 'Bot',
+                    ucfirst($session->status),
+                    ucfirst($session->priority)
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    // Remove the old dailyReport method and replace with:
+    /**
+     * Redirect old daily report route to new reports
+     */
+    public function dailyReport()
+    {
+        return redirect()->route('admin.chat.reports.index', ['date_range' => 'today']);
     }
 
     /**
@@ -723,67 +1073,6 @@ class ChatController extends Controller
             'operators_count' => $onlineOperators,
         ]);
     }
-
-    /**
-     * Upload file for chat
-     */
-    public function uploadFile(Request $request): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'session_id' => 'required|string|exists:chat_sessions,session_id',
-            'file' => 'required|file|max:5120', // 5MB max
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        try {
-            $session = $this->chatService->getSession($request->session_id);
-
-            // Verify session belongs to authenticated user
-            if (!$session || $session->user_id !== auth()->id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Chat session not found or access denied'
-                ], 404);
-            }
-
-            $file = $request->file('file');
-            $path = $file->store('chat_files/' . $session->id, 'public');
-
-            $message = $session->messages()->create([
-                'sender_type' => 'visitor',
-                'sender_id' => auth()->id(),
-                'message' => 'File uploaded: ' . $file->getClientOriginalName(),
-                'message_type' => 'file',
-                'metadata' => [
-                    'file_path' => $path,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_size' => $file->getSize(),
-                    'file_type' => $file->getMimeType(),
-                ],
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message_id' => $message->id,
-                'file_path' => $path,
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('File upload failed: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to upload file'
-            ], 500);
-        }
-    }
-
     /**
      * Get average response time (helper method)
      */
@@ -803,6 +1092,30 @@ class ChatController extends Controller
         });
 
         return round($totalMinutes / $sessions->count(), 2);
+    }
+
+    public function getOperatorStatus(): JsonResponse
+    {
+        if (!auth()->user()->hasAdminAccess()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        try {
+            $operator = ChatOperator::where('user_id', auth()->id())->first();
+
+            return response()->json([
+                'success' => true,
+                'is_online' => $operator ? $operator->is_online : false,
+                'is_available' => $operator ? $operator->is_available : false,
+                'last_seen_at' => $operator ? $operator->last_seen_at : null,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'is_online' => false,
+                'error' => 'Failed to get operator status'
+            ]);
+        }
     }
 
     /**

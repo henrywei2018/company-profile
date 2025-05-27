@@ -11,6 +11,7 @@ use App\Models\Message;
 use App\Models\Quotation;
 use App\Models\Post;
 use App\Models\PostCategory;
+use App\View\Composers\ChatSidebarComposer;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -39,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
                 try {
                     // Get comprehensive quotation statistics
                     $quotationStats = [
+                        ChatSidebarComposer::class,
                         'total' => Quotation::count(),
                         'pending' => Quotation::where('status', 'pending')->count(),
                         'reviewed' => Quotation::where('status', 'reviewed')->count(),
