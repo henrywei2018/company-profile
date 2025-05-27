@@ -135,6 +135,13 @@
     @endphp
 
     <x-admin.floating-action-button :actions="$quickActions" />
+    <x-chat-widget 
+        size="compact"
+        theme="primary"
+        :show-online-status="true"
+        welcome-message="Butuh bantuan?"
+        operator-name="Customer Service" />
+    
     <!-- ========== END MAIN CONTENT ========== -->
 
 <script src="https://cdn.jsdelivr.net/npm/preline/dist/index.js"></script>
