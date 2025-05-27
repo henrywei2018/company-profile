@@ -65,7 +65,7 @@ Route::middleware('guest')->group(function () {
     Route::get('login', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'create'])
         ->name('login');
     Route::post('login', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'store']);
-    
+
     // Password Reset Routes
     Route::get('forgot-password', [App\Http\Controllers\Auth\PasswordResetLinkController::class, 'create'])
         ->name('password.request');
@@ -74,7 +74,7 @@ Route::middleware('guest')->group(function () {
     Route::get('reset-password/{token}', [App\Http\Controllers\Auth\NewPasswordController::class, 'create'])
         ->name('password.reset');
     Route::post('reset-password', [App\Http\Controllers\Auth\NewPasswordController::class, 'store'])
-        ->name('password.store');    
+        ->name('password.store');
     Route::get('register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'create'])
         ->name('register');
     Route::post('register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'store']);
@@ -91,44 +91,35 @@ Route::middleware('auth')->group(function () {
         ->name('verification.send');
     Route::get('/profile', [App\Http\Controllers\Client\ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [App\Http\Controllers\Client\ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [App\Http\Controllers\Client\ProfileController::class, 'destroy'])->name('profile.destroy');        
+    Route::delete('/profile', [App\Http\Controllers\Client\ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::post('logout', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
-    Route::post('/api/analytics/track', function(Request $request) {
+    Route::post('/api/analytics/track', function (Request $request) {
         // Handle chat analytics tracking for authenticated users
         return response()->json(['success' => true]);
     })->name('api.analytics.track');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    
+
     // Client Chat API Routes (for chat widget)
     Route::prefix('client/chat')->name('client.chat.')->group(function () {
         // Chat session management
         Route::post('/start', [App\Http\Controllers\ChatController::class, 'start'])->name('start');
         Route::get('/session', [App\Http\Controllers\ChatController::class, 'getSession'])->name('session');
         Route::post('/close', [App\Http\Controllers\ChatController::class, 'close'])->name('close');
-        
+
         // Message handling
         Route::post('/send-message', [App\Http\Controllers\ChatController::class, 'sendMessage'])->name('send-message');
         Route::get('/messages', [App\Http\Controllers\ChatController::class, 'getMessages'])->name('messages');
         Route::get('/history/{sessionId}', [App\Http\Controllers\ChatController::class, 'history'])->name('history');
-        
+
         // Client info updates
         Route::post('/update-info', [App\Http\Controllers\ChatController::class, 'updateClientInfo'])->name('update-info');
-        
+
         // Chat status
         Route::get('/online-status', [App\Http\Controllers\ChatController::class, 'onlineStatus'])->name('online-status');
-        
-        // File uploads (if enabled)
-        Route::post('/upload-file', [App\Http\Controllers\ChatController::class, 'uploadFile'])->name('upload-file');
-    });
-    
-    // Client Chat Dashboard/History (optional - if you want a dedicated chat page)
-    Route::prefix('client')->name('client.')->group(function () {
-        Route::get('/chat', [App\Http\Controllers\Client\ChatController::class, 'index'])->name('chat.index');
-        Route::get('/chat/history', [App\Http\Controllers\Client\ChatController::class, 'history'])->name('chat.history');
-        Route::get('/chat/{chatSession}', [App\Http\Controllers\Client\ChatController::class, 'show'])->name('chat.show');
+
     });
 });
 
@@ -137,7 +128,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
-    
+
     // RBAC Management - Roles and Permissions
     Route::resource('roles', App\Http\Controllers\Admin\RoleController::class);
     Route::get('/roles/{role}/permissions', [App\Http\Controllers\Admin\RoleController::class, 'permissions'])
@@ -188,28 +179,29 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // Services management
     Route::resource('services', App\Http\Controllers\Admin\ServiceController::class);
     Route::post('/services/{service}/toggle-status', [ServiceController::class, 'toggleActive'])
-    ->name('services.toggle-status');
+        ->name('services.toggle-status');
     Route::patch('/services/{service}/toggle-featured', [App\Http\Controllers\Admin\ServiceController::class, 'toggleFeatured'])->name('services.toggle-featured');
     Route::post('/services/update-order', [App\Http\Controllers\Admin\ServiceController::class, 'updateOrder'])->name('services.update-order');
-    
+
     // Service categories
     Route::resource('service-categories', App\Http\Controllers\Admin\ServiceCategoryController::class);
     Route::patch('/service-categories/{serviceCategory}/toggle-active', [App\Http\Controllers\Admin\ServiceCategoryController::class, 'toggleActive'])->name('service-categories.toggle-active');
-    
+
     // Projects management
     Route::resource('project-categories', App\Http\Controllers\Admin\ProjectCategoryController::class);
     Route::patch('/project-categories/{projectCategory}/toggle-active', [App\Http\Controllers\Admin\ProjectCategoryController::class, 'toggleActive'])->name('project-categories.toggle-active');
     Route::resource('projects', App\Http\Controllers\Admin\ProjectController::class);
     Route::patch('/projects/{project}/toggle-featured', [App\Http\Controllers\Admin\ProjectController::class, 'toggleFeatured'])->name('projects.toggle-featured');
     Route::post('/projects/update-order', [App\Http\Controllers\Admin\ProjectController::class, 'updateOrder'])->name('projects.update-order');
-    
+
     //chat
     Route::prefix('chat')->name('chat.')->group(function () {
         // Dashboard and main views
         Route::get('/', [App\Http\Controllers\ChatController::class, 'index'])->name('index');
         Route::get('/settings', [App\Http\Controllers\ChatController::class, 'settings'])->name('settings');
         Route::post('/settings', [App\Http\Controllers\ChatController::class, 'updateSettings'])->name('settings.update');
-        
+        Route::get('/reports', [App\Http\Controllers\ChatController::class, 'reports'])->name('reports.index');
+        Route::get('/reports/export', [App\Http\Controllers\ChatController::class, 'exportReport'])->name('reports.export');
         // Individual chat session management
         Route::get('/{chatSession}', [App\Http\Controllers\ChatController::class, 'show'])->name('show');
         Route::post('/{chatSession}/reply', [App\Http\Controllers\ChatController::class, 'reply'])->name('reply');
@@ -218,89 +210,58 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('/{chatSession}/priority', [App\Http\Controllers\ChatController::class, 'updatePriority'])->name('priority');
         Route::post('/{chatSession}/notes', [App\Http\Controllers\ChatController::class, 'updateNotes'])->name('notes');
         Route::post('/{chatSession}/typing', [App\Http\Controllers\ChatController::class, 'typing'])->name('typing');
-        
+
         // API endpoints for real-time updates
         Route::get('/api/statistics', [App\Http\Controllers\ChatController::class, 'statistics'])->name('statistics');
         Route::get('/{chatSession}/messages', [App\Http\Controllers\ChatController::class, 'getChatMessages'])->name('messages');
-        
+
         // Operator management
         Route::post('/operator/online', [App\Http\Controllers\ChatController::class, 'goOnline'])->name('operator.online');
         Route::post('/operator/offline', [App\Http\Controllers\ChatController::class, 'goOffline'])->name('operator.offline');
         Route::get('/operator/status', [App\Http\Controllers\ChatController::class, 'getOperatorStatus'])->name('operator.status');
-        
-        // UPDATED: Comprehensive Reports (replace old simple reports)
-        Route::prefix('reports')->name('reports.')->group(function () {
-            Route::get('/', [App\Http\Controllers\ChatController::class, 'reports'])->name('index');
-            Route::get('/export', [App\Http\Controllers\ChatController::class, 'exportReport'])->name('export');
-            
-            // Keep old daily route for backwards compatibility but redirect to new system
-            Route::get('/daily', [App\Http\Controllers\ChatController::class, 'dailyReport'])->name('daily');
-        });
+
+        // Templates (if you want to add this feature)
+        Route::get('/templates', [App\Http\Controllers\ChatController::class, 'templates'])->name('templates');
+        Route::post('/templates', [App\Http\Controllers\ChatController::class, 'storeTemplate'])->name('templates.store');
+
     });
-    
+
     // Quotations management
     Route::resource('quotations', App\Http\Controllers\Admin\QuotationController::class);
-    
-    // Enhanced quotation routes
+
+    //quotation routes
     Route::prefix('quotations')->name('quotations.')->group(function () {
-        
-        // Status management routes
         Route::post('/{quotation}/update-status', [App\Http\Controllers\Admin\QuotationController::class, 'updateStatus'])
             ->name('update-status');
-        
-        // Email response routes
         Route::post('/{quotation}/send-response', [App\Http\Controllers\Admin\QuotationController::class, 'sendResponse'])
             ->name('send-response');
-        
-        // Project creation from quotation
         Route::get('/{quotation}/create-project', [App\Http\Controllers\Admin\QuotationController::class, 'createProject'])
             ->name('create-project');
-        
-        // Quotation duplication
         Route::post('/{quotation}/duplicate', [App\Http\Controllers\Admin\QuotationController::class, 'duplicate'])
             ->name('duplicate');
-        
-        // Export functionality
         Route::get('/export', [App\Http\Controllers\Admin\QuotationController::class, 'export'])
             ->name('export');
-        
-        // Bulk actions
         Route::post('/bulk-action', [App\Http\Controllers\Admin\QuotationController::class, 'bulkAction'])
             ->name('bulk-action');
-        
-        // Statistics and analytics
         Route::get('/statistics', [App\Http\Controllers\Admin\QuotationController::class, 'statistics'])
             ->name('statistics');
-        
-        // Quick approve/reject routes (for faster actions)
         Route::post('/{quotation}/approve', [App\Http\Controllers\Admin\QuotationController::class, 'quickApprove'])
             ->name('approve');
-        
         Route::post('/{quotation}/reject', [App\Http\Controllers\Admin\QuotationController::class, 'quickReject'])
             ->name('reject');
-        
-        // Mark as reviewed
         Route::post('/{quotation}/mark-reviewed', [App\Http\Controllers\Admin\QuotationController::class, 'markAsReviewed'])
             ->name('mark-reviewed');
-        
-        // Attachment management
         Route::get('/{quotation}/attachments/{attachment}/download', [App\Http\Controllers\Admin\QuotationController::class, 'downloadAttachment'])
             ->name('attachments.download')
             ->where('attachment', '[0-9]+');
-        
-        // Priority management
         Route::post('/{quotation}/priority', [App\Http\Controllers\Admin\QuotationController::class, 'updatePriority'])
             ->name('update-priority');
-        
-        // Client linking
         Route::post('/{quotation}/link-client', [App\Http\Controllers\Admin\QuotationController::class, 'linkClient'])
             ->name('link-client');
-        
-        // Communication history
         Route::get('/{quotation}/communications', [App\Http\Controllers\Admin\QuotationController::class, 'communications'])
             ->name('communications');
     });
-    
+
     // Messages management - Updated section
     Route::resource('messages', App\Http\Controllers\Admin\MessageController::class);
     Route::post('/messages/{message}/reply', [App\Http\Controllers\Admin\MessageController::class, 'reply'])->name('messages.reply');
@@ -321,7 +282,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/team/{teamMember}/toggle-active', [App\Http\Controllers\Admin\TeamController::class, 'toggleActive'])->name('team.toggle-active');
     Route::post('/team/{teamMember}/toggle-featured', [App\Http\Controllers\Admin\TeamController::class, 'toggleFeatured'])->name('team.toggle-featured');
     Route::post('/team/update-order', [App\Http\Controllers\Admin\TeamController::class, 'updateOrder'])->name('team.update-order');
-    
+
     // Team department routes
     Route::resource('team-member-departments', App\Http\Controllers\Admin\TeamMemberDepartmentController::class);
     Route::patch('/team-member-departments/{teamMemberDepartment}/toggle-active', [App\Http\Controllers\Admin\TeamMemberDepartmentController::class, 'toggleActive'])->name('team-member-departments.toggle-active');
@@ -330,12 +291,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::resource('testimonials', App\Http\Controllers\Admin\TestimonialController::class);
     Route::post('/testimonials/{testimonial}/toggle-active', [App\Http\Controllers\Admin\TestimonialController::class, 'toggleActive'])->name('testimonials.toggle-active');
     Route::post('/testimonials/{testimonial}/toggle-featured', [App\Http\Controllers\Admin\TestimonialController::class, 'toggleFeatured'])->name('testimonials.toggle-featured');
-    
+
     // Certifications management
     Route::resource('certifications', App\Http\Controllers\Admin\CertificationController::class);
     Route::post('/certifications/{certification}/toggle-active', [App\Http\Controllers\Admin\CertificationController::class, 'toggleActive'])->name('certifications.toggle-active');
     Route::post('/certifications/update-order', [App\Http\Controllers\Admin\CertificationController::class, 'updateOrder'])->name('certifications.update-order');
-    
+
     // Post management
     Route::get('/posts', [App\Http\Controllers\Admin\PostController::class, 'index'])->name('posts.index');
     Route::get('/posts/create', [App\Http\Controllers\Admin\PostController::class, 'create'])->name('posts.create');
@@ -345,7 +306,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::put('/posts/{post}', [App\Http\Controllers\Admin\PostController::class, 'update'])->name('posts.update');
     Route::delete('/posts/{post}', [App\Http\Controllers\Admin\PostController::class, 'destroy'])->name('posts.destroy');
     Route::post('/posts/{post}/toggle-featured', [App\Http\Controllers\Admin\PostController::class, 'toggleFeatured'])->name('posts.toggle-featured');
-    Route::post('/posts/{post}/change-status', [App\Http\Controllers\Admin\PostController::class, 'changeStatus'])->name('posts.change-status');   
+    Route::post('/posts/{post}/change-status', [App\Http\Controllers\Admin\PostController::class, 'changeStatus'])->name('posts.change-status');
     // Post category management
     Route::get('/post-categories', [App\Http\Controllers\Admin\PostCategoryController::class, 'index'])->name('post-categories.index');
     Route::get('/post-categories/create', [App\Http\Controllers\Admin\PostCategoryController::class, 'create'])->name('post-categories.create');
@@ -354,7 +315,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/post-categories/{postCategory}/edit', [App\Http\Controllers\Admin\PostCategoryController::class, 'edit'])->name('post-categories.edit');
     Route::put('/post-categories/{postCategory}', [App\Http\Controllers\Admin\PostCategoryController::class, 'update'])->name('post-categories.update');
     Route::delete('/post-categories/{postCategory}', [App\Http\Controllers\Admin\PostCategoryController::class, 'destroy'])->name('post-categories.destroy');
-            
+
     // Company profile
     Route::get('/company-profile', [App\Http\Controllers\Admin\CompanyProfileController::class, 'index'])->name('company-profile.index');
     Route::get('/company-profile/edit', [App\Http\Controllers\Admin\CompanyProfileController::class, 'edit'])->name('company-profile.edit');
@@ -376,4 +337,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/settings/email/statistics', [App\Http\Controllers\Admin\EmailSettingsController::class, 'statistics'])->name('settings.email.statistics');
     Route::get('/settings/seo', [App\Http\Controllers\Admin\SettingController::class, 'seo'])->name('settings.seo');
     Route::post('/settings/seo', [App\Http\Controllers\Admin\SettingController::class, 'updateSeo'])->name('settings.seo.update');
+
+
 });

@@ -1,4 +1,3 @@
-{{-- Create: resources/views/admin/chat/reports/index.blade.php --}}
 <x-layouts.admin title="Chat Reports & Analytics" :enableCharts="true">
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">

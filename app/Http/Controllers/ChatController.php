@@ -12,6 +12,7 @@ use App\Models\ChatMessage;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class ChatController extends Controller
 {
@@ -688,9 +689,17 @@ class ChatController extends Controller
         return redirect()->back()->with('success', 'Template created successfully!');
     }
 
-    public function reports(Request $request)
+    public function reports (Request $request)
     {
-        if (!auth()->user()->hasAdminAccess()) {
+         Log::info('🟢 Memasuki fungsi reports() di ChatController');
+
+        if (!auth()->check()) {
+            Log::warning('🚨 User belum login!');
+        } elseif (!auth()->user()->hasAdminAccess()) {
+            Log::warning('🚫 User tidak memiliki akses admin.', [
+                'user_id' => auth()->id(),
+                'user_email' => auth()->user()->email,
+            ]);
             abort(403, 'Admin access required');
         }
 
@@ -698,7 +707,7 @@ class ChatController extends Controller
         $operators = User::whereHas('roles', function ($q) {
             $q->whereIn('name', ['super-admin', 'admin', 'manager', 'editor']);
         })->get();
-
+        
         $reportData = null;
         $sessions = null;
 
@@ -888,10 +897,6 @@ class ChatController extends Controller
                 break;
         }
     }
-
-    /**
-     * Generate chart data for reports
-     */
     private function generateChartData($sessions, string $dateRange): array
     {
         $labels = [];
@@ -1048,15 +1053,6 @@ class ChatController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
-    }
-
-    // Remove the old dailyReport method and replace with:
-    /**
-     * Redirect old daily report route to new reports
-     */
-    public function dailyReport()
-    {
-        return redirect()->route('admin.chat.reports.index', ['date_range' => 'today']);
     }
 
     /**
