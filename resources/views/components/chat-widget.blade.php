@@ -8,12 +8,14 @@
     'enableSound' => true,
     'welcomeMessage' => 'Hello! How can we help you today?',
     'operatorName' => 'Support Team',
-    'companyName' => 'CV Usaha Prima Lestari'
+    'companyName' => 'CV Usaha Prima Lestari',
+    'offsetFromQuickAction' => true // New prop to handle quick action positioning
 ])
 
 @php
+    // Adjust positioning to avoid collision with quick action button
     $positionClasses = [
-        'bottom-right' => 'bottom-4 right-4 sm:bottom-6 sm:right-6',
+        'bottom-right' => $offsetFromQuickAction ? 'bottom-6 right-3 sm:bottom-14 sm:right-3.5' : 'bottom-4 right-4 sm:bottom-6 sm:right-6',
         'bottom-left' => 'bottom-4 left-4 sm:bottom-6 sm:left-6',
         'top-right' => 'top-4 right-4 sm:top-6 sm:right-6',
         'top-left' => 'top-4 left-4 sm:top-6 sm:left-6',
@@ -45,19 +47,19 @@
 
     $sizeClasses = [
         'compact' => [
-            'button' => 'w-12 h-12',
+            'button' => 'w-10 h-10',
             'window' => 'w-80 h-96',
             'icon' => 'w-4 h-4',
         ],
         'normal' => [
             'button' => 'w-14 h-14 sm:w-16 sm:h-16',
             'window' => 'w-80 sm:w-96 h-96 sm:h-[32rem]',
-            'icon' => 'w-6 h-6',
+            'icon' => 'w-5 h-5',
         ],
         'large' => [
             'button' => 'w-16 h-16 sm:w-18 sm:h-18',
             'window' => 'w-96 sm:w-[28rem] h-[32rem] sm:h-[36rem]',
-            'icon' => 'w-7 h-7',
+            'icon' => 'w-6 h-6',
         ],
     ];
 
@@ -68,7 +70,7 @@
 
 <!-- Chat Widget Container -->
 <div id="chat-widget" 
-     class="fixed {{ $currentPosition }} z-50 font-sans"
+     class="fixed {{ $currentPosition }} z-40 font-sans"
      data-auto-open="{{ $autoOpen ? 'true' : 'false' }}"
      data-enable-sound="{{ $enableSound ? 'true' : 'false' }}"
      data-theme="{{ $theme }}"
@@ -117,7 +119,15 @@
     </div>
 
     <!-- Chat Toggle Button (Hidden when chat is open) -->
-    <div class="relative" x-show="!isOpen && !isMinimized" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+    <div class="relative" 
+         x-show="!isOpen && !isMinimized" 
+         x-transition:enter="transition ease-out duration-200" 
+         x-transition:enter-start="opacity-0 scale-95" 
+         x-transition:enter-end="opacity-100 scale-100" 
+         x-transition:leave="transition ease-in duration-150" 
+         x-transition:leave-start="opacity-100 scale-100" 
+         x-transition:leave-end="opacity-0 scale-95">
+         
         <!-- Notification Badge -->
         <div x-show="unreadCount > 0" 
              x-text="unreadCount"
@@ -140,6 +150,7 @@
         <!-- Main Chat Button -->
         <button @click="openChat()" 
                 class="{{ $currentSize['button'] }} {{ $currentTheme['button'] }} rounded-full border-2 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center justify-center group relative overflow-hidden hover:ring-2 hover:ring-blue-500/20 hover:ring-offset-1"
+                title="Start chat conversation"
                 aria-label="Open chat">
             
             <!-- Chat Icon -->
@@ -219,7 +230,7 @@
         
         <!-- Chat Messages -->
         <div id="chat-messages" 
-             class="flex-1 overflow-y-auto px-4 py-3 space-y-4 bg-green-100 dark:bg-gray-900"
+             class="flex-1 overflow-y-auto px-4 py-3 space-y-4 bg-gray-50 dark:bg-gray-900"
              x-ref="messagesContainer"
              @scroll="handleScroll">
             
@@ -291,8 +302,6 @@
         <div class="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
             <form @submit.prevent="sendMessage()">
                 <div class="flex items-end space-x-2">
-                    
-                    
                     <!-- Message Input -->
                     <div class="flex-1 relative">
                         <textarea x-model="currentMessage"
@@ -326,104 +335,8 @@
     </div>
 </div>
 
-<!-- Chat Widget Styles -->
-<style>
-    #chat-widget textarea {
-        min-height: 38px;
-        line-height: 1.5;
-    }
-    
-    #chat-widget .animate-bounce {
-        animation: bounce 1.4s infinite ease-in-out;
-    }
-    
-    #chat-widget .animate-bounce:nth-child(1) { animation-delay: -0.32s; }
-    #chat-widget .animate-bounce:nth-child(2) { animation-delay: -0.16s; }
-    
-    @keyframes bounce {
-        0%, 80%, 100% { transform: scale(0); }
-        40% { transform: scale(1); }
-    }
-    
-            /* Enhanced button expansion effect */
-        #chat-widget button:focus {
-            outline: none;
-            ring: 4px;
-            ring-color: rgb(59 130 246 / 0.3);
-            ring-offset: 2px;
-        }
-        
-        /* Expanded state ring animation */
-        #chat-widget .ring-pulse {
-            animation: ringPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        
-        @keyframes ringPulse {
-            0%, 100% {
-                ring-color: rgb(59 130 246 / 0.3);
-                transform: scale(1);
-            }
-            50% {
-                ring-color: rgb(59 130 246 / 0.1);
-                transform: scale(1.05);
-            }
-        }
-        
-        /* Quick action style expansion */
-        #chat-widget .expanded-border {
-            box-shadow: 
-                0 0 0 4px rgb(59 130 246 / 0.3),
-                0 0 0 8px rgb(59 130 246 / 0.1),
-                0 20px 25px -5px rgb(0 0 0 / 0.1),
-                0 10px 10px -5px rgb(0 0 0 / 0.04);
-            transform: scale(1.1);
-        }
-        
-        /* Button state transitions */
-        #chat-widget button {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        /* Theme-specific ring colors */
-        #chat-widget[data-theme="primary"] button.expanded-border {
-            box-shadow: 
-                0 0 0 4px rgb(59 130 246 / 0.3),
-                0 0 0 8px rgb(59 130 246 / 0.1),
-                0 20px 25px -5px rgb(0 0 0 / 0.1);
-        }
-        
-        #chat-widget[data-theme="dark"] button.expanded-border {
-            box-shadow: 
-                0 0 0 4px rgb(55 65 81 / 0.3),
-                0 0 0 8px rgb(55 65 81 / 0.1),
-                0 20px 25px -5px rgb(0 0 0 / 0.1);
-        }
-        
-        #chat-widget[data-theme="light"] button.expanded-border {
-            box-shadow: 
-                0 0 0 4px rgb(209 213 219 / 0.5),
-                0 0 0 8px rgb(209 213 219 / 0.2),
-                0 20px 25px -5px rgb(0 0 0 / 0.1);
-        }
-    #chat-messages::-webkit-scrollbar {
-        width: 4px;
-    }
-    
-    #chat-messages::-webkit-scrollbar-track {
-        background: transparent;
-    }
-    
-    #chat-messages::-webkit-scrollbar-thumb {
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 2px;
-    }
-    
-    #chat-messages::-webkit-scrollbar-thumb:hover {
-        background: rgba(0, 0, 0, 0.3);
-    }
-</style>
-
 <!-- Chat Widget JavaScript -->
+@push('scripts')
 <script>
 function chatWidget() {
     return {
@@ -612,72 +525,6 @@ function chatWidget() {
             this.typingTimer = setTimeout(() => {
                 // Stop typing indicator
             }, 1000);
-        },
-        
-        handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            // Validate file size (max 5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                this.showErrorMessage('File size must be less than 5MB');
-                return;
-            }
-            
-            // Validate file type
-            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-            if (!allowedTypes.includes(file.type)) {
-                this.showErrorMessage('Only images, PDF, and Word documents are allowed');
-                return;
-            }
-            
-            // Upload file and add to messages
-            this.uploadFile(file);
-        },
-        
-        async uploadFile(file) {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('session_id', this.sessionId);
-            
-            try {
-                const response = await fetch('/api/chat/upload-file', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
-                    },
-                    body: formData
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    // Add file message to chat
-                    const fileMessage = {
-                        id: data.message_id,
-                        content: `<div class="flex items-center space-x-2">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                            </svg>
-                            <span class="text-sm">${file.name}</span>
-                        </div>`,
-                        sender: 'user',
-                        timestamp: new Date(),
-                        status: 'sent',
-                        type: 'file'
-                    };
-                    
-                    this.messages.push(fileMessage);
-                    this.scrollToBottom();
-                    
-                    this.trackEvent('file_uploaded', { file_type: file.type, file_size: file.size });
-                } else {
-                    this.showErrorMessage('Failed to upload file. Please try again.');
-                }
-            } catch (error) {
-                console.error('File upload failed:', error);
-                this.showErrorMessage('Network error. Please try again.');
-            }
         },
         
         showErrorMessage(message) {
@@ -890,74 +737,190 @@ function chatWidget() {
         }
     }
 }
+</script>
+@endpush
 
-// Initialize chat widget when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-initialize chat widget if it exists on the page
-    const chatWidget = document.querySelector('#chat-widget');
-    if (chatWidget && typeof Alpine !== 'undefined') {
-        // Chat widget will be initialized by Alpine.js
-        console.log('Chat widget ready');
+<!-- Chat Widget Styles -->
+<style>
+    #chat-widget textarea {
+        min-height: 38px;
+        line-height: 1.5;
     }
     
-    // Add CSS animations for better UX
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes chatSlideIn {
-            from {
-                transform: translateY(100px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
+    #chat-widget .animate-bounce {
+        animation: bounce 1.4s infinite ease-in-out;
+    }
+    
+    #chat-widget .animate-bounce:nth-child(1) { animation-delay: -0.32s; }
+    #chat-widget .animate-bounce:nth-child(2) { animation-delay: -0.16s; }
+    
+    @keyframes bounce {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1); }
+    }
+    
+    /* Enhanced button expansion effect */
+    #chat-widget button:focus {
+        outline: none;
+        ring: 4px;
+        ring-color: rgb(59 130 246 / 0.3);
+        ring-offset: 2px;
+    }
+    
+    /* Expanded state ring animation */
+    #chat-widget .ring-pulse {
+        animation: ringPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    
+    @keyframes ringPulse {
+        0%, 100% {
+            ring-color: rgb(59 130 246 / 0.3);
+            transform: scale(1);
+        }
+        50% {
+            ring-color: rgb(59 130 246 / 0.1);
+            transform: scale(1.05);
+        }
+    }
+    
+    /* Quick action style expansion */
+    #chat-widget .expanded-border {
+        box-shadow: 
+            0 0 0 4px rgb(59 130 246 / 0.3),
+            0 0 0 8px rgb(59 130 246 / 0.1),
+            0 20px 25px -5px rgb(0 0 0 / 0.1),
+            0 10px 10px -5px rgb(0 0 0 / 0.04);
+        transform: scale(1.1);
+    }
+    
+    /* Button state transitions */
+    #chat-widget button {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* Theme-specific ring colors */
+    #chat-widget[data-theme="primary"] button.expanded-border {
+        box-shadow: 
+            0 0 0 4px rgb(59 130 246 / 0.3),
+            0 0 0 8px rgb(59 130 246 / 0.1),
+            0 20px 25px -5px rgb(0 0 0 / 0.1);
+    }
+    
+    #chat-widget[data-theme="dark"] button.expanded-border {
+        box-shadow: 
+            0 0 0 4px rgb(55 65 81 / 0.3),
+            0 0 0 8px rgb(55 65 81 / 0.1),
+            0 20px 25px -5px rgb(0 0 0 / 0.1);
+    }
+    
+    #chat-widget[data-theme="light"] button.expanded-border {
+        box-shadow: 
+            0 0 0 4px rgb(209 213 219 / 0.5),
+            0 0 0 8px rgb(209 213 219 / 0.2),
+            0 20px 25px -5px rgb(0 0 0 / 0.1);
+    }
+
+    /* Custom scrollbar */
+    #chat-messages::-webkit-scrollbar {
+        width: 4px;
+    }
+    
+    #chat-messages::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    #chat-messages::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 2px;
+    }
+    
+    #chat-messages::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.3);
+    }
+
+    /* Responsive adjustments for chat widget positioning */
+    @media (max-width: 640px) {
+        /* Adjust chat widget positioning on mobile */
+        #chat-widget {
+            right: 1rem !important;
+            bottom: 1rem !important;
         }
         
-        @keyframes chatBounce {
-            0%, 20%, 50%, 80%, 100% {
-                transform: translateY(0);
-            }
-            40% {
-                transform: translateY(-5px);
-            }
-            60% {
-                transform: translateY(-3px);
-            }
+        /* Make chat window responsive on mobile */
+        #chat-widget [class*="w-80"], #chat-widget [class*="w-96"] {
+            width: calc(100vw - 2rem) !important;
+            max-width: 380px;
         }
         
-        #chat-widget .animate-slide-in {
-            animation: chatSlideIn 0.3s ease-out;
+        #chat-widget [class*="h-96"], #chat-widget [class*="h-["] {
+            height: calc(100vh - 8rem) !important;
+            max-height: 500px;
         }
         
-        #chat-widget .animate-chat-bounce {
-            animation: chatBounce 2s infinite;
+        /* Ensure chat widget doesn't overlap with mobile UI elements */
+        #chat-widget.fixed {
+            z-index: 40;
+        }
+    }
+    
+    /* Ensure proper layering with quick action button */
+    #chat-widget {
+        z-index: 40; /* Lower than quick action (z-50) */
+    }
+    
+    /* Animation improvements */
+    @keyframes chatSlideIn {
+        from {
+            transform: translateY(100px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes chatBounce {
+        0%, 20%, 50%, 80%, 100% {
+            transform: translateY(0);
+        }
+        40% {
+            transform: translateY(-5px);
+        }
+        60% {
+            transform: translateY(-3px);
+        }
+    }
+    
+    #chat-widget .animate-slide-in {
+        animation: chatSlideIn 0.3s ease-out;
+    }
+    
+    #chat-widget .animate-chat-bounce {
+        animation: chatBounce 2s infinite;
+    }
+    
+    /* Dark mode improvements */
+    @media (prefers-color-scheme: dark) {
+        #chat-widget .bg-gray-50 {
+            background-color: rgb(17 24 39);
         }
         
-        /* Responsive adjustments */
-        @media (max-width: 640px) {
-            #chat-widget [class*="w-80"], #chat-widget [class*="w-96"] {
-                width: calc(100vw - 2rem) !important;
-                max-width: 380px;
-            }
-            
-            #chat-widget [class*="h-96"], #chat-widget [class*="h-["] {
-                height: calc(100vh - 8rem) !important;
-                max-height: 500px;
-            }
+        #chat-widget .border-gray-200 {
+            border-color: rgb(55 65 81);
         }
-        
-        /* Dark mode improvements */
-        @media (prefers-color-scheme: dark) {
-            #chat-widget .bg-gray-50 {
-                background-color: rgb(17 24 39);
-            }
-            
-            #chat-widget .border-gray-200 {
-                border-color: rgb(55 65 81);
-            }
-        }
-    `;
-    document.head.appendChild(style);
-});
-</script>
+    }
+    
+    /* Accessibility improvements */
+    #chat-widget button:focus-visible {
+        outline: 2px solid rgb(59 130 246);
+        outline-offset: 2px;
+    }
+    
+    /* Smooth transitions for all interactive elements */
+    #chat-widget * {
+        transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 150ms;
+    }
+</style>
