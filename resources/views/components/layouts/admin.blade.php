@@ -134,7 +134,7 @@
     ];
     @endphp
 
-    <x-admin.floating-action-button :actions="$quickActions" />
+    <x-admin.floating-action-button :actions="$quickActions" class="pr-4" />
     <x-chat-widget 
         size="compact"
         theme="primary"
@@ -219,7 +219,7 @@
 
     /* Action Buttons Spacing */
     .action-buttons {
-        @apply flex items-center space-x-1;
+        @apply flex items-center space-x-1 pr-4;
     }
 
     .action-buttons .btn-icon {

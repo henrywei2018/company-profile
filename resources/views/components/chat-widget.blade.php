@@ -15,7 +15,7 @@
 @php
     // Adjust positioning to avoid collision with quick action button
     $positionClasses = [
-        'bottom-right' => $offsetFromQuickAction ? 'bottom-6 right-3 sm:bottom-14 sm:right-3.5' : 'bottom-4 right-4 sm:bottom-6 sm:right-6',
+        'bottom-right' => $offsetFromQuickAction ? 'bottom-6 right-3 sm:bottom-16 sm:right-3.5' : 'bottom-4 right-4 sm:bottom-6 sm:right-6',
         'bottom-left' => 'bottom-4 left-4 sm:bottom-6 sm:left-6',
         'top-right' => 'top-4 right-4 sm:top-6 sm:right-6',
         'top-left' => 'top-4 left-4 sm:top-6 sm:left-6',
