@@ -24,47 +24,63 @@ use App\Http\Controllers\Client\DashboardController as ClientDashboardController
 |
 */
 
-// Public routes
+/*
+|--------------------------------------------------------------------------
+| Public Routes (No Authentication Required)
+|--------------------------------------------------------------------------
+*/
+
+// Home and main pages
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
 // About routes
 Route::get('/about', [AboutController::class, 'index'])->name('about');
 Route::get('/about/team', [AboutController::class, 'team'])->name('about.team');
 
-// Services routes
+// Services routes - Public access
 Route::get('/services', [ServiceController::class, 'index'])->name('services.index');
 Route::get('/services/{slug}', [ServiceController::class, 'show'])->name('services.show');
 
-// Portfolio routes
+// Portfolio routes - Public access
 Route::get('/portfolio', [PortfolioController::class, 'index'])->name('portfolio.index');
 Route::get('/portfolio/{slug}', [PortfolioController::class, 'show'])->name('portfolio.show');
 
-// Team routes
+// Team routes - Public access
 Route::get('/team', [TeamController::class, 'index'])->name('team.index');
 Route::get('/team/{slug}', [TeamController::class, 'show'])->name('team.show');
 
+// Blog routes - Public access
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
 
-
-// Contact
+// Contact routes - Public access
 Route::get('/contact', [ContactController::class, 'index'])->name('contact.index');
 Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
 
-// Quotation
+// Public quotation request (for non-authenticated users)
 Route::get('/quotation', [QuotationController::class, 'create'])->name('quotation.create');
 Route::post('/quotation', [QuotationController::class, 'store'])->name('quotation.store');
 Route::get('/quotation/thank-you', [QuotationController::class, 'thankYou'])->name('quotation.thank-you');
 
-// Messages
+// Public messages (contact form submissions)
 Route::post('/messages', [MessageController::class, 'store'])->name('messages.store');
 
+/*
+|--------------------------------------------------------------------------
+| Authentication Routes
+|--------------------------------------------------------------------------
+*/
 
-
-// Authentication Routes
-Route::middleware('guest')->group(function () {
+// Guest-only routes (redirect authenticated users to appropriate dashboard)
+Route::middleware(['guest', 'redirect.authenticated'])->group(function () {
+    // Login routes
     Route::get('login', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'create'])
         ->name('login');
     Route::post('login', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'store']);
+
+    // Registration routes
+    Route::get('register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'create'])
+        ->name('register');
+    Route::post('register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'store']);
 
     // Password Reset Routes
     Route::get('forgot-password', [App\Http\Controllers\Auth\PasswordResetLinkController::class, 'create'])
@@ -75,12 +91,16 @@ Route::middleware('guest')->group(function () {
         ->name('password.reset');
     Route::post('reset-password', [App\Http\Controllers\Auth\NewPasswordController::class, 'store'])
         ->name('password.store');
-    Route::get('register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'create'])
-        ->name('register');
-    Route::post('register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'store']);
 });
 
+/*
+|--------------------------------------------------------------------------
+| Common Authenticated Routes (Both Admin and Client)
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware('auth')->group(function () {
+    // Email verification routes
     Route::get('verify-email', [App\Http\Controllers\Auth\EmailVerificationPromptController::class, '__invoke'])
         ->name('verification.notice');
     Route::get('verify-email/{id}/{hash}', [App\Http\Controllers\Auth\VerifyEmailController::class, '__invoke'])
@@ -89,21 +109,89 @@ Route::middleware('auth')->group(function () {
     Route::post('email/verification-notification', [App\Http\Controllers\Auth\EmailVerificationNotificationController::class, 'store'])
         ->middleware('throttle:6,1')
         ->name('verification.send');
+
+    // Common profile routes (accessible by both admin and client)
     Route::get('/profile', [App\Http\Controllers\Client\ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [App\Http\Controllers\Client\ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [App\Http\Controllers\Client\ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Logout route
     Route::post('logout', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
+
+    // Analytics tracking (for authenticated users)
     Route::post('/api/analytics/track', function (Request $request) {
-        // Handle chat analytics tracking for authenticated users
         return response()->json(['success' => true]);
     })->name('api.analytics.track');
+
+    // Dashboard redirect route (redirects to appropriate dashboard based on role)
+    Route::get('/dashboard', function () {
+        $user = auth()->user();
+        
+        if ($user->hasAnyRole(['super-admin', 'admin', 'manager', 'editor'])) {
+            return redirect()->route('admin.dashboard');
+        } elseif ($user->hasRole('client')) {
+            return redirect()->route('client.dashboard');
+        }
+        
+        // Default fallback for users without specific roles
+        return redirect()->route('client.dashboard');
+    })->name('dashboard');
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
+/*
+|--------------------------------------------------------------------------
+| Client Area Routes
+|--------------------------------------------------------------------------
+*/
 
-    // Client Chat API Routes (for chat widget)
-    Route::prefix('client/chat')->name('client.chat.')->group(function () {
+Route::prefix('client')->name('client.')->middleware(['auth', 'verified', 'client'])->group(function () {
+    
+    // Client Dashboard
+    Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
+    
+    // Client Projects
+    Route::prefix('projects')->name('projects.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Client\ProjectController::class, 'index'])->name('index');
+        Route::get('/{project}', [App\Http\Controllers\Client\ProjectController::class, 'show'])->name('show');
+        Route::get('/{project}/documents', [App\Http\Controllers\Client\ProjectController::class, 'documents'])->name('documents');
+        Route::get('/{project}/documents/{document}/download', [App\Http\Controllers\Client\ProjectController::class, 'downloadDocument'])
+            ->name('documents.download');
+    });
+    
+    // Client Quotations (Enhanced from existing quotation system)
+    Route::prefix('quotations')->name('quotations.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Client\QuotationController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Client\QuotationController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Client\QuotationController::class, 'store'])->name('store');
+        Route::get('/{quotation}', [App\Http\Controllers\Client\QuotationController::class, 'show'])->name('show');
+        Route::put('/{quotation}/approve', [App\Http\Controllers\Client\QuotationController::class, 'approve'])->name('approve');
+        Route::put('/{quotation}/reject', [App\Http\Controllers\Client\QuotationController::class, 'reject'])->name('reject');
+        Route::post('/{quotation}/feedback', [App\Http\Controllers\Client\QuotationController::class, 'provideFeedback'])->name('feedback');
+    });
+    
+    // Client Messages
+    Route::prefix('messages')->name('messages.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Client\MessageController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Client\MessageController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Client\MessageController::class, 'store'])->name('store');
+        Route::get('/{message}', [App\Http\Controllers\Client\MessageController::class, 'show'])->name('show');
+        Route::post('/{message}/reply', [App\Http\Controllers\Client\MessageController::class, 'reply'])->name('reply');
+        Route::patch('/{message}/mark-read', [App\Http\Controllers\Client\MessageController::class, 'markAsRead'])->name('mark-read');
+    });
+    
+    // Client Testimonials (Allow clients to submit testimonials)
+    Route::prefix('testimonials')->name('testimonials.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Client\TestimonialController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Client\TestimonialController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Client\TestimonialController::class, 'store'])->name('store');
+        Route::get('/{testimonial}', [App\Http\Controllers\Client\TestimonialController::class, 'show'])->name('show');
+        Route::get('/{testimonial}/edit', [App\Http\Controllers\Client\TestimonialController::class, 'edit'])->name('edit');
+        Route::put('/{testimonial}', [App\Http\Controllers\Client\TestimonialController::class, 'update'])->name('update');
+    });
+
+    // Client Chat Routes (Enhanced from existing chat system)
+    Route::prefix('chat')->name('chat.')->group(function () {
         // Chat session management
         Route::post('/start', [App\Http\Controllers\ChatController::class, 'start'])->name('start');
         Route::get('/session', [App\Http\Controllers\ChatController::class, 'getSession'])->name('session');
@@ -119,9 +207,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Chat status
         Route::get('/online-status', [App\Http\Controllers\ChatController::class, 'onlineStatus'])->name('online-status');
-
     });
 });
+
+/*
+|--------------------------------------------------------------------------
+| Admin Area Routes
+|--------------------------------------------------------------------------
+*/
 
 // Admin routes - keeping the original structure for compatibility
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
@@ -194,7 +287,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::patch('/projects/{project}/toggle-featured', [App\Http\Controllers\Admin\ProjectController::class, 'toggleFeatured'])->name('projects.toggle-featured');
     Route::post('/projects/update-order', [App\Http\Controllers\Admin\ProjectController::class, 'updateOrder'])->name('projects.update-order');
 
-    //chat
+    // Admin Chat Management
     Route::prefix('chat')->name('chat.')->group(function () {
         // Dashboard and main views
         Route::get('/', [App\Http\Controllers\ChatController::class, 'index'])->name('index');
@@ -202,6 +295,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('/settings', [App\Http\Controllers\ChatController::class, 'updateSettings'])->name('settings.update');
         Route::get('/reports', [App\Http\Controllers\ChatController::class, 'reports'])->name('reports.index');
         Route::get('/reports/export', [App\Http\Controllers\ChatController::class, 'exportReport'])->name('reports.export');
+        
         // Individual chat session management
         Route::get('/{chatSession}', [App\Http\Controllers\ChatController::class, 'show'])->name('show');
         Route::post('/{chatSession}/reply', [App\Http\Controllers\ChatController::class, 'reply'])->name('reply');
@@ -220,16 +314,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('/operator/offline', [App\Http\Controllers\ChatController::class, 'goOffline'])->name('operator.offline');
         Route::get('/operator/status', [App\Http\Controllers\ChatController::class, 'getOperatorStatus'])->name('operator.status');
 
-        // Templates (if you want to add this feature)
+        // Templates
         Route::get('/templates', [App\Http\Controllers\ChatController::class, 'templates'])->name('templates');
         Route::post('/templates', [App\Http\Controllers\ChatController::class, 'storeTemplate'])->name('templates.store');
-
     });
 
     // Quotations management
     Route::resource('quotations', App\Http\Controllers\Admin\QuotationController::class);
-
-    //quotation routes
     Route::prefix('quotations')->name('quotations.')->group(function () {
         Route::post('/{quotation}/update-status', [App\Http\Controllers\Admin\QuotationController::class, 'updateStatus'])
             ->name('update-status');
@@ -277,6 +368,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/messages/email-reply-webhook', [App\Http\Controllers\Admin\MessageController::class, 'handleEmailReply'])
         ->name('messages.email-reply-webhook')
         ->middleware('throttle:100,1');
+    
     // Team management
     Route::resource('team', App\Http\Controllers\Admin\TeamController::class);
     Route::post('/team/{teamMember}/toggle-active', [App\Http\Controllers\Admin\TeamController::class, 'toggleActive'])->name('team.toggle-active');
@@ -287,6 +379,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::resource('team-member-departments', App\Http\Controllers\Admin\TeamMemberDepartmentController::class);
     Route::patch('/team-member-departments/{teamMemberDepartment}/toggle-active', [App\Http\Controllers\Admin\TeamMemberDepartmentController::class, 'toggleActive'])->name('team-member-departments.toggle-active');
     Route::post('/team-member-departments/update-order', [App\Http\Controllers\Admin\TeamMemberDepartmentController::class, 'updateOrder'])->name('team-member-departments.update-order');
+    
     // Testimonials management
     Route::resource('testimonials', App\Http\Controllers\Admin\TestimonialController::class);
     Route::post('/testimonials/{testimonial}/toggle-active', [App\Http\Controllers\Admin\TestimonialController::class, 'toggleActive'])->name('testimonials.toggle-active');
@@ -307,6 +400,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::delete('/posts/{post}', [App\Http\Controllers\Admin\PostController::class, 'destroy'])->name('posts.destroy');
     Route::post('/posts/{post}/toggle-featured', [App\Http\Controllers\Admin\PostController::class, 'toggleFeatured'])->name('posts.toggle-featured');
     Route::post('/posts/{post}/change-status', [App\Http\Controllers\Admin\PostController::class, 'changeStatus'])->name('posts.change-status');
+    
     // Post category management
     Route::get('/post-categories', [App\Http\Controllers\Admin\PostCategoryController::class, 'index'])->name('post-categories.index');
     Route::get('/post-categories/create', [App\Http\Controllers\Admin\PostCategoryController::class, 'create'])->name('post-categories.create');
@@ -322,6 +416,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::put('/company-profile', [App\Http\Controllers\Admin\CompanyProfileController::class, 'update'])->name('company-profile.update');
     Route::get('/company-profile/seo', [App\Http\Controllers\Admin\CompanyProfileController::class, 'seo'])->name('company-profile.seo');
     Route::put('/company-profile/seo', [App\Http\Controllers\Admin\CompanyProfileController::class, 'updateSeo'])->name('company-profile.seo.update');
+    
     // Company Profile (Alias routes for sidebar navigation)
     Route::prefix('company')->name('company.')->group(function () {
         Route::get('/edit', [App\Http\Controllers\Admin\CompanyProfileController::class, 'index'])->name('edit');
@@ -337,6 +432,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/settings/email/statistics', [App\Http\Controllers\Admin\EmailSettingsController::class, 'statistics'])->name('settings.email.statistics');
     Route::get('/settings/seo', [App\Http\Controllers\Admin\SettingController::class, 'seo'])->name('settings.seo');
     Route::post('/settings/seo', [App\Http\Controllers\Admin\SettingController::class, 'updateSeo'])->name('settings.seo.update');
-
-
 });
+
+/*
+|--------------------------------------------------------------------------
+| Redirect Routes
+|--------------------------------------------------------------------------
+*/
+
+// Redirect /admin to /admin/dashboard
+Route::redirect('/admin', '/admin/dashboard');
+
+// Redirect /client to /client/dashboard  
+Route::redirect('/client', '/client/dashboard');
