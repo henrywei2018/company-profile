@@ -58,6 +58,8 @@ Route::get('/quotation/thank-you', [QuotationController::class, 'thankYou'])->na
 // Messages
 Route::post('/messages', [MessageController::class, 'store'])->name('messages.store');
 
+
+
 // Authentication Routes
 Route::middleware('guest')->group(function () {
     Route::get('login', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'create'])
@@ -92,6 +94,42 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [App\Http\Controllers\Client\ProfileController::class, 'destroy'])->name('profile.destroy');        
     Route::post('logout', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
+    Route::post('/api/analytics/track', function(Request $request) {
+        // Handle chat analytics tracking for authenticated users
+        return response()->json(['success' => true]);
+    })->name('api.analytics.track');
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    // Client Chat API Routes (for chat widget)
+    Route::prefix('client/chat')->name('client.chat.')->group(function () {
+        // Chat session management
+        Route::post('/start', [App\Http\Controllers\ChatController::class, 'start'])->name('start');
+        Route::get('/session', [App\Http\Controllers\ChatController::class, 'getSession'])->name('session');
+        Route::post('/close', [App\Http\Controllers\ChatController::class, 'close'])->name('close');
+        
+        // Message handling
+        Route::post('/send-message', [App\Http\Controllers\ChatController::class, 'sendMessage'])->name('send-message');
+        Route::get('/messages', [App\Http\Controllers\ChatController::class, 'getMessages'])->name('messages');
+        Route::get('/history/{sessionId}', [App\Http\Controllers\ChatController::class, 'history'])->name('history');
+        
+        // Client info updates
+        Route::post('/update-info', [App\Http\Controllers\ChatController::class, 'updateClientInfo'])->name('update-info');
+        
+        // Chat status
+        Route::get('/online-status', [App\Http\Controllers\ChatController::class, 'onlineStatus'])->name('online-status');
+        
+        // File uploads (if enabled)
+        Route::post('/upload-file', [App\Http\Controllers\ChatController::class, 'uploadFile'])->name('upload-file');
+    });
+    
+    // Client Chat Dashboard/History (optional - if you want a dedicated chat page)
+    Route::prefix('client')->name('client.')->group(function () {
+        Route::get('/chat', [App\Http\Controllers\Client\ChatController::class, 'index'])->name('chat.index');
+        Route::get('/chat/history', [App\Http\Controllers\Client\ChatController::class, 'history'])->name('chat.history');
+        Route::get('/chat/{chatSession}', [App\Http\Controllers\Client\ChatController::class, 'show'])->name('chat.show');
+    });
 });
 
 // Admin routes - keeping the original structure for compatibility
@@ -173,6 +211,55 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::get('/api/statistics', [App\Http\Controllers\ChatController::class, 'statistics'])->name('statistics');
     });
     
+    Route::prefix('chat')->name('chat.')->group(function () {
+        // Dashboard and main views
+        Route::get('/', [App\Http\Controllers\Admin\ChatController::class, 'index'])->name('index');
+        Route::get('/settings', [App\Http\Controllers\Admin\ChatController::class, 'settings'])->name('settings');
+        Route::post('/settings', [App\Http\Controllers\Admin\ChatController::class, 'updateSettings'])->name('settings.update');
+        
+        // Individual chat session management
+        Route::get('/{chatSession}', [App\Http\Controllers\Admin\ChatController::class, 'show'])->name('show');
+        Route::post('/{chatSession}/reply', [App\Http\Controllers\Admin\ChatController::class, 'reply'])->name('reply');
+        Route::post('/{chatSession}/close', [App\Http\Controllers\Admin\ChatController::class, 'closeSession'])->name('close');
+        Route::post('/{chatSession}/assign', [App\Http\Controllers\Admin\ChatController::class, 'assignToMe'])->name('assign');
+        Route::post('/{chatSession}/priority', [App\Http\Controllers\Admin\ChatController::class, 'updatePriority'])->name('priority');
+        Route::post('/{chatSession}/notes', [App\Http\Controllers\Admin\ChatController::class, 'updateNotes'])->name('notes');
+        Route::post('/{chatSession}/typing', [App\Http\Controllers\Admin\ChatController::class, 'typing'])->name('typing');
+        
+        // API endpoints for real-time updates
+        Route::get('/api/statistics', [App\Http\Controllers\Admin\ChatController::class, 'statistics'])->name('statistics');
+        Route::get('/{chatSession}/messages', [App\Http\Controllers\Admin\ChatController::class, 'getMessages'])->name('messages');
+        
+        // Operator management
+        Route::post('/operator/online', [App\Http\Controllers\Admin\ChatController::class, 'goOnline'])->name('operator.online');
+        Route::post('/operator/offline', [App\Http\Controllers\Admin\ChatController::class, 'goOffline'])->name('operator.offline');
+        Route::post('/operator/available', [App\Http\Controllers\Admin\ChatController::class, 'setAvailable'])->name('operator.available');
+        
+        // Bulk actions
+        Route::post('/bulk-close', [App\Http\Controllers\Admin\ChatController::class, 'bulkClose'])->name('bulk-close');
+        Route::post('/bulk-assign', [App\Http\Controllers\Admin\ChatController::class, 'bulkAssign'])->name('bulk-assign');
+        
+        // Analytics and reports
+        Route::get('/reports/daily', [App\Http\Controllers\Admin\ChatController::class, 'dailyReport'])->name('reports.daily');
+        Route::get('/reports/export', [App\Http\Controllers\Admin\ChatController::class, 'exportReport'])->name('reports.export');
+        
+        // Chat templates management
+        Route::get('/templates', [App\Http\Controllers\Admin\ChatController::class, 'templates'])->name('templates');
+        Route::post('/templates', [App\Http\Controllers\Admin\ChatController::class, 'storeTemplate'])->name('templates.store');
+        Route::put('/templates/{template}', [App\Http\Controllers\Admin\ChatController::class, 'updateTemplate'])->name('templates.update');
+        Route::delete('/templates/{template}', [App\Http\Controllers\Admin\ChatController::class, 'destroyTemplate'])->name('templates.destroy');
+    });
+    
+    // Chat Operators Management
+    Route::prefix('chat-operators')->name('chat-operators.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\ChatOperatorController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Admin\ChatOperatorController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Admin\ChatOperatorController::class, 'store'])->name('store');
+        Route::get('/{chatOperator}/edit', [App\Http\Controllers\Admin\ChatOperatorController::class, 'edit'])->name('edit');
+        Route::put('/{chatOperator}', [App\Http\Controllers\Admin\ChatOperatorController::class, 'update'])->name('update');
+        Route::delete('/{chatOperator}', [App\Http\Controllers\Admin\ChatOperatorController::class, 'destroy'])->name('destroy');
+        Route::post('/{chatOperator}/toggle-status', [App\Http\Controllers\Admin\ChatOperatorController::class, 'toggleStatus'])->name('toggle-status');
+    });
     
     // Quotations management
     Route::resource('quotations', App\Http\Controllers\Admin\QuotationController::class);
