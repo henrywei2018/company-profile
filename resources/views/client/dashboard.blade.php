@@ -1,10 +1,10 @@
 <!-- resources/views/client/dashboard.blade.php -->
-<x-app-layout>
+<x-layouts.client :title="'Dashboard'" :enableCharts="true" :unreadMessages="$unreadMessagesCount ?? 0" :pendingApprovals="$pendingClientQuotationsCount ?? 0">
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="flex flex-col md:flex-row">
                 <!-- Sidebar -->
-                <x-sidebar-client :unreadClientMessagesCount="$unreadClientMessagesCount ?? 0" :pendingClientQuotationsCount="$pendingClientQuotationsCount ?? 0" />
+                <x-client.client-sidebar :unreadClientMessagesCount="$unreadClientMessagesCount ?? 0" :pendingClientQuotationsCount="$pendingClientQuotationsCount ?? 0" />
 
                 <!-- Main Content -->
                 <div class="w-full md:flex-1 py-6 px-4 md:px-8">
@@ -277,4 +277,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+</x-layouts.client>
