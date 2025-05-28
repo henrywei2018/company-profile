@@ -164,7 +164,7 @@
                                         You don't have any active projects at the moment.
                                     </p>
                                     <div class="mt-6">
-                                        <a href="{{ route('quotation.index') }}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500">
+                                        <a href="{{ route('client.quotations.index') }}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500">
                                             Request a quote
                                         </a>
                                     </div>
@@ -215,7 +215,7 @@
                                 <div class="p-6 text-center text-gray-500 dark:text-gray-400">
                                     <p class="text-sm">No quotations found.</p>
                                     <div class="mt-4">
-                                        <a href="{{ route('quotation.index') }}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500">
+                                        <a href="{{ route('client.quotations.index') }}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500">
                                             Request a quote
                                         </a>
                                     </div>

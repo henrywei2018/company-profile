@@ -59,7 +59,7 @@
 
     <!-- ========== MAIN CONTENT ========== -->
     <!-- Mobile breadcrumb -->
-    <x-client.breadcrumb-mobile />
+    <x-admin.breadcrumb-mobile />
 
     <!-- Sidebar -->
     <x-client.client-sidebar :unreadMessagesCount="$unreadMessages" :pendingApprovalsCount="$pendingApprovals" />
@@ -69,27 +69,27 @@
         <div class="p-4 sm:p-6 space-y-4 sm:space-y-6">
             <!-- Flash Messages -->
             @if (session('success'))
-                <x-client.alert type="success" class="mb-4" dismissible>
+                <x-admin.alert type="success" class="mb-4" dismissible>
                     {{ session('success') }}
-                </x-client.alert>
+                </x-admin.alert>
             @endif
 
             @if (session('error'))
-                <x-client.alert type="error" class="mb-4" dismissible>
+                <x-admin.alert type="error" class="mb-4" dismissible>
                     {{ session('error') }}
-                </x-client.alert>
+                </x-admin.alert>
             @endif
 
             @if (session('info'))
-                <x-client.alert type="info" class="mb-4" dismissible>
+                <x-admin.alert type="info" class="mb-4" dismissible>
                     {{ session('info') }}
-                </x-client.alert>
+                </x-admin.alert>
             @endif
 
             @if (session('warning'))
-                <x-client.alert type="warning" class="mb-4" dismissible>
+                <x-admin.alert type="warning" class="mb-4" dismissible>
                     {{ session('warning') }}
-                </x-client.alert>
+                </x-admin.alert>
             @endif
 
             <!-- Page Content -->
@@ -131,7 +131,7 @@
     ];
     @endphp
 
-    <x-client.floating-action-button :actions="$clientQuickActions" class="pr-4" />
+    <x-admin.floating-action-button :actions="$clientQuickActions" class="pr-4" />
     
     <!-- Chat Widget -->
     <x-chat-widget 
