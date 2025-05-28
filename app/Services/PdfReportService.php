@@ -275,8 +275,8 @@ class PdfReportService
     protected function getSystemHealthData(): array
     {
         return [
-            'total_users' => \App\Models\User::count(),
-            'active_users' => \App\Models\User::where('is_active', true)->count(),
+            'total_users' => User::count(),
+            'active_users' => User::where('is_active', true)->count(),
             'total_projects' => \App\Models\Project::count(),
             'active_projects' => \App\Models\Project::whereIn('status', ['in_progress', 'on_hold'])->count(),
             'total_quotations' => \App\Models\Quotation::count(),

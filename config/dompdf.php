@@ -1,6 +1,3 @@
-
-// File: config/dompdf.php (This will be created after vendor:publish)
-
 <?php
 
 return [

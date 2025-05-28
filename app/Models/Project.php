@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\FilterableTrait;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
@@ -30,6 +32,7 @@ class Project extends Model
         'year',
         'start_date',
         'end_date',
+        'actual_completion_date',
         'featured',
         'location',
         'challenge',
@@ -223,7 +226,15 @@ class Project extends Model
     /**
      * Get the project testimonials.
      */
-    public function testimonials()
+    public function testimonial(): HasOne
+    {
+        return $this->hasOne(Testimonial::class);
+    }
+
+    /**
+     * Get all testimonials for this project (if allowing multiple).
+     */
+    public function testimonials(): HasMany
     {
         return $this->hasMany(Testimonial::class);
     }
