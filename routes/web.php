@@ -18,9 +18,7 @@ use App\Http\Controllers\Client\DashboardController as ClientDashboardController
 | Web Routes
 |--------------------------------------------------------------------------
 |
-| This is your main routes file where all routes are registered.
-| We'll split the routes by section for better organization but keep
-| the original structure to maintain compatibility with your application.
+| Updated with minimal RBAC middleware system while keeping all existing routes
 |
 */
 
@@ -54,78 +52,32 @@ Route::get('/team/{slug}', [TeamController::class, 'show'])->name('team.show');
 // Blog routes - Public access
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
 
-// Contact routes - Public access
+// Contact routes - Public access with rate limiting
 Route::get('/contact', [ContactController::class, 'index'])->name('contact.index');
-Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
+Route::post('/contact', [ContactController::class, 'store'])
+    ->middleware('throttle:10,1') // 10 submissions per minute
+    ->name('contact.store');
 
-// Public quotation request (for non-authenticated users)
+// Public quotation request (for non-authenticated users) with rate limiting
 Route::get('/quotation', [QuotationController::class, 'create'])->name('quotation.create');
-Route::post('/quotation', [QuotationController::class, 'store'])->name('quotation.store');
+Route::post('/quotation', [QuotationController::class, 'store'])
+    ->middleware('throttle:5,1') // 5 quotations per minute
+    ->name('quotation.store');
 Route::get('/quotation/thank-you', [QuotationController::class, 'thankYou'])->name('quotation.thank-you');
 
-// Public messages (contact form submissions)
-Route::post('/messages', [MessageController::class, 'store'])->name('messages.store');
+// Public messages (contact form submissions) with rate limiting
+Route::post('/messages', [MessageController::class, 'store'])
+    ->middleware('throttle:10,1') // 10 messages per minute
+    ->name('messages.store');
 
 /*
 |--------------------------------------------------------------------------
-| Authentication Routes
+| Authentication Routes (Updated)
 |--------------------------------------------------------------------------
 */
 
-// Guest-only routes (redirect authenticated users to appropriate dashboard)
-Route::middleware(['guest', 'redirect.authenticated'])->group(function () {
-    // Login routes
-    Route::get('login', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'create'])
-        ->name('login');
-    Route::post('login', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'store']);
-
-    // Registration routes
-    Route::get('register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'create'])
-        ->name('register');
-    Route::post('register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'store']);
-
-    // Password Reset Routes
-    Route::get('forgot-password', [App\Http\Controllers\Auth\PasswordResetLinkController::class, 'create'])
-        ->name('password.request');
-    Route::post('forgot-password', [App\Http\Controllers\Auth\PasswordResetLinkController::class, 'store'])
-        ->name('password.email');
-    Route::get('reset-password/{token}', [App\Http\Controllers\Auth\NewPasswordController::class, 'create'])
-        ->name('password.reset');
-    Route::post('reset-password', [App\Http\Controllers\Auth\NewPasswordController::class, 'store'])
-        ->name('password.store');
-});
-
-/*
-|--------------------------------------------------------------------------
-| Common Authenticated Routes (Both Admin and Client)
-|--------------------------------------------------------------------------
-*/
-
+// Simple dashboard redirect based on role
 Route::middleware('auth')->group(function () {
-    // Email verification routes
-    Route::get('verify-email', [App\Http\Controllers\Auth\EmailVerificationPromptController::class, '__invoke'])
-        ->name('verification.notice');
-    Route::get('verify-email/{id}/{hash}', [App\Http\Controllers\Auth\VerifyEmailController::class, '__invoke'])
-        ->middleware(['signed', 'throttle:6,1'])
-        ->name('verification.verify');
-    Route::post('email/verification-notification', [App\Http\Controllers\Auth\EmailVerificationNotificationController::class, 'store'])
-        ->middleware('throttle:6,1')
-        ->name('verification.send');
-
-    // Common profile routes (accessible by both admin and client)
-    Route::get('/profile', [App\Http\Controllers\Client\ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [App\Http\Controllers\Client\ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [App\Http\Controllers\Client\ProfileController::class, 'destroy'])->name('profile.destroy');
-
-    // Logout route
-    Route::post('logout', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])
-        ->name('logout');
-
-    // Analytics tracking (for authenticated users)
-    Route::post('/api/analytics/track', function (Request $request) {
-        return response()->json(['success' => true]);
-    })->name('api.analytics.track');
-
     // Dashboard redirect route (redirects to appropriate dashboard based on role)
     Route::get('/dashboard', function () {
         $user = auth()->user();
@@ -139,15 +91,25 @@ Route::middleware('auth')->group(function () {
         // Default fallback for users without specific roles
         return redirect()->route('client.dashboard');
     })->name('dashboard');
+
+    // Common profile routes (accessible by both admin and client)
+    Route::get('/profile', [App\Http\Controllers\Client\ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [App\Http\Controllers\Client\ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [App\Http\Controllers\Client\ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Analytics tracking (for authenticated users)
+    Route::post('/api/analytics/track', function (Request $request) {
+        return response()->json(['success' => true]);
+    })->name('api.analytics.track');
 });
 
 /*
 |--------------------------------------------------------------------------
-| Client Area Routes
+| Client Area Routes (Updated with minimal middleware)
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('client')->name('client.')->middleware(['auth', 'verified', 'client'])->group(function () {
+Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(function () {
     
     // Client Dashboard
     Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
@@ -165,7 +127,9 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified', 'clien
     Route::prefix('quotations')->name('quotations.')->group(function () {
         Route::get('/', [App\Http\Controllers\Client\QuotationController::class, 'index'])->name('index');
         Route::get('/create', [App\Http\Controllers\Client\QuotationController::class, 'create'])->name('create');
-        Route::post('/', [App\Http\Controllers\Client\QuotationController::class, 'store'])->name('store');
+        Route::post('/', [App\Http\Controllers\Client\QuotationController::class, 'store'])
+            ->middleware('throttle:5,1') // Rate limit client quotations
+            ->name('store');
         Route::get('/{quotation}', [App\Http\Controllers\Client\QuotationController::class, 'show'])->name('show');
         Route::put('/{quotation}/approve', [App\Http\Controllers\Client\QuotationController::class, 'approve'])->name('approve');
         Route::put('/{quotation}/reject', [App\Http\Controllers\Client\QuotationController::class, 'reject'])->name('reject');
@@ -176,9 +140,13 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified', 'clien
     Route::prefix('messages')->name('messages.')->group(function () {
         Route::get('/', [App\Http\Controllers\Client\MessageController::class, 'index'])->name('index');
         Route::get('/create', [App\Http\Controllers\Client\MessageController::class, 'create'])->name('create');
-        Route::post('/', [App\Http\Controllers\Client\MessageController::class, 'store'])->name('store');
+        Route::post('/', [App\Http\Controllers\Client\MessageController::class, 'store'])
+            ->middleware('throttle:10,1') // Rate limit client messages
+            ->name('store');
         Route::get('/{message}', [App\Http\Controllers\Client\MessageController::class, 'show'])->name('show');
-        Route::post('/{message}/reply', [App\Http\Controllers\Client\MessageController::class, 'reply'])->name('reply');
+        Route::post('/{message}/reply', [App\Http\Controllers\Client\MessageController::class, 'reply'])
+            ->middleware('throttle:10,1') // Rate limit replies
+            ->name('reply');
         Route::patch('/{message}/mark-read', [App\Http\Controllers\Client\MessageController::class, 'markAsRead'])->name('mark-read');
     });
     
@@ -186,7 +154,9 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified', 'clien
     Route::prefix('testimonials')->name('testimonials.')->group(function () {
         Route::get('/', [App\Http\Controllers\Client\TestimonialController::class, 'index'])->name('index');
         Route::get('/create', [App\Http\Controllers\Client\TestimonialController::class, 'create'])->name('create');
-        Route::post('/', [App\Http\Controllers\Client\TestimonialController::class, 'store'])->name('store');
+        Route::post('/', [App\Http\Controllers\Client\TestimonialController::class, 'store'])
+            ->middleware('throttle:3,1') // Rate limit testimonials (3 per minute)
+            ->name('store');
         Route::get('/{testimonial}', [App\Http\Controllers\Client\TestimonialController::class, 'show'])->name('show');
         Route::get('/{testimonial}/edit', [App\Http\Controllers\Client\TestimonialController::class, 'edit'])->name('edit');
         Route::put('/{testimonial}', [App\Http\Controllers\Client\TestimonialController::class, 'update'])->name('update');
@@ -199,8 +169,10 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified', 'clien
         Route::get('/session', [App\Http\Controllers\ChatController::class, 'getSession'])->name('session');
         Route::post('/close', [App\Http\Controllers\ChatController::class, 'close'])->name('close');
 
-        // Message handling
-        Route::post('/send-message', [App\Http\Controllers\ChatController::class, 'sendMessage'])->name('send-message');
+        // Message handling with rate limiting
+        Route::post('/send-message', [App\Http\Controllers\ChatController::class, 'sendMessage'])
+            ->middleware('throttle:30,1') // 30 chat messages per minute
+            ->name('send-message');
         Route::get('/messages', [App\Http\Controllers\ChatController::class, 'getMessages'])->name('messages');
         Route::get('/history/{sessionId}', [App\Http\Controllers\ChatController::class, 'history'])->name('history');
 
@@ -214,11 +186,10 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified', 'clien
 
 /*
 |--------------------------------------------------------------------------
-| Admin Area Routes
+| Admin Area Routes (Updated with minimal middleware)
 |--------------------------------------------------------------------------
 */
 
-// Admin routes - keeping the original structure for compatibility
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
@@ -300,7 +271,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         
         // Individual chat session management
         Route::get('/{chatSession}', [App\Http\Controllers\ChatController::class, 'show'])->name('show');
-        Route::post('/{chatSession}/reply', [App\Http\Controllers\ChatController::class, 'reply'])->name('reply');
+        Route::post('/{chatSession}/reply', [App\Http\Controllers\ChatController::class, 'reply'])
+            ->middleware('throttle:30,1') // Rate limit admin chat replies
+            ->name('reply');
         Route::post('/{chatSession}/close-session', [App\Http\Controllers\ChatController::class, 'closeSession'])->name('close');
         Route::post('/{chatSession}/assign', [App\Http\Controllers\ChatController::class, 'assignToMe'])->name('assign');
         Route::post('/{chatSession}/priority', [App\Http\Controllers\ChatController::class, 'updatePriority'])->name('priority');
@@ -327,6 +300,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('/{quotation}/update-status', [App\Http\Controllers\Admin\QuotationController::class, 'updateStatus'])
             ->name('update-status');
         Route::post('/{quotation}/send-response', [App\Http\Controllers\Admin\QuotationController::class, 'sendResponse'])
+            ->middleware('throttle:10,1') // Rate limit quotation responses
             ->name('send-response');
         Route::get('/{quotation}/create-project', [App\Http\Controllers\Admin\QuotationController::class, 'createProject'])
             ->name('create-project');
@@ -335,6 +309,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::get('/export', [App\Http\Controllers\Admin\QuotationController::class, 'export'])
             ->name('export');
         Route::post('/bulk-action', [App\Http\Controllers\Admin\QuotationController::class, 'bulkAction'])
+            ->middleware('throttle:30,1') // Rate limit bulk actions
             ->name('bulk-action');
         Route::get('/statistics', [App\Http\Controllers\Admin\QuotationController::class, 'statistics'])
             ->name('statistics');
@@ -357,11 +332,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     // Messages management - Updated section
     Route::resource('messages', App\Http\Controllers\Admin\MessageController::class);
-    Route::post('/messages/{message}/reply', [App\Http\Controllers\Admin\MessageController::class, 'reply'])->name('messages.reply');
+    Route::post('/messages/{message}/reply', [App\Http\Controllers\Admin\MessageController::class, 'reply'])
+        ->middleware('throttle:20,1') // Rate limit admin message replies
+        ->name('messages.reply');
     Route::post('/messages/{message}/toggle-read', [App\Http\Controllers\Admin\MessageController::class, 'toggleRead'])->name('messages.toggle-read');
     Route::post('/messages/{message}/mark-unread', [App\Http\Controllers\Admin\MessageController::class, 'markAsUnread'])->name('messages.mark-unread');
     Route::post('/messages/mark-read', [App\Http\Controllers\Admin\MessageController::class, 'markAsRead'])->name('messages.mark-read');
-    Route::delete('/messages/delete-multiple', [App\Http\Controllers\Admin\MessageController::class, 'destroyMultiple'])->name('messages.destroy-multiple');
+    Route::delete('/messages/delete-multiple', [App\Http\Controllers\Admin\MessageController::class, 'destroyMultiple'])
+        ->middleware('throttle:30,1') // Rate limit bulk deletions
+        ->name('messages.destroy-multiple');
     Route::get('/messages/{message}/attachments/{attachmentId}/download', [App\Http\Controllers\Admin\MessageController::class, 'downloadAttachment'])
         ->name('messages.attachments.download')
         ->where('attachmentId', '[0-9]+');
