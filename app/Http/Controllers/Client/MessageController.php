@@ -126,17 +126,10 @@ class MessageController extends Controller
             $request->file('attachments', [])
         );
 
-        // Log activity
-        $this->logActivity('message_sent', [
-            'message_id' => $message->id,
-            'subject' => $message->subject,
-            'type' => $message->type,
-            'has_attachments' => $message->attachments()->count() > 0,
-        ]);
-
         return redirect()->route('client.messages.show', $message)
             ->with('success', 'Message sent successfully! We will respond within 24 hours.');
     }
+    
 
     /**
      * Display the specified message.
@@ -238,16 +231,10 @@ class MessageController extends Controller
         // Mark original message as replied
         $message->update(['is_replied' => true, 'replied_at' => now()]);
 
-        // Log activity
-        $this->logActivity('message_replied', [
-            'original_message_id' => $message->id,
-            'reply_message_id' => $reply->id,
-            'has_attachments' => $reply->attachments()->count() > 0,
-        ]);
-
         return redirect()->route('client.messages.show', $reply)
             ->with('success', 'Reply sent successfully!');
     }
+    
 
     /**
      * Mark a message as read/unread.
@@ -290,18 +277,12 @@ class MessageController extends Controller
             abort(404, 'File not found.');
         }
         
-        // Log download activity
-        $this->logActivity('attachment_downloaded', [
-            'message_id' => $message->id,
-            'attachment_id' => $attachment->id,
-            'file_name' => $attachment->file_name,
-        ]);
-        
         return Storage::disk('public')->download(
             $attachment->file_path,
             $attachment->file_name
         );
     }
+    
 
     /**
      * Get message statistics for client.
@@ -376,22 +357,5 @@ class MessageController extends Controller
     protected function isMessageToClient(Message $message): bool
     {
         return in_array($message->type, ['admin_to_client', 'support_response']);
-    }
-
-    /**
-     * Log client activity.
-     */
-    protected function logActivity(string $action, array $context = []): void
-    {
-        try {
-            $activityService = app(\App\Services\UserActivityService::class);
-            $activityService->logActivity(auth()->user(), $action, array_merge($context, [
-                'ip' => request()->ip(),
-                'user_agent' => request()->userAgent(),
-                'controller' => 'Client/MessageController',
-            ]));
-        } catch (\Exception $e) {
-            \Log::error('Failed to log client message activity: ' . $e->getMessage());
-        }
     }
 }
