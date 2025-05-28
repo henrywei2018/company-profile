@@ -154,7 +154,7 @@ class AppServiceProvider extends ServiceProvider
     protected function clearClientCacheFromModel(array $models): void
     {
         if (isset($models[0]) && $models[0]->client_id) {
-            $client = \App\Models\User::find($models[0]->client_id);
+            $client = User::find($models[0]->client_id);
             if ($client) {
                 app(ClientAccessService::class)->clearClientCache($client);
             }
