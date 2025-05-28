@@ -24,6 +24,8 @@ use App\Http\Controllers\Client\DashboardController as ClientDashboardController
 |
 */
 
+require __DIR__.'/auth.php';
+
 /*
 |--------------------------------------------------------------------------
 | Public Routes (No Authentication Required)

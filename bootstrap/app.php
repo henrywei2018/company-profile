@@ -27,42 +27,54 @@ return Application::configure(basePath: dirname(__DIR__))
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
 
+        // Fix: Add missing core Laravel middleware aliases
         $middleware->alias([
+            // Core Laravel Auth Middleware (MISSING - This was the issue!)
+            'auth' => \Illuminate\Auth\Middleware\Authenticate::class,
+            'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
+            'auth.session' => \Illuminate\Auth\Middleware\AuthenticateSession::class,
+            'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
+            'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+            
+            // Custom Admin & RBAC Middleware
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'rbac' => \App\Http\Middleware\RoleBasedAccessControl::class,
             'require.all.permissions' => \App\Http\Middleware\RequireAllPermissions::class,
             'require.any.permission' => \App\Http\Middleware\RequireAnyPermission::class,
             'require.role' => \App\Http\Middleware\RequireRole::class,
+            
+            // Client Area Middleware
             'client' => \App\Http\Middleware\ClientMiddleware::class,
             'client.resource' => \App\Http\Middleware\ClientResourceAccess::class,
             'client.verified' => \App\Http\Middleware\EnsureClientIsVerified::class,
             'client.active' => \App\Http\Middleware\EnsureUserIsActive::class,
+            'client.session' => \App\Http\Middleware\ClientSessionManagement::class,
+            'client.csrf' => \App\Http\Middleware\ClientCsrfProtection::class,
+            'client.locale' => \App\Http\Middleware\ClientLocale::class,
+            'client.maintenance' => \App\Http\Middleware\ClientMaintenanceMode::class,
+            'client.feature' => \App\Http\Middleware\ClientFeatureFlag::class,
+            'client.validate' => \App\Http\Middleware\ValidateClientRequest::class,
+            
+            // Authentication Flow Middleware
             'redirect.authenticated' => \App\Http\Middleware\RedirectAuthenticatedUsers::class,
             'guest.redirect' => \App\Http\Middleware\RedirectAuthenticatedUsers::class,
+            
+            // API & Security Middleware
             'api.client' => \App\Http\Middleware\ClientApiRateLimit::class,
             'throttle.client' => \App\Http\Middleware\ClientApiRateLimit::class,
             'secure.headers' => \App\Http\Middleware\SecurityHeaders::class,
             'activity.log' => \App\Http\Middleware\LogUserActivity::class,
         ]);
 
-        $middleware->group('client-web', [
+        // Middleware Groups for different authentication flows
+        $middleware->group('web-auth', [
             'web',
             'auth',
             'verified',
             'client.active',
-            'client',
-            'activity.log',
         ]);
 
-        $middleware->group('client-api', [
-            'api',
-            'auth:sanctum',
-            'client.active',
-            'client',
-            'throttle.client:100,1',
-        ]);
-
-        $middleware->group('admin-secure', [
+        $middleware->group('admin-auth', [
             'web',
             'auth',
             'verified',
@@ -71,31 +83,33 @@ return Application::configure(basePath: dirname(__DIR__))
             'secure.headers',
             'activity.log',
         ]);
+
+        $middleware->group('client-auth', [
+            'web',
+            'auth',
+            'verified',
+            'client.active',
+            'client',
+            'client.session',
+            'activity.log',
+        ]);
+
+        $middleware->group('client-api-auth', [
+            'api',
+            'auth:sanctum',
+            'client.active',
+            'client',
+            'throttle.client:100,1',
+        ]);
+
+        $middleware->group('guest-only', [
+            'web',
+            'guest',
+            'throttle:6,1',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, $request) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'error' => 'Forbidden',
-                    'message' => $e->getMessage(),
-                    'code' => 403
-                ], 403);
-            }
-
-            if ($request->is('client/*')) {
-                return redirect()->route('client.dashboard')
-                    ->with('error', 'You do not have permission to access that resource.');
-            }
-
-            if ($request->is('admin/*')) {
-                return redirect()->route('admin.dashboard')
-                    ->with('error', 'You do not have permission to access that resource.');
-            }
-
-            return redirect()->route('home')
-                ->with('error', 'You do not have permission to access that resource.');
-        });
-
+        // Authentication Exception Handling
         $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -105,6 +119,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 401);
             }
 
+            // Store intended URL for post-login redirect
             if (!$request->is('login', 'register', 'password/*')) {
                 session(['url.intended' => $request->url()]);
             }
@@ -113,6 +128,36 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->with('info', 'Please log in to access that resource.');
         });
 
+        // Authorization Exception Handling
+        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'error' => 'Forbidden',
+                    'message' => $e->getMessage(),
+                    'code' => 403
+                ], 403);
+            }
+
+            // Role-based redirects for authorization errors
+            if (auth()->check()) {
+                $user = auth()->user();
+                
+                if ($request->is('client/*') && !$user->hasRole('client')) {
+                    return redirect()->route('admin.dashboard')
+                        ->with('error', 'You do not have client area access.');
+                }
+                
+                if ($request->is('admin/*') && !$user->hasAnyRole(['super-admin', 'admin', 'manager', 'editor'])) {
+                    return redirect()->route('client.dashboard')
+                        ->with('error', 'You do not have admin area access.');
+                }
+            }
+
+            return redirect()->back()
+                ->with('error', $e->getMessage() ?: 'You do not have permission to access that resource.');
+        });
+
+        // Model Not Found Exception (for client resource access)
         $exceptions->render(function (\Illuminate\Database\Eloquent\ModelNotFoundException $e, $request) {
             if ($request->is('client/*')) {
                 if ($request->expectsJson()) {
@@ -126,9 +171,15 @@ return Application::configure(basePath: dirname(__DIR__))
                     ->with('error', 'The requested resource was not found or you do not have access to it.');
             }
 
-            return null;
+            if ($request->is('admin/*')) {
+                return redirect()->route('admin.dashboard')
+                    ->with('error', 'The requested resource was not found.');
+            }
+
+            return null; // Let Laravel handle other cases
         });
 
+        // Validation Exception Handling
         $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -139,9 +190,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 422);
             }
 
-            return null;
+            return null; // Let Laravel handle form validation redirects
         });
 
+        // Rate Limiting Exception
         $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, $request) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -155,19 +207,38 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->with('error', 'Too many requests. Please wait a moment before trying again.');
         });
 
+        // Global Exception Reporting
         $exceptions->reportable(function (Throwable $e) {
-            if (app()->bound('sentry')) {
-                app('sentry')->captureException($e);
-            }
-
+            // Log client area exceptions with user context
             if (request()->is('client/*') && auth()->check()) {
                 \Log::error('Client area exception', [
                     'user_id' => auth()->id(),
-                    'email' => auth()->user()->email,
+                    'email' => auth()->user()->email ?? 'unknown',
                     'url' => request()->url(),
+                    'method' => request()->method(),
                     'exception' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
                 ]);
+            }
+
+            // Log admin area exceptions with elevated context
+            if (request()->is('admin/*') && auth()->check()) {
+                \Log::error('Admin area exception', [
+                    'user_id' => auth()->id(),
+                    'email' => auth()->user()->email ?? 'unknown',
+                    'roles' => auth()->user()->roles->pluck('name')->toArray() ?? [],
+                    'url' => request()->url(),
+                    'method' => request()->method(),
+                    'exception' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ]);
+            }
+
+            // Send to external error tracking (Sentry, etc.)
+            if (app()->bound('sentry')) {
+                app('sentry')->captureException($e);
             }
         });
     })
