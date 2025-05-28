@@ -3,6 +3,8 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Cache\RateLimiting\Limit;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\PostController;
@@ -20,7 +22,13 @@ use App\Http\Controllers\ChatController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+RateLimiter::for('client-api', fn(Request $request) =>
+    Limit::perMinute(100)->by($request->user()?->id ?: $request->ip())
+);
 
+RateLimiter::for('admin-api', fn(Request $request) =>
+    Limit::perMinute(120)->by($request->user()?->id ?: $request->ip())
+);
 // Authentication routes if needed
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

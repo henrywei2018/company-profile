@@ -18,6 +18,7 @@ use App\Models\ChatSession;
 use App\View\Composers\ChatSidebarComposer;
 use App\Services\ClientAccessService;
 use App\Services\FileUploadService;
+use App\Models\User;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,120 +27,63 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Register core services
-        $this->app->singleton(FileUploadService::class, function ($app) {
-            return new FileUploadService();
-        });
+        $this->app->singleton(FileUploadService::class, fn($app) => new FileUploadService());
+        $this->app->singleton(ClientAccessService::class, fn($app) => new ClientAccessService());
 
-        // Register client access service
-        $this->app->singleton(ClientAccessService::class, function ($app) {
-            return new ClientAccessService();
-        });
-
-        // Register development tools in local environment
         if ($this->app->environment('local')) {
-            $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
-            $this->app->register(TelescopeServiceProvider::class);
+            if (class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
+                $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
+            }
+
+            if (class_exists(\App\Providers\TelescopeServiceProvider::class)) {
+                $this->app->register(\App\Providers\TelescopeServiceProvider::class);
+            }
         }
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        // Set default string length for MySQL older than 5.7.7
         Schema::defaultStringLength(191);
-        
-        // Register custom Blade directives
         $this->registerBladeDirectives();
-        
-        // Register view composers
         $this->registerViewComposers();
-        
-        // Register custom gates
         $this->registerCustomGates();
-        
-        // Register event listeners
         $this->registerEventListeners();
     }
 
-    /**
-     * Register custom Blade directives.
-     */
+    // Blade directives...
     protected function registerBladeDirectives(): void
     {
-        // Client role checking directive
-        Blade::if('client', function () {
-            return Auth::check() && Auth::user()->hasRole('client');
-        });
-
-        // Admin role checking directive
-        Blade::if('admin', function () {
-            return Auth::check() && Auth::user()->hasAnyRole(['super-admin', 'admin', 'manager', 'editor']);
-        });
-
-        // Specific role checking directive
-        Blade::if('hasRole', function ($role) {
-            return Auth::check() && Auth::user()->hasRole($role);
-        });
-
-        // Permission checking directive
-        Blade::if('canDo', function ($permission) {
-            return Auth::check() && Auth::user()->can($permission);
-        });
-
-        // Client resource access directive
+        Blade::if('client', fn() => Auth::check() && Auth::user()->hasRole('client'));
+        Blade::if('admin', fn() => Auth::check() && Auth::user()->hasAnyRole(['super-admin', 'admin', 'manager', 'editor']));
+        Blade::if('hasRole', fn($role) => Auth::check() && Auth::user()->hasRole($role));
+        Blade::if('canDo', fn($permission) => Auth::check() && Auth::user()->can($permission));
         Blade::if('canAccess', function ($resourceType, $resourceId = null) {
             if (!Auth::check()) return false;
-            
             $clientService = app(ClientAccessService::class);
-            return $resourceId 
-                ? $clientService->canAccessResource(Auth::user(), $resourceType, $resourceId)
-                : $clientService->hasClientAccess(Auth::user());
+            return $resourceId ? $clientService->canAccessResource(Auth::user(), $resourceType, $resourceId) : $clientService->hasClientAccess(Auth::user());
         });
-
-        // Admin viewing client area directive
-        Blade::if('adminViewing', function () {
-            return Auth::check() && 
-                   Auth::user()->hasAnyRole(['super-admin', 'admin', 'manager', 'editor']) &&
-                   request()->is('client/*');
-        });
+        Blade::if('adminViewing', fn() => Auth::check() && Auth::user()->hasAnyRole(['super-admin', 'admin', 'manager', 'editor']) && request()->is('client/*'));
     }
 
-    /**
-     * Register view composers.
-     */
+    // View composers...
     protected function registerViewComposers(): void
     {
-        // Global view composers for admin views
-        View::composer([
-            'admin.*', 
-            'layouts.admin', 
-            'components.admin.admin-header', 
-            'components.admin.admin-sidebar'
-        ], function ($view) {
+        View::composer(['admin.*', 'layouts.admin', 'components.admin.admin-header', 'components.admin.admin-sidebar'], function ($view) {
             if (Auth::check()) {
                 try {
-                    // Get comprehensive statistics for admin views
                     $quotationStats = $this->getQuotationStats();
                     $projectStats = $this->getProjectStats();
                     $messageStats = $this->getMessageStats();
                     $chatStats = $this->getChatStats();
-                    
+
                     $view->with([
-                        // Basic counts
                         'unreadMessages' => $messageStats['unread'],
                         'pendingQuotations' => $quotationStats['pending'],
                         'companyProfile' => CompanyProfile::getInstance(),
-                        
-                        // Enhanced statistics
                         'quotationStats' => $quotationStats,
                         'projectStats' => $projectStats,
                         'messageStats' => $messageStats,
                         'chatStats' => $chatStats,
-                        
-                        // Post statistics
                         'totalPostsCount' => Post::count(),
                         'draftPostsCount' => Post::where('status', 'draft')->count(),
                         'publishedPostsCount' => Post::where('status', 'published')->count(),
@@ -154,17 +98,12 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
-        // Client view composers
-        View::composer([
-            'client.*', 
-            'layouts.client', 
-            'components.client.*'
-        ], function ($view) {
+        View::composer(['client.*', 'layouts.client', 'components.client.*'], function ($view) {
             if (Auth::check()) {
                 try {
                     $clientService = app(ClientAccessService::class);
                     $user = Auth::user();
-                    
+
                     $view->with([
                         'clientStats' => $clientService->getClientDashboardStats($user),
                         'clientNavigation' => $clientService->getClientNavigationMenu($user),
@@ -186,82 +125,40 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
-        // Chat sidebar composer
         View::composer('components.admin.chat-sidebar', ChatSidebarComposer::class);
     }
 
-    /**
-     * Register custom gates.
-     */
     protected function registerCustomGates(): void
     {
-        // Client area access gate
-        Gate::define('access-client-area', function ($user) {
-            $clientService = app(ClientAccessService::class);
-            return $clientService->hasClientAccess($user);
-        });
-
-        // Client resource access gates
-        Gate::define('access-client-project', function ($user, $projectId) {
-            $clientService = app(ClientAccessService::class);
-            return $clientService->canAccessResource($user, 'project', $projectId);
-        });
-
-        Gate::define('access-client-quotation', function ($user, $quotationId) {
-            $clientService = app(ClientAccessService::class);
-            return $clientService->canAccessResource($user, 'quotation', $quotationId);
-        });
-
-        Gate::define('access-client-message', function ($user, $messageId) {
-            $clientService = app(ClientAccessService::class);
-            return $clientService->canAccessResource($user, 'message', $messageId);
-        });
-
-        // Enhanced admin gates
-        Gate::define('admin-support-access', function ($user) {
-            return $user->hasAnyRole(['super-admin', 'admin']) && 
-                   $user->can('provide client support');
-        });
-
-        // Client verification gate
-        Gate::define('verify-clients', function ($user) {
-            return $user->hasAnyRole(['super-admin', 'admin', 'manager']) &&
-                   $user->can('verify clients');
-        });
+        Gate::define('access-client-area', fn($user) => app(ClientAccessService::class)->hasClientAccess($user));
+        Gate::define('access-client-project', fn($user, $projectId) => app(ClientAccessService::class)->canAccessResource($user, 'project', $projectId));
+        Gate::define('access-client-quotation', fn($user, $quotationId) => app(ClientAccessService::class)->canAccessResource($user, 'quotation', $quotationId));
+        Gate::define('access-client-message', fn($user, $messageId) => app(ClientAccessService::class)->canAccessResource($user, 'message', $messageId));
+        Gate::define('admin-support-access', fn($user) => $user->hasAnyRole(['super-admin', 'admin']) && $user->can('provide client support'));
+        Gate::define('verify-clients', fn($user) => $user->hasAnyRole(['super-admin', 'admin', 'manager']) && $user->can('verify clients'));
     }
 
-    /**
-     * Register event listeners.
-     */
     protected function registerEventListeners(): void
     {
-        // Clear client cache when relevant models are updated
         $this->app['events']->listen([
-            'eloquent.saved: App\Models\Project',
-            'eloquent.deleted: App\Models\Project',
-        ], function ($event, $models) {
-            if (isset($models[0]) && $models[0]->client_id) {
-                $clientService = app(ClientAccessService::class);
-                $client = \App\Models\User::find($models[0]->client_id);
-                if ($client) {
-                    $clientService->clearClientCache($client);
-                }
-            }
-        });
+            'eloquent.saved: App\\Models\\Project',
+            'eloquent.deleted: App\\Models\\Project',
+        ], fn($event, $models) => $this->clearClientCacheFromModel($models));
 
-        // Similar listeners for quotations and messages
         $this->app['events']->listen([
-            'eloquent.saved: App\Models\Quotation',
-            'eloquent.deleted: App\Models\Quotation',
-        ], function ($event, $models) {
-            if (isset($models[0]) && $models[0]->client_id) {
-                $clientService = app(ClientAccessService::class);
-                $client = \App\Models\User::find($models[0]->client_id);
-                if ($client) {
-                    $clientService->clearClientCache($client);
-                }
+            'eloquent.saved: App\\Models\\Quotation',
+            'eloquent.deleted: App\\Models\\Quotation',
+        ], fn($event, $models) => $this->clearClientCacheFromModel($models));
+    }
+
+    protected function clearClientCacheFromModel(array $models): void
+    {
+        if (isset($models[0]) && $models[0]->client_id) {
+            $client = \App\Models\User::find($models[0]->client_id);
+            if ($client) {
+                app(ClientAccessService::class)->clearClientCache($client);
             }
-        });
+        }
     }
 
     /**
