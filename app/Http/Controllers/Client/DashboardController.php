@@ -8,20 +8,12 @@ use App\Models\Project;
 use App\Models\Message;
 use App\Models\Quotation;
 use App\Models\User;
-use App\Services\ClientAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    protected ClientAccessService $clientAccessService;
-
-    public function __construct(ClientAccessService $clientAccessService)
-    {
-        $this->clientAccessService = $clientAccessService;
-    }
-
     /**
      * Display the client dashboard.
      */
@@ -119,8 +111,7 @@ class DashboardController extends Controller
                 'summary' => [
                     'active_projects_value' => (clone $projectsQuery)
                         ->whereIn('status', ['in_progress', 'on_hold'])
-                        ->whereNotNull('value')
-                        ->count(), // Could be sum if value is numeric
+                        ->count(),
                     'completion_rate' => $this->calculateCompletionRate($projectsQuery),
                     'response_rate' => $this->calculateResponseRate($messagesQuery),
                 ]

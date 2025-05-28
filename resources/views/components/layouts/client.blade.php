@@ -131,11 +131,11 @@
     ];
     @endphp
 
-    <x-admin.floating-action-button :actions="$clientQuickActions" class="pr-4" />
+    
     
     <!-- Chat Widget -->
     <x-chat-widget 
-        size="normal"
+        size="compact"
         theme="client"
         :show-online-status="true"
         welcome-message="Halo! Ada yang bisa kami bantu?"

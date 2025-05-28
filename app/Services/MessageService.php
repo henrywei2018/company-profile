@@ -1,182 +1,255 @@
 <?php
+// File: app/Services/MessageService.php
 
 namespace App\Services;
 
 use App\Models\Message;
 use App\Models\User;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\Eloquent\Builder;
 
 class MessageService
 {
     /**
-     * Get paginated messages
-     *
-     * @param array $filters
-     * @param int $perPage
-     * @return LengthAwarePaginator
+     * Get messages for a client with filtering.
      */
-    public function getPaginatedMessages(array $filters = [], int $perPage = 15): LengthAwarePaginator
+    public function getClientMessages(User $user, array $filters = [], int $perPage = 15)
     {
         $query = Message::query();
         
-        // Apply filters
-        if (isset($filters['read'])) {
-            $query->where('is_read', $filters['read'] === 'read');
+        // Apply client access control - messages table uses user_id
+        if (!$user->hasAnyRole(['super-admin', 'admin', 'manager'])) {
+            $query->where('user_id', $user->id);
         }
         
-        if (isset($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('subject', 'like', "%{$search}%");
+        // Apply filters
+        if (!empty($filters['search'])) {
+            $query->where(function($q) use ($filters) {
+                $q->where('subject', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('message', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('name', 'like', '%' . $filters['search'] . '%');
             });
         }
         
-        if (isset($filters['type'])) {
+        if (isset($filters['read']) && $filters['read'] !== '') {
+            $isRead = $filters['read'] === 'read' || $filters['read'] === '1';
+            $query->where('is_read', $isRead);
+        }
+        
+        if (!empty($filters['type'])) {
             $query->where('type', $filters['type']);
         }
         
-        // Get latest messages
-        return $query->latest()->paginate($perPage);
+        if (!empty($filters['date_from'])) {
+            $query->whereDate('created_at', '>=', $filters['date_from']);
+        }
+        
+        if (!empty($filters['date_to'])) {
+            $query->whereDate('created_at', '<=', $filters['date_to']);
+        }
+        
+        return $query->with(['attachments', 'project', 'parent'])
+                    ->orderBy('created_at', 'desc')
+                    ->paginate($perPage);
     }
     
     /**
-     * Get client messages
-     *
-     * @param User $client
-     * @param array $filters
-     * @param int $perPage
-     * @return LengthAwarePaginator
+     * Create a new message with attachments.
      */
-    public function getClientMessages(User $client, array $filters = [], int $perPage = 10): LengthAwarePaginator
-    {
-        $query = Message::where('client_id', $client->id);
-        
-        // Apply filters
-        if (isset($filters['read'])) {
-            $query->where('is_read_by_client', $filters['read'] === 'read');
-        }
-        
-        if (isset($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function ($q) use ($search) {
-                $q->where('subject', 'like', "%{$search}%")
-                    ->orWhere('message', 'like', "%{$search}%");
-            });
-        }
-        
-        // Get latest messages
-        return $query->latest()->paginate($perPage);
-    }
-    
-    /**
-     * Create a new message
-     *
-     * @param array $data
-     * @param array $files
-     * @return Message
-     */
-    public function createMessage(array $data, array $files = []): Message
+    public function createMessage(array $messageData, array $attachments = []): Message
     {
         // Create the message
-        $message = Message::create($data);
+        $message = Message::create($messageData);
         
-        // Process attachments if any
-        if (!empty($files)) {
-            $this->processAttachments($message, $files);
+        // Handle attachments if provided
+        if (!empty($attachments)) {
+            $this->handleAttachments($message, $attachments);
         }
+        
+        // Load relationships for return
+        $message->load(['attachments', 'project']);
         
         return $message;
     }
     
     /**
-     * Mark message as read
-     *
-     * @param Message $message
-     * @param string $type
-     * @return Message
+     * Mark a message as read.
      */
-    public function markAsRead(Message $message, string $type = 'admin'): Message
+    public function markAsRead(Message $message, string $readBy = 'client'): void
     {
-        if ($type === 'admin') {
+        if (!$message->is_read) {
             $message->update([
                 'is_read' => true,
                 'read_at' => now(),
             ]);
-        } else {
-            $message->update([
-                'is_read_by_client' => true,
-                'read_by_client_at' => now(),
-            ]);
+            
+            // If marking as read by client, you might want to track this separately
+            if ($readBy === 'client') {
+                // Could add client-specific read tracking if needed
+            }
         }
-        
-        return $message;
     }
     
     /**
-     * Mark message as unread
-     *
-     * @param Message $message
-     * @param string $type
-     * @return Message
+     * Mark a message as unread.
      */
-    public function markAsUnread(Message $message, string $type = 'admin'): Message
+    public function markAsUnread(Message $message, string $readBy = 'client'): void
     {
-        if ($type === 'admin') {
+        if ($message->is_read) {
             $message->update([
                 'is_read' => false,
                 'read_at' => null,
             ]);
-        } else {
-            $message->update([
-                'is_read_by_client' => false,
-                'read_by_client_at' => null,
-            ]);
         }
-        
-        return $message;
     }
     
     /**
-     * Delete message
-     *
-     * @param Message $message
-     * @return bool
+     * Handle file attachments for a message.
+     */
+    protected function handleAttachments(Message $message, array $attachments): void
+    {
+        foreach ($attachments as $file) {
+            if ($file instanceof UploadedFile && $file->isValid()) {
+                $this->storeAttachment($message, $file);
+            }
+        }
+    }
+    
+    /**
+     * Store a single attachment.
+     */
+    protected function storeAttachment(Message $message, UploadedFile $file): void
+    {
+        // Generate unique filename
+        $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+        
+        // Store file
+        $path = $file->storeAs('message_attachments/' . $message->id, $filename, 'public');
+        
+        // Create attachment record
+        $message->attachments()->create([
+            'file_path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'file_type' => $file->getMimeType(),
+            'file_size' => $file->getSize(),
+        ]);
+    }
+    
+    /**
+     * Get message thread (conversation).
+     */
+    public function getMessageThread(Message $message): \Illuminate\Database\Eloquent\Collection
+    {
+        $rootMessage = $message->getRootMessage();
+        
+        return Message::where(function($query) use ($rootMessage) {
+            $query->where('id', $rootMessage->id)
+                  ->orWhere('parent_id', $rootMessage->id);
+        })
+        ->with(['attachments'])
+        ->orderBy('created_at')
+        ->get();
+    }
+    
+    /**
+     * Create a reply to an existing message.
+     */
+    public function createReply(Message $originalMessage, array $replyData, array $attachments = []): Message
+    {
+        // Ensure the reply is linked to the root message
+        $rootMessage = $originalMessage->getRootMessage();
+        
+        $replyData['parent_id'] = $rootMessage->id;
+        $replyData['project_id'] = $originalMessage->project_id; // Inherit project if exists
+        
+        // Create the reply
+        $reply = $this->createMessage($replyData, $attachments);
+        
+        // Mark original message as replied if it's from admin to client
+        if ($originalMessage->type === 'admin_to_client' || $originalMessage->type === 'support_response') {
+            $originalMessage->update([
+                'is_replied' => true,
+                'replied_at' => now(),
+            ]);
+        }
+        
+        return $reply;
+    }
+    
+    /**
+     * Get unread message count for a user.
+     */
+    public function getUnreadCount(User $user): int
+    {
+        $query = Message::query();
+        
+        if (!$user->hasAnyRole(['super-admin', 'admin', 'manager'])) {
+            $query->where('user_id', $user->id);
+        }
+        
+        return $query->where('is_read', false)->count();
+    }
+    
+    /**
+     * Bulk mark messages as read.
+     */
+    public function bulkMarkAsRead(array $messageIds, User $user): int
+    {
+        $query = Message::whereIn('id', $messageIds);
+        
+        // Apply access control
+        if (!$user->hasAnyRole(['super-admin', 'admin', 'manager'])) {
+            $query->where('user_id', $user->id);
+        }
+        
+        return $query->update([
+            'is_read' => true,
+            'read_at' => now(),
+        ]);
+    }
+    
+    /**
+     * Delete a message and its attachments.
      */
     public function deleteMessage(Message $message): bool
     {
-        // Delete attachments if any
-        if ($message->attachments()->count() > 0) {
-            foreach ($message->attachments as $attachment) {
+        // Delete attachments from storage
+        foreach ($message->attachments as $attachment) {
+            if (Storage::disk('public')->exists($attachment->file_path)) {
                 Storage::disk('public')->delete($attachment->file_path);
-                $attachment->delete();
             }
         }
         
+        // Delete the message (attachments will be deleted via model relationship)
         return $message->delete();
     }
     
     /**
-     * Process attachments
-     *
-     * @param Message $message
-     * @param array $files
-     * @return void
+     * Get message statistics for a user.
      */
-    private function processAttachments(Message $message, array $files): void
+    public function getMessageStatistics(User $user): array
     {
-        foreach ($files as $file) {
-            $path = $file->store('message_attachments/' . $message->id, 'public');
-            
-            $message->attachments()->create([
-                'file_path' => $path,
-                'file_name' => $file->getClientOriginalName(),
-                'file_size' => $file->getSize(),
-                'file_type' => $file->getMimeType(),
-            ]);
+        $query = Message::query();
+        
+        if (!$user->hasAnyRole(['super-admin', 'admin', 'manager'])) {
+            $query->where('user_id', $user->id);
         }
+        
+        return [
+            'total' => (clone $query)->count(),
+            'unread' => (clone $query)->where('is_read', false)->count(),
+            'replied' => (clone $query)->where('is_replied', true)->count(),
+            'this_week' => (clone $query)->whereBetween('created_at', [
+                now()->startOfWeek(),
+                now()->endOfWeek()
+            ])->count(),
+            'this_month' => (clone $query)->whereMonth('created_at', now()->month)->count(),
+            'by_type' => (clone $query)
+                ->selectRaw('type, COUNT(*) as count')
+                ->groupBy('type')
+                ->pluck('count', 'type')
+                ->toArray(),
+        ];
     }
 }
