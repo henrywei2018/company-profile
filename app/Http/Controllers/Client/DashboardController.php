@@ -4,385 +4,259 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
-use App\Models\Project;
-use App\Models\Message;
-use App\Models\Quotation;
-use App\Models\User;
+use App\Services\DashboardService;
+use App\Services\ClientAccessService;
+use App\Services\NotificationAlertService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 
 class DashboardController extends Controller
 {
+    protected DashboardService $dashboardService;
+    protected ClientAccessService $clientAccessService;
+    protected NotificationAlertService $notificationService;
+
+    public function __construct(
+        DashboardService $dashboardService,
+        ClientAccessService $clientAccessService,
+        NotificationAlertService $notificationService
+    ) {
+        $this->dashboardService = $dashboardService;
+        $this->clientAccessService = $clientAccessService;
+        $this->notificationService = $notificationService;
+    }
+
     /**
-     * Display the client dashboard.
+     * Display the client dashboard with comprehensive data.
      */
     public function index()
     {
         $user = auth()->user();
         
-        // Get dashboard statistics (properly synced with schema)
-        $statistics = $this->getDashboardStatistics($user);
+        // Get comprehensive dashboard data
+        $dashboardData = $this->dashboardService->getDashboardData($user);
         
-        // Get recent activities 
-        $recentActivities = $this->getRecentActivities($user);
+        // Get notification summary
+        $notificationSummary = $this->notificationService->getNotificationSummary($user);
         
-        // Get upcoming deadlines
-        $upcomingDeadlines = $this->getUpcomingDeadlines($user);
-        
-        // Get notifications
-        $notifications = $this->getNotifications($user);
-        
-        // Get quick actions available to user
-        $quickActions = $this->getQuickActions($user);
+        // Combine data for view
+        $data = array_merge($dashboardData, [
+            'notification_summary' => $notificationSummary,
+            'user' => $user,
+        ]);
 
-        return view('client.dashboard', compact(
-            'statistics',
-            'recentActivities', 
-            'upcomingDeadlines',
-            'notifications',
-            'quickActions'
-        ));
+        return view('client.dashboard', $data);
     }
 
     /**
-     * Get dashboard statistics properly synced with database schema.
+     * Get real-time statistics for AJAX updates.
      */
-    protected function getDashboardStatistics(User $user): array
+    public function getRealtimeStats(): JsonResponse
     {
-        $cacheKey = "client_dashboard_stats_{$user->id}";
+        $user = auth()->user();
         
-        return Cache::remember($cacheKey, 300, function () use ($user) {
-            // Base conditions for client access
-            $isAdmin = $user->hasAnyRole(['super-admin', 'admin', 'manager']);
-            
-            // Projects statistics (using client_id as per schema)
-            $projectsQuery = Project::query();
-            if (!$isAdmin) {
-                $projectsQuery->where('client_id', $user->id);
-            }
-            
-            // Quotations statistics (using client_id as per schema)
-            $quotationsQuery = Quotation::query();
-            if (!$isAdmin) {
-                $quotationsQuery->where('client_id', $user->id);
-            }
-            
-            // Messages statistics (using user_id as per schema - messages table uses user_id)
-            $messagesQuery = Message::query();
-            if (!$isAdmin) {
-                // Messages table uses user_id, not client_id
-                $messagesQuery->where('user_id', $user->id);
-            }
-
-            return [
-                'projects' => [
-                    'total' => $projectsQuery->count(),
-                    'active' => (clone $projectsQuery)->whereIn('status', ['in_progress', 'on_hold'])->count(),
-                    'completed' => (clone $projectsQuery)->where('status', 'completed')->count(),
-                    'pending' => (clone $projectsQuery)->where('status', 'planning')->count(),
-                    'overdue' => (clone $projectsQuery)
-                        ->where('status', 'in_progress')
-                        ->where('end_date', '<', now())
-                        ->whereNotNull('end_date')
-                        ->count(),
-                ],
-                'quotations' => [
-                    'total' => $quotationsQuery->count(),
-                    'pending' => (clone $quotationsQuery)->where('status', 'pending')->count(),
-                    'reviewed' => (clone $quotationsQuery)->where('status', 'reviewed')->count(),
-                    'approved' => (clone $quotationsQuery)->where('status', 'approved')->count(),
-                    'awaiting_approval' => (clone $quotationsQuery)
-                        ->where('status', 'approved')
-                        ->whereNull('client_approved')
-                        ->count(),
-                ],
-                'messages' => [
-                    'total' => $messagesQuery->count(),
-                    'unread' => (clone $messagesQuery)->where('is_read', false)->count(),
-                    'replied' => (clone $messagesQuery)->where('is_replied', true)->count(),
-                    'this_week' => (clone $messagesQuery)
-                        ->whereBetween('created_at', [
-                            Carbon::now()->startOfWeek(),
-                            Carbon::now()->endOfWeek()
-                        ])
-                        ->count(),
-                ],
-                'summary' => [
-                    'active_projects_value' => (clone $projectsQuery)
-                        ->whereIn('status', ['in_progress', 'on_hold'])
-                        ->count(),
-                    'completion_rate' => $this->calculateCompletionRate($projectsQuery),
-                    'response_rate' => $this->calculateResponseRate($messagesQuery),
-                ]
-            ];
-        });
+        $stats = $this->dashboardService->getRealTimeStats($user);
+        
+        return response()->json([
+            'success' => true,
+            'data' => $stats,
+            'timestamp' => now()->toISOString(),
+        ]);
     }
 
     /**
-     * Get recent activities properly synced with schema.
+     * Get chart data for dashboard widgets.
      */
-    protected function getRecentActivities(User $user): array
+    public function getChartData(Request $request): JsonResponse
     {
-        $activities = [];
-        $isAdmin = $user->hasAnyRole(['super-admin', 'admin', 'manager']);
-
-        // Recent project updates (using client_id)
-        $recentProjects = Project::query()
-            ->when(!$isAdmin, fn($q) => $q->where('client_id', $user->id))
-            ->with(['category', 'images' => fn($q) => $q->where('is_featured', true)])
-            ->orderBy('updated_at', 'desc')
-            ->limit(5)
-            ->get();
-
-        foreach ($recentProjects as $project) {
-            $activities[] = [
-                'type' => 'project',
-                'title' => 'Project: ' . $project->title,
-                'description' => 'Status: ' . ucfirst(str_replace('_', ' ', $project->status)),
-                'date' => $project->updated_at,
-                'url' => route('client.projects.show', $project->id),
-                'icon' => 'folder',
-                'color' => $this->getProjectStatusColor($project->status),
-                'meta' => [
-                    'status' => $project->status,
-                    'category' => $project->category?->name,
-                    'location' => $project->location,
-                ]
-            ];
+        $user = auth()->user();
+        $chartType = $request->get('type', 'projects');
+        $dateRange = $request->get('range', 'last_30_days');
+        
+        try {
+            $chartData = $this->dashboardService->getChartData($user, $chartType, $dateRange);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $chartData,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load chart data',
+            ], 500);
         }
+    }
 
-        // Recent quotation updates (using client_id)
-        $recentQuotations = Quotation::query()
-            ->when(!$isAdmin, fn($q) => $q->where('client_id', $user->id))
-            ->with('service')
-            ->orderBy('updated_at', 'desc')
-            ->limit(5)
-            ->get();
-
-        foreach ($recentQuotations as $quotation) {
-            $activities[] = [
-                'type' => 'quotation',
-                'title' => 'Quotation: ' . ($quotation->project_type ?? 'Quote #' . $quotation->id),
-                'description' => 'Status: ' . ucfirst($quotation->status),
-                'date' => $quotation->updated_at,
-                'url' => route('client.quotations.show', $quotation->id),
-                'icon' => 'document-text',
-                'color' => $this->getQuotationStatusColor($quotation->status),
-                'meta' => [
-                    'status' => $quotation->status,
-                    'service' => $quotation->service?->title,
-                    'priority' => $quotation->priority,
-                ]
-            ];
-        }
-
-        // Recent messages (using user_id as per messages table schema)
-        $recentMessages = Message::query()
-            ->when(!$isAdmin, fn($q) => $q->where('user_id', $user->id))
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
-
-        foreach ($recentMessages as $message) {
-            $activities[] = [
-                'type' => 'message',
-                'title' => 'Message: ' . ($message->subject ?? 'No Subject'),
-                'description' => $message->is_read ? 'Read' : 'Unread',
-                'date' => $message->created_at,
-                'url' => route('client.messages.show', $message->id),
-                'icon' => 'mail',
-                'color' => $message->is_read ? 'gray' : 'blue',
-                'meta' => [
-                    'is_read' => $message->is_read,
-                    'type' => $message->type,
-                    'replied' => $message->is_replied,
-                ]
-            ];
-        }
-
-        // Sort all activities by date and return latest 10
-        return collect($activities)
-            ->sortByDesc('date')
-            ->take(10)
-            ->values()
-            ->toArray();
+    /**
+     * Get performance metrics.
+     */
+    public function getPerformanceMetrics(): JsonResponse
+    {
+        $user = auth()->user();
+        
+        $dashboardData = $this->dashboardService->getDashboardData($user);
+        $performance = $dashboardData['performance'] ?? [];
+        
+        return response()->json([
+            'success' => true,
+            'data' => $performance,
+        ]);
     }
 
     /**
      * Get upcoming deadlines.
      */
-    protected function getUpcomingDeadlines(User $user): array
+    public function getUpcomingDeadlines(): JsonResponse
     {
-        $isAdmin = $user->hasAnyRole(['super-admin', 'admin', 'manager']);
+        $user = auth()->user();
         
-        return Project::query()
-            ->when(!$isAdmin, fn($q) => $q->where('client_id', $user->id))
-            ->where('status', 'in_progress')
-            ->whereNotNull('end_date')
-            ->where('end_date', '>', now())
-            ->where('end_date', '<=', now()->addDays(30))
-            ->orderBy('end_date')
-            ->get()
-            ->map(function ($project) {
-                $daysUntil = now()->diffInDays($project->end_date, false);
-                
-                return [
-                    'type' => 'project_deadline',
-                    'title' => $project->title,
-                    'date' => $project->end_date,
-                    'days_until' => $daysUntil,
-                    'url' => route('client.projects.show', $project->id),
-                    'urgency' => $this->calculateUrgency($daysUntil),
-                    'location' => $project->location,
-                ];
-            })
-            ->toArray();
+        $dashboardData = $this->dashboardService->getDashboardData($user);
+        $deadlines = $dashboardData['upcoming_deadlines'] ?? [];
+        
+        return response()->json([
+            'success' => true,
+            'data' => $deadlines,
+        ]);
     }
 
     /**
-     * Get notifications for client.
+     * Get recent activities.
      */
-    protected function getNotifications(User $user): array
+    public function getRecentActivities(): JsonResponse
     {
-        $isAdmin = $user->hasAnyRole(['super-admin', 'admin', 'manager']);
+        $user = auth()->user();
         
-        return [
-            'unread_messages' => Message::query()
-                ->when(!$isAdmin, fn($q) => $q->where('user_id', $user->id))
-                ->where('is_read', false)
-                ->count(),
-            'pending_approvals' => Quotation::query()
-                ->when(!$isAdmin, fn($q) => $q->where('client_id', $user->id))
-                ->where('status', 'approved')
-                ->whereNull('client_approved')
-                ->count(),
-            'overdue_projects' => Project::query()
-                ->when(!$isAdmin, fn($q) => $q->where('client_id', $user->id))
-                ->where('status', 'in_progress')
-                ->where('end_date', '<', now())
-                ->whereNotNull('end_date')
-                ->count(),
-            'expiring_quotations' => Quotation::query()
-                ->when(!$isAdmin, fn($q) => $q->where('client_id', $user->id))
-                ->where('status', 'approved')
-                ->whereNotNull('approved_at')
-                ->where('approved_at', '<', now()->subDays(25)) // Assume 30-day validity
-                ->count(),
-        ];
+        $dashboardData = $this->dashboardService->getDashboardData($user);
+        $activities = $dashboardData['recent_activities'] ?? [];
+        
+        return response()->json([
+            'success' => true,
+            'data' => $activities,
+        ]);
     }
 
     /**
-     * Get quick actions available to user.
+     * Generate and download client report.
      */
-    protected function getQuickActions(User $user): array
+    public function generateReport(Request $request)
     {
-        $actions = [];
+        $user = auth()->user();
+        
+        $filters = $request->validate([
+            'date_range' => 'string|in:today,this_week,this_month,last_month,last_30_days,last_90_days,custom',
+            'start_date' => 'date|required_if:date_range,custom',
+            'end_date' => 'date|required_if:date_range,custom|after_or_equal:start_date',
+            'format' => 'string|in:pdf,excel,csv',
+        ]);
+        
+        $reportData = $this->dashboardService->generateReport($user, $filters);
+        
+        return $this->downloadReport($reportData, $filters['format'] ?? 'pdf');
+    }
 
-        if ($user->can('create quotations') || $user->hasRole('client')) {
-            $actions[] = [
-                'title' => 'Request Quote',
-                'description' => 'Submit a new quotation request',
-                'url' => route('client.quotations.create'),
-                'icon' => 'document-add',
-                'color' => 'blue',
-            ];
+    /**
+     * Clear dashboard cache.
+     */
+    public function clearCache(): JsonResponse
+    {
+        $user = auth()->user();
+        
+        $this->dashboardService->clearCache($user);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Dashboard cache cleared successfully',
+        ]);
+    }
+
+    /**
+     * Download report in specified format.
+     */
+    protected function downloadReport(array $reportData, string $format)
+    {
+        $filename = 'client_report_' . now()->format('Y-m-d_H-i-s');
+        
+        switch ($format) {
+            case 'excel':
+                return $this->downloadExcelReport($reportData, $filename);
+            case 'csv':
+                return $this->downloadCsvReport($reportData, $filename);
+            default:
+                return $this->downloadPdfReport($reportData, $filename);
         }
+    }
 
-        if ($user->can('create messages') || $user->hasRole('client')) {
-            $actions[] = [
-                'title' => 'Send Message',
-                'description' => 'Contact our support team',
-                'url' => route('client.messages.create'),
-                'icon' => 'mail',
-                'color' => 'green',
-            ];
-        }
-
-        if ($user->can('create testimonials') || $user->hasRole('client')) {
-            $actions[] = [
-                'title' => 'Leave Review',
-                'description' => 'Share your experience',
-                'url' => route('client.testimonials.create'),
-                'icon' => 'star',
-                'color' => 'yellow',
-            ];
-        }
-
-        $actions[] = [
-            'title' => 'View Portfolio',
-            'description' => 'Browse our completed projects',
-            'url' => route('portfolio.index'),
-            'icon' => 'photograph',
-            'color' => 'purple',
+    /**
+     * Download CSV report.
+     */
+    protected function downloadCsvReport(array $reportData, string $filename)
+    {
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}.csv\"",
         ];
 
-        return $actions;
-    }
-
-    /**
-     * Calculate project completion rate.
-     */
-    protected function calculateCompletionRate($projectsQuery): float
-    {
-        $total = (clone $projectsQuery)->count();
-        if ($total === 0) return 0;
-        
-        $completed = (clone $projectsQuery)->where('status', 'completed')->count();
-        return round(($completed / $total) * 100, 1);
-    }
-
-    /**
-     * Calculate message response rate.
-     */
-    protected function calculateResponseRate($messagesQuery): float
-    {
-        $total = (clone $messagesQuery)->count();
-        if ($total === 0) return 0;
-        
-        $replied = (clone $messagesQuery)->where('is_replied', true)->count();
-        return round(($replied / $total) * 100, 1);
-    }
-
-    /**
-     * Get color for project status.
-     */
-    protected function getProjectStatusColor(string $status): string
-    {
-        return match($status) {
-            'planning' => 'yellow',
-            'in_progress' => 'blue',
-            'on_hold' => 'orange',
-            'completed' => 'green',
-            'cancelled' => 'red',
-            default => 'gray',
+        $callback = function() use ($reportData) {
+            $file = fopen('php://output', 'w');
+            
+            // Report header
+            fputcsv($file, ['CLIENT PERFORMANCE REPORT']);
+            fputcsv($file, ['Generated at', now()->format('Y-m-d H:i:s')]);
+            fputcsv($file, ['Period', $reportData['period']['start'] . ' to ' . $reportData['period']['end']]);
+            fputcsv($file, ['']);
+            
+            // Projects summary
+            if (isset($reportData['projects'])) {
+                fputcsv($file, ['PROJECTS SUMMARY']);
+                fputcsv($file, ['Total Projects', $reportData['projects']['total']]);
+                fputcsv($file, ['Completed Projects', $reportData['projects']['completed']]);
+                fputcsv($file, ['Active Projects', $reportData['projects']['active']]);
+                fputcsv($file, ['Project Value', number_format($reportData['projects']['value'])]);
+                fputcsv($file, ['']);
+            }
+            
+            // Quotations summary
+            if (isset($reportData['quotations'])) {
+                fputcsv($file, ['QUOTATIONS SUMMARY']);
+                fputcsv($file, ['Total Quotations', $reportData['quotations']['total']]);
+                fputcsv($file, ['Approved Quotations', $reportData['quotations']['approved']]);
+                fputcsv($file, ['Pending Quotations', $reportData['quotations']['pending']]);
+                fputcsv($file, ['']);
+            }
+            
+            // Messages summary
+            if (isset($reportData['messages'])) {
+                fputcsv($file, ['MESSAGES SUMMARY']);
+                fputcsv($file, ['Total Messages', $reportData['messages']['total']]);
+                fputcsv($file, ['Replied Messages', $reportData['messages']['replied']]);
+                fputcsv($file, ['Response Rate', $reportData['messages']['response_rate'] . '%']);
+                fputcsv($file, ['']);
+            }
+            
+            fclose($file);
         };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     /**
-     * Get color for quotation status.
+     * Download PDF report (placeholder).
      */
-    protected function getQuotationStatusColor(string $status): string
+    protected function downloadPdfReport(array $reportData, string $filename)
     {
-        return match($status) {
-            'pending' => 'yellow',
-            'reviewed' => 'blue',
-            'approved' => 'green',
-            'rejected' => 'red',
-            default => 'gray',
-        };
+        // This would integrate with a PDF library like TCPDF or DomPDF
+        // For now, redirect to CSV download
+        return $this->downloadCsvReport($reportData, $filename);
     }
 
     /**
-     * Calculate urgency based on days until deadline.
+     * Download Excel report (placeholder).
      */
-    protected function calculateUrgency(int $daysUntil): string
+    protected function downloadExcelReport(array $reportData, string $filename)
     {
-        return match(true) {
-            $daysUntil <= 1 => 'critical',
-            $daysUntil <= 3 => 'high',
-            $daysUntil <= 7 => 'medium',
-            default => 'low',
-        };
+        // This would integrate with PhpSpreadsheet
+        // For now, redirect to CSV download
+        return $this->downloadCsvReport($reportData, $filename);
     }
 }

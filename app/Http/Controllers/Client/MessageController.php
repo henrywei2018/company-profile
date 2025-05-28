@@ -8,22 +8,25 @@ use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Services\ClientAccessService;
 use App\Services\MessageService;
+use App\Services\DashboardService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Gate;
 
 class MessageController extends Controller
 {
     protected ClientAccessService $clientAccessService;
     protected MessageService $messageService;
+    protected DashboardService $dashboardService;
 
     public function __construct(
         ClientAccessService $clientAccessService,
-        MessageService $messageService
+        MessageService $messageService,
+        DashboardService $dashboardService
     ) {
         $this->clientAccessService = $clientAccessService;
         $this->messageService = $messageService;
+        $this->dashboardService = $dashboardService;
     }
 
     /**
@@ -31,51 +34,66 @@ class MessageController extends Controller
      */
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = auth()->user();
         
-        // Get messages using proper schema alignment (messages table uses user_id)
-        $filters = [
-            'search' => $request->input('search'),
-            'read' => $request->input('read'),
-            'type' => $request->input('type'),
-            'date_from' => $request->input('date_from'),
-            'date_to' => $request->input('date_to'),
-        ];
+        // Validate filters
+        $filters = $request->validate([
+            'search' => 'nullable|string|max:255',
+            'read' => 'nullable|string|in:read,unread',
+            'type' => 'nullable|string|in:general,support,project_inquiry,complaint,feedback,client_reply',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
+            'sort' => 'nullable|string|in:created_at,updated_at,subject,is_read',
+            'direction' => 'nullable|string|in:asc,desc',
+        ]);
 
-        // Use the message service to get properly filtered messages
+        // Get messages using service
         $messages = $this->messageService->getClientMessages($user, $filters, 15);
 
         // Get message statistics
-        $statistics = $this->getMessageStatistics($user);
+        $statistics = $this->messageService->getMessageStatistics($user);
         
         // Get filter options
         $messageTypes = $this->getMessageTypes();
+        
+        // Get recent activities
+        $dashboardData = $this->dashboardService->getDashboardData($user);
+        $recentActivities = collect($dashboardData['recent_activities'] ?? [])
+            ->where('type', 'message')
+            ->take(5)
+            ->values();
 
         return view('client.messages.index', compact(
             'messages',
             'statistics',
-            'messageTypes'
+            'messageTypes',
+            'recentActivities',
+            'filters'
         ));
     }
 
     /**
      * Show the form for creating a new message.
      */
-    public function create()
+    public function create(Request $request)
     {
-        $user = Auth::user();
+        $user = auth()->user();
         
         // Get user's projects for context selection
-        $projects = \App\Models\Project::where('client_id', $user->id)
+        $projects = $this->clientAccessService->getClientProjects($user)
             ->orderBy('title')
             ->get(['id', 'title', 'status']);
             
         // Get available message types
         $messageTypes = $this->getClientMessageTypes();
+        
+        // Pre-fill data from query parameters
+        $prefillData = $request->only(['subject', 'project_id', 'type']);
 
         return view('client.messages.create', compact(
             'projects',
-            'messageTypes'
+            'messageTypes',
+            'prefillData'
         ));
     }
 
@@ -84,7 +102,7 @@ class MessageController extends Controller
      */
     public function store(Request $request)
     {
-        $user = Auth::user();
+        $user = auth()->user();
         
         $validated = $request->validate([
             'subject' => 'required|string|max:255',
@@ -98,14 +116,14 @@ class MessageController extends Controller
         // Validate project ownership if project_id is provided
         if ($validated['project_id']) {
             $project = \App\Models\Project::find($validated['project_id']);
-            if (!$project || $project->client_id !== $user->id) {
+            if (!$project || !$this->clientAccessService->canAccessProject($user, $project)) {
                 return redirect()->back()
                     ->withInput()
                     ->withErrors(['project_id' => 'Invalid project selected.']);
             }
         }
 
-        // Prepare message data (aligned with messages table schema)
+        // Prepare message data
         $messageData = [
             'name' => $user->name,
             'email' => $user->email,
@@ -114,8 +132,9 @@ class MessageController extends Controller
             'subject' => $validated['subject'],
             'message' => $validated['message'],
             'type' => $validated['type'] ?? 'general',
-            'user_id' => $user->id, // Messages table uses user_id, not client_id
+            'user_id' => $user->id,
             'project_id' => $validated['project_id'] ?? null,
+            'priority' => $validated['priority'] ?? 'normal',
             'is_read' => false,
             'is_replied' => false,
         ];
@@ -125,19 +144,21 @@ class MessageController extends Controller
             $messageData,
             $request->file('attachments', [])
         );
+        
+        // Clear dashboard cache
+        $this->dashboardService->clearCache($user);
 
         return redirect()->route('client.messages.show', $message)
             ->with('success', 'Message sent successfully! We will respond within 24 hours.');
     }
-    
 
     /**
      * Display the specified message.
      */
     public function show(Message $message)
     {
-        // Ensure message belongs to authenticated client (using user_id per schema)
-        if ($message->user_id !== Auth::id()) {
+        // Ensure message belongs to authenticated client
+        if (!$this->clientAccessService->canAccessMessage(auth()->user(), $message)) {
             abort(403, 'Unauthorized access to this message.');
         }
         
@@ -156,24 +177,62 @@ class MessageController extends Controller
         }
 
         // Get conversation thread
-        $thread = $this->getMessageThread($message);
+        $thread = $this->messageService->getMessageThread($message);
         
         // Get related messages from same project
         $relatedMessages = [];
         if ($message->project_id) {
-            $relatedMessages = Message::where('project_id', $message->project_id)
-                ->where('user_id', Auth::id())
+            $relatedMessages = $this->clientAccessService->getClientMessages(auth()->user())
+                ->where('project_id', $message->project_id)
                 ->where('id', '!=', $message->id)
                 ->orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get();
         }
 
+        // Get message alerts
+        $messageAlerts = $this->getMessageAlerts($message);
+
         return view('client.messages.show', compact(
             'message',
             'thread',
-            'relatedMessages'
+            'relatedMessages',
+            'messageAlerts'
         ));
+    }
+
+    /**
+     * Get message alerts and notifications.
+     */
+    protected function getMessageAlerts(Message $message): array
+    {
+        $alerts = [];
+        
+        // Check for urgent messages
+        if ($message->priority === 'urgent' && !$message->is_replied) {
+            $alerts[] = [
+                'type' => 'warning',
+                'title' => 'Urgent Message',
+                'message' => 'This is marked as urgent and requires immediate attention.',
+            ];
+        }
+        
+        // Check for old unreplied messages
+        if (!$message->is_replied && 
+            $message->created_at->diffInHours(now()) > 48) {
+            
+            $alerts[] = [
+                'type' => 'info',
+                'title' => 'Follow-up Available',
+                'message' => 'You can send a follow-up message if you need a quicker response.',
+                'action' => [
+                    'text' => 'Send Follow-up',
+                    'url' => route('client.messages.reply', $message),
+                ],
+            ];
+        }
+        
+        return $alerts;
     }
 
     /**
@@ -182,7 +241,7 @@ class MessageController extends Controller
     public function showReplyForm(Message $message)
     {
         // Ensure message belongs to authenticated client
-        if ($message->user_id !== Auth::id()) {
+        if (!$this->clientAccessService->canAccessMessage(auth()->user(), $message)) {
             abort(403, 'Unauthorized access to this message.');
         }
 
@@ -195,18 +254,18 @@ class MessageController extends Controller
     public function reply(Request $request, Message $message)
     {
         // Ensure message belongs to authenticated client
-        if ($message->user_id !== Auth::id()) {
+        if (!$this->clientAccessService->canAccessMessage(auth()->user(), $message)) {
             abort(403, 'Unauthorized access to this message.');
         }
 
-        $user = Auth::user();
+        $user = auth()->user();
         
         $validated = $request->validate([
             'message' => 'required|string|max:5000',
             'attachments.*' => 'nullable|file|max:10240',
         ]);
 
-        // Create reply message (aligned with schema)
+        // Create reply message data
         $replyData = [
             'name' => $user->name,
             'email' => $user->email,
@@ -223,18 +282,18 @@ class MessageController extends Controller
         ];
 
         // Create reply using service
-        $reply = $this->messageService->createMessage(
+        $reply = $this->messageService->createReply(
+            $message,
             $replyData,
             $request->file('attachments', [])
         );
-
-        // Mark original message as replied
-        $message->update(['is_replied' => true, 'replied_at' => now()]);
+        
+        // Clear dashboard cache
+        $this->dashboardService->clearCache($user);
 
         return redirect()->route('client.messages.show', $reply)
             ->with('success', 'Reply sent successfully!');
     }
-    
 
     /**
      * Mark a message as read/unread.
@@ -242,7 +301,7 @@ class MessageController extends Controller
     public function toggleRead(Message $message)
     {
         // Ensure message belongs to authenticated client
-        if ($message->user_id !== Auth::id()) {
+        if (!$this->clientAccessService->canAccessMessage(auth()->user(), $message)) {
             abort(403, 'Unauthorized access to this message.');
         }
 
@@ -253,6 +312,9 @@ class MessageController extends Controller
             $this->messageService->markAsRead($message, 'client');
             $status = 'read';
         }
+        
+        // Clear dashboard cache
+        $this->dashboardService->clearCache(auth()->user());
 
         return redirect()->back()
             ->with('success', "Message marked as {$status}.");
@@ -264,7 +326,7 @@ class MessageController extends Controller
     public function downloadAttachment(Message $message, MessageAttachment $attachment)
     {
         // Security checks
-        if ($message->user_id !== Auth::id()) {
+        if (!$this->clientAccessService->canAccessMessage(auth()->user(), $message)) {
             abort(403, 'Unauthorized access to this message.');
         }
         
@@ -282,27 +344,57 @@ class MessageController extends Controller
             $attachment->file_name
         );
     }
-    
 
     /**
-     * Get message statistics for client.
+     * Get unread message count for API.
      */
-    protected function getMessageStatistics($user): array
+    public function getUnreadCount(): JsonResponse
     {
-        // Using user_id as per messages table schema
-        $query = Message::where('user_id', $user->id);
+        $user = auth()->user();
+        $count = $this->messageService->getUnreadCount($user);
         
-        return [
-            'total' => (clone $query)->count(),
-            'unread' => (clone $query)->where('is_read', false)->count(),
-            'replied' => (clone $query)->where('is_replied', true)->count(),
-            'this_month' => (clone $query)->whereMonth('created_at', now()->month)->count(),
-            'by_type' => (clone $query)->selectRaw('type, COUNT(*) as count')
-                ->groupBy('type')
-                ->pluck('count', 'type')
-                ->toArray(),
-            'recent_activity' => (clone $query)->where('created_at', '>=', now()->subDays(7))->count(),
-        ];
+        return response()->json([
+            'success' => true,
+            'count' => $count,
+        ]);
+    }
+
+    /**
+     * Bulk mark messages as read.
+     */
+    public function markAllAsRead(): JsonResponse
+    {
+        $user = auth()->user();
+        
+        $messages = $this->clientAccessService->getClientMessages($user)
+            ->where('is_read', false)
+            ->pluck('id')
+            ->toArray();
+        
+        $count = $this->messageService->bulkMarkAsRead($messages, $user);
+        
+        // Clear dashboard cache
+        $this->dashboardService->clearCache($user);
+        
+        return response()->json([
+            'success' => true,
+            'count' => $count,
+            'message' => "{$count} messages marked as read",
+        ]);
+    }
+
+    /**
+     * Get message statistics for API.
+     */
+    public function getStatistics(): JsonResponse
+    {
+        $user = auth()->user();
+        $statistics = $this->messageService->getMessageStatistics($user);
+        
+        return response()->json([
+            'success' => true,
+            'data' => $statistics,
+        ]);
     }
 
     /**
@@ -332,23 +424,6 @@ class MessageController extends Controller
             'complaint' => 'Complaint',
             'feedback' => 'Feedback',
         ];
-    }
-
-    /**
-     * Get full message thread/conversation.
-     */
-    protected function getMessageThread(Message $message): \Illuminate\Database\Eloquent\Collection
-    {
-        $rootMessage = $message->getRootMessage();
-        
-        return Message::where(function($query) use ($rootMessage) {
-            $query->where('id', $rootMessage->id)
-                  ->orWhere('parent_id', $rootMessage->id);
-        })
-        ->where('user_id', Auth::id())
-        ->with(['attachments'])
-        ->orderBy('created_at')
-        ->get();
     }
 
     /**

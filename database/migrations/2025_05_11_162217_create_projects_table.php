@@ -20,10 +20,11 @@ return new class extends Migration
             $table->string('client_name')->nullable();
             $table->integer('year')->nullable();
             $table->enum('status', ['planning', 'in_progress', 'completed', 'on_hold', 'cancelled'])->default('completed');
-            $table->string('value')->nullable();
+            $table->integer('value')->nullable();
             $table->boolean('featured')->default(false);
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
+            $table->date('actual_completion_date')->nullable();
             $table->text('challenge')->nullable();
             $table->text('solution')->nullable();
             $table->text('result')->nullable();

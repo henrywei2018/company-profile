@@ -30,15 +30,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(FileUploadService::class, fn($app) => new FileUploadService());
         $this->app->singleton(ClientAccessService::class, fn($app) => new ClientAccessService());
 
-        if ($this->app->environment('local')) {
-            if (class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
-                $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
-            }
-
-            if (class_exists(\App\Providers\TelescopeServiceProvider::class)) {
-                $this->app->register(\App\Providers\TelescopeServiceProvider::class);
-            }
-        }
     }
 
     public function boot(): void
@@ -105,21 +96,15 @@ class AppServiceProvider extends ServiceProvider
                     $user = Auth::user();
 
                     $view->with([
-                        'clientStats' => $clientService->getClientDashboardStats($user),
-                        'clientNavigation' => $clientService->getClientNavigationMenu($user),
-                        'clientPermissions' => $clientService->getClientPermissions($user),
+                        'clientStats' => $clientService->getClientStatistics($user),
                         'companyProfile' => CompanyProfile::getInstance(),
-                        'isAdminViewing' => $user->hasAnyRole(['super-admin', 'admin', 'manager', 'editor']),
                         'user' => $user,
                     ]);
                 } catch (\Exception $e) {
                     \Log::error('Error fetching client view stats: ' . $e->getMessage());
                     $view->with([
                         'clientStats' => [],
-                        'clientNavigation' => [],
-                        'clientPermissions' => [],
                         'companyProfile' => CompanyProfile::getInstance(),
-                        'isAdminViewing' => false,
                     ]);
                 }
             }
