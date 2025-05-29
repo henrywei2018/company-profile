@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withProviders([
         App\Providers\RepositoryServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
+        App\Providers\NotificationServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
         // Simple middleware aliases - only what we need

@@ -6,7 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use App\Services\ClientAccessService;
-use App\Services\ClientNotificationService;
+use App\Facades\Notifications;
 use App\Services\ClientDashboardService;
 
 /**
