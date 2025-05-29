@@ -7,8 +7,8 @@ use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\User;
 use App\Notifications\MessageReplyNotification;
-use App\Notifications\DirectMessageNotification;
-use App\Notifications\NewMessageNotification;
+// Replaced by centralized notification system
+// Replaced by centralized notification system
 use App\Notifications\MessageAutoReplyNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -261,11 +261,11 @@ class MessageController extends Controller
             if (settings('message_email_enabled', true)) {
                 try {
                     if ($userId) {
-                        $client->notify(new DirectMessageNotification($message));
+                        $client->notify(Notifications::send('message.created', $message));
                         $logMessage = "Direct message sent to registered client: {$recipientName} ({$recipientEmail})";
                     } else {
                         Notification::route('mail', $recipientEmail)
-                            ->notify(new DirectMessageNotification($message));
+                            ->notify(Notifications::send('message.created', $message));
                         $logMessage = "Direct message sent to custom email: {$recipientName} ({$recipientEmail})";
                     }
                     
@@ -382,7 +382,7 @@ class MessageController extends Controller
                         $adminEmails = $this->getAdminNotificationEmails();
                         foreach ($adminEmails as $adminEmail) {
                             Notification::route('mail', $adminEmail)
-                                ->notify(new NewMessageNotification($message));
+                                ->notify(Notifications::send('message.created', $message));
                         }
                     }
 

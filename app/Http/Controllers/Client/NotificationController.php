@@ -4,7 +4,7 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
-use App\Services\NotificationAlertService;
+use App\Facades\Notifications;
 use App\Services\DashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;

@@ -3,7 +3,7 @@
 namespace App\Listeners;
 
 use App\Events\QuotationSubmitted;
-use App\Notifications\NewQuotationNotification;
+// Replaced by centralized notification system
 use Illuminate\Support\Facades\Notification;
 use App\Models\User;
 
@@ -19,6 +19,6 @@ class SendQuotationNotification
     {
         $admins = User::role('admin')->get();
         
-        Notification::send($admins, new NewQuotationNotification($event->quotation));
+        Notification::send($admins, Notifications::send('quotation.created', $event->quotation));
     }
 }

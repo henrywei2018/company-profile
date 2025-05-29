@@ -13,7 +13,7 @@ use App\Models\ProjectCategory;
 use App\Models\ChatSession;
 use App\Models\Certification;
 use App\Services\ClientAccessService;
-use App\Services\ClientNotificationService;
+use App\Facades\Notifications;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;

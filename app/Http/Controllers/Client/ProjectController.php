@@ -9,7 +9,7 @@ use App\Models\ProjectFile;
 use App\Models\Testimonial;
 use App\Services\ClientAccessService;
 use App\Services\DashboardService;
-use App\Services\NotificationAlertService;
+use App\Facades\Notifications;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
