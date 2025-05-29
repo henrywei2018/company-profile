@@ -94,58 +94,6 @@ class NotificationController extends Controller
 
         return view('client.notifications.show', compact('notification'));
     }
-
-    /**
-     * Mark a notification as read.
-     */
-    public function markAsRead(DatabaseNotification $notification): JsonResponse
-    {
-        // Ensure notification belongs to authenticated user
-        if ($notification->notifiable_id !== auth()->id()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        $notification->markAsRead();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Notification marked as read'
-        ]);
-    }
-
-    /**
-     * Mark a notification as unread.
-     */
-    public function markAsUnread(DatabaseNotification $notification): JsonResponse
-    {
-        // Ensure notification belongs to authenticated user
-        if ($notification->notifiable_id !== auth()->id()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        $notification->update(['read_at' => null]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Notification marked as unread'
-        ]);
-    }
-
-    /**
-     * Mark all notifications as read.
-     */
-    public function markAllAsRead(): JsonResponse
-    {
-        $user = auth()->user();
-        $count = $user->unreadNotifications()->update(['read_at' => now()]);
-
-        return response()->json([
-            'success' => true,
-            'message' => "{$count} notifications marked as read",
-            'count' => $count
-        ]);
-    }
-
     /**
      * Delete a notification.
      */
@@ -175,19 +123,6 @@ class NotificationController extends Controller
         return response()->json([
             'success' => true,
             'message' => "{$count} read notifications cleared",
-            'count' => $count
-        ]);
-    }
-
-    /**
-     * Get unread notifications count.
-     */
-    public function getUnreadCount(): JsonResponse
-    {
-        $count = auth()->user()->unreadNotifications()->count();
-
-        return response()->json([
-            'success' => true,
             'count' => $count
         ]);
     }
@@ -278,14 +213,65 @@ class NotificationController extends Controller
      * Get notification summary for dashboard widget.
      */
     public function getSummary(): JsonResponse
-    {
-        $user = auth()->user();
-        
-        $summary = $this->notificationService->getNotificationSummary($user);
-        
+{
+    $user = auth()->user();
+    
+    $summary = $this->notificationService->getClientNotificationSummary($user);
+    
+    return response()->json([
+        'success' => true,
+        'data' => $summary
+    ]);
+}
+
+/**
+ * Mark a notification as read via AJAX.
+ */
+public function markAsRead(Request $request, $notificationId): JsonResponse
+{
+    $success = $this->notificationService->markNotificationAsRead($notificationId);
+    
+    if ($success) {
         return response()->json([
             'success' => true,
-            'data' => $summary
+            'message' => 'Notification marked as read'
         ]);
     }
+    
+    return response()->json([
+        'success' => false,
+        'message' => 'Failed to mark notification as read'
+    ], 400);
+}
+
+/**
+ * Mark all notifications as read via AJAX.
+ */
+public function markAllAsRead(): JsonResponse
+{
+    $user = auth()->user();
+    $count = $this->notificationService->markAllNotificationsAsRead($user);
+    
+    return response()->json([
+        'success' => true,
+        'message' => "{$count} notifications marked as read",
+        'count' => $count
+    ]);
+}
+
+/**
+ * Get unread notifications count for AJAX.
+ */
+public function getUnreadCount(): JsonResponse
+{
+    $user = auth()->user();
+    $counts = $this->notificationService->getRealtimeNotificationCounts($user);
+    
+    return response()->json([
+        'success' => true,
+        'count' => $counts['unread_notifications'],
+        'total_badge_count' => $counts['total_badge_count'],
+        'counts' => $counts
+    ]);
+}
 }

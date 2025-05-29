@@ -62,6 +62,180 @@ class NotificationAlertService
         ];
     }
 
+    public function getNotificationDetails($notification): array
+    {
+        $type = $notification->type;
+        $data = $notification->data;
+
+        // Determine icon and color based on type
+        $iconColor = 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30';
+        $icon = 'bell';
+
+        if (str_contains($type, 'Project')) {
+            $iconColor = 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30';
+            $icon = 'folder';
+        } elseif (str_contains($type, 'Quotation')) {
+            $iconColor = 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30';
+            $icon = 'document-text';
+        } elseif (str_contains($type, 'Message')) {
+            $iconColor = 'text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30';
+            $icon = 'mail';
+        }
+
+        return [
+            'icon' => $icon,
+            'icon_color' => $iconColor,
+            'title' => $this->getNotificationTitle($notification),
+            'message' => $this->getNotificationMessage($notification),
+            'url' => $this->getNotificationUrl($notification),
+        ];
+    }
+
+    /**
+     * Get notification title.
+     */
+    public function getNotificationTitle($notification): string
+    {
+        $type = $notification->type;
+        $data = $notification->data;
+
+        if (str_contains($type, 'Project')) {
+            return $data['project_title'] ?? $data['title'] ?? 'Project Update';
+        } elseif (str_contains($type, 'Quotation')) {
+            return $data['quotation_title'] ?? $data['title'] ?? 'Quotation Update';
+        } elseif (str_contains($type, 'Message')) {
+            return $data['subject'] ?? $data['title'] ?? 'New Message';
+        }
+
+        return $data['title'] ?? 'Notification';
+    }
+
+    /**
+     * Get notification message.
+     */
+    public function getNotificationMessage($notification): string
+    {
+        $data = $notification->data;
+        return $data['message'] ?? $data['body'] ?? 'You have a new notification';
+    }
+
+    /**
+     * Get notification URL.
+     */
+    public function getNotificationUrl($notification): string
+    {
+        $type = $notification->type;
+        $data = $notification->data;
+
+        if (str_contains($type, 'Project') && isset($data['project_id'])) {
+            return route('client.projects.show', $data['project_id']);
+        } elseif (str_contains($type, 'Quotation') && isset($data['quotation_id'])) {
+            return route('client.quotations.show', $data['quotation_id']);
+        } elseif (str_contains($type, 'Message') && isset($data['message_id'])) {
+            return route('client.messages.show', $data['message_id']);
+        }
+
+        return route('client.notifications.index');
+    }
+
+    /**
+     * Get client notification summary for header.
+     */
+    public function getClientNotificationSummary(User $user): array
+    {
+        // Use existing method but format for header display
+        $summary = $this->getClientNotificationSummary($user);
+
+        return [
+            'unread_count' => $user->unreadNotifications()->count(),
+            'unread_messages' => $this->clientAccessService->getClientMessages($user)
+                ->where('is_read', false)
+                ->count(),
+            'pending_approvals' => $this->clientAccessService->getClientQuotations($user)
+                ->where('status', 'approved')
+                ->whereNull('client_approved')
+                ->count(),
+            'upcoming_deadlines' => $this->clientAccessService->getClientProjects($user)
+                ->where('status', 'in_progress')
+                ->where('end_date', '>', now())
+                ->where('end_date', '<=', now()->addDays(7))
+                ->count(),
+            'overdue_projects' => $this->clientAccessService->getClientProjects($user)
+                ->where('status', 'in_progress')
+                ->where('end_date', '<', now())
+                ->whereNotNull('end_date')
+                ->count(),
+            'recent_notifications' => $user->notifications()
+                ->latest()
+                ->limit(5)
+                ->get()
+                ->map(function ($notification) {
+                    return [
+                        'id' => $notification->id,
+                        'type' => $notification->type,
+                        'title' => $this->getNotificationTitle($notification),
+                        'message' => $this->getNotificationMessage($notification),
+                        'created_at' => $notification->created_at->diffForHumans(),
+                        'is_read' => !is_null($notification->read_at),
+                    ];
+                })
+                ->toArray(),
+        ];
+    }
+
+    /**
+     * Mark notification as read.
+     */
+    public function markNotificationAsRead($notificationId): bool
+    {
+        try {
+            $notification = auth()->user()->notifications()->find($notificationId);
+            if ($notification && is_null($notification->read_at)) {
+                $notification->markAsRead();
+                return true;
+            }
+            return false;
+        } catch (\Exception $e) {
+            \Log::error('Failed to mark notification as read: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Mark all notifications as read for user.
+     */
+    public function markAllNotificationsAsRead(User $user): int
+    {
+        try {
+            $count = $user->unreadNotifications()->count();
+            $user->unreadNotifications()->update(['read_at' => now()]);
+            return $count;
+        } catch (\Exception $e) {
+            \Log::error('Failed to mark all notifications as read: ' . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Get real-time notification counts for AJAX updates.
+     */
+    public function getRealtimeNotificationCounts(User $user): array
+    {
+        return [
+            'unread_notifications' => $user->unreadNotifications()->count(),
+            'unread_messages' => $this->clientAccessService->getClientMessages($user)
+                ->where('is_read', false)
+                ->count(),
+            'pending_approvals' => $this->clientAccessService->getClientQuotations($user)
+                ->where('status', 'approved')
+                ->whereNull('client_approved')
+                ->count(),
+            'total_badge_count' => $user->unreadNotifications()->count() +
+                $this->clientAccessService->getClientMessages($user)->where('is_read', false)->count() +
+                $this->clientAccessService->getClientQuotations($user)->where('status', 'approved')->whereNull('client_approved')->count(),
+        ];
+    }
+
     /**
      * Check project deadline alerts.
      */
@@ -75,7 +249,7 @@ class NotificationAlertService
 
         foreach ($alertDays as $days) {
             $targetDate = now()->addDays($days)->toDateString();
-            
+
             $projects = Project::where('status', 'in_progress')
                 ->whereDate('end_date', $targetDate)
                 ->with(['client', 'category'])
@@ -85,7 +259,7 @@ class NotificationAlertService
                 if ($this->shouldSendProjectAlert($project, $days)) {
                     // Send to admin
                     $this->sendToAdmins(new ProjectDeadlineAlert($project, $days));
-                    
+
                     // Send to client if exists
                     if ($project->client) {
                         $project->client->notify(new ProjectDeadlineAlert($project, $days));
@@ -115,10 +289,10 @@ class NotificationAlertService
         foreach ($overdueProjects as $project) {
             if ($this->shouldSendOverdueAlert($project)) {
                 $daysOverdue = now()->diffInDays($project->end_date);
-                
+
                 // Send to admin
                 $this->sendToAdmins(new ProjectDeadlineAlert($project, -$daysOverdue, true));
-                
+
                 // Send to client
                 if ($project->client) {
                     $project->client->notify(new ProjectDeadlineAlert($project, -$daysOverdue, true));
@@ -161,7 +335,7 @@ class NotificationAlertService
         foreach ($oldPendingQuotations as $quotation) {
             if ($this->shouldSendQuotationAlert($quotation)) {
                 $this->sendToAdmins(new QuotationStatusAlert($quotation, 'pending_too_long'));
-                
+
                 $alerts[] = [
                     'quotation_id' => $quotation->id,
                     'client' => $quotation->name,
@@ -342,7 +516,7 @@ class NotificationAlertService
         foreach ($expiredCertifications as $certification) {
             if ($this->shouldSendExpiredCertificationAlert($certification)) {
                 $daysExpired = now()->diffInDays($certification->expiry_date);
-                
+
                 $this->sendToAdmins(new CertificationExpiryAlert($certification, -$daysExpired, true));
 
                 $alerts[] = [
@@ -379,7 +553,7 @@ class NotificationAlertService
 
         foreach ($clients as $client) {
             $clientAlerts = $this->generateClientAlerts($client);
-            
+
             if (!empty($clientAlerts)) {
                 foreach ($clientAlerts as $alert) {
                     if ($this->shouldSendClientAlert($client, $alert['type'])) {
@@ -671,7 +845,7 @@ class NotificationAlertService
                 FROM information_schema.tables
                 WHERE table_schema = DATABASE()
             ")[0]->size_mb ?? 0;
-            
+
             return (float) $size;
         } catch (\Exception $e) {
             return 0;
@@ -696,9 +870,9 @@ class NotificationAlertService
 
     protected function hasCompleteProfile(User $user): bool
     {
-        return !empty($user->phone) && 
-               !empty($user->address) && 
-               !empty($user->company);
+        return !empty($user->phone) &&
+            !empty($user->address) &&
+            !empty($user->company);
     }
 
     /**
@@ -738,45 +912,17 @@ class NotificationAlertService
     }
 
     /**
-     * Get client notification summary.
-     */
-    protected function getClientNotificationSummary(User $user): array
-    {
-        return [
-            'unread_messages' => $this->clientAccessService->getClientMessages($user)
-                ->where('is_read', false)
-                ->count(),
-            'pending_approvals' => $this->clientAccessService->getClientQuotations($user)
-                ->where('status', 'approved')
-                ->whereNull('client_approved')
-                ->count(),
-            'upcoming_deadlines' => $this->clientAccessService->getClientProjects($user)
-                ->where('status', 'in_progress')
-                ->where('end_date', '>', now())
-                ->where('end_date', '<=', now()->addDays(7))
-                ->count(),
-            'overdue_projects' => $this->clientAccessService->getClientProjects($user)
-                ->where('status', 'in_progress')
-                ->where('end_date', '<', now())
-                ->whereNotNull('end_date')
-                ->count(),
-            'recent_notifications' => $this->getRecentNotifications($user, 5),
-            'profile_completion' => $this->getProfileCompletionStatus($user),
-        ];
-    }
-
-    /**
      * Get total active alerts count.
      */
     protected function getTotalActiveAlerts(): int
     {
         return Message::where('is_read', false)->count() +
-               Quotation::where('status', 'pending')->count() +
-               Project::where('status', 'in_progress')
-                   ->where('end_date', '<', now())
-                   ->whereNotNull('end_date')
-                   ->count() +
-               ChatSession::where('status', 'waiting')->count();
+            Quotation::where('status', 'pending')->count() +
+            Project::where('status', 'in_progress')
+                ->where('end_date', '<', now())
+                ->whereNotNull('end_date')
+                ->count() +
+            ChatSession::where('status', 'waiting')->count();
     }
 
     /**
@@ -785,15 +931,15 @@ class NotificationAlertService
     protected function getCriticalAlerts(): int
     {
         return Message::where('priority', 'urgent')
-                   ->where('is_read', false)
-                   ->count() +
-               Quotation::where('priority', 'urgent')
-                   ->where('status', 'pending')
-                   ->count() +
-               Project::where('status', 'in_progress')
-                   ->where('end_date', '<', now()->subDays(7))
-                   ->whereNotNull('end_date')
-                   ->count();
+            ->where('is_read', false)
+            ->count() +
+            Quotation::where('priority', 'urgent')
+                ->where('status', 'pending')
+                ->count() +
+            Project::where('status', 'in_progress')
+                ->where('end_date', '<', now()->subDays(7))
+                ->whereNotNull('end_date')
+                ->count();
     }
 
     /**
@@ -803,7 +949,7 @@ class NotificationAlertService
     {
         $diskUsage = $this->getDiskUsage();
         $failedJobs = $this->getFailedJobsCount();
-        
+
         if ($diskUsage > 90 || $failedJobs > 50) {
             return 'critical';
         } elseif ($diskUsage > 80 || $failedJobs > 20) {
