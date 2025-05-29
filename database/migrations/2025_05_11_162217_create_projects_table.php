@@ -17,7 +17,6 @@ return new class extends Migration
             $table->foreignId('client_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('quotation_id')->nullable()->constrained('quotations')->nullOnDelete();
             $table->string('location')->nullable();
-            $table->string('client_name')->nullable();
             $table->integer('year')->nullable();
             $table->enum('status', ['planning', 'in_progress', 'completed', 'on_hold', 'cancelled'])->default('completed');
             $table->integer('value')->nullable();

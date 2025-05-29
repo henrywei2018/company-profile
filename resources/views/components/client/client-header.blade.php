@@ -41,38 +41,39 @@
                 <span class="sr-only">Toggle dark mode</span>
             </button>
 
-            <!-- Messages Icon -->
-            <a href="{{ route('client.messages.index') }}"
-                class="size-8 flex justify-center items-center text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-neutral-700 rounded-full relative">
-                <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                    <path d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                @if($unreadMessagesCount > 0)
-                    <span class="absolute -top-1 -end-1 h-4 w-4 bg-red-500 text-white text-xs flex items-center justify-center rounded-full">
-                        {{ $unreadMessagesCount > 9 ? '9+' : $unreadMessagesCount }}
-                    </span>
-                @endif
-                <span class="sr-only">Messages</span>
-            </a>
+            <!-- Notification Dropdown -->
+<div class="hs-dropdown relative inline-block" data-hs-dropdown data-hs-dropdown-placement="bottom-end">
+    <button type="button"
+        class="size-8 flex justify-center items-center text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-neutral-700 rounded-full relative"
+        data-hs-dropdown-toggle>
+        <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+        </svg>
+        @if(($unreadMessagesCount ?? 0) > 0)
+            <span class="absolute top-0 end-0 h-2 w-2 bg-red-500 rounded-full"></span>
+        @endif
+        <span class="sr-only">Notifications</span>
+    </button>
 
-            <!-- Quotations/Approvals Icon -->
-            <a href="{{ route('client.quotations.index') }}"
-                class="size-8 flex justify-center items-center text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-neutral-700 rounded-full relative">
-                <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                </svg>
-                @if($pendingApprovalsCount > 0)
-                    <span class="absolute -top-1 -end-1 h-4 w-4 bg-amber-500 text-white text-xs flex items-center justify-center rounded-full">
-                        {{ $pendingApprovalsCount > 9 ? '9+' : $pendingApprovalsCount }}
-                    </span>
-                @endif
-                <span class="sr-only">Quotations</span>
-            </a>
+    <!-- Dropdown Panel -->
+    <div class="hs-dropdown-menu hidden z-50 mt-2 min-w-60 bg-white shadow-md rounded-lg border dark:bg-neutral-800 dark:border-neutral-700"
+        aria-labelledby="hs-dropdown-toggle">
+        <div class="px-4 py-3">
+            <p class="text-sm text-gray-800 dark:text-white font-medium">Notifications</p>
+        </div>
+        <div class="max-h-64 overflow-y-auto">
+            @forelse($recentNotifications ?? [] as $notification)
+                <a href="{{ $notification->url }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
+                    {{ $notification->message }}
+                </a>
+            @empty
+                <p class="px-4 py-2 text-sm text-gray-500 dark:text-neutral-400">No new notifications.</p>
+            @endforelse
+        </div>
+    </div>
+</div>
 
             <!-- User Dropdown -->
             <div class="hs-dropdown relative inline-block" data-hs-dropdown data-hs-dropdown-placement="bottom-end">

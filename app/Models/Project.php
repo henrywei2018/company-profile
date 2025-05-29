@@ -25,9 +25,9 @@ class Project extends Model
         'slug',
         'description',
         'client_id',
-        'quotation_id', // Added this field
+        'quotation_id',
         'project_category_id',
-        'service_id',
+        'service_used',
         'status',
         'year',
         'start_date',
@@ -51,6 +51,7 @@ class Project extends Model
         'featured' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'service_used' => 'array',
     ];
 
     /**
@@ -62,7 +63,6 @@ class Project extends Model
         'status',
         'priority',
         'project_category_id',
-        'service_id',
         'client_id',
         'featured',
         'search',
@@ -113,18 +113,6 @@ class Project extends Model
             self::STATUS_CANCELLED => 'Cancelled',
         ];
     }
-    public function getFeaturedImageUrlAttribute(): ?string
-{
-    $image = $this->images()->orderByDesc('is_featured')->orderBy('id')->first();
-
-    if ($image && $image->file_path && Storage::disk('public')->exists($image->file_path)) {
-        return Storage::url($image->file_path);
-    }
-
-    return null;
-}
-
-
     /**
      * Get all available priorities
      */
@@ -214,29 +202,28 @@ class Project extends Model
         return $this->hasMany(ProjectImage::class);
     }
 
-
     /**
-     * Get the project attachments.
+     * Get the project files.
      */
-    public function attachments()
+    public function files()
     {
-        return $this->morphMany(Attachment::class, 'attachable');
+        return $this->hasMany(ProjectFile::class);
     }
 
     /**
-     * Get the project testimonials.
+     * Get the project milestones.
+     */
+    public function milestones()
+    {
+        return $this->hasMany(ProjectMilestone::class);
+    }
+
+    /**
+     * Get the project testimonial (one-to-one relationship).
      */
     public function testimonial(): HasOne
     {
         return $this->hasOne(Testimonial::class);
-    }
-
-    /**
-     * Get all testimonials for this project (if allowing multiple).
-     */
-    public function testimonials(): HasMany
-    {
-        return $this->hasMany(Testimonial::class);
     }
 
     /**
@@ -285,6 +272,20 @@ class Project extends Model
     public function scopeByService($query, $serviceId)
     {
         return $query->where('service_id', $serviceId);
+    }
+
+    /**
+     * Get the featured image URL.
+     */
+    public function getFeaturedImageUrlAttribute(): ?string
+    {
+        $image = $this->images()->orderByDesc('is_featured')->orderBy('id')->first();
+
+        if ($image && $image->file_path && Storage::disk('public')->exists($image->file_path)) {
+            return Storage::url($image->file_path);
+        }
+
+        return null;
     }
 
     /**
@@ -337,8 +338,8 @@ class Project extends Model
      */
     public function isOverdue(): bool
     {
-        return $this->estimated_completion_date && 
-               $this->estimated_completion_date->isPast() && 
+        return $this->end_date && 
+               $this->end_date->isPast() && 
                $this->status !== self::STATUS_COMPLETED;
     }
 
@@ -347,7 +348,7 @@ class Project extends Model
      */
     public function getMainImageAttribute()
     {
-        return $this->images()->first();
+        return $this->images()->orderByDesc('is_featured')->first();
     }
 
     /**
@@ -371,7 +372,7 @@ class Project extends Model
      */
     public function getCompletionPercentageAttribute(): string
     {
-        return $this->progress_percentage . '%';
+        return ($this->progress_percentage ?? 0) . '%';
     }
 
     /**
