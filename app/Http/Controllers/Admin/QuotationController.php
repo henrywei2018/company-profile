@@ -11,7 +11,7 @@ use App\Models\Project;
 use App\Services\QuotationService;
 use App\Mail\QuotationStatusUpdated;
 use App\Mail\QuotationResponse;
-use App\Notifications\NewQuotationNotification;
+// Replaced by centralized notification system
 use App\Notifications\QuotationConfirmationNotification;
 use App\Notifications\QuotationStatusUpdatedNotification;
 use Illuminate\Http\Request;
@@ -218,7 +218,7 @@ class QuotationController extends Controller
                         $adminEmails = $this->getAdminNotificationEmails();
                         foreach ($adminEmails as $adminEmail) {
                             Notification::route('mail', $adminEmail)
-                                ->notify(new NewQuotationNotification($quotation));
+                                ->notify(Notifications::send('quotation.created', $quotation));
                         }
                         
                         Log::info('Quotation notification sent to admin', [
