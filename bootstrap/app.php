@@ -11,6 +11,15 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function (Schedule $schedule) {
+        $schedule->command('notifications:send-scheduled')
+                ->everyFiveMinutes()
+                ->withoutOverlapping();
+
+        $schedule->command('notifications:cleanup')
+                ->daily()
+                ->at('02:00');
+    })
     ->withProviders([
         App\Providers\RepositoryServiceProvider::class,
         App\Providers\AuthServiceProvider::class,

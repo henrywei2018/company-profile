@@ -12,6 +12,7 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
+use App\Http\Controllers\Client\NotificationPreferencesController;
 
 /*
 |--------------------------------------------------------------------------
@@ -113,6 +114,11 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
     
     // Client Dashboard
     Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
+    // Client Notifications
+    Route::get('notifications/preferences', [NotificationPreferencesController::class, 'show'])
+         ->name('notifications.preferences');
+    Route::put('notifications/preferences', [NotificationPreferencesController::class, 'update'])
+         ->name('notifications.preferences.update');
     
     // Client Projects
     Route::prefix('projects')->name('projects.')->group(function () {

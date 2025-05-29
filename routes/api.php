@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\ChatController;
 
 /*
@@ -32,6 +33,14 @@ RateLimiter::for('admin-api', fn(Request $request) =>
 // Authentication routes if needed
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
+});
+
+Route::middleware(['auth:sanctum'])->prefix('notifications')->group(function () {
+    Route::get('statistics', [NotificationController::class, 'statistics']);
+    Route::get('types', [NotificationController::class, 'types']);
+    Route::post('test', [NotificationController::class, 'test']);
+    Route::post('send', [NotificationController::class, 'send']);
+    Route::post('clear-cache', [NotificationController::class, 'clearCache']);
 });
 
 // Project routes
