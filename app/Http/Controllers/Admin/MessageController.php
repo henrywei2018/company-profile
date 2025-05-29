@@ -7,9 +7,7 @@ use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\User;
 use App\Notifications\MessageReplyNotification;
-// Replaced by centralized notification system
-// Replaced by centralized notification system
-use App\Notifications\MessageAutoReplyNotification;
+use App\Notifications\MessageAutoReplyNotification; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Notification;
@@ -19,9 +17,7 @@ use Illuminate\Support\Facades\Mail;
 
 class MessageController extends Controller
 {
-    /**
-     * Display a listing of the messages with filtering.
-     */
+    
     public function index(Request $request)
     {
         $query = Message::query()
