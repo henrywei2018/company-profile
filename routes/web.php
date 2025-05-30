@@ -409,6 +409,57 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::get('/edit', [App\Http\Controllers\Admin\CompanyProfileController::class, 'index'])->name('edit');
     });
 
+    Route::post('notifications/{notification}/mark-as-read', [App\Http\Controllers\Admin\DashboardController::class, 'markNotificationAsRead'])
+        ->name('notifications.mark-as-read');
+    
+    Route::post('notifications/mark-all-as-read', [App\Http\Controllers\Admin\DashboardController::class, 'markAllNotificationsAsRead'])
+        ->name('notifications.mark-all-as-read');
+    
+    Route::get('notifications/counts', [App\Http\Controllers\Admin\DashboardController::class, 'getNotificationCounts'])
+        ->name('notifications.counts');
+    
+    // Dashboard API endpoints
+    Route::get('dashboard/stats', [App\Http\Controllers\Admin\DashboardController::class, 'getStats'])
+        ->name('dashboard.stats');
+    
+    Route::get('dashboard/chart-data', [App\Http\Controllers\Admin\DashboardController::class, 'getChartData'])
+        ->name('dashboard.chart-data');
+    
+    Route::post('dashboard/clear-cache', [App\Http\Controllers\Admin\DashboardController::class, 'clearCache'])
+        ->name('dashboard.clear-cache');
+    
+    Route::get('dashboard/export', [App\Http\Controllers\Admin\DashboardController::class, 'exportDashboard'])
+        ->name('dashboard.export');
+    
+    Route::get('dashboard/system-health', [App\Http\Controllers\Admin\DashboardController::class, 'getSystemHealth'])
+        ->name('dashboard.system-health');
+    
+    // Test notification (only in local environment)
+    Route::post('dashboard/send-test-notification', [App\Http\Controllers\Admin\DashboardController::class, 'sendTestNotification'])
+        ->name('dashboard.send-test-notification');
+    
+    // Notification management
+    Route::get('notifications', [App\Http\Controllers\NotificationController::class, 'index'])
+        ->name('notifications.index');
+    
+    Route::get('notifications/{notification}', [App\Http\Controllers\NotificationController::class, 'show'])
+        ->name('notifications.show');
+    
+    Route::delete('notifications/{notification}', [App\Http\Controllers\NotificationController::class, 'destroy'])
+        ->name('notifications.destroy');
+    
+    Route::post('notifications/bulk-mark-as-read', [App\Http\Controllers\NotificationController::class, 'bulkMarkAsRead'])
+        ->name('notifications.bulk-mark-as-read');
+    
+    Route::post('notifications/bulk-delete', [App\Http\Controllers\NotificationController::class, 'bulkDelete'])
+        ->name('notifications.bulk-delete');
+    
+    Route::get('notifications/settings', [App\Http\Controllers\NotificationController::class, 'settings'])
+        ->name('notifications.settings');
+    
+    Route::put('notifications/settings', [App\Http\Controllers\NotificationController::class, 'updateSettings'])
+        ->name('notifications.settings.update');
+
     // Settings
     Route::get('/settings', [App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
     Route::post('/settings', [App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');

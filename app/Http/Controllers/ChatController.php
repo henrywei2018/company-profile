@@ -1,5 +1,4 @@
 <?php
-// Update your existing app/Http/Controllers/ChatController.php
 
 namespace App\Http\Controllers;
 
@@ -9,10 +8,13 @@ use App\Services\ChatService;
 use App\Models\ChatOperator;
 use App\Models\ChatTemplate;
 use App\Models\ChatMessage;
+use App\Facades\Notifications;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 
 class ChatController extends Controller
 {
@@ -45,13 +47,13 @@ class ChatController extends Controller
 
         try {
             // Create new session for authenticated user
-            $session = $this->chatService->startSession(
-                null, // No visitor info needed - using authenticated user
-                $user
-            );
+            $session = $this->chatService->startSession($user);
 
             // Store session ID in browser session
             session(['chat_session_id' => $session->session_id]);
+
+            // Send notification to available operators using centralized system
+            Notifications::send('chat.session_started', $session);
 
             return response()->json([
                 'success' => true,
@@ -60,7 +62,7 @@ class ChatController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Chat session start failed: ' . $e->getMessage());
+            Log::error('Chat session start failed: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -87,7 +89,7 @@ class ChatController extends Controller
         }
 
         try {
-            $session = $this->chatService->getSession($request->session_id);
+            $session = ChatSession::where('session_id', $request->session_id)->first();
 
             // Verify session belongs to authenticated user
             if (!$session || $session->user_id !== auth()->id()) {
@@ -107,12 +109,14 @@ class ChatController extends Controller
             $message = $this->chatService->sendMessage(
                 $session,
                 $request->message,
-                'visitor',
-                auth()->user()
+                'visitor'
             );
 
+            // Notify operators about new message using centralized system
+            Notifications::send('chat.message_received', $session, null, ['database']);
+
             // Get updated messages (last 20 messages)
-            $messages = $this->chatService->getMessages($session, 20);
+            $messages = $session->messages()->orderBy('created_at')->take(20)->get();
 
             return response()->json([
                 'success' => true,
@@ -121,7 +125,7 @@ class ChatController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Chat message failed: ' . $e->getMessage());
+            Log::error('Chat message failed: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -148,7 +152,7 @@ class ChatController extends Controller
         }
 
         try {
-            $session = $this->chatService->getSession($request->session_id);
+            $session = ChatSession::where('session_id', $request->session_id)->first();
 
             // Verify session belongs to authenticated user
             if (!$session || $session->user_id !== auth()->id()) {
@@ -174,7 +178,7 @@ class ChatController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Get chat messages failed: ' . $e->getMessage());
+            Log::error('Get chat messages failed: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -202,7 +206,7 @@ class ChatController extends Controller
         }
 
         try {
-            $session = $this->chatService->getSession($request->session_id);
+            $session = ChatSession::where('session_id', $request->session_id)->first();
 
             // Verify session belongs to authenticated user
             if (!$session || $session->user_id !== auth()->id()) {
@@ -225,7 +229,7 @@ class ChatController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Update client info failed: ' . $e->getMessage());
+            Log::error('Update client info failed: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -251,7 +255,7 @@ class ChatController extends Controller
         }
 
         try {
-            $session = $this->chatService->getSession($request->session_id);
+            $session = ChatSession::where('session_id', $request->session_id)->first();
 
             // Verify session belongs to authenticated user
             if (!$session || $session->user_id !== auth()->id()) {
@@ -261,7 +265,15 @@ class ChatController extends Controller
                 ], 404);
             }
 
-            $this->chatService->closeSession($session, 'Closed by client');
+            // Close the session
+            $session->update([
+                'status' => 'closed',
+                'ended_at' => now(),
+                'close_reason' => 'Closed by client'
+            ]);
+
+            // Notify about session closure using centralized system
+            Notifications::send('chat.session_closed', $session);
 
             // Remove from browser session
             session()->forget('chat_session_id');
@@ -272,7 +284,7 @@ class ChatController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Close chat session failed: ' . $e->getMessage());
+            Log::error('Close chat session failed: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -297,7 +309,7 @@ class ChatController extends Controller
             // Check browser session as fallback
             $sessionId = session('chat_session_id');
             if ($sessionId) {
-                $session = $this->chatService->getSession($sessionId);
+                $session = ChatSession::where('session_id', $sessionId)->first();
                 if (!$session || $session->user_id !== $user->id || $session->status === 'closed') {
                     session()->forget('chat_session_id');
                     return response()->json([
@@ -314,7 +326,7 @@ class ChatController extends Controller
         }
 
         try {
-            $messages = $this->chatService->getMessages($session);
+            $messages = $session->messages()->orderBy('created_at')->get();
 
             return response()->json([
                 'success' => true,
@@ -330,7 +342,7 @@ class ChatController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Get chat session failed: ' . $e->getMessage());
+            Log::error('Get chat session failed: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -371,6 +383,12 @@ class ChatController extends Controller
             })
         ]);
     }
+
+    // ===== ADMIN METHODS =====
+
+    /**
+     * Admin chat dashboard
+     */
     public function index()
     {
         // Check if user is admin
@@ -378,7 +396,15 @@ class ChatController extends Controller
             abort(403, 'Admin access required');
         }
 
-        $statistics = $this->chatService->getStatistics();
+        // Get statistics manually since ChatService might not have getStatistics
+        $statistics = [
+            'total_sessions' => ChatSession::count(),
+            'active_sessions' => ChatSession::where('status', 'active')->count(),
+            'waiting_sessions' => ChatSession::where('status', 'waiting')->count(),
+            'closed_sessions_today' => ChatSession::whereDate('ended_at', today())->where('status', 'closed')->count(),
+            'avg_response_time' => 0, // Calculate if needed
+            'satisfaction_rate' => 0, // Calculate if needed
+        ];
 
         $activeSessions = ChatSession::with(['user', 'latestMessage'])
             ->where('status', 'active')
@@ -437,8 +463,10 @@ class ChatController extends Controller
             'notification_email' => 'email|nullable',
         ]);
 
-        // Save settings - you can implement your preferred settings storage method here
-        // Example: foreach ($validated as $key => $value) { settings([$key => $value], true); }
+        // Save settings using the settings helper
+        foreach ($validated as $key => $value) {
+            update_setting($key, $value);
+        }
 
         return redirect()->route('admin.chat.settings')
             ->with('success', 'Chat settings updated successfully!');
@@ -471,20 +499,33 @@ class ChatController extends Controller
             'message' => 'required|string|max:1000',
         ]);
 
-        // Create operator message
-        $chatSession->messages()->create([
-            'sender_type' => 'operator',
-            'sender_id' => auth()->id(),
-            'message' => $request->message,
-            'message_type' => 'text',
-        ]);
+        try {
+            // Create operator message
+            $message = $chatSession->messages()->create([
+                'sender_type' => 'operator',
+                'sender_id' => auth()->id(),
+                'message' => $request->message,
+                'message_type' => 'text',
+            ]);
 
-        // Update session activity
-        $chatSession->update([
-            'last_activity_at' => now(),
-        ]);
+            // Update session activity
+            $chatSession->update([
+                'last_activity_at' => now(),
+                'status' => 'active',
+                'assigned_operator_id' => auth()->id(),
+            ]);
 
-        return redirect()->back()->with('success', 'Message sent successfully!');
+            // Notify client about new message using centralized system
+            if ($chatSession->user) {
+                Notifications::send('chat.operator_reply', $chatSession, $chatSession->user);
+            }
+
+            return redirect()->back()->with('success', 'Message sent successfully!');
+
+        } catch (\Exception $e) {
+            Log::error('Admin chat reply failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to send message.');
+        }
     }
 
     /**
@@ -496,7 +537,15 @@ class ChatController extends Controller
             abort(403, 'Admin access required');
         }
 
-        $this->chatService->closeSession($chatSession, 'Closed by admin: ' . auth()->user()->name);
+        // Close the session
+        $chatSession->update([
+            'status' => 'closed',
+            'ended_at' => now(),
+            'close_reason' => 'Closed by admin: ' . auth()->user()->name
+        ]);
+
+        // Notify about session closure using centralized system
+        Notifications::send('chat.session_closed', $chatSession);
 
         return redirect()->route('admin.chat.index')
             ->with('success', 'Chat session closed successfully!');
@@ -584,7 +633,18 @@ class ChatController extends Controller
             abort(403, 'Admin access required');
         }
 
-        return response()->json($this->chatService->getStatistics());
+        $statistics = [
+            'total_sessions' => ChatSession::count(),
+            'active_sessions' => ChatSession::where('status', 'active')->count(),
+            'waiting_sessions' => ChatSession::where('status', 'waiting')->count(),
+            'closed_sessions_today' => ChatSession::whereDate('ended_at', today())->where('status', 'closed')->count(),
+            'total_messages' => ChatMessage::count(),
+            'online_operators' => ChatOperator::where('is_online', true)->count(),
+            'avg_response_time' => 0, // Calculate if needed
+            'satisfaction_rate' => 0, // Calculate if needed
+        ];
+
+        return response()->json($statistics);
     }
 
     /**
@@ -689,14 +749,17 @@ class ChatController extends Controller
         return redirect()->back()->with('success', 'Template created successfully!');
     }
 
-    public function reports (Request $request)
+    /**
+     * Generate PDF reports for chat sessions
+     */
+    public function reports(Request $request)
     {
-         Log::info('🟢 Memasuki fungsi reports() di ChatController');
+        Log::info('🟢 Entering reports() function in ChatController');
 
         if (!auth()->check()) {
-            Log::warning('🚨 User belum login!');
+            Log::warning('🚨 User not logged in!');
         } elseif (!auth()->user()->hasAdminAccess()) {
-            Log::warning('🚫 User tidak memiliki akses admin.', [
+            Log::warning('🚫 User does not have admin access.', [
                 'user_id' => auth()->id(),
                 'user_email' => auth()->user()->email,
             ]);
@@ -721,6 +784,43 @@ class ChatController extends Controller
         }
 
         return view('admin.chat.reports.index', compact('operators', 'reportData', 'sessions'));
+    }
+
+    /**
+     * Export report data as PDF
+     */
+    public function exportReport(Request $request)
+    {
+        if (!auth()->user()->hasAdminAccess()) {
+            abort(403, 'Admin access required');
+        }
+
+        $reportData = $this->generateReportData($request);
+        $sessions = $this->getDetailedSessions($request);
+
+        $data = [
+            'reportData' => $reportData,
+            'sessions' => $sessions,
+            'filters' => $request->all(),
+            'generatedBy' => auth()->user()->name,
+            'generatedAt' => now(),
+        ];
+
+        $pdf = Pdf::loadView('admin.chat.reports.pdf', $data)
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isPhpEnabled' => true,
+                'defaultFont' => 'Arial',
+                'margin-top' => 20,
+                'margin-bottom' => 20,
+                'margin-left' => 15,
+                'margin-right' => 15,
+            ]);
+
+        $filename = 'chat_report_' . now()->format('Y-m-d_H-i-s') . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     /**
@@ -897,6 +997,10 @@ class ChatController extends Controller
                 break;
         }
     }
+
+    /**
+     * Generate chart data for reports
+     */
     private function generateChartData($sessions, string $dateRange): array
     {
         $labels = [];
@@ -988,74 +1092,6 @@ class ChatController extends Controller
     }
 
     /**
-     * Export report data
-     */
-    public function exportReport(Request $request)
-    {
-        if (!auth()->user()->hasAdminAccess()) {
-            abort(403, 'Admin access required');
-        }
-
-        $reportData = $this->generateReportData($request);
-        $sessions = $this->getDetailedSessions($request);
-
-        $filename = 'chat_report_' . now()->format('Y-m-d_H-i-s') . '.csv';
-
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
-
-        $callback = function () use ($sessions, $reportData) {
-            $file = fopen('php://output', 'w');
-
-            // Add report summary
-            fputcsv($file, ['CHAT REPORT SUMMARY']);
-            fputcsv($file, ['Generated at', now()->format('Y-m-d H:i:s')]);
-            fputcsv($file, ['']);
-            fputcsv($file, ['Total Sessions', $reportData['total_sessions']]);
-            fputcsv($file, ['Total Messages', $reportData['total_messages']]);
-            fputcsv($file, ['Average Response Time (min)', $reportData['avg_response_time']]);
-            fputcsv($file, ['Satisfaction Rate (%)', $reportData['satisfaction_rate']]);
-            fputcsv($file, ['']);
-
-            // Add detailed sessions
-            fputcsv($file, ['DETAILED SESSIONS']);
-            fputcsv($file, [
-                'Session ID',
-                'Client Name',
-                'Client Email',
-                'Started At',
-                'Ended At',
-                'Duration (min)',
-                'Messages Count',
-                'Operator',
-                'Status',
-                'Priority'
-            ]);
-
-            foreach ($sessions as $session) {
-                fputcsv($file, [
-                    $session->session_id,
-                    $session->getVisitorName(),
-                    $session->getVisitorEmail(),
-                    $session->started_at->format('Y-m-d H:i:s'),
-                    $session->ended_at ? $session->ended_at->format('Y-m-d H:i:s') : '',
-                    $session->getDuration() ?? '',
-                    $session->messages->count(),
-                    $session->operator ? $session->operator->name : 'Bot',
-                    ucfirst($session->status),
-                    ucfirst($session->priority)
-                ]);
-            }
-
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
-    }
-
-    /**
      * Check online status (public method)
      */
     public function onlineStatus(): JsonResponse
@@ -1069,27 +1105,10 @@ class ChatController extends Controller
             'operators_count' => $onlineOperators,
         ]);
     }
+
     /**
-     * Get average response time (helper method)
+     * Get operator status for current user
      */
-    private function getAverageResponseTime(): float
-    {
-        $sessions = ChatSession::where('status', 'closed')
-            ->whereNotNull('ended_at')
-            ->take(50)
-            ->get();
-
-        if ($sessions->isEmpty()) {
-            return 0;
-        }
-
-        $totalMinutes = $sessions->sum(function ($session) {
-            return $session->started_at->diffInMinutes($session->ended_at);
-        });
-
-        return round($totalMinutes / $sessions->count(), 2);
-    }
-
     public function getOperatorStatus(): JsonResponse
     {
         if (!auth()->user()->hasAdminAccess()) {
@@ -1115,7 +1134,7 @@ class ChatController extends Controller
     }
 
     /**
-     * Format messages for API response (make it public instead of protected)
+     * Format messages for API response
      */
     public function formatMessages($messages): array
     {
@@ -1136,4 +1155,159 @@ class ChatController extends Controller
         })->toArray();
     }
 
+    /**
+     * Send notification when chat session needs attention
+     */
+    protected function notifyIfSessionNeedsAttention(ChatSession $session): void
+    {
+        // Check if session has been waiting too long
+        if ($session->status === 'waiting') {
+            $waitingMinutes = now()->diffInMinutes($session->created_at);
+            if ($waitingMinutes > 10) { // Alert if waiting more than 10 minutes
+                Notifications::send('chat.session_waiting', $session);
+            }
+        }
+
+        // Check if session is inactive
+        if ($session->last_activity_at) {
+            $inactiveMinutes = now()->diffInMinutes($session->last_activity_at);
+            if ($inactiveMinutes > 30) { // Alert if inactive more than 30 minutes
+                Notifications::send('chat.session_inactive', $session);
+            }
+        }
+    }
+
+    /**
+     * Update operator availability
+     */
+    public function updateAvailability(Request $request): JsonResponse
+    {
+        if (!auth()->user()->hasAdminAccess()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'is_available' => 'required|boolean',
+        ]);
+
+        try {
+            $operator = ChatOperator::firstOrCreate(
+                ['user_id' => auth()->id()],
+                ['is_online' => true, 'is_available' => $request->is_available]
+            );
+
+            $operator->update([
+                'is_available' => $request->is_available,
+                'last_seen_at' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'is_available' => $operator->is_available,
+                'message' => $request->is_available ? 'You are now available for chat' : 'You are now unavailable for chat'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Update operator availability failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to update availability'
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk update chat sessions
+     */
+    public function bulkUpdate(Request $request)
+    {
+        if (!auth()->user()->hasAdminAccess()) {
+            abort(403, 'Admin access required');
+        }
+
+        $request->validate([
+            'session_ids' => 'required|array',
+            'session_ids.*' => 'exists:chat_sessions,id',
+            'action' => 'required|in:close,assign,priority',
+            'value' => 'nullable|string',
+        ]);
+
+        $sessionIds = $request->session_ids;
+        $action = $request->action;
+        $value = $request->value;
+        $updated = 0;
+
+        try {
+            foreach ($sessionIds as $sessionId) {
+                $session = ChatSession::find($sessionId);
+                if (!$session) continue;
+
+                switch ($action) {
+                    case 'close':
+                        if ($session->status !== 'closed') {
+                            $session->update([
+                                'status' => 'closed',
+                                'ended_at' => now(),
+                                'close_reason' => 'Bulk closed by admin'
+                            ]);
+                            Notifications::send('chat.session_closed', $session);
+                            $updated++;
+                        }
+                        break;
+
+                    case 'assign':
+                        if ($value && $value !== $session->assigned_operator_id) {
+                            $session->update(['assigned_operator_id' => $value]);
+                            $updated++;
+                        }
+                        break;
+
+                    case 'priority':
+                        if ($value && $value !== $session->priority) {
+                            $session->update(['priority' => $value]);
+                            $updated++;
+                        }
+                        break;
+                }
+            }
+
+            return redirect()->back()->with('success', "Updated {$updated} chat session(s) successfully!");
+
+        } catch (\Exception $e) {
+            Log::error('Bulk update chat sessions failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to update chat sessions.');
+        }
+    }
+
+    /**
+     * Archive old chat sessions
+     */
+    public function archiveOldSessions()
+    {
+        if (!auth()->user()->hasAdminAccess()) {
+            abort(403, 'Admin access required');
+        }
+
+        try {
+            // Archive sessions older than 30 days
+            $cutoffDate = now()->subDays(30);
+            $archivedCount = ChatSession::where('status', 'closed')
+                ->where('ended_at', '<', $cutoffDate)
+                ->update(['status' => 'archived']);
+
+            // Send notification about archival
+            if ($archivedCount > 0) {
+                Notifications::send('system.chat_sessions_archived', [
+                    'count' => $archivedCount,
+                    'cutoff_date' => $cutoffDate->format('Y-m-d'),
+                ]);
+            }
+
+            return redirect()->back()->with('success', "Archived {$archivedCount} old chat session(s)!");
+
+        } catch (\Exception $e) {
+            Log::error('Archive old chat sessions failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to archive old sessions.');
+        }
+    }
 }

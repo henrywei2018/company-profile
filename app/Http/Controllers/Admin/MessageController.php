@@ -6,14 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\User;
-use App\Notifications\MessageReplyNotification;
-use App\Notifications\MessageAutoReplyNotification; 
+use App\Facades\Notifications;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class MessageController extends Controller
 {
@@ -133,7 +130,7 @@ class MessageController extends Controller
     }
 
     /**
-     * Store a newly created direct message with integrated email settings.
+     * Store a newly created direct message using centralized notifications.
      */
     public function store(Request $request)
     {
@@ -217,10 +214,12 @@ class MessageController extends Controller
                 $recipientName = $client->name;
                 $recipientEmail = $client->email;
                 $userId = $client->id;
+                $recipient = $client;
             } else {
                 $recipientName = trim($validated['custom_name']);
                 $recipientEmail = strtolower(trim($validated['custom_email']));
                 $userId = null;
+                $recipient = null;
             }
 
             // Create the direct message
@@ -253,41 +252,36 @@ class MessageController extends Controller
                 }
             }
 
-            // Send email notification - Check if email is enabled
-            if (settings('message_email_enabled', true)) {
-                try {
-                    if ($userId) {
-                        $client->notify(Notifications::send('message.created', $message));
-                        $logMessage = "Direct message sent to registered client: {$recipientName} ({$recipientEmail})";
-                    } else {
-                        Notification::route('mail', $recipientEmail)
-                            ->notify(Notifications::send('message.created', $message));
-                        $logMessage = "Direct message sent to custom email: {$recipientName} ({$recipientEmail})";
-                    }
-                    
-                    Log::info($logMessage, [
-                        'message_id' => $message->id,
-                        'sent_by' => auth()->id(),
-                        'attachments' => $attachmentCount
-                    ]);
-                    
-                } catch (\Exception $e) {
-                    Log::error('Failed to send direct message notification: ' . $e->getMessage(), [
-                        'message_id' => $message->id,
-                        'recipient_email' => $recipientEmail
-                    ]);
-                    
-                    // Still commit the transaction but show warning
-                    DB::commit();
-                    
-                    return redirect()->route('admin.messages.index')
-                        ->with('warning', "Message saved successfully but there was an issue sending the email notification to {$recipientName}. Please check your email configuration.");
+            // Send email notification using centralized notification system
+            try {
+                if ($recipient) {
+                    // Send to registered client
+                    Notifications::send('message.reply', $message, $recipient);
+                    $logMessage = "Direct message sent to registered client: {$recipientName} ({$recipientEmail})";
+                } else {
+                    // Send to custom email (create temporary notifiable)
+                    $tempNotifiable = new \App\Services\TempNotifiable($recipientEmail, $recipientName);
+                    Notifications::send('message.reply', $message, $tempNotifiable);
+                    $logMessage = "Direct message sent to custom email: {$recipientName} ({$recipientEmail})";
                 }
-            } else {
-                Log::info("Email sending disabled - message saved but not sent", [
+                
+                Log::info($logMessage, [
+                    'message_id' => $message->id,
+                    'sent_by' => auth()->id(),
+                    'attachments' => $attachmentCount
+                ]);
+                
+            } catch (\Exception $e) {
+                Log::error('Failed to send direct message notification: ' . $e->getMessage(), [
                     'message_id' => $message->id,
                     'recipient_email' => $recipientEmail
                 ]);
+                
+                // Still commit the transaction but show warning
+                DB::commit();
+                
+                return redirect()->route('admin.messages.index')
+                    ->with('warning', "Message saved successfully but there was an issue sending the email notification to {$recipientName}. Please check your email configuration.");
             }
 
             DB::commit();
@@ -296,9 +290,6 @@ class MessageController extends Controller
             $successMessage = "Direct message sent successfully to {$recipientName}!";
             if ($attachmentCount > 0) {
                 $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
-            }
-            if (!settings('message_email_enabled', true)) {
-                $successMessage .= " (Note: Email sending is disabled in settings)";
             }
 
             return redirect()->route('admin.messages.index')
@@ -315,7 +306,7 @@ class MessageController extends Controller
     }
 
     /**
-     * Store a message from public contact form with integrated email settings
+     * Store a message from public contact form using centralized notifications
      */
     public function storePublicMessage(Request $request)
     {
@@ -326,6 +317,7 @@ class MessageController extends Controller
             'company' => 'nullable|string|max:255',
             'subject' => 'required|string|max:255',
             'message' => 'required|string|min:10',
+            'priority' => 'nullable|in:normal,urgent',
             'attachments.*' => 'nullable|file|max:5120|mimes:pdf,doc,docx,jpg,jpeg,png',
         ]);
 
@@ -334,6 +326,12 @@ class MessageController extends Controller
 
             // Check if user exists
             $user = User::where('email', $validated['email'])->first();
+            
+            // Determine priority and check for urgent keywords
+            $priority = $validated['priority'] ?? 'normal';
+            $isUrgent = $priority === 'urgent' || 
+                       str_contains(strtolower($validated['subject']), 'urgent') ||
+                       str_contains(strtolower($validated['subject']), 'emergency');
             
             // Create the message
             $message = Message::create([
@@ -344,6 +342,7 @@ class MessageController extends Controller
                 'company' => $validated['company'] ?? null,
                 'subject' => $validated['subject'],
                 'message' => $validated['message'],
+                'priority' => $isUrgent ? 'urgent' : 'normal',
                 'user_id' => $user?->id,
                 'is_read' => false,
                 'is_replied' => false,
@@ -364,36 +363,31 @@ class MessageController extends Controller
                 }
             }
 
-            // Send notifications based on email settings
-            if (settings('message_email_enabled', true)) {
-                try {
-                    // Send auto-reply to sender if enabled
-                    if (settings('message_auto_reply_enabled', true)) {
-                        Notification::route('mail', $validated['email'])
-                            ->notify(new MessageAutoReplyNotification($message));
-                    }
-
-                    // Send notification to admin if enabled
-                    if (settings('notify_admin_new_message', true)) {
-                        $adminEmails = $this->getAdminNotificationEmails();
-                        foreach ($adminEmails as $adminEmail) {
-                            Notification::route('mail', $adminEmail)
-                                ->notify(Notifications::send('message.created', $message));
-                        }
-                    }
-
-                    Log::info('Public message received and notifications sent', [
-                        'message_id' => $message->id,
-                        'sender_email' => $validated['email'],
-                        'auto_reply_sent' => settings('message_auto_reply_enabled', true),
-                        'admin_notified' => settings('notify_admin_new_message', true)
-                    ]);
-
-                } catch (\Exception $e) {
-                    Log::error('Failed to send message notifications: ' . $e->getMessage(), [
-                        'message_id' => $message->id
-                    ]);
+            // Send notifications using centralized system
+            try {
+                // Create temporary notifiable for sender
+                $senderNotifiable = new \App\Services\TempNotifiable($validated['email'], $validated['name']);
+                
+                // Send auto-reply to sender if enabled
+                if (settings('message_auto_reply_enabled', true)) {
+                    Notifications::send('message.auto_reply', $message, $senderNotifiable);
                 }
+
+                // Send notification to admin - use appropriate type based on urgency
+                $notificationType = $isUrgent ? 'message.urgent' : 'message.created';
+                Notifications::send($notificationType, $message);
+
+                Log::info('Public message received and notifications sent', [
+                    'message_id' => $message->id,
+                    'sender_email' => $validated['email'],
+                    'is_urgent' => $isUrgent,
+                    'auto_reply_sent' => settings('message_auto_reply_enabled', true)
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('Failed to send message notifications: ' . $e->getMessage(), [
+                    'message_id' => $message->id
+                ]);
             }
 
             DB::commit();
@@ -403,7 +397,8 @@ class MessageController extends Controller
                 'message' => 'Thank you for your message! We will get back to you soon.',
                 'data' => [
                     'id' => $message->id,
-                    'auto_reply_sent' => settings('message_auto_reply_enabled', true)
+                    'auto_reply_sent' => settings('message_auto_reply_enabled', true),
+                    'is_urgent' => $isUrgent
                 ]
             ]);
 
@@ -464,7 +459,7 @@ class MessageController extends Controller
     }
 
     /**
-     * Reply to a message with integrated email settings.
+     * Reply to a message using centralized notifications.
      */
     public function reply(Request $request, Message $message)
     {
@@ -512,25 +507,31 @@ class MessageController extends Controller
                 }
             }
 
-            // Send notification if email is enabled
-            if (settings('message_email_enabled', true)) {
-                try {
-                    if ($message->user) {
-                        $message->user->notify(new MessageReplyNotification($reply));
-                    } else {
-                        Notification::route('mail', $message->email)
-                            ->notify(new MessageReplyNotification($reply));
-                    }
-
-                    Log::info('Message reply sent', [
-                        'reply_id' => $reply->id,
-                        'original_message_id' => $message->id,
-                        'recipient_email' => $message->email
-                    ]);
-
-                } catch (\Exception $e) {
-                    Log::error('Failed to send reply notification: ' . $e->getMessage());
+            // Send notification using centralized system
+            try {
+                if ($message->user) {
+                    // Send to registered client
+                    Notifications::send('message.reply', $reply, $message->user);
+                } else {
+                    // Send to custom email
+                    $tempNotifiable = new \App\Services\TempNotifiable($message->email, $message->name);
+                    Notifications::send('message.reply', $reply, $tempNotifiable);
                 }
+
+                Log::info('Message reply sent', [
+                    'reply_id' => $reply->id,
+                    'original_message_id' => $message->id,
+                    'recipient_email' => $message->email
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('Failed to send reply notification: ' . $e->getMessage());
+                
+                // Still commit but show warning
+                DB::commit();
+                
+                return redirect()->route('admin.messages.show', $message)
+                    ->with('warning', 'Reply saved but there was an issue sending the email notification.');
             }
 
             DB::commit();
@@ -538,9 +539,6 @@ class MessageController extends Controller
             $successMessage = 'Reply sent successfully!';
             if ($attachmentCount > 0) {
                 $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
-            }
-            if (!settings('message_email_enabled', true)) {
-                $successMessage .= " (Note: Email sending is disabled in settings)";
             }
 
             return redirect()->route('admin.messages.show', $message)
@@ -692,6 +690,62 @@ class MessageController extends Controller
     }
 
     /**
+     * Handle email reply webhook (for external email providers).
+     */
+    public function handleEmailReply(Request $request)
+    {
+        try {
+            // This method would handle webhooks from email providers
+            // when clients reply directly to email notifications
+            
+            $validated = $request->validate([
+                'message_id' => 'required',
+                'from_email' => 'required|email',
+                'subject' => 'required|string',
+                'body' => 'required|string',
+                'in_reply_to' => 'nullable|string',
+            ]);
+
+            // Find the original message
+            $originalMessage = Message::where('id', $validated['message_id'])
+                ->orWhere('email', $validated['from_email'])
+                ->first();
+
+            if (!$originalMessage) {
+                Log::warning('Email reply received but original message not found', $validated);
+                return response()->json(['status' => 'not_found'], 404);
+            }
+
+            // Create reply message
+            $reply = Message::create([
+                'type' => 'client_to_admin',
+                'name' => $originalMessage->name,
+                'email' => $validated['from_email'],
+                'subject' => $validated['subject'],
+                'message' => $validated['body'],
+                'parent_id' => $originalMessage->id,
+                'user_id' => $originalMessage->user_id,
+                'is_read' => false,
+                'is_replied' => false,
+            ]);
+
+            // Send notification to admin about the reply
+            Notifications::send('message.created', $reply);
+
+            Log::info('Email reply processed successfully', [
+                'reply_id' => $reply->id,
+                'original_message_id' => $originalMessage->id
+            ]);
+
+            return response()->json(['status' => 'processed', 'message_id' => $reply->id]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to process email reply webhook: ' . $e->getMessage());
+            return response()->json(['status' => 'error'], 500);
+        }
+    }
+
+    /**
      * Get dashboard statistics for messages.
      */
     public function getStats()
@@ -701,48 +755,7 @@ class MessageController extends Controller
             'unread_messages' => Message::excludeAdminMessages()->unread()->count(),
             'unreplied_messages' => Message::excludeAdminMessages()->unreplied()->count(),
             'today_messages' => Message::excludeAdminMessages()->whereDate('created_at', today())->count(),
-            'urgent_messages' => Message::excludeAdminMessages()->unread()->unreplied()->count(),
+            'urgent_messages' => Message::excludeAdminMessages()->where('priority', 'urgent')->unread()->count(),
         ];
-    }
-
-    /**
-     * Get admin notification emails from settings
-     */
-    private function getAdminNotificationEmails(): array
-    {
-        $emails = [];
-        
-        // Primary admin email
-        if ($adminEmail = settings('admin_email')) {
-            $emails[] = $adminEmail;
-        }
-        
-        // Support email
-        if ($supportEmail = settings('support_email')) {
-            $emails[] = $supportEmail;
-        }
-        
-        // Additional notification emails from JSON setting
-        $notificationEmails = settings('notification_emails');
-        if ($notificationEmails) {
-            if (is_string($notificationEmails)) {
-                $notificationEmails = json_decode($notificationEmails, true);
-            }
-            if (is_array($notificationEmails)) {
-                $emails = array_merge($emails, $notificationEmails);
-            }
-        }
-        
-        // Remove duplicates and filter valid emails
-        $emails = array_unique(array_filter($emails, function($email) {
-            return filter_var($email, FILTER_VALIDATE_EMAIL);
-        }));
-        
-        // Fallback to config if no emails found
-        if (empty($emails)) {
-            $emails[] = config('mail.from.address', 'admin@example.com');
-        }
-        
-        return $emails;
     }
 }

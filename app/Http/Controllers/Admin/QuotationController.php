@@ -9,17 +9,12 @@ use App\Models\Service;
 use App\Models\User;
 use App\Models\Project;
 use App\Services\QuotationService;
-use App\Mail\QuotationStatusUpdated;
-use App\Mail\QuotationResponse;
-// Replaced by centralized notification system
-use App\Notifications\QuotationConfirmationNotification;
-use App\Notifications\QuotationStatusUpdatedNotification;
+use App\Services\TempNotifiable;
+use App\Facades\Notifications;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 use Carbon\Carbon;
 
 class QuotationController extends Controller
@@ -32,7 +27,7 @@ class QuotationController extends Controller
     }
 
     /**
-     * Display a listing of quotations with enhanced filtering (following message management approach)
+     * Display a listing of quotations with enhanced filtering
      */
     public function index(Request $request)
     {
@@ -93,7 +88,7 @@ class QuotationController extends Controller
         
         $quotations = $query->orderBy($sortField, $sortDirection)->paginate(15);
         
-        // Enhanced statistics similar to message management
+        // Enhanced statistics
         $statusCounts = [
             'total' => Quotation::count(),
             'pending' => Quotation::where('status', 'pending')->count(),
@@ -111,7 +106,7 @@ class QuotationController extends Controller
             'today' => Quotation::whereDate('created_at', Carbon::today())->count(),
         ];
         
-        // Calculate needs attention (high priority + overdue)
+        // Calculate priority and attention metrics
         $statusCounts['urgent'] = Quotation::where('priority', 'urgent')
             ->where('status', 'pending')
             ->count();
@@ -148,7 +143,7 @@ class QuotationController extends Controller
     }
 
     /**
-     * Store quotation from public form with integrated email settings
+     * Store quotation from public form with centralized notifications
      */
     public function store(Request $request)
     {
@@ -163,7 +158,7 @@ class QuotationController extends Controller
             'requirements' => 'required|string',
             'budget_range' => 'nullable|string|max:100',
             'start_date' => 'nullable|date|after:today',
-            'attachments.*' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png', // 10MB max per file
+            'attachments.*' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png',
         ]);
 
         try {
@@ -188,51 +183,52 @@ class QuotationController extends Controller
             // Create the quotation
             $quotation = Quotation::create($validated);
 
-            // Handle file attachments using QuotationAttachment
+            // Handle file attachments
             $attachmentCount = 0;
             if ($request->hasFile('attachments')) {
                 foreach ($request->file('attachments') as $file) {
-                    if ($attachmentCount < 5) { // Limit attachments
+                    if ($attachmentCount < 5) {
                         QuotationAttachment::createFromUploadedFile($file, $quotation);
                         $attachmentCount++;
                     }
                 }
             }
 
-            // Send notification emails based on settings
-            if (settings('quotation_email_enabled', true)) {
-                try {
-                    // Send confirmation to client if enabled
-                    if (settings('quotation_client_confirmation_enabled', true)) {
-                        Notification::route('mail', $quotation->email)
-                            ->notify(new QuotationConfirmationNotification($quotation));
-                        
-                        Log::info('Quotation confirmation sent to client', [
-                            'quotation_id' => $quotation->id,
-                            'client_email' => $quotation->email
-                        ]);
-                    }
+            // Send notifications using centralized system
+            try {
+                // Create appropriate notifiable
+                $clientNotifiable = $quotation->client 
+                    ? $quotation->client 
+                    : TempNotifiable::forQuotation($quotation->email, $quotation->name, [
+                        'quotation_id' => $quotation->id,
+                        'project_type' => $quotation->project_type
+                    ]);
+
+                // Send confirmation to client
+                if (settings('quotation_client_confirmation_enabled', true)) {
+                    Notifications::send('quotation.confirmation', $quotation, $clientNotifiable);
                     
-                    // Send notification to admin if enabled
-                    if (settings('notify_admin_new_quotation', true)) {
-                        $adminEmails = $this->getAdminNotificationEmails();
-                        foreach ($adminEmails as $adminEmail) {
-                            Notification::route('mail', $adminEmail)
-                                ->notify(Notifications::send('quotation.created', $quotation));
-                        }
-                        
-                        Log::info('Quotation notification sent to admin', [
-                            'quotation_id' => $quotation->id,
-                            'admin_emails' => $adminEmails
-                        ]);
-                    }
+                    Log::info('Quotation confirmation sent to client', [
+                        'quotation_id' => $quotation->id,
+                        'client_email' => $quotation->email,
+                        'is_registered' => $quotation->client ? true : false
+                    ]);
+                }
+                
+                // Send notification to admin
+                if (settings('notify_admin_new_quotation', true)) {
+                    Notifications::send('quotation.created', $quotation);
                     
-                } catch (\Exception $e) {
-                    Log::error('Failed to send quotation notification emails: ' . $e->getMessage(), [
+                    Log::info('Quotation notification sent to admin', [
                         'quotation_id' => $quotation->id
                     ]);
-                    // Don't fail the request if email fails
                 }
+                
+            } catch (\Exception $e) {
+                Log::error('Failed to send quotation notification: ' . $e->getMessage(), [
+                    'quotation_id' => $quotation->id
+                ]);
+                // Continue without failing the request
             }
 
             DB::commit();
@@ -243,7 +239,7 @@ class QuotationController extends Controller
                 'name' => $quotation->name,
                 'email' => $quotation->email,
                 'created_at' => $quotation->created_at,
-                'confirmation_sent' => settings('quotation_client_confirmation_enabled', true) && settings('quotation_email_enabled', true)
+                'confirmation_sent' => settings('quotation_client_confirmation_enabled', true)
             ]);
 
             return redirect()->route('quotation.thank-you');
@@ -259,7 +255,7 @@ class QuotationController extends Controller
     }
 
     /**
-     * Admin store method for creating quotations from admin panel with email integration.
+     * Admin store method for creating quotations with centralized notifications
      */
     public function adminStore(Request $request)
     {
@@ -284,7 +280,7 @@ class QuotationController extends Controller
             'internal_notes' => 'nullable|string',
             'additional_info' => 'nullable|string',
             'attachments.*' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png',
-            'send_notification' => 'boolean', // Whether to send email to client
+            'send_notification' => 'boolean',
         ]);
 
         try {
@@ -301,42 +297,44 @@ class QuotationController extends Controller
             // Create the quotation
             $quotation = Quotation::create($validated);
 
-            // Handle file attachments using QuotationAttachment
+            // Handle file attachments
             $attachmentCount = 0;
             if ($request->hasFile('attachments')) {
                 foreach ($request->file('attachments') as $file) {
-                    if ($attachmentCount < 10) { // Admin can attach more files
+                    if ($attachmentCount < 10) {
                         QuotationAttachment::createFromUploadedFile($file, $quotation);
                         $attachmentCount++;
                     }
                 }
             }
 
-            // Send notification email to client if requested and email is enabled
-            if ($request->boolean('send_notification', false) && settings('quotation_email_enabled', true)) {
+            // Send notification using centralized system
+            if ($request->boolean('send_notification', false)) {
                 try {
-                    if ($validated['status'] === 'pending') {
-                        // Send confirmation notification
-                        if (settings('quotation_client_confirmation_enabled', true)) {
-                            Notification::route('mail', $quotation->email)
-                                ->notify(new QuotationConfirmationNotification($quotation));
-                        }
-                    } else {
-                        // Send status update notification
-                        if (settings('quotation_status_updates_enabled', true)) {
-                            Notification::route('mail', $quotation->email)
-                                ->notify(new QuotationStatusUpdatedNotification($quotation, null, $validated['status']));
-                        }
-                    }
+                    // Create appropriate notifiable
+                    $clientNotifiable = $quotation->client 
+                        ? $quotation->client 
+                        : TempNotifiable::forQuotation($quotation->email, $quotation->name);
+
+                    // Send appropriate notification based on status
+                    $notificationType = match($validated['status']) {
+                        'pending' => 'quotation.confirmation',
+                        'approved' => 'quotation.approved',
+                        'rejected' => 'quotation.rejected',
+                        default => 'quotation.status_updated'
+                    };
+
+                    Notifications::send($notificationType, $quotation, $clientNotifiable);
                     
                     Log::info('Admin-created quotation notification sent', [
                         'quotation_id' => $quotation->id,
                         'status' => $validated['status'],
+                        'notification_type' => $notificationType,
                         'client_email' => $quotation->email
                     ]);
                     
                 } catch (\Exception $e) {
-                    Log::error('Failed to send quotation status email: ' . $e->getMessage(), [
+                    Log::error('Failed to send admin quotation notification: ' . $e->getMessage(), [
                         'quotation_id' => $quotation->id
                     ]);
                 }
@@ -351,10 +349,8 @@ class QuotationController extends Controller
             }
 
             $successMessage = 'Quotation created successfully!';
-            if ($request->boolean('send_notification', false) && settings('quotation_email_enabled', true)) {
+            if ($request->boolean('send_notification', false)) {
                 $successMessage .= ' Client has been notified via email.';
-            } elseif (!settings('quotation_email_enabled', true)) {
-                $successMessage .= ' (Email notifications are disabled)';
             }
 
             return redirect()->route('admin.quotations.show', $quotation)
@@ -395,7 +391,7 @@ class QuotationController extends Controller
                 ->get();
         }
         
-        // Get similar quotations (same service or project type)
+        // Get similar quotations
         $similarQuotations = Quotation::where('id', '!=', $quotation->id)
             ->where(function ($query) use ($quotation) {
                 $query->where('service_id', $quotation->service_id)
@@ -425,7 +421,7 @@ class QuotationController extends Controller
     }
 
     /**
-     * Update quotation with email integration
+     * Update quotation with centralized notifications
      */
     public function update(Request $request, Quotation $quotation)
     {
@@ -448,7 +444,7 @@ class QuotationController extends Controller
             'estimated_timeline' => 'nullable|string|max:255',
             'internal_notes' => 'nullable|string',
             'additional_info' => 'nullable|string',
-            'send_notification' => 'boolean', // Whether to send status update email
+            'send_notification' => 'boolean',
         ]);
         
         try {
@@ -458,24 +454,32 @@ class QuotationController extends Controller
             $quotation->update($validated);
             
             // Send notification if status changed and notification is requested
-            if ($oldStatus !== $validated['status'] && 
-                $request->boolean('send_notification', false) && 
-                settings('quotation_email_enabled', true) && 
-                settings('quotation_status_updates_enabled', true)) {
-                
+            if ($oldStatus !== $validated['status'] && $request->boolean('send_notification', false)) {
                 try {
-                    Notification::route('mail', $quotation->email)
-                        ->notify(new QuotationStatusUpdatedNotification($quotation, $oldStatus, $validated['status']));
+                    // Create appropriate notifiable
+                    $clientNotifiable = $quotation->client 
+                        ? $quotation->client 
+                        : TempNotifiable::forQuotation($quotation->email, $quotation->name);
+
+                    // Send status-specific notification
+                    $notificationType = match($validated['status']) {
+                        'approved' => 'quotation.approved',
+                        'rejected' => 'quotation.rejected',
+                        default => 'quotation.status_updated'
+                    };
+
+                    Notifications::send($notificationType, $quotation, $clientNotifiable);
                     
                     Log::info('Quotation status update notification sent', [
                         'quotation_id' => $quotation->id,
                         'old_status' => $oldStatus,
                         'new_status' => $validated['status'],
+                        'notification_type' => $notificationType,
                         'client_email' => $quotation->email
                     ]);
                     
                 } catch (\Exception $e) {
-                    Log::error('Failed to send quotation status email: ' . $e->getMessage(), [
+                    Log::error('Failed to send quotation update notification: ' . $e->getMessage(), [
                         'quotation_id' => $quotation->id
                     ]);
                 }
@@ -491,11 +495,7 @@ class QuotationController extends Controller
             
             $successMessage = 'Quotation updated successfully!';
             if ($oldStatus !== $validated['status'] && $request->boolean('send_notification', false)) {
-                if (settings('quotation_email_enabled', true)) {
-                    $successMessage .= ' Client has been notified of status change.';
-                } else {
-                    $successMessage .= ' (Email notifications are disabled)';
-                }
+                $successMessage .= ' Client has been notified of status change.';
             }
             
             return redirect()->route('admin.quotations.show', $quotation)
@@ -512,7 +512,7 @@ class QuotationController extends Controller
     }
 
     /**
-     * Quick status update with integrated email notifications
+     * Quick status update with centralized notifications
      */
     public function updateStatus(Request $request, Quotation $quotation)
     {
@@ -546,24 +546,32 @@ class QuotationController extends Controller
             
             $quotation->update($updateData);
             
-            // Send notification email if requested and enabled
-            if ($oldStatus !== $request->status && 
-                $request->boolean('send_notification', true) && // Default to true for status updates
-                settings('quotation_email_enabled', true) &&
-                settings('quotation_status_updates_enabled', true)) {
-                
+            // Send notification using centralized system
+            if ($oldStatus !== $request->status && $request->boolean('send_notification', true)) {
                 try {
-                    Notification::route('mail', $quotation->email)
-                        ->notify(new QuotationStatusUpdatedNotification($quotation, $oldStatus, $request->status));
+                    // Create appropriate notifiable
+                    $clientNotifiable = $quotation->client 
+                        ? $quotation->client 
+                        : TempNotifiable::forQuotation($quotation->email, $quotation->name);
+
+                    // Send status-specific notification
+                    $notificationType = match($request->status) {
+                        'approved' => 'quotation.approved',
+                        'rejected' => 'quotation.rejected', 
+                        default => 'quotation.status_updated'
+                    };
+
+                    Notifications::send($notificationType, $quotation, $clientNotifiable);
                     
                     Log::info('Quick status update notification sent', [
                         'quotation_id' => $quotation->id,
                         'old_status' => $oldStatus,
-                        'new_status' => $request->status
+                        'new_status' => $request->status,
+                        'notification_type' => $notificationType
                     ]);
                     
                 } catch (\Exception $e) {
-                    Log::error('Failed to send status update email: ' . $e->getMessage());
+                    Log::error('Failed to send status update notification: ' . $e->getMessage());
                 }
             }
             
@@ -575,7 +583,7 @@ class QuotationController extends Controller
             }
             
             $successMessage = 'Quotation status updated to ' . ucfirst($request->status) . '!';
-            if ($request->boolean('send_notification', true) && settings('quotation_email_enabled', true)) {
+            if ($request->boolean('send_notification', true)) {
                 $successMessage .= ' Client has been notified.';
             }
             
@@ -591,7 +599,7 @@ class QuotationController extends Controller
     }
 
     /**
-     * Send custom response email
+     * Send custom response using centralized notifications
      */
     public function sendResponse(Request $request, Quotation $quotation)
     {
@@ -601,28 +609,18 @@ class QuotationController extends Controller
             'include_quotation' => 'boolean',
         ]);
         
-        if (!settings('quotation_email_enabled', true)) {
-            return redirect()->back()
-                ->with('error', 'Email sending is disabled in settings.');
-        }
-        
         try {
-            // Create a custom email using Mail facade
-            Mail::send([], [], function ($message) use ($request, $quotation) {
-                $message->to($quotation->email, $quotation->name)
-                    ->subject($request->email_subject)
-                    ->html(nl2br(e($request->email_message)))
-                    ->from(
-                        settings('mail_from_address', config('mail.from.address')),
-                        settings('mail_from_name', config('mail.from.name'))
-                    )
-                    ->replyTo(settings('quotation_reply_to', settings('admin_email')));
-                    
-                // Add CC if configured
-                if ($ccEmail = settings('quotation_cc_email')) {
-                    $message->cc($ccEmail);
-                }
-            });
+            // Create appropriate notifiable
+            $clientNotifiable = $quotation->client 
+                ? $quotation->client 
+                : TempNotifiable::forQuotation($quotation->email, $quotation->name, [
+                    'custom_subject' => $request->email_subject,
+                    'custom_message' => $request->email_message,
+                    'include_quotation' => $request->boolean('include_quotation', false)
+                ]);
+
+            // Send custom response notification
+            Notifications::send('quotation.custom_response', $quotation, $clientNotifiable);
             
             // Log the communication
             $quotation->update([
@@ -642,7 +640,7 @@ class QuotationController extends Controller
                 ->with('success', 'Response email sent successfully!');
                 
         } catch (\Exception $e) {
-            Log::error('Failed to send quotation response email: ' . $e->getMessage());
+            Log::error('Failed to send quotation response: ' . $e->getMessage());
             return redirect()->back()
                 ->with('error', 'Failed to send email. Please try again.');
         }
@@ -757,13 +755,13 @@ class QuotationController extends Controller
     }
 
     /**
-     * Bulk actions with email integration
+     * Bulk actions with centralized notifications
      */
     public function bulkAction(Request $request)
     {
         $request->validate([
             'action' => 'required|in:approve,reject,delete,change_status',
-            'quotation_ids' => 'required|string', // Comma-separated IDs
+            'quotation_ids' => 'required|string',
             'new_status' => 'required_if:action,change_status|in:pending,reviewed,approved,rejected',
             'send_notifications' => 'boolean',
         ]);
@@ -785,9 +783,7 @@ class QuotationController extends Controller
         try {
             DB::beginTransaction();
             
-            $emailsEnabled = settings('quotation_email_enabled', true) && 
-                           settings('quotation_status_updates_enabled', true) &&
-                           $request->boolean('send_notifications', false);
+            $sendNotifications = $request->boolean('send_notifications', false);
             
             switch ($request->action) {
                 case 'approve':
@@ -799,13 +795,16 @@ class QuotationController extends Controller
                             'last_communication_at' => now()
                         ]);
                         
-                        // Send notification email if enabled
-                        if ($emailsEnabled) {
+                        // Send notification using centralized system
+                        if ($sendNotifications) {
                             try {
-                                Notification::route('mail', $quotation->email)
-                                    ->notify(new QuotationStatusUpdatedNotification($quotation, $oldStatus, 'approved'));
+                                $clientNotifiable = $quotation->client 
+                                    ? $quotation->client 
+                                    : TempNotifiable::forQuotation($quotation->email, $quotation->name);
+                                
+                                Notifications::send('quotation.approved', $quotation, $clientNotifiable);
                             } catch (\Exception $e) {
-                                Log::error('Failed to send bulk approval email for quotation ' . $quotation->id);
+                                Log::error('Failed to send bulk approval notification for quotation ' . $quotation->id);
                             }
                         }
                     }
@@ -820,13 +819,16 @@ class QuotationController extends Controller
                             'last_communication_at' => now()
                         ]);
                         
-                        // Send notification email if enabled
-                        if ($emailsEnabled) {
+                        // Send notification using centralized system
+                        if ($sendNotifications) {
                             try {
-                                Notification::route('mail', $quotation->email)
-                                    ->notify(new QuotationStatusUpdatedNotification($quotation, $oldStatus, 'rejected'));
+                                $clientNotifiable = $quotation->client 
+                                    ? $quotation->client 
+                                    : TempNotifiable::forQuotation($quotation->email, $quotation->name);
+                                
+                                Notifications::send('quotation.rejected', $quotation, $clientNotifiable);
                             } catch (\Exception $e) {
-                                Log::error('Failed to send bulk rejection email for quotation ' . $quotation->id);
+                                Log::error('Failed to send bulk rejection notification for quotation ' . $quotation->id);
                             }
                         }
                     }
@@ -849,13 +851,22 @@ class QuotationController extends Controller
                         
                         $quotation->update($updateData);
                         
-                        // Send notification email if enabled
-                        if ($emailsEnabled && $oldStatus !== $request->new_status) {
+                        // Send notification using centralized system
+                        if ($sendNotifications && $oldStatus !== $request->new_status) {
                             try {
-                                Notification::route('mail', $quotation->email)
-                                    ->notify(new QuotationStatusUpdatedNotification($quotation, $oldStatus, $request->new_status));
+                                $clientNotifiable = $quotation->client 
+                                    ? $quotation->client 
+                                    : TempNotifiable::forQuotation($quotation->email, $quotation->name);
+                                
+                                $notificationType = match($request->new_status) {
+                                    'approved' => 'quotation.approved',
+                                    'rejected' => 'quotation.rejected',
+                                    default => 'quotation.status_updated'
+                                };
+                                
+                                Notifications::send($notificationType, $quotation, $clientNotifiable);
                             } catch (\Exception $e) {
-                                Log::error('Failed to send bulk status update email for quotation ' . $quotation->id);
+                                Log::error('Failed to send bulk status update notification for quotation ' . $quotation->id);
                             }
                         }
                     }
@@ -879,10 +890,8 @@ class QuotationController extends Controller
             
             DB::commit();
             
-            if ($emailsEnabled && in_array($request->action, ['approve', 'reject', 'change_status'])) {
+            if ($sendNotifications && in_array($request->action, ['approve', 'reject', 'change_status'])) {
                 $message .= ' Email notifications have been sent to clients.';
-            } elseif (!settings('quotation_email_enabled', true)) {
-                $message .= ' (Email notifications are disabled)';
             }
             
             return redirect()->back()->with('success', $message);
@@ -904,7 +913,7 @@ class QuotationController extends Controller
         try {
             DB::beginTransaction();
             
-            // Delete attachments (this will also delete files from storage due to model boot method)
+            // Delete attachments
             $quotation->attachments()->delete();
             
             $quotation->delete();
@@ -973,84 +982,216 @@ class QuotationController extends Controller
     }
 
     /**
-     * Get admin notification emails from settings
+     * Quick approve quotation with notification
      */
-    private function getAdminNotificationEmails(): array
+    public function quickApprove(Quotation $quotation)
     {
-        $emails = [];
-        
-        // Primary admin email
-        if ($adminEmail = settings('admin_email')) {
-            $emails[] = $adminEmail;
-        }
-        
-        // Support email
-        if ($supportEmail = settings('support_email')) {
-            $emails[] = $supportEmail;
-        }
-        
-        // Quotation-specific CC email
-        if ($quotationCc = settings('quotation_cc_email')) {
-            $emails[] = $quotationCc;
-        }
-        
-        // Additional notification emails from JSON setting
-        $notificationEmails = settings('notification_emails');
-        if ($notificationEmails) {
-            if (is_string($notificationEmails)) {
-                $notificationEmails = json_decode($notificationEmails, true);
+        try {
+            DB::beginTransaction();
+            
+            $quotation->update([
+                'status' => 'approved',
+                'approved_at' => now(),
+                'last_communication_at' => now()
+            ]);
+            
+            // Send approval notification using centralized system
+            try {
+                $clientNotifiable = $quotation->client 
+                    ? $quotation->client 
+                    : TempNotifiable::forQuotation($quotation->email, $quotation->name);
+                
+                Notifications::send('quotation.approved', $quotation, $clientNotifiable);
+                
+                Log::info('Quick approval notification sent', [
+                    'quotation_id' => $quotation->id,
+                    'client_email' => $quotation->email
+                ]);
+                
+            } catch (\Exception $e) {
+                Log::error('Failed to send quick approval notification: ' . $e->getMessage());
             }
-            if (is_array($notificationEmails)) {
-                $emails = array_merge($emails, $notificationEmails);
-            }
+            
+            DB::commit();
+            
+            return redirect()->back()->with('success', 'Quotation approved successfully! Client has been notified.');
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to quick approve quotation: ' . $e->getMessage());
+            
+            return redirect()->back()->with('error', 'Failed to approve quotation. Please try again.');
         }
-        
-        // Remove duplicates and filter valid emails
-        $emails = array_unique(array_filter($emails, function($email) {
-            return filter_var($email, FILTER_VALIDATE_EMAIL);
-        }));
-        
-        // Fallback to config if no emails found
-        if (empty($emails)) {
-            $emails[] = config('mail.from.address', 'admin@example.com');
-        }
-        
-        return $emails;
     }
 
     /**
-     * Check quotation email sending limits and rate limiting
+     * Quick reject quotation with notification
      */
-    private function checkEmailLimits(): bool
+    public function quickReject(Quotation $quotation)
     {
-        $dailyLimit = (int) settings('daily_email_limit', 500);
-        $hourlyLimit = (int) settings('email_rate_limit_per_hour', 50);
-        
-        // Check daily limit
-        $todayCount = \DB::table('jobs')
-            ->where('queue', 'default')
-            ->whereDate('created_at', today())
-            ->where('payload', 'like', '%QuotationStatusUpdatedNotification%')
-            ->count();
+        try {
+            DB::beginTransaction();
             
-        if ($todayCount >= $dailyLimit) {
-            Log::warning('Daily email limit reached', ['count' => $todayCount, 'limit' => $dailyLimit]);
-            return false;
+            $quotation->update([
+                'status' => 'rejected',
+                'last_communication_at' => now()
+            ]);
+            
+            // Send rejection notification using centralized system
+            try {
+                $clientNotifiable = $quotation->client 
+                    ? $quotation->client 
+                    : TempNotifiable::forQuotation($quotation->email, $quotation->name);
+                
+                Notifications::send('quotation.rejected', $quotation, $clientNotifiable);
+                
+                Log::info('Quick rejection notification sent', [
+                    'quotation_id' => $quotation->id,
+                    'client_email' => $quotation->email
+                ]);
+                
+            } catch (\Exception $e) {
+                Log::error('Failed to send quick rejection notification: ' . $e->getMessage());
+            }
+            
+            DB::commit();
+            
+            return redirect()->back()->with('success', 'Quotation rejected successfully! Client has been notified.');
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to quick reject quotation: ' . $e->getMessage());
+            
+            return redirect()->back()->with('error', 'Failed to reject quotation. Please try again.');
+        }
+    }
+
+    /**
+     * Mark quotation as reviewed
+     */
+    public function markAsReviewed(Quotation $quotation)
+    {
+        try {
+            $quotation->update([
+                'status' => 'reviewed',
+                'reviewed_at' => now(),
+                'last_communication_at' => now()
+            ]);
+            
+            return redirect()->back()->with('success', 'Quotation marked as reviewed!');
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to mark quotation as reviewed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to update quotation status.');
+        }
+    }
+
+    /**
+     * Update quotation priority
+     */
+    public function updatePriority(Request $request, Quotation $quotation)
+    {
+        $request->validate([
+            'priority' => 'required|in:low,normal,high,urgent'
+        ]);
+        
+        try {
+            $quotation->update(['priority' => $request->priority]);
+            
+            return redirect()->back()->with('success', 'Quotation priority updated to ' . ucfirst($request->priority) . '!');
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to update quotation priority: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to update priority.');
+        }
+    }
+
+    /**
+     * Link quotation to existing client
+     */
+    public function linkClient(Request $request, Quotation $quotation)
+    {
+        $request->validate([
+            'client_id' => 'required|exists:users,id'
+        ]);
+        
+        try {
+            $client = User::findOrFail($request->client_id);
+            
+            if (!$client->hasRole('client')) {
+                return redirect()->back()->with('error', 'Selected user is not a client.');
+            }
+            
+            $quotation->update(['client_id' => $client->id]);
+            
+            return redirect()->back()->with('success', 'Quotation linked to client: ' . $client->name);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to link quotation to client: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to link client.');
+        }
+    }
+
+    /**
+     * View quotation communications history
+     */
+    public function communications(Quotation $quotation)
+    {
+        // Get all communications related to this quotation
+        $communications = collect();
+        
+        // Add quotation creation
+        $communications->push([
+            'type' => 'quotation_created',
+            'date' => $quotation->created_at,
+            'description' => 'Quotation submitted',
+            'details' => "Quotation request received from {$quotation->name}",
+        ]);
+        
+        // Add status changes
+        if ($quotation->reviewed_at) {
+            $communications->push([
+                'type' => 'status_change',
+                'date' => $quotation->reviewed_at,
+                'description' => 'Quotation reviewed',
+                'details' => 'Quotation status changed to reviewed',
+            ]);
         }
         
-        // Check hourly limit
-        $hourlyCount = \DB::table('jobs')
-            ->where('queue', 'default')
-            ->where('created_at', '>=', now()->subHour())
-            ->where('payload', 'like', '%QuotationStatusUpdatedNotification%')
-            ->count();
-            
-        if ($hourlyCount >= $hourlyLimit) {
-            Log::warning('Hourly email limit reached', ['count' => $hourlyCount, 'limit' => $hourlyLimit]);
-            return false;
+        if ($quotation->approved_at) {
+            $communications->push([
+                'type' => 'status_change',
+                'date' => $quotation->approved_at,
+                'description' => 'Quotation approved',
+                'details' => 'Quotation status changed to approved',
+            ]);
         }
         
-        return true;
+        // Add communication notes from admin_notes
+        if ($quotation->admin_notes) {
+            $notes = explode("\n\n", $quotation->admin_notes);
+            foreach ($notes as $note) {
+                if (str_contains($note, 'Email sent on')) {
+                    $lines = explode("\n", $note);
+                    $dateLine = $lines[0] ?? '';
+                    $subjectLine = $lines[1] ?? '';
+                    
+                    if (preg_match('/Email sent on (.+):/', $dateLine, $matches)) {
+                        $communications->push([
+                            'type' => 'email_sent',
+                            'date' => Carbon::parse($matches[1]),
+                            'description' => 'Email sent to client',
+                            'details' => $subjectLine,
+                        ]);
+                    }
+                }
+            }
+        }
+        
+        // Sort by date
+        $communications = $communications->sortBy('date');
+        
+        return view('admin.quotations.communications', compact('quotation', 'communications'));
     }
 
     /**
@@ -1069,5 +1210,24 @@ class QuotationController extends Controller
         session()->forget('quotation_success');
         
         return view('pages.quotation-thank-you', compact('quotationData'));
+    }
+
+    /**
+     * Get quotation counts for dashboard widgets
+     */
+    public function getCounts()
+    {
+        return response()->json([
+            'total' => Quotation::count(),
+            'pending' => Quotation::where('status', 'pending')->count(),
+            'approved' => Quotation::where('status', 'approved')->count(),
+            'needs_attention' => Quotation::where('status', 'pending')
+                ->where(function($query) {
+                    $query->whereIn('priority', ['high', 'urgent'])
+                          ->orWhere('created_at', '<', Carbon::now()->subDays(3));
+                })
+                ->count(),
+            'today' => Quotation::whereDate('created_at', Carbon::today())->count(),
+        ]);
     }
 }
