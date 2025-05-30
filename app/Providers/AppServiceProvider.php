@@ -15,9 +15,9 @@ use App\Models\Post;
 use App\Models\PostCategory;
 use App\Models\Project;
 use App\Models\ChatSession;
-use App\View\Composers\ChatSidebarComposer;
 use App\Services\ClientAccessService;
 use App\Services\FileUploadService;
+use App\Services\DashboardService;
 use App\Models\User;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,11 +27,25 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(FileUploadService::class, fn($app) => new FileUploadService());
-        $this->app->singleton(ClientAccessService::class, fn($app) => new ClientAccessService());
+        // Register singleton services
+        $this->app->singleton(FileUploadService::class, function ($app) {
+            return new FileUploadService();
+        });
 
+        $this->app->singleton(ClientAccessService::class, function ($app) {
+            return new ClientAccessService();
+        });
+
+        $this->app->singleton(DashboardService::class, function ($app) {
+            return new DashboardService(
+                $app->make(\App\Services\ClientNotificationService::class)
+            );
+        });
     }
 
+    /**
+     * Bootstrap any application services.
+     */
     public function boot(): void
     {
         Schema::defaultStringLength(191);
@@ -41,45 +55,58 @@ class AppServiceProvider extends ServiceProvider
         $this->registerEventListeners();
     }
 
-    // Blade directives...
+    /**
+     * Register Blade directives for easier template usage.
+     */
     protected function registerBladeDirectives(): void
     {
-        Blade::if('client', fn() => Auth::check() && Auth::user()->hasRole('client'));
-        Blade::if('admin', fn() => Auth::check() && Auth::user()->hasAnyRole(['super-admin', 'admin', 'manager', 'editor']));
-        Blade::if('hasRole', fn($role) => Auth::check() && Auth::user()->hasRole($role));
-        Blade::if('canDo', fn($permission) => Auth::check() && Auth::user()->can($permission));
+        Blade::if('client', function () {
+            return Auth::check() && Auth::user()->hasRole('client');
+        });
+
+        Blade::if('admin', function () {
+            return Auth::check() && Auth::user()->hasAnyRole(['super-admin', 'admin', 'manager', 'editor']);
+        });
+
+        Blade::if('hasRole', function ($role) {
+            return Auth::check() && Auth::user()->hasRole($role);
+        });
+
+        Blade::if('canDo', function ($permission) {
+            return Auth::check() && Auth::user()->can($permission);
+        });
+
         Blade::if('canAccess', function ($resourceType, $resourceId = null) {
             if (!Auth::check()) return false;
+            
             $clientService = app(ClientAccessService::class);
-            return $resourceId ? $clientService->canAccessResource(Auth::user(), $resourceType, $resourceId) : $clientService->hasClientAccess(Auth::user());
+            return $resourceId ? 
+                $clientService->canAccessResource(Auth::user(), $resourceType, $resourceId) : 
+                $clientService->hasClientAccess(Auth::user());
         });
-        Blade::if('adminViewing', fn() => Auth::check() && Auth::user()->hasAnyRole(['super-admin', 'admin', 'manager', 'editor']) && request()->is('client/*'));
+
+        Blade::if('adminViewing', function () {
+            return Auth::check() && 
+                   Auth::user()->hasAnyRole(['super-admin', 'admin', 'manager', 'editor']) && 
+                   request()->is('client/*');
+        });
     }
 
-    // View composers...
+    /**
+     * Register view composers for shared data.
+     */
     protected function registerViewComposers(): void
     {
-        View::composer(['admin.*', 'layouts.admin', 'components.admin.admin-header', 'components.admin.admin-sidebar'], function ($view) {
+        // Admin view composers
+        View::composer([
+            'admin.*', 
+            'layouts.admin', 
+            'components.admin.admin-header', 
+            'components.admin.admin-sidebar'
+        ], function ($view) {
             if (Auth::check()) {
                 try {
-                    $quotationStats = $this->getQuotationStats();
-                    $projectStats = $this->getProjectStats();
-                    $messageStats = $this->getMessageStats();
-                    $chatStats = $this->getChatStats();
-
-                    $view->with([
-                        'unreadMessages' => $messageStats['unread'],
-                        'pendingQuotations' => $quotationStats['pending'],
-                        'companyProfile' => CompanyProfile::getInstance(),
-                        'quotationStats' => $quotationStats,
-                        'projectStats' => $projectStats,
-                        'messageStats' => $messageStats,
-                        'chatStats' => $chatStats,
-                        'totalPostsCount' => Post::count(),
-                        'draftPostsCount' => Post::where('status', 'draft')->count(),
-                        'publishedPostsCount' => Post::where('status', 'published')->count(),
-                        'categoriesCount' => PostCategory::count(),
-                    ]);
+                    $view->with($this->getAdminViewData());
                 } catch (\Exception $e) {
                     \Log::error('Error fetching admin view stats: ' . $e->getMessage());
                     $view->with($this->getDefaultStats());
@@ -89,57 +116,139 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
-        View::composer(['client.*', 'layouts.client', 'components.client.*'], function ($view) {
+        // Client view composers
+        View::composer([
+            'client.*', 
+            'layouts.client', 
+            'components.client.*'
+        ], function ($view) {
             if (Auth::check()) {
                 try {
-                    $clientService = app(ClientAccessService::class);
-                    $user = Auth::user();
-
-                    $view->with([
-                        'clientStats' => $clientService->getClientStatistics($user),
-                        'companyProfile' => CompanyProfile::getInstance(),
-                        'user' => $user,
-                    ]);
+                    $view->with($this->getClientViewData());
                 } catch (\Exception $e) {
                     \Log::error('Error fetching client view stats: ' . $e->getMessage());
-                    $view->with([
-                        'clientStats' => [],
-                        'companyProfile' => CompanyProfile::getInstance(),
-                    ]);
+                    $view->with($this->getClientDefaultStats());
                 }
+            } else {
+                $view->with($this->getClientDefaultStats());
             }
         });
 
-        View::composer('components.admin.chat-sidebar', ChatSidebarComposer::class);
+        // Chat sidebar composer - only if chat feature is enabled
+        if (class_exists(ChatSession::class)) {
+            View::composer('components.admin.chat-sidebar', function ($view) {
+                if (Auth::check()) {
+                    try {
+                        $view->with([
+                            'activeChatSessions' => ChatSession::where('status', 'active')->count(),
+                            'waitingChatSessions' => ChatSession::where('status', 'waiting')->count(),
+                        ]);
+                    } catch (\Exception $e) {
+                        $view->with([
+                            'activeChatSessions' => 0,
+                            'waitingChatSessions' => 0,
+                        ]);
+                    }
+                }
+            });
+        }
     }
 
+    /**
+     * Register custom gates for authorization.
+     */
     protected function registerCustomGates(): void
     {
-        Gate::define('access-client-area', fn($user) => app(ClientAccessService::class)->hasClientAccess($user));
-        Gate::define('access-client-project', fn($user, $projectId) => app(ClientAccessService::class)->canAccessResource($user, 'project', $projectId));
-        Gate::define('access-client-quotation', fn($user, $quotationId) => app(ClientAccessService::class)->canAccessResource($user, 'quotation', $quotationId));
-        Gate::define('access-client-message', fn($user, $messageId) => app(ClientAccessService::class)->canAccessResource($user, 'message', $messageId));
-        Gate::define('admin-support-access', fn($user) => $user->hasAnyRole(['super-admin', 'admin']) && $user->can('provide client support'));
-        Gate::define('verify-clients', fn($user) => $user->hasAnyRole(['super-admin', 'admin', 'manager']) && $user->can('verify clients'));
+        Gate::define('access-client-area', function ($user) {
+            return app(ClientAccessService::class)->hasClientAccess($user);
+        });
+
+        Gate::define('access-client-project', function ($user, $projectId) {
+            return app(ClientAccessService::class)->canAccessResource($user, 'project', $projectId);
+        });
+
+        Gate::define('access-client-quotation', function ($user, $quotationId) {
+            return app(ClientAccessService::class)->canAccessResource($user, 'quotation', $quotationId);
+        });
+
+        Gate::define('access-client-message', function ($user, $messageId) {
+            return app(ClientAccessService::class)->canAccessResource($user, 'message', $messageId);
+        });
+
+        Gate::define('admin-support-access', function ($user) {
+            return $user->hasAnyRole(['super-admin', 'admin']) && 
+                   $user->can('provide client support');
+        });
+
+        Gate::define('verify-clients', function ($user) {
+            return $user->hasAnyRole(['super-admin', 'admin', 'manager']) && 
+                   $user->can('verify clients');
+        });
     }
 
+    /**
+     * Register event listeners.
+     */
     protected function registerEventListeners(): void
     {
+        // Clear client cache when models are updated
         $this->app['events']->listen([
             'eloquent.saved: App\\Models\\Project',
             'eloquent.deleted: App\\Models\\Project',
-        ], fn($event, $models) => $this->clearClientCacheFromModel($models));
+        ], function ($event, $models) {
+            $this->clearClientCacheFromModel($models);
+        });
 
         $this->app['events']->listen([
             'eloquent.saved: App\\Models\\Quotation',
             'eloquent.deleted: App\\Models\\Quotation',
-        ], fn($event, $models) => $this->clearClientCacheFromModel($models));
+        ], function ($event, $models) {
+            $this->clearClientCacheFromModel($models);
+        });
     }
 
+    /**
+     * Get admin view data.
+     */
+    protected function getAdminViewData(): array
+    {
+        return [
+            'unreadMessages' => $this->getMessageStats()['unread'],
+            'pendingQuotations' => $this->getQuotationStats()['pending'],
+            'companyProfile' => CompanyProfile::getInstance(),
+            'quotationStats' => $this->getQuotationStats(),
+            'projectStats' => $this->getProjectStats(),
+            'messageStats' => $this->getMessageStats(),
+            'chatStats' => $this->getChatStats(),
+            'totalPostsCount' => $this->safeCount(Post::class),
+            'draftPostsCount' => $this->safeCount(Post::class, ['status' => 'draft']),
+            'publishedPostsCount' => $this->safeCount(Post::class, ['status' => 'published']),
+            'categoriesCount' => $this->safeCount(PostCategory::class),
+        ];
+    }
+
+    /**
+     * Get client view data.
+     */
+    protected function getClientViewData(): array
+    {
+        $clientService = app(ClientAccessService::class);
+        $user = Auth::user();
+
+        return [
+            'clientStats' => $clientService->getClientStatistics($user),
+            'companyProfile' => CompanyProfile::getInstance(),
+            'user' => $user,
+        ];
+    }
+
+    /**
+     * Clear client cache when model changes affect a client.
+     */
     protected function clearClientCacheFromModel(array $models): void
     {
-        if (isset($models[0]) && $models[0]->client_id) {
-            $client = User::find($models[0]->client_id);
+        if (isset($models[0]) && isset($models[0]->client_id)) {
+            $client = User::where('id', $models[0]->client_id)->first();
             if ($client) {
                 app(ClientAccessService::class)->clearClientCache($client);
             }
@@ -151,37 +260,46 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function getQuotationStats(): array
     {
-        return [
-            'total' => Quotation::count(),
-            'pending' => Quotation::where('status', 'pending')->count(),
-            'reviewed' => Quotation::where('status', 'reviewed')->count(),
-            'approved' => Quotation::where('status', 'approved')->count(),
-            'rejected' => Quotation::where('status', 'rejected')->count(),
-            'urgent' => Quotation::where('priority', 'urgent')->where('status', 'pending')->count(),
-            'high_priority' => Quotation::whereIn('priority', ['high', 'urgent'])->where('status', 'pending')->count(),
-            'today' => Quotation::whereDate('created_at', today())->count(),
-            'this_week' => Quotation::whereBetween('created_at', [
-                now()->startOfWeek(),
-                now()->endOfWeek()
-            ])->count(),
-            'this_month' => Quotation::whereMonth('created_at', now()->month)
-                ->whereYear('created_at', now()->year)
-                ->count(),
-            'overdue' => Quotation::where('status', 'pending')
-                ->where('created_at', '<', now()->subDays(3))
-                ->count(),
-            'needs_attention' => Quotation::where('status', 'pending')
-                ->where(function($query) {
-                    $query->whereIn('priority', ['high', 'urgent'])
-                          ->orWhere('created_at', '<', now()->subDays(3));
-                })
-                ->count(),
-            'client_approved' => Quotation::where('client_approved', true)->count(),
-            'awaiting_client_response' => Quotation::where('status', 'approved')
-                ->whereNull('client_approved')
-                ->count(),
-            'conversion_rate' => $this->calculateConversionRate(),
-        ];
+        try {
+            return [
+                'total' => Quotation::count(),
+                'pending' => Quotation::where('status', 'pending')->count(),
+                'reviewed' => Quotation::where('status', 'reviewed')->count(),
+                'approved' => Quotation::where('status', 'approved')->count(),
+                'rejected' => Quotation::where('status', 'rejected')->count(),
+                'urgent' => Quotation::where('priority', 'urgent')
+                    ->where('status', 'pending')
+                    ->count(),
+                'high_priority' => Quotation::whereIn('priority', ['high', 'urgent'])
+                    ->where('status', 'pending')
+                    ->count(),
+                'today' => Quotation::whereDate('created_at', today())->count(),
+                'this_week' => Quotation::whereBetween('created_at', [
+                    now()->startOfWeek(),
+                    now()->endOfWeek()
+                ])->count(),
+                'this_month' => Quotation::whereMonth('created_at', now()->month)
+                    ->whereYear('created_at', now()->year)
+                    ->count(),
+                'overdue' => Quotation::where('status', 'pending')
+                    ->where('created_at', '<', now()->subDays(3))
+                    ->count(),
+                'needs_attention' => Quotation::where('status', 'pending')
+                    ->where(function($query) {
+                        $query->whereIn('priority', ['high', 'urgent'])
+                              ->orWhere('created_at', '<', now()->subDays(3));
+                    })
+                    ->count(),
+                'client_approved' => Quotation::where('client_approved', true)->count(),
+                'awaiting_client_response' => Quotation::where('status', 'approved')
+                    ->whereNull('client_approved')
+                    ->count(),
+                'conversion_rate' => $this->calculateConversionRate(),
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Error getting quotation stats: ' . $e->getMessage());
+            return $this->getDefaultQuotationStats();
+        }
     }
 
     /**
@@ -189,15 +307,21 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function getProjectStats(): array
     {
-        return [
-            'total' => Project::count(),
-            'active' => Project::whereIn('status', ['in_progress', 'on_hold'])->count(),
-            'completed' => Project::where('status', 'completed')->count(),
-            'pending' => Project::where('status', 'pending')->count(),
-            'overdue' => Project::where('status', 'in_progress')
-                ->where('end_date', '<', now())
-                ->count(),
-        ];
+        try {
+            return [
+                'total' => Project::count(),
+                'active' => Project::whereIn('status', ['in_progress', 'on_hold'])->count(),
+                'completed' => Project::where('status', 'completed')->count(),
+                'pending' => Project::where('status', 'pending')->count(),
+                'overdue' => Project::where('status', 'in_progress')
+                    ->where('end_date', '<', now())
+                    ->whereNotNull('end_date')
+                    ->count(),
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Error getting project stats: ' . $e->getMessage());
+            return $this->getDefaultProjectStats();
+        }
     }
 
     /**
@@ -205,12 +329,17 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function getMessageStats(): array
     {
-        return [
-            'total' => Message::count(),
-            'unread' => Message::where('is_read', false)->count(),
-            'today' => Message::whereDate('created_at', today())->count(),
-            'replied' => Message::whereHas('replies')->count(),
-        ];
+        try {
+            return [
+                'total' => Message::count(),
+                'unread' => Message::where('is_read', false)->count(),
+                'today' => Message::whereDate('created_at', today())->count(),
+                'replied' => Message::where('is_replied', true)->count(),
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Error getting message stats: ' . $e->getMessage());
+            return $this->getDefaultMessageStats();
+        }
     }
 
     /**
@@ -218,11 +347,20 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function getChatStats(): array
     {
-        return [
-            'active_sessions' => ChatSession::where('status', 'active')->count(),
-            'waiting_sessions' => ChatSession::where('status', 'waiting')->count(),
-            'today_sessions' => ChatSession::whereDate('created_at', today())->count(),
-        ];
+        try {
+            if (!class_exists(ChatSession::class)) {
+                return $this->getDefaultChatStats();
+            }
+
+            return [
+                'active_sessions' => ChatSession::where('status', 'active')->count(),
+                'waiting_sessions' => ChatSession::where('status', 'waiting')->count(),
+                'today_sessions' => ChatSession::whereDate('created_at', today())->count(),
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Error getting chat stats: ' . $e->getMessage());
+            return $this->getDefaultChatStats();
+        }
     }
 
     /**
@@ -230,14 +368,36 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function calculateConversionRate(): float
     {
-        $total = Quotation::count();
-        $approved = Quotation::where('status', 'approved')->count();
-        
-        return $total > 0 ? round(($approved / $total) * 100, 1) : 0;
+        try {
+            $total = Quotation::count();
+            $approved = Quotation::where('status', 'approved')->count();
+            
+            return $total > 0 ? round(($approved / $total) * 100, 1) : 0;
+        } catch (\Exception $e) {
+            return 0;
+        }
     }
 
     /**
-     * Get default statistics for unauthenticated users.
+     * Safe count method to handle missing tables/models.
+     */
+    protected function safeCount(string $model, array $conditions = []): int
+    {
+        try {
+            $query = $model::query();
+            
+            foreach ($conditions as $field => $value) {
+                $query->where($field, $value);
+            }
+            
+            return $query->count();
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Get default statistics for unauthenticated users or errors.
      */
     protected function getDefaultStats(): array
     {
@@ -245,14 +405,76 @@ class AppServiceProvider extends ServiceProvider
             'unreadMessages' => 0,
             'pendingQuotations' => 0,
             'companyProfile' => CompanyProfile::getInstance(),
-            'quotationStats' => [],
-            'projectStats' => [],
-            'messageStats' => [],
-            'chatStats' => [],
+            'quotationStats' => $this->getDefaultQuotationStats(),
+            'projectStats' => $this->getDefaultProjectStats(),
+            'messageStats' => $this->getDefaultMessageStats(),
+            'chatStats' => $this->getDefaultChatStats(),
             'totalPostsCount' => 0,
             'draftPostsCount' => 0,
             'publishedPostsCount' => 0,
             'categoriesCount' => 0,
+        ];
+    }
+
+    /**
+     * Get client default statistics.
+     */
+    protected function getClientDefaultStats(): array
+    {
+        return [
+            'clientStats' => [],
+            'companyProfile' => CompanyProfile::getInstance(),
+        ];
+    }
+
+    protected function getDefaultQuotationStats(): array
+    {
+        return [
+            'total' => 0,
+            'pending' => 0,
+            'reviewed' => 0,
+            'approved' => 0,
+            'rejected' => 0,
+            'urgent' => 0,
+            'high_priority' => 0,
+            'today' => 0,
+            'this_week' => 0,
+            'this_month' => 0,
+            'overdue' => 0,
+            'needs_attention' => 0,
+            'client_approved' => 0,
+            'awaiting_client_response' => 0,
+            'conversion_rate' => 0,
+        ];
+    }
+
+    protected function getDefaultProjectStats(): array
+    {
+        return [
+            'total' => 0,
+            'active' => 0,
+            'completed' => 0,
+            'pending' => 0,
+            'overdue' => 0,
+        ];
+    }
+
+    protected function getDefaultMessageStats(): array
+    {
+        return [
+            'total' => 0,
+            'unread' => 0,
+            'today' => 0,
+            'replied' => 0,
+        ];
+    }
+
+    protected function getDefaultChatStats(): array
+    {
+        return [
+            'active_sessions' => 0,
+            'waiting_sessions' => 0,
+            'today_sessions' => 0,
         ];
     }
 }

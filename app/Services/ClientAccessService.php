@@ -203,4 +203,161 @@ class ClientAccessService
         
         return $stats;
     }
+    public function clearClientCache(User $client): void
+    {
+        try {
+            \Illuminate\Support\Facades\Cache::forget("client_statistics_{$client->id}");
+            \Illuminate\Support\Facades\Cache::forget("client_projects_{$client->id}");
+            \Illuminate\Support\Facades\Cache::forget("client_quotations_{$client->id}");
+            \Illuminate\Support\Facades\Cache::forget("client_messages_{$client->id}");
+            \Illuminate\Support\Facades\Cache::forget("client_notifications_{$client->id}");
+            
+            \Log::info('Client cache cleared', [
+                'client_id' => $client->id
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to clear client cache', [
+                'client_id' => $client->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Check if user has general client access.
+     */
+    public function hasClientAccess(User $user): bool
+    {
+        return $user->hasRole('client') && $user->is_active;
+    }
+
+    /**
+     * Generic method to check if user can access a resource.
+     */
+    public function canAccessResource(User $user, string $resourceType, $resourceId): bool
+    {
+        // Admin users can access all resources
+        if ($user->hasAnyRole(['super-admin', 'admin', 'manager'])) {
+            return true;
+        }
+
+        switch ($resourceType) {
+            case 'project':
+                $project = is_object($resourceId) ? $resourceId : Project::find($resourceId);
+                return $project ? $this->canAccessProject($user, $project) : false;
+                
+            case 'quotation':
+                $quotation = is_object($resourceId) ? $resourceId : Quotation::find($resourceId);
+                return $quotation ? $this->canAccessQuotation($user, $quotation) : false;
+                
+            case 'message':
+                $message = is_object($resourceId) ? $resourceId : Message::find($resourceId);
+                return $message ? $this->canAccessMessage($user, $message) : false;
+                
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Get client navigation menu items.
+     */
+    public function getClientNavigationMenu(User $user): array
+    {
+        try {
+            $projectsQuery = $this->getClientProjects($user);
+            $quotationsQuery = $this->getClientQuotations($user);
+            $messagesQuery = $this->getClientMessages($user);
+            
+            return [
+                [
+                    'title' => 'Dashboard',
+                    'route' => 'client.dashboard',
+                    'icon' => 'home',
+                    'active' => request()->routeIs('client.dashboard'),
+                ],
+                [
+                    'title' => 'Projects',
+                    'route' => 'client.projects.index',
+                    'icon' => 'folder',
+                    'active' => request()->routeIs('client.projects.*'),
+                    'badge' => $projectsQuery->count(),
+                ],
+                [
+                    'title' => 'Quotations',
+                    'route' => 'client.quotations.index',
+                    'icon' => 'document-text',
+                    'active' => request()->routeIs('client.quotations.*'),
+                    'badge' => $quotationsQuery->count(),
+                ],
+                [
+                    'title' => 'Messages',
+                    'route' => 'client.messages.index',
+                    'icon' => 'mail',
+                    'active' => request()->routeIs('client.messages.*'),
+                    'badge' => $messagesQuery->where('is_read', false)->count(),
+                ],
+                [
+                    'title' => 'Profile',
+                    'route' => 'client.profile.edit',
+                    'icon' => 'user',
+                    'active' => request()->routeIs('client.profile.*'),
+                ],
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Error getting client navigation menu', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            // Return basic navigation without badges
+            return [
+                [
+                    'title' => 'Dashboard',
+                    'route' => 'client.dashboard',
+                    'icon' => 'home',
+                    'active' => request()->routeIs('client.dashboard'),
+                ],
+                [
+                    'title' => 'Projects',
+                    'route' => 'client.projects.index',
+                    'icon' => 'folder',
+                    'active' => request()->routeIs('client.projects.*'),
+                ],
+                [
+                    'title' => 'Quotations',
+                    'route' => 'client.quotations.index',
+                    'icon' => 'document-text',
+                    'active' => request()->routeIs('client.quotations.*'),
+                ],
+                [
+                    'title' => 'Messages',
+                    'route' => 'client.messages.index',
+                    'icon' => 'mail',
+                    'active' => request()->routeIs('client.messages.*'),
+                ],
+                [
+                    'title' => 'Profile',
+                    'route' => 'client.profile.edit',
+                    'icon' => 'user',
+                    'active' => request()->routeIs('client.profile.*'),
+                ],
+            ];
+        }
+    }
+
+    /**
+     * Get client permissions.
+     */
+    public function getClientPermissions(User $user): array
+    {
+        return [
+            'can_view_projects' => $user->can('view projects'),
+            'can_create_quotations' => $user->can('create quotations'),
+            'can_send_messages' => $user->can('send messages'),
+            'can_update_profile' => $user->can('update profile'),
+            'can_download_files' => $user->can('download files'),
+            'can_view_invoices' => $user->can('view invoices'),
+        ];
+    }
 }

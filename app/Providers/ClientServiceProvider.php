@@ -6,8 +6,11 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use App\Services\ClientAccessService;
-use App\Facades\Notifications;
-use App\Services\ClientDashboardService;
+use App\Services\ClientNotificationService;
+use App\Models\Project;
+use App\Models\Quotation;
+use App\Models\Message;
+use App\Models\User;
 
 /**
  * Client Service Provider
@@ -22,24 +25,12 @@ class ClientServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Register client access service
-        $this->app->singleton(ClientAccessService::class, function ($app) {
-            return new ClientAccessService();
-        });
-
         // Register client notification service
         $this->app->singleton(ClientNotificationService::class, function ($app) {
             return new ClientNotificationService();
         });
 
-        // Register client dashboard service
-        $this->app->singleton(ClientDashboardService::class, function ($app) {
-            return new ClientDashboardService(
-                $app->make(ClientAccessService::class)
-            );
-        });
-
-        // Register client repositories
+        // Register client repositories if they exist
         $this->registerClientRepositories();
     }
 
@@ -66,20 +57,32 @@ class ClientServiceProvider extends ServiceProvider
      */
     protected function registerClientRepositories(): void
     {
-        $this->app->bind(
-            \App\Repositories\Interfaces\ClientProjectRepositoryInterface::class,
-            \App\Repositories\ClientProjectRepository::class
-        );
+        // Skip repository registration since they don't exist yet
+        // These can be added later when repository pattern is implemented
+        
+        /*
+        // Only register if interfaces exist
+        if (interface_exists(\App\Repositories\Interfaces\ClientProjectRepositoryInterface::class)) {
+            $this->app->bind(
+                \App\Repositories\Interfaces\ClientProjectRepositoryInterface::class,
+                \App\Repositories\ClientProjectRepository::class
+            );
+        }
 
-        $this->app->bind(
-            \App\Repositories\Interfaces\ClientQuotationRepositoryInterface::class,
-            \App\Repositories\ClientQuotationRepository::class
-        );
+        if (interface_exists(\App\Repositories\Interfaces\ClientQuotationRepositoryInterface::class)) {
+            $this->app->bind(
+                \App\Repositories\Interfaces\ClientQuotationRepositoryInterface::class,
+                \App\Repositories\ClientQuotationRepository::class
+            );
+        }
 
-        $this->app->bind(
-            \App\Repositories\Interfaces\ClientMessageRepositoryInterface::class,
-            \App\Repositories\ClientMessageRepository::class
-        );
+        if (interface_exists(\App\Repositories\Interfaces\ClientMessageRepositoryInterface::class)) {
+            $this->app->bind(
+                \App\Repositories\Interfaces\ClientMessageRepositoryInterface::class,
+                \App\Repositories\ClientMessageRepository::class
+            );
+        }
+        */
     }
 
     /**
@@ -89,11 +92,12 @@ class ClientServiceProvider extends ServiceProvider
     {
         // Bind client projects with access control
         Route::bind('clientProject', function ($value) {
-            $project = \App\Models\Project::findOrFail($value);
+            /** @var Project $project */
+            $project = Project::findOrFail($value);
             
             if (auth()->check()) {
                 $clientService = app(ClientAccessService::class);
-                if (!$clientService->canAccessResource(auth()->user(), 'project', $project->id)) {
+                if (!$clientService->canAccessProject(auth()->user(), $project)) {
                     abort(403, 'You do not have access to this project.');
                 }
             }
@@ -103,11 +107,12 @@ class ClientServiceProvider extends ServiceProvider
 
         // Bind client quotations with access control
         Route::bind('clientQuotation', function ($value) {
-            $quotation = \App\Models\Quotation::findOrFail($value);
+            /** @var Quotation $quotation */
+            $quotation = Quotation::findOrFail($value);
             
             if (auth()->check()) {
                 $clientService = app(ClientAccessService::class);
-                if (!$clientService->canAccessResource(auth()->user(), 'quotation', $quotation->id)) {
+                if (!$clientService->canAccessQuotation(auth()->user(), $quotation)) {
                     abort(403, 'You do not have access to this quotation.');
                 }
             }
@@ -117,11 +122,12 @@ class ClientServiceProvider extends ServiceProvider
 
         // Bind client messages with access control
         Route::bind('clientMessage', function ($value) {
-            $message = \App\Models\Message::findOrFail($value);
+            /** @var Message $message */
+            $message = Message::findOrFail($value);
             
             if (auth()->check()) {
                 $clientService = app(ClientAccessService::class);
-                if (!$clientService->canAccessResource(auth()->user(), 'message', $message->id)) {
+                if (!$clientService->canAccessMessage(auth()->user(), $message)) {
                     abort(403, 'You do not have access to this message.');
                 }
             }
@@ -149,11 +155,9 @@ class ClientServiceProvider extends ServiceProvider
         // Client dashboard composer
         View::composer('client.dashboard', function ($view) {
             if (auth()->check()) {
-                $dashboardService = app(ClientDashboardService::class);
+                $clientService = app(ClientAccessService::class);
                 $view->with([
-                    'dashboardData' => $dashboardService->getDashboardData(auth()->user()),
-                    'recentActivities' => $dashboardService->getRecentActivities(auth()->user()),
-                    'notifications' => $dashboardService->getNotifications(auth()->user()),
+                    'dashboardData' => $clientService->getClientStatistics(auth()->user()),
                 ]);
             }
         });
@@ -161,7 +165,6 @@ class ClientServiceProvider extends ServiceProvider
         // Client project views composer
         View::composer('client.projects.*', function ($view) {
             if (auth()->check()) {
-                $clientService = app(ClientAccessService::class);
                 $view->with([
                     'projectStatuses' => $this->getProjectStatuses(),
                     'canCreateProjects' => auth()->user()->can('create projects'),
@@ -174,7 +177,7 @@ class ClientServiceProvider extends ServiceProvider
             if (auth()->check()) {
                 $view->with([
                     'quotationStatuses' => $this->getQuotationStatuses(),
-                    'availableServices' => \App\Models\Service::active()->get(),
+                    'availableServices' => \App\Models\Service::where('is_active', true)->get(),
                     'canCreateQuotations' => auth()->user()->can('create quotations'),
                 ]);
             }
@@ -187,28 +190,16 @@ class ClientServiceProvider extends ServiceProvider
     protected function registerClientEventListeners(): void
     {
         // Listen for client registration events
-        $this->app['events']->listen(
-            \Illuminate\Auth\Events\Registered::class,
-            \App\Listeners\SendClientWelcomeNotification::class
-        );
-
-        // Listen for client project updates
-        $this->app['events']->listen(
-            \App\Events\ProjectStatusChanged::class,
-            \App\Listeners\NotifyClientProjectUpdate::class
-        );
-
-        // Listen for quotation status changes
-        $this->app['events']->listen(
-            \App\Events\QuotationStatusChanged::class,
-            \App\Listeners\NotifyClientQuotationUpdate::class
-        );
-
-        // Listen for new messages to clients
-        $this->app['events']->listen(
-            \App\Events\MessageReceived::class,
-            \App\Listeners\NotifyClientNewMessage::class
-        );
+        if (class_exists(\Illuminate\Auth\Events\Registered::class)) {
+            $this->app['events']->listen(
+                \Illuminate\Auth\Events\Registered::class,
+                function ($event) {
+                    if ($event->user->hasRole('client')) {
+                        \App\Facades\Notifications::send('user.welcome', $event->user, $event->user);
+                    }
+                }
+            );
+        }
 
         // Clear client cache on relevant model changes
         $this->app['events']->listen([
@@ -218,7 +209,22 @@ class ClientServiceProvider extends ServiceProvider
             'eloquent.deleted: App\Models\Quotation',
             'eloquent.saved: App\Models\Message',
             'eloquent.deleted: App\Models\Message',
-        ], \App\Listeners\ClearClientCache::class);
+        ], function ($event, $models) {
+            // $models is an array, get the first model
+            if (isset($models[0])) {
+                $model = $models[0];
+                
+                // Check if model has client_id property
+                if (property_exists($model, 'client_id') && $model->client_id) {
+                    /** @var User|null $client */
+                    $client = User::find($model->client_id);
+                    if ($client instanceof User) {
+                        $clientService = app(ClientAccessService::class);
+                        $clientService->clearClientCache($client);
+                    }
+                }
+            }
+        });
     }
 
     /**
@@ -232,10 +238,13 @@ class ClientServiceProvider extends ServiceProvider
             $this->mergeConfigFrom($clientConfigPath, 'client');
         }
 
-        // Set client-specific mail configurations
+        // Set client-specific configurations
         config([
-            'mail.from.address' => config('client.mail.from.address', config('mail.from.address')),
-            'mail.from.name' => config('client.mail.from.name', config('mail.from.name')),
+            'client.dashboard.refresh_interval' => 30000, // 30 seconds
+            'client.notifications.enabled' => true,
+            'client.projects.per_page' => 10,
+            'client.quotations.per_page' => 10,
+            'client.messages.per_page' => 15,
         ]);
     }
 
@@ -245,10 +254,10 @@ class ClientServiceProvider extends ServiceProvider
     protected function getProjectStatuses(): array
     {
         return [
-            'pending' => [
-                'label' => 'Pending',
+            'planning' => [
+                'label' => 'Planning',
                 'color' => 'yellow',
-                'description' => 'Project is waiting to start'
+                'description' => 'Project is in planning phase'
             ],
             'in_progress' => [
                 'label' => 'In Progress',
@@ -284,7 +293,7 @@ class ClientServiceProvider extends ServiceProvider
                 'color' => 'yellow',
                 'description' => 'Quotation is being reviewed'
             ],
-            'under_review' => [
+            'reviewed' => [
                 'label' => 'Under Review',
                 'color' => 'blue',
                 'description' => 'Quotation is being evaluated by our team'
@@ -298,11 +307,6 @@ class ClientServiceProvider extends ServiceProvider
                 'label' => 'Rejected',
                 'color' => 'red',
                 'description' => 'Quotation has been declined'
-            ],
-            'expired' => [
-                'label' => 'Expired',
-                'color' => 'gray',
-                'description' => 'Quotation has expired'
             ],
         ];
     }

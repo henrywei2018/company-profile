@@ -52,9 +52,6 @@ class NotificationServiceProvider extends ServiceProvider
         // Register model observers for automatic notifications
         $this->registerModelObservers();
 
-        // Register notification channels if using custom channels
-        $this->registerNotificationChannels();
-
         // Load custom notification templates
         $this->loadNotificationTemplates();
     }
@@ -120,32 +117,6 @@ class NotificationServiceProvider extends ServiceProvider
         }
     }
 
-    /**
-     * Register custom notification channels (only email-based)
-     */
-    protected function registerNotificationChannels(): void
-    {
-        // Register Slack channel if configured
-        if (config('services.slack.notifications.bot_user_oauth_token')) {
-            $this->app->singleton('notification.slack', function ($app) {
-                return new \App\Channels\SlackNotificationChannel();
-            });
-        }
-
-        // Register Discord channel if configured
-        if (config('services.discord.webhook_url')) {
-            $this->app->singleton('notification.discord', function ($app) {
-                return new \App\Channels\DiscordNotificationChannel();
-            });
-        }
-
-        // Register Teams channel if configured
-        if (config('services.teams.webhook_url')) {
-            $this->app->singleton('notification.teams', function ($app) {
-                return new \App\Channels\TeamsNotificationChannel();
-            });
-        }
-    }
 
     /**
      * Load custom notification templates
