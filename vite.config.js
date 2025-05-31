@@ -8,9 +8,11 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.js',
+                'resources/js/echo.js'
             ],
             refresh: true,
         }),
+        
     ],
     resolve: {
         alias: {
@@ -19,9 +21,19 @@ export default defineConfig({
         },
     },
     server: {
-        host: 'localhost',
+        host: '0.0.0.0',
         port: 5173,
-        strictPort: true,
-        https: false,
+        hmr: {
+            host: 'localhost',
+        },
+    },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    echo: ['laravel-echo', 'pusher-js'],
+                },
+            },
+        },
     },
 });

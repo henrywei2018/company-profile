@@ -1,13 +1,57 @@
 // Load Laravel's bootstrap and Alpine.js
 import "./bootstrap";
+import './echo';
 import Alpine from "alpinejs";
 
 // Preline UI v2 import
 import "preline/dist/preline.js";
 
 window.Alpine = Alpine;
+window.authUserId = document.querySelector('meta[name="auth-user-id"]')?.getAttribute('content');
+window.isAdmin = document.querySelector('meta[name="is-admin"]')?.getAttribute('content') === 'true';
+
 Alpine.start();
 
+
+window.WebSocketUtils = {
+    // Send notification test
+    sendTestNotification() {
+        fetch('/client/dashboard/test-notification', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('✅ Test notification sent');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Failed to send test notification:', error);
+        });
+    },
+
+    // Get connection status
+    getConnectionStatus() {
+        return window.Echo.connector.pusher.connection.state;
+    },
+
+    // Force reconnect
+    reconnect() {
+        window.Echo.connector.pusher.connect();
+    }
+};
+
+// Auto-reconnect on page visibility change
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && window.Echo.connector.pusher.connection.state === 'disconnected') {
+        console.log('🔄 Page visible, attempting to reconnect...');
+        window.WebSocketUtils.reconnect();
+    }
+});
 // Initialize Preline and dark mode once DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
     initializeTheme();         // Setup dark/light mode toggle

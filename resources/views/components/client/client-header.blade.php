@@ -453,6 +453,7 @@
         </div>
     </nav>
 </header>
+
 @push('scripts')
 <script>
     // Client Notification management functions
@@ -605,25 +606,8 @@
         }, 3000);
     }
 
-    // Theme toggle functionality - Simple approach like admin
+    // Auto-update notification counts every 30 seconds
     document.addEventListener('DOMContentLoaded', function() {
-        const themeToggle = document.getElementById('theme-toggle');
-        
-        if (themeToggle) {
-            themeToggle.addEventListener('click', function() {
-                const html = document.documentElement;
-                
-                if (html.classList.contains('dark')) {
-                    html.classList.remove('dark');
-                    localStorage.setItem('hs_theme', 'light');
-                } else {
-                    html.classList.add('dark');
-                    localStorage.setItem('hs_theme', 'dark');
-                }
-            });
-        }
-
-        // Auto-update notification counts every 30 seconds
         setInterval(updateNotificationCounts, 30000);
 
         // Auto-refresh urgent alerts every minute
