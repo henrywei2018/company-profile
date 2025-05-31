@@ -12,6 +12,7 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
+use App\Http\Controllers\Client\ProfileController as ClientProfileController;
 use App\Http\Controllers\Client\NotificationPreferencesController;
 
 /*
@@ -112,8 +113,18 @@ Route::middleware('auth')->group(function () {
 
 Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(function () {
     
-    // Client Dashboard
     Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
+
+        Route::get('/dashboard/realtime-stats', [ ClientDashboardController::class, 'getRealtimeStats'])->name('dashboard.realtime-stats');
+        Route::get('/dashboard/chart-data', [ ClientDashboardController::class, 'getChartData'])->name('dashboard.chart-data');
+        Route::get('/dashboard/performance-metrics', [ ClientDashboardController::class, 'getPerformanceMetrics'])->name('dashboard.performance-metrics');
+        Route::get('/dashboard/upcoming-deadlines', [ ClientDashboardController::class, 'getUpcomingDeadlines'])->name('dashboard.upcoming-deadlines');
+        Route::get('/dashboard/recent-activities', [ ClientDashboardController::class, 'getRecentActivities'])->name('dashboard.recent-activities');
+        Route::get('/dashboard/notifications', [ ClientDashboardController::class, 'getNotifications'])->name('dashboard.notifications');
+
+        Route::post('/dashboard/mark-notification-read', [ ClientDashboardController::class, 'markNotificationRead'])->name('dashboard.mark-notification-read');
+        Route::post('/dashboard/test-notification', [ ClientDashboardController::class, 'testNotification'])->name('dashboard.test-notification');
+        Route::post('/dashboard/clear-cache', [ ClientDashboardController::class, 'clearCache'])->name('dashboard.clear-cache');
     // Client Notifications
     Route::get('notifications/preferences', [NotificationPreferencesController::class, 'show'])
          ->name('notifications.preferences');
@@ -188,6 +199,9 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         // Chat status
         Route::get('/online-status', [App\Http\Controllers\ChatController::class, 'onlineStatus'])->name('online-status');
     });
+
+    Route::get('/profile/edit', [ClientProfileController::class, 'edit'])->name('profile.edit');
+        Route::post('/profile/update', [ClientProfileController::class, 'update'])->name('profile.update');
 });
 
 /*

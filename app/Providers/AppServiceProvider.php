@@ -36,11 +36,9 @@ class AppServiceProvider extends ServiceProvider
             return new ClientAccessService();
         });
 
-        $this->app->singleton(DashboardService::class, function ($app) {
-            return new DashboardService(
-                $app->make(\App\Services\ClientNotificationService::class)
-            );
-        });
+        $this->app->singleton(DashboardService::class);
+
+
     }
 
     /**

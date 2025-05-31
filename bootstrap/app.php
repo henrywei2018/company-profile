@@ -36,7 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
             
-            // Simple RBAC middleware
+            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'client' => \App\Http\Middleware\ClientMiddleware::class,
         ]);
