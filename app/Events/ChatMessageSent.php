@@ -21,12 +21,17 @@ class ChatMessageSent implements ShouldBroadcast
 
     public function broadcastOn(): array
     {
-        return [
-            // Channel untuk session ini (client + admin yang handle session ini)
-            new Channel("chat-session.{$this->session->session_id}"),
-            // Channel untuk semua admin (notification baru)
-            new Channel('admin-chat-notifications'),
+        $channels = [
+            // Session channel for participants
+            new Channel($this->session->getChannelName()),
         ];
+
+        // Add admin notification channel if message is from visitor
+        if ($this->message->sender_type === 'visitor') {
+            $channels[] = new Channel('admin-chat-notifications');
+        }
+
+        return $channels;
     }
 
     public function broadcastAs(): string
@@ -36,17 +41,14 @@ class ChatMessageSent implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        return [
-            'id' => $this->message->id,
-            'message' => $this->message->message,
-            'sender_type' => $this->message->sender_type,
-            'sender_name' => $this->message->sender_name ?: 'Anonymous',
-            'session_id' => $this->session->session_id,
-            'session_status' => $this->session->status,
-            'timestamp' => $this->message->created_at->toISOString(),
-            'formatted_time' => $this->message->created_at->format('H:i'),
-            'visitor_name' => $this->session->visitor_name,
-            'visitor_email' => $this->session->visitor_email,
-        ];
+        return array_merge(
+            $this->message->toWebSocketArray(),
+            [
+                'session_id' => $this->session->session_id,
+                'session_status' => $this->session->status,
+                'visitor_name' => $this->session->getVisitorName(),
+                'visitor_email' => $this->session->getVisitorEmail(),
+            ]
+        );
     }
 }

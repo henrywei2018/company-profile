@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Events\ChatMessageSent;
 
 class ChatMessage extends Model
 {
@@ -23,6 +24,22 @@ class ChatMessage extends Model
         'is_read' => 'boolean',
         'read_at' => 'datetime',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+        
+        // Broadcast when message is created
+        static::created(function ($model) {
+            $model->load('chatSession', 'sender');
+            
+            // Update session activity
+            $model->chatSession->updateActivity();
+            
+            // Broadcast message
+            broadcast(new ChatMessageSent($model, $model->chatSession))->toOthers();
+        });
+    }
 
     // Relationships
     public function chatSession(): BelongsTo
@@ -94,5 +111,23 @@ class ChatMessage extends Model
             'visitor' => $this->chatSession->getVisitorName(),
             default => 'Unknown'
         };
+    }
+
+    // Format for WebSocket broadcast
+    public function toWebSocketArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'message' => $this->message,
+            'sender_type' => $this->sender_type,
+            'sender_name' => $this->getSenderName(),
+            'message_type' => $this->message_type,
+            'metadata' => $this->metadata,
+            'created_at' => $this->created_at->toISOString(),
+            'formatted_time' => $this->created_at->format('H:i'),
+            'is_from_visitor' => $this->isFromVisitor(),
+            'is_from_operator' => $this->isFromOperator(),
+            'is_from_bot' => $this->isFromBot(),
+        ];
     }
 }

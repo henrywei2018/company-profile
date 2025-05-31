@@ -1,5 +1,5 @@
 <?php
-
+// app/Events/ChatSessionStarted.php
 namespace App\Events;
 
 use App\Models\ChatSession;
@@ -21,6 +21,7 @@ class ChatSessionStarted implements ShouldBroadcast
     {
         return [
             new Channel('admin-chat-notifications'),
+            new Channel('chat-lobby'),
         ];
     }
 
@@ -33,9 +34,10 @@ class ChatSessionStarted implements ShouldBroadcast
     {
         return [
             'session_id' => $this->session->session_id,
-            'visitor_name' => $this->session->visitor_name ?: 'Anonymous',
-            'visitor_email' => $this->session->visitor_email,
+            'visitor_name' => $this->session->getVisitorName(),
+            'visitor_email' => $this->session->getVisitorEmail(),
             'status' => $this->session->status,
+            'priority' => $this->session->priority,
             'started_at' => $this->session->started_at->toISOString(),
             'url' => route('admin.chat.show', $this->session),
         ];

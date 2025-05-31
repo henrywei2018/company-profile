@@ -73,13 +73,48 @@ Route::prefix('posts')->name('api.posts.')->group(function () {
     Route::get('/{slug}/related', [PostController::class, 'related'])->name('related');
 });
 
+Route::prefix('chat')->middleware(['auth:sanctum'])->group(function () {
+    // Session management
+    Route::post('/start', [ChatController::class, 'start'])->name('api.chat.start');
+    Route::get('/session', [ChatController::class, 'getSession'])->name('api.chat.session');
+    Route::post('/close', [ChatController::class, 'close'])->name('api.chat.close');
+    
+    // Messaging
+    Route::post('/send-message', [ChatController::class, 'sendMessage'])
+        ->middleware('throttle:30,1')
+        ->name('api.chat.send-message');
+    
+    // Typing indicators
+    Route::post('/typing', [ChatController::class, 'sendTyping'])
+        ->middleware('throttle:60,1')
+        ->name('api.chat.typing');
+    
+    // Status
+    Route::get('/online-status', [ChatController::class, 'onlineStatus'])->name('api.chat.online-status');
+});
+
 Route::prefix('chat')->group(function () {
-    Route::post('/start', [ChatController::class, 'start']);
-    Route::post('/send', [ChatController::class, 'sendMessage']);
-    Route::get('/messages', [ChatController::class, 'getMessages']);
-    Route::post('/visitor-info', [ChatController::class, 'updateVisitorInfo']);
-    Route::post('/close', [ChatController::class, 'close']);
-    Route::get('/session', [ChatController::class, 'getSession']);
+    Route::get('/status', [ChatController::class, 'onlineStatus'])->name('api.chat.public-status');
+});
+
+Route::prefix('admin/chat')->middleware(['auth:sanctum', 'role:admin|super-admin'])->group(function () {
+    // Session management
+    Route::get('/sessions', [ChatController::class, 'getAdminSessions'])->name('api.admin.chat.sessions');
+    Route::get('/statistics', [ChatController::class, 'getStatistics'])->name('api.admin.chat.statistics');
+    
+    // Session actions
+    Route::post('/{chatSession}/reply', [ChatController::class, 'reply'])
+        ->middleware('throttle:60,1')
+        ->name('api.admin.chat.reply');
+    Route::post('/{chatSession}/assign', [ChatController::class, 'assignToMe'])->name('api.admin.chat.assign');
+    Route::post('/{chatSession}/close', [ChatController::class, 'closeSession'])->name('api.admin.chat.close');
+    Route::post('/{chatSession}/typing', [ChatController::class, 'operatorTyping'])
+        ->middleware('throttle:60,1')
+        ->name('api.admin.chat.typing');
+    
+    // Operator management
+    Route::post('/operator/status', [ChatController::class, 'setOperatorStatus'])->name('api.admin.chat.operator-status');
+    Route::get('/operator/status', [ChatController::class, 'getOperatorStatus'])->name('api.admin.chat.get-operator-status');
 });
 
 // Contact and Quotation routes

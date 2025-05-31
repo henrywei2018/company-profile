@@ -2,44 +2,42 @@
 
 namespace App\Events;
 
-use App\Models\ChatOperator;
+use App\Models\ChatSession;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class ChatOperatorStatusChanged implements ShouldBroadcast
+class ChatSessionClosed implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(
-        public ChatOperator $operator,
-        public bool $isOnline
+        public ChatSession $session
     ) {}
 
     public function broadcastOn(): array
     {
         return [
+            new Channel($this->session->getChannelName()),
             new Channel('admin-chat-notifications'),
-            new Channel('public-chat-status'),
         ];
     }
 
     public function broadcastAs(): string
     {
-        return 'operator.status.changed';
+        return 'session.closed';
     }
 
     public function broadcastWith(): array
     {
         return [
-            'operator_id' => $this->operator->id,
-            'operator_name' => $this->operator->user->name,
-            'is_online' => $this->isOnline,
-            'is_available' => $this->operator->is_available,
-            'total_online_operators' => ChatOperator::where('is_online', true)->count(),
-            'timestamp' => now()->toISOString(),
+            'session_id' => $this->session->session_id,
+            'visitor_name' => $this->session->getVisitorName(),
+            'ended_at' => $this->session->ended_at->toISOString(),
+            'duration' => $this->session->getDuration(),
+            'summary' => $this->session->summary,
         ];
     }
 }

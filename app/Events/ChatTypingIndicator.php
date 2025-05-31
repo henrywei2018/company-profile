@@ -2,43 +2,43 @@
 
 namespace App\Events;
 
-use App\Models\ChatOperator;
+use App\Models\ChatSession;
+use App\Models\User;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class ChatOperatorStatusChanged implements ShouldBroadcast
+class ChatTypingIndicator implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(
-        public ChatOperator $operator,
-        public bool $isOnline
+        public ChatSession $session,
+        public User $user,
+        public bool $isTyping
     ) {}
 
     public function broadcastOn(): array
     {
         return [
-            new Channel('admin-chat-notifications'),
-            new Channel('public-chat-status'),
+            new Channel($this->session->getChannelName()),
         ];
     }
 
     public function broadcastAs(): string
     {
-        return 'operator.status.changed';
+        return 'typing.indicator';
     }
 
     public function broadcastWith(): array
     {
         return [
-            'operator_id' => $this->operator->id,
-            'operator_name' => $this->operator->user->name,
-            'is_online' => $this->isOnline,
-            'is_available' => $this->operator->is_available,
-            'total_online_operators' => ChatOperator::where('is_online', true)->count(),
+            'session_id' => $this->session->session_id,
+            'user_id' => $this->user->id,
+            'user_name' => $this->user->name,
+            'is_typing' => $this->isTyping,
             'timestamp' => now()->toISOString(),
         ];
     }

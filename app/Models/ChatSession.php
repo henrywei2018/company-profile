@@ -1,5 +1,4 @@
 <?php
-// app/Models/ChatSession.php
 
 namespace App\Models;
 
@@ -8,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
+use App\Events\ChatSessionStarted;
+use App\Events\ChatSessionClosed;
 
 class ChatSession extends Model
 {
@@ -44,6 +45,19 @@ class ChatSession extends Model
             }
             if (empty($model->started_at)) {
                 $model->started_at = now();
+            }
+            $model->last_activity_at = now();
+        });
+
+        // Broadcast when session is created
+        static::created(function ($model) {
+            broadcast(new ChatSessionStarted($model))->toOthers();
+        });
+
+        // Broadcast when session status changes to closed
+        static::updated(function ($model) {
+            if ($model->isDirty('status') && $model->status === 'closed') {
+                broadcast(new ChatSessionClosed($model))->toOthers();
             }
         });
     }
@@ -82,7 +96,6 @@ class ChatSession extends Model
 
     public function scopeByPriority($query, $priority = 'desc')
     {
-        $order = ['urgent' => 4, 'high' => 3, 'normal' => 2, 'low' => 1];
         return $query->orderByRaw("CASE priority " .
             "WHEN 'urgent' THEN 4 " .
             "WHEN 'high' THEN 3 " .
@@ -142,5 +155,11 @@ class ChatSession extends Model
         }
         
         return $this->started_at->diffInMinutes($this->ended_at);
+    }
+
+    // WebSocket channel name
+    public function getChannelName(): string
+    {
+        return "chat-session.{$this->session_id}";
     }
 }
