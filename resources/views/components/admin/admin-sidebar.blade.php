@@ -441,162 +441,182 @@
                 </li>
                 <!-- Updated Live Chat section for sidebar -->
                 <li class="hs-accordion" id="chat-accordion">
-                    <button type="button"
-                        class="hs-accordion-toggle w-full text-start flex items-center gap-x-3.5 py-2 px-3 text-sm {{ request()->routeIs('admin.chat.*') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }} rounded-md">
-                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round">
-                            <path
-                                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    <button type="button"
+        class="hs-accordion-toggle w-full text-start flex items-center gap-x-3.5 py-2 px-3 text-sm {{ request()->routeIs('admin.chat.*') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }} rounded-md">
+        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+        Live Chat
+        @php
+            // Get active chat sessions count
+            try {
+                $activeChatSessions = \App\Models\ChatSession::where('status', 'active')->count();
+                $waitingChatSessions = \App\Models\ChatSession::where('status', 'waiting')->count();
+                $totalActiveSessions = $activeChatSessions + $waitingChatSessions;
+
+                // Get current user's operator status
+                $currentOperator = \App\Models\ChatOperator::where('user_id', auth()->id())->first();
+                $isOperatorOnline = $currentOperator ? $currentOperator->is_online : false;
+            } catch (\Exception $e) {
+                $activeChatSessions = 0;
+                $waitingChatSessions = 0;
+                $totalActiveSessions = 0;
+                $isOperatorOnline = false;
+            }
+        @endphp
+        @if ($totalActiveSessions > 0)
+            <span
+                class="inline-flex items-center py-0.5 px-1.5 rounded-full text-xs font-medium {{ $waitingChatSessions > 0 ? 'bg-red-500 text-white animate-pulse' : 'bg-green-500 text-white' }} ml-auto mr-2">
+                {{ $totalActiveSessions }}
+            </span>
+        @endif
+        <svg class="hs-accordion-active:block ms-auto hidden w-4 h-4"
+            xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="m18 15-6-6-6 6" />
+        </svg>
+        <svg class="hs-accordion-active:hidden ms-auto block w-4 h-4"
+            xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="m6 9 6 6 6-6" />
+        </svg>
+    </button>
+
+    <div id="chat-accordion-child"
+        class="hs-accordion-content w-full overflow-hidden transition-[height] duration-300 {{ request()->routeIs('admin.chat.*') ? 'block' : 'hidden' }}">
+        <ul class="pt-2 ps-2">
+            <!-- Main Chat Dashboard -->
+            <li>
+                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.chat.index') && !request()->has('filter') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
+                    href="{{ route('admin.chat.index') }}">
+                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Chat Dashboard
+                    @if ($totalActiveSessions > 0)
+                        <span
+                            class="inline-flex items-center py-0.5 px-1.5 rounded-full text-xs font-medium {{ $waitingChatSessions > 0 ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' }} ml-auto">
+                            {{ $totalActiveSessions }}
+                        </span>
+                    @endif
+                </a>
+            </li>
+
+            <!-- Active Chats (only show if there are active sessions) -->
+            @if ($activeChatSessions > 0)
+                <li>
+                    <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.chat.index') && request('filter') === 'active' ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
+                        href="{{ route('admin.chat.index', ['filter' => 'active']) }}">
+                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Live Chat
-                        @php
-                            // Get active chat sessions count
-                            try {
-                                $activeChatSessions = \App\Models\ChatSession::where('status', 'active')->count();
-                                $waitingChatSessions = \App\Models\ChatSession::where('status', 'waiting')->count();
-                                $totalActiveSessions = $activeChatSessions + $waitingChatSessions;
-
-                                // Get current user's operator status
-    $currentOperator = \App\Models\ChatOperator::where('user_id', auth()->id())->first();
-                                $isOperatorOnline = $currentOperator ? $currentOperator->is_online : false;
-                            } catch (\Exception $e) {
-                                $activeChatSessions = 0;
-                                $waitingChatSessions = 0;
-                                $totalActiveSessions = 0;
-                                $isOperatorOnline = false;
-                            }
-                        @endphp
-                        @if ($totalActiveSessions > 0)
-                            <span
-                                class="inline-flex items-center py-0.5 px-1.5 rounded-full text-xs font-medium {{ $waitingChatSessions > 0 ? 'bg-red-500 text-white animate-pulse' : 'bg-green-500 text-white' }} ml-auto mr-2">
-                                {{ $totalActiveSessions }}
-                            </span>
-                        @endif
-                        <svg class="hs-accordion-active:block ms-auto hidden w-4 h-4"
-                            xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                            stroke-linejoin="round">
-                            <path d="m18 15-6-6-6 6" />
-                        </svg>
-                        <svg class="hs-accordion-active:hidden ms-auto block w-4 h-4"
-                            xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                            stroke-linejoin="round">
-                            <path d="m6 9 6 6 6-6" />
-                        </svg>
-                    </button>
-
-                    <div id="chat-accordion-child"
-                        class="hs-accordion-content w-full overflow-hidden transition-[height] duration-300 {{ request()->routeIs('admin.chat.*') ? 'block' : 'hidden' }}">
-                        <ul class="pt-2 ps-2">
-                            <li>
-                                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.chat.index') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
-                                    href="{{ route('admin.chat.index') }}">
-                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                    </svg>
-                                    Chat Dashboard
-                                    @if ($totalActiveSessions > 0)
-                                        <span
-                                            class="inline-flex items-center py-0.5 px-1.5 rounded-full text-xs font-medium {{ $waitingChatSessions > 0 ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' }} ml-auto">
-                                            {{ $totalActiveSessions }}
-                                        </span>
-                                    @endif
-                                </a>
-                            </li>
-
-                            @if ($activeChatSessions > 0)
-                                <li>
-                                    <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.chat.index') && request('status') === 'active' ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
-                                        href="{{ route('admin.chat.index', ['status' => 'active']) }}">
-                                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        Active Chats
-                                        <span
-                                            class="inline-flex items-center py-0.5 px-1.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 ml-auto">
-                                            {{ $activeChatSessions }}
-                                        </span>
-                                    </a>
-                                </li>
-                            @endif
-
-                            @if ($waitingChatSessions > 0)
-                                <li>
-                                    <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.chat.index') && request('status') === 'waiting' ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
-                                        href="{{ route('admin.chat.index', ['status' => 'waiting']) }}">
-                                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        Waiting Queue
-                                        <span
-                                            class="inline-flex items-center py-0.5 px-1.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 ml-auto animate-pulse">
-                                            {{ $waitingChatSessions }}
-                                        </span>
-                                    </a>
-                                </li>
-                            @endif
-
-                            <li>
-                                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.chat.settings') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
-                                    href="{{ route('admin.chat.settings') }}">
-                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    Chat Settings                                    
-                                </a>
-                            </li>
-
-                            <!-- Divider -->
-                            <li class="my-2">
-                                <div class="border-t border-gray-200 dark:border-gray-700"></div>
-                            </li>
-
-                            <li>
-                                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.chat.reports.*') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
-                                    href="{{ route('admin.chat.reports.index') }}">
-                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                    </svg>
-                                    Reports & Analytics                                    
-                                </a>
-                            </li>
-
-                            <li>
-                                <button type="button"
-                                    class="w-full flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900 transition-colors"
-                                    onclick="toggleOperatorStatus()" id="operator-toggle-btn">
-                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
-                                    <span id="operator-status-text">
-                                        {{ $isOperatorOnline ? 'Go Offline' : 'Go Online' }}
-                                    </span>
-                                    <div class="ml-auto flex items-center">
-                                        <div id="operator-status-indicator"
-                                            class="w-2 h-2 rounded-full {{ $isOperatorOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-400' }}">
-                                        </div>
-                                    </div>
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
+                        Active Chats
+                        <span
+                            class="inline-flex items-center py-0.5 px-1.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 ml-auto">
+                            {{ $activeChatSessions }}
+                        </span>
+                    </a>
                 </li>
+            @endif
+
+            <!-- Waiting Queue (only show if there are waiting sessions) -->
+            @if ($waitingChatSessions > 0)
+                <li>
+                    <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.chat.index') && request('filter') === 'waiting' ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
+                        href="{{ route('admin.chat.index', ['filter' => 'waiting']) }}">
+                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Waiting Queue
+                        <span
+                            class="inline-flex items-center py-0.5 px-1.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 ml-auto animate-pulse">
+                            {{ $waitingChatSessions }}
+                        </span>
+                    </a>
+                </li>
+            @endif
+
+            <!-- Chat Settings -->
+            <li>
+                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.chat.settings') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
+                    href="{{ route('admin.chat.settings') }}">
+                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Chat Settings                                    
+                </a>
+            </li>
+
+            <!-- Chat Templates -->
+            <li>
+                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.chat.templates') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
+                    href="{{ route('admin.chat.templates') }}">
+                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                    </svg>
+                    Quick Templates                                    
+                </a>
+            </li>
+
+            <!-- Divider -->
+            <li class="my-2">
+                <div class="border-t border-gray-200 dark:border-gray-700"></div>
+            </li>
+
+            <!-- Reports & Analytics -->
+            {{-- <li>
+                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.chat.reports*') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
+                    href="{{ route('admin.chat.reports') }}">
+                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Reports & Analytics                                    
+                </a>
+            </li> --}}
+
+            <!-- Online Status Toggle -->
+            <li>
+                <button type="button"
+                    class="w-full flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900 transition-colors"
+                    onclick="toggleOperatorStatus()" id="operator-toggle-btn">
+                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span id="operator-status-text">
+                        {{ $isOperatorOnline ? 'Go Offline' : 'Go Online' }}
+                    </span>
+                    <div class="ml-auto flex items-center">
+                        <div id="operator-status-indicator"
+                            class="w-2 h-2 rounded-full {{ $isOperatorOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-400' }}">
+                        </div>
+                    </div>
+                </button>
+            </li>
+        </ul>
+    </div>
+</li>
+
                 <!-- Quotations -->
                 <li>
                     <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.quotations.*') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
@@ -883,4 +903,159 @@
             updateOperatorStatusUI();
         });
     </script>
+    <script>
+    // Global operator status management for sidebar
+    let operatorOnlineStatus = {{ $isOperatorOnline ? 'true' : 'false' }};
+
+    async function toggleOperatorStatus() {
+        try {
+            const action = operatorOnlineStatus ? 'offline' : 'online';
+            const response = await fetch(`{{ route('admin.chat.operator.offline') }}`.replace('offline', action), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                operatorOnlineStatus = data.status === 'online';
+                updateSidebarOperatorUI();
+                
+                // Show notification
+                showSidebarNotification(
+                    operatorOnlineStatus ? 'You are now online for chat support' : 'You are now offline',
+                    'success'
+                );
+                
+                // Refresh page statistics if on chat dashboard
+                if (window.location.pathname.includes('/admin/chat')) {
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                }
+            } else {
+                showSidebarNotification('Failed to update operator status', 'error');
+            }
+        } catch (error) {
+            console.error('Error toggling operator status:', error);
+            showSidebarNotification('Error updating operator status', 'error');
+        }
+    }
+
+    function updateSidebarOperatorUI() {
+        const statusText = document.getElementById('operator-status-text');
+        const statusIndicator = document.getElementById('operator-status-indicator');
+        
+        if (statusText) {
+            statusText.textContent = operatorOnlineStatus ? 'Go Offline' : 'Go Online';
+        }
+        
+        if (statusIndicator) {
+            if (operatorOnlineStatus) {
+                statusIndicator.className = 'w-2 h-2 rounded-full bg-green-500 animate-pulse';
+            } else {
+                statusIndicator.className = 'w-2 h-2 rounded-full bg-gray-400';
+            }
+        }
+    }
+
+    function showSidebarNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 z-50 max-w-sm w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 transition-all duration-300 transform translate-x-full`;
+        
+        const bgColor = {
+            'success': 'border-green-200 dark:border-green-700',
+            'error': 'border-red-200 dark:border-red-700',
+            'info': 'border-blue-200 dark:border-blue-700',
+            'warning': 'border-yellow-200 dark:border-yellow-700'
+        }[type] || 'border-gray-200 dark:border-gray-700';
+        
+        notification.className += ` ${bgColor}`;
+        
+        const iconColor = {
+            'success': 'text-green-400',
+            'error': 'text-red-400',
+            'info': 'text-blue-400',
+            'warning': 'text-yellow-400'
+        }[type] || 'text-blue-400';
+        
+        notification.innerHTML = `
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 ${iconColor}" fill="currentColor" viewBox="0 0 20 20">
+                        ${type === 'success' ? 
+                            '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>' :
+                            '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>'
+                        }
+                    </svg>
+                </div>
+                <div class="ml-3 flex-1">
+                    <p class="text-sm text-gray-900 dark:text-white">${message}</p>
+                </div>
+                <div class="ml-4 flex-shrink-0">
+                    <button type="button" class="inline-flex text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none" onclick="this.parentElement.parentElement.parentElement.remove()">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full');
+        }, 100);
+        
+        // Auto remove after 4 seconds
+        setTimeout(() => {
+            notification.classList.add('translate-x-full');
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 300);
+        }, 4000);
+    }
+
+    // Auto-refresh sidebar statistics every 30 seconds
+    setInterval(async function() {
+        try {
+            const response = await fetch('{{ route('admin.chat.statistics') }}');
+            const data = await response.json();
+            
+            // Update badges if they exist
+            updateSidebarBadges(data);
+        } catch (error) {
+            console.error('Error refreshing sidebar statistics:', error);
+        }
+    }, 30000);
+
+    function updateSidebarBadges(data) {
+        const totalActive = (data.active_sessions || 0) + (data.waiting_sessions || 0);
+        
+        // Update main chat badge
+        const mainBadge = document.querySelector('#chat-accordion button .bg-red-500, #chat-accordion button .bg-green-500');
+        if (mainBadge && totalActive > 0) {
+            mainBadge.textContent = totalActive;
+            mainBadge.className = `inline-flex items-center py-0.5 px-1.5 rounded-full text-xs font-medium ${
+                data.waiting_sessions > 0 ? 'bg-red-500 text-white animate-pulse' : 'bg-green-500 text-white'
+            } ml-auto mr-2`;
+        } else if (mainBadge && totalActive === 0) {
+            mainBadge.remove();
+        }
+        
+        // Update dashboard badge
+        const dashboardBadge = document.querySelector('a[href="{{ route('admin.chat.index') }}"] .bg-red-100, a[href="{{ route('admin.chat.index') }}"] .bg-green-100');
+        if (dashboardBadge && totalActive > 0) {
+            dashboardBadge.textContent = totalActive;
+        }
+    }
+</script>
 @endpush

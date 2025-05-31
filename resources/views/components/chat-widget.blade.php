@@ -180,14 +180,14 @@
             
             <!-- Messages will be populated by JavaScript -->
             <template x-for="message in messages" :key="message.id">
-                <div class="flex items-start space-x-3" :class="message.sender_type === 'visitor' ? 'flex-row-reverse space-x-reverse' : ''">
+                <div class="flex items-start space-x-3" x-bind:class="message.sender_type === 'visitor' ? 'flex-row-reverse space-x-reverse' : ''">
                     <!-- Avatar -->
                     <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                         :class="message.sender_type === 'visitor' ? 'bg-blue-100 dark:bg-blue-900' : 
+                         x-bind:class="message.sender_type === 'visitor' ? 'bg-blue-100 dark:bg-blue-900' : 
                                  message.sender_type === 'system' ? 'bg-gray-200 dark:bg-gray-700' : 
                                  'bg-gray-300 dark:bg-gray-600'">
                         <svg class="w-4 h-4" 
-                             :class="message.sender_type === 'visitor' ? 'text-blue-600 dark:text-blue-400' : 
+                             x-bind:class=="message.sender_type === 'visitor' ? 'text-blue-600 dark:text-blue-400' : 
                                      message.sender_type === 'system' ? 'text-gray-500' :
                                      'text-gray-600 dark:text-gray-300'" 
                              fill="currentColor" 
@@ -199,7 +199,7 @@
                     <!-- Message Bubble -->
                     <div class="flex-1">
                         <div class="rounded-lg px-3 py-2 max-w-xs shadow-sm"
-                             :class="message.sender_type === 'visitor' ? 
+                             x-bind:class=="message.sender_type === 'visitor' ? 
                                 'bg-blue-600 text-white rounded-tr-none ml-auto' : 
                                 message.sender_type === 'system' ? 
                                 'bg-gray-200 text-gray-700 rounded-lg italic text-center text-sm' :
@@ -207,7 +207,7 @@
                             <p class="text-sm" x-html="formatMessage(message.message)"></p>
                         </div>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" 
-                           :class="message.sender_type === 'visitor' ? 'text-right' : 
+                           x-bind:class=="message.sender_type === 'visitor' ? 'text-right' : 
                                    message.sender_type === 'system' ? 'text-center' : ''"
                            x-text="formatTime(message.created_at)"></p>
                     </div>
