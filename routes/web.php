@@ -24,7 +24,7 @@ use App\Http\Controllers\Client\NotificationPreferencesController;
 |
 */
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -83,13 +83,13 @@ Route::middleware('auth')->group(function () {
     // Dashboard redirect route (redirects to appropriate dashboard based on role)
     Route::get('/dashboard', function () {
         $user = auth()->user();
-        
+
         if ($user->hasAnyRole(['super-admin', 'admin', 'manager', 'editor'])) {
             return redirect()->route('admin.dashboard');
         } elseif ($user->hasRole('client')) {
             return redirect()->route('client.dashboard');
         }
-        
+
         // Default fallback for users without specific roles
         return redirect()->route('client.dashboard');
     })->name('dashboard');
@@ -112,48 +112,76 @@ Route::middleware('auth')->group(function () {
 */
 
 Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(function () {
-    
+
     Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
 
-        Route::get('/dashboard/realtime-stats', [ ClientDashboardController::class, 'getRealtimeStats'])->name('dashboard.realtime-stats');
-        Route::get('/dashboard/chart-data', [ ClientDashboardController::class, 'getChartData'])->name('dashboard.chart-data');
-        Route::get('/dashboard/performance-metrics', [ ClientDashboardController::class, 'getPerformanceMetrics'])->name('dashboard.performance-metrics');
-        Route::get('/dashboard/upcoming-deadlines', [ ClientDashboardController::class, 'getUpcomingDeadlines'])->name('dashboard.upcoming-deadlines');
-        Route::get('/dashboard/recent-activities', [ ClientDashboardController::class, 'getRecentActivities'])->name('dashboard.recent-activities');
-        Route::get('/dashboard/notifications', [ ClientDashboardController::class, 'getNotifications'])->name('dashboard.notifications');
+    Route::get('/dashboard/realtime-stats', [ClientDashboardController::class, 'getRealtimeStats'])->name('dashboard.realtime-stats');
+    Route::get('/dashboard/chart-data', [ClientDashboardController::class, 'getChartData'])->name('dashboard.chart-data');
+    Route::get('/dashboard/performance-metrics', [ClientDashboardController::class, 'getPerformanceMetrics'])->name('dashboard.performance-metrics');
+    Route::get('/dashboard/upcoming-deadlines', [ClientDashboardController::class, 'getUpcomingDeadlines'])->name('dashboard.upcoming-deadlines');
+    Route::get('/dashboard/recent-activities', [ClientDashboardController::class, 'getRecentActivities'])->name('dashboard.recent-activities');
+    Route::get('/dashboard/notifications', [ClientDashboardController::class, 'getNotifications'])->name('dashboard.notifications');
 
-        Route::post('/dashboard/mark-notification-read', [ ClientDashboardController::class, 'markNotificationRead'])->name('dashboard.mark-notification-read');
-        Route::post('/dashboard/test-notification', [ ClientDashboardController::class, 'testNotification'])->name('dashboard.test-notification');
-        Route::post('/dashboard/clear-cache', [ ClientDashboardController::class, 'clearCache'])->name('dashboard.clear-cache');
-    // Client Notifications
-    Route::get('notifications/preferences', [NotificationPreferencesController::class, 'show'])
-         ->name('notifications.preferences');
-    Route::put('notifications/preferences', [NotificationPreferencesController::class, 'update'])
-         ->name('notifications.preferences.update');
+    Route::post('/dashboard/mark-notification-read', [ClientDashboardController::class, 'markNotificationRead'])->name('dashboard.mark-notification-read');
+    Route::post('/dashboard/test-notification', [ClientDashboardController::class, 'testNotification'])->name('dashboard.test-notification');
+    Route::post('/dashboard/clear-cache', [ClientDashboardController::class, 'clearCache'])->name('dashboard.clear-cache');
     
-    // Client Projects
+    // Notifications Management
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Client\NotificationController::class, 'index'])->name('index');
+        Route::get('/recent', [App\Http\Controllers\Client\NotificationController::class, 'getRecent'])->name('recent');
+        Route::post('/{notification}/read', [App\Http\Controllers\Client\NotificationController::class, 'markAsRead'])->name('mark-read');
+        Route::post('/mark-all-read', [App\Http\Controllers\Client\NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::delete('/{notification}', [App\Http\Controllers\Client\NotificationController::class, 'destroy'])->name('destroy');
+        Route::post('/clear-read', [App\Http\Controllers\Client\NotificationController::class, 'clearRead'])->name('clear-read');
+        Route::get('/summary', [App\Http\Controllers\Client\NotificationController::class, 'getSummary'])->name('summary');
+        Route::get('/unread-count', [App\Http\Controllers\Client\NotificationController::class, 'getUnreadCount'])->name('unread-count');
+
+        // Notification Preferences (if not using the existing one)
+        Route::get('/preferences', [App\Http\Controllers\Client\NotificationPreferencesController::class, 'show'])
+            ->name('preferences');
+        Route::put('/preferences', [App\Http\Controllers\Client\NotificationPreferencesController::class, 'update'])
+            ->name('preferences.update');
+    });
+
+    // Client Projects Management
+    
     Route::prefix('projects')->name('projects.')->group(function () {
         Route::get('/', [App\Http\Controllers\Client\ProjectController::class, 'index'])->name('index');
         Route::get('/{project}', [App\Http\Controllers\Client\ProjectController::class, 'show'])->name('show');
         Route::get('/{project}/documents', [App\Http\Controllers\Client\ProjectController::class, 'documents'])->name('documents');
         Route::get('/{project}/documents/{document}/download', [App\Http\Controllers\Client\ProjectController::class, 'downloadDocument'])
             ->name('documents.download');
+        Route::get('/{project}/timeline', [App\Http\Controllers\Client\ProjectController::class, 'getTimeline'])->name('timeline');
+        Route::get('/{project}/files/{file}/download', [App\Http\Controllers\Client\ProjectController::class, 'downloadFile'])->name('files.download');
+        Route::get('/statistics', [App\Http\Controllers\Client\ProjectController::class, 'getStatistics'])->name('statistics');
+        Route::get('/{project}/testimonial/create', [App\Http\Controllers\Client\ProjectController::class, 'showTestimonialForm'])->name('testimonial.create');
+        Route::post('/{project}/testimonial', [App\Http\Controllers\Client\ProjectController::class, 'storeTestimonial'])
+            ->middleware('throttle:3,1')
+            ->name('testimonial.store');
     });
-    
-    // Client Quotations (Enhanced from existing quotation system)
+
+
+    // Client Quotations Management
     Route::prefix('quotations')->name('quotations.')->group(function () {
         Route::get('/', [App\Http\Controllers\Client\QuotationController::class, 'index'])->name('index');
         Route::get('/create', [App\Http\Controllers\Client\QuotationController::class, 'create'])->name('create');
         Route::post('/', [App\Http\Controllers\Client\QuotationController::class, 'store'])
-            ->middleware('throttle:5,1') // Rate limit client quotations
+            ->middleware('throttle:5,1')
             ->name('store');
         Route::get('/{quotation}', [App\Http\Controllers\Client\QuotationController::class, 'show'])->name('show');
         Route::put('/{quotation}/approve', [App\Http\Controllers\Client\QuotationController::class, 'approve'])->name('approve');
         Route::put('/{quotation}/reject', [App\Http\Controllers\Client\QuotationController::class, 'reject'])->name('reject');
         Route::post('/{quotation}/feedback', [App\Http\Controllers\Client\QuotationController::class, 'provideFeedback'])->name('feedback');
+        Route::get('/{quotation}/additional-info', [App\Http\Controllers\Client\QuotationController::class, 'showAdditionalInfoForm'])->name('additional-info');
+        Route::put('/{quotation}/additional-info', [App\Http\Controllers\Client\QuotationController::class, 'updateAdditionalInfo'])->name('additional-info.update');
+        Route::get('/{quotation}/decline', [App\Http\Controllers\Client\QuotationController::class, 'showDeclineForm'])->name('decline.form');
+        Route::post('/{quotation}/decline', [App\Http\Controllers\Client\QuotationController::class, 'decline'])->name('decline');
+        Route::get('/{quotation}/attachments/{attachment}/download', [App\Http\Controllers\Client\QuotationController::class, 'downloadAttachment'])->name('attachments.download');
+        Route::get('/statistics', [App\Http\Controllers\Client\QuotationController::class, 'getStatistics'])->name('statistics');
     });
-    
-    // Client Messages
+
+    // Client Messages Management
     Route::prefix('messages')->name('messages.')->group(function () {
         Route::get('/', [App\Http\Controllers\Client\MessageController::class, 'index'])->name('index');
         Route::get('/create', [App\Http\Controllers\Client\MessageController::class, 'create'])->name('create');
@@ -165,9 +193,15 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
             ->middleware('throttle:10,1') // Rate limit replies
             ->name('reply');
         Route::patch('/{message}/mark-read', [App\Http\Controllers\Client\MessageController::class, 'markAsRead'])->name('mark-read');
+        Route::get('/{message}/reply', [App\Http\Controllers\Client\MessageController::class, 'showReplyForm'])->name('reply.form');
+        Route::post('/{message}/toggle-read', [App\Http\Controllers\Client\MessageController::class, 'toggleRead'])->name('toggle-read');
+        Route::get('/{message}/attachments/{attachment}/download', [App\Http\Controllers\Client\MessageController::class, 'downloadAttachment'])->name('attachments.download');
+        Route::get('/unread-count', [App\Http\Controllers\Client\MessageController::class, 'getUnreadCount'])->name('unread-count');
+        Route::post('/mark-all-read', [App\Http\Controllers\Client\MessageController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::get('/statistics', [App\Http\Controllers\Client\MessageController::class, 'getStatistics'])->name('statistics');
     });
-    
-    // Client Testimonials (Allow clients to submit testimonials)
+
+    // Client Testimonials Management
     Route::prefix('testimonials')->name('testimonials.')->group(function () {
         Route::get('/', [App\Http\Controllers\Client\TestimonialController::class, 'index'])->name('index');
         Route::get('/create', [App\Http\Controllers\Client\TestimonialController::class, 'create'])->name('create');
@@ -177,31 +211,63 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::get('/{testimonial}', [App\Http\Controllers\Client\TestimonialController::class, 'show'])->name('show');
         Route::get('/{testimonial}/edit', [App\Http\Controllers\Client\TestimonialController::class, 'edit'])->name('edit');
         Route::put('/{testimonial}', [App\Http\Controllers\Client\TestimonialController::class, 'update'])->name('update');
+        Route::delete('/{testimonial}', [App\Http\Controllers\Client\TestimonialController::class, 'destroy'])->name('destroy');
+        Route::get('/available-projects', [App\Http\Controllers\Client\TestimonialController::class, 'availableProjects'])->name('available-projects');
+        Route::get('/{testimonial}/preview', [App\Http\Controllers\Client\TestimonialController::class, 'preview'])->name('preview');
+        Route::get('/statistics', [App\Http\Controllers\Client\TestimonialController::class, 'getStatistics'])->name('statistics');
     });
 
-    // Client Chat Routes (Enhanced from existing chat system)
+    // Client Chat Management
     Route::prefix('chat')->name('chat.')->group(function () {
-        // Chat session management
+        Route::get('/', [App\Http\Controllers\Client\ChatController::class, 'index'])->name('index');
+        Route::get('/history', [App\Http\Controllers\Client\ChatController::class, 'history'])->name('history');
+        Route::get('/{chatSession}', [App\Http\Controllers\Client\ChatController::class, 'show'])->name('show');
         Route::post('/start', [App\Http\Controllers\ChatController::class, 'start'])->name('start');
         Route::get('/session', [App\Http\Controllers\ChatController::class, 'getSession'])->name('session');
         Route::post('/close', [App\Http\Controllers\ChatController::class, 'close'])->name('close');
-
-        // Message handling with rate limiting
         Route::post('/send-message', [App\Http\Controllers\ChatController::class, 'sendMessage'])
-            ->middleware('throttle:30,1') // 30 chat messages per minute
+            ->middleware('throttle:30,1')
             ->name('send-message');
         Route::get('/messages', [App\Http\Controllers\ChatController::class, 'getMessages'])->name('messages');
-        Route::get('/history/{sessionId}', [App\Http\Controllers\ChatController::class, 'history'])->name('history');
-
-        // Client info updates
+        Route::get('/history/{sessionId}', [App\Http\Controllers\ChatController::class, 'history'])->name('session-history');
         Route::post('/update-info', [App\Http\Controllers\ChatController::class, 'updateClientInfo'])->name('update-info');
-
-        // Chat status
         Route::get('/online-status', [App\Http\Controllers\ChatController::class, 'onlineStatus'])->name('online-status');
     });
 
-    Route::get('/profile/edit', [ClientProfileController::class, 'edit'])->name('profile.edit');
-        Route::post('/profile/update', [ClientProfileController::class, 'update'])->name('profile.update');
+    // Client Profile Management
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Client\ProfileController::class, 'show'])->name('show');
+        Route::get('/edit', [App\Http\Controllers\Client\ProfileController::class, 'edit'])->name('edit');
+        Route::post('/update', [App\Http\Controllers\Client\ProfileController::class, 'update'])->name('update');
+        Route::get('/change-password', [App\Http\Controllers\Client\ProfileController::class, 'showChangePasswordForm'])->name('change-password');
+        Route::post('/change-password', [App\Http\Controllers\Client\ProfileController::class, 'changePassword'])->name('change-password.update');
+        Route::get('/preferences', [App\Http\Controllers\Client\ProfileController::class, 'preferences'])->name('preferences');
+        Route::post('/preferences', [App\Http\Controllers\Client\ProfileController::class, 'updatePreferences'])->name('preferences.update');
+        Route::get('/privacy', [App\Http\Controllers\Client\ProfileController::class, 'privacy'])->name('privacy');
+        Route::post('/privacy', [App\Http\Controllers\Client\ProfileController::class, 'updatePrivacy'])->name('privacy.update');
+        Route::get('/activity', [App\Http\Controllers\Client\ProfileController::class, 'activity'])->name('activity');
+        Route::get('/export-data', [App\Http\Controllers\Client\ProfileController::class, 'exportData'])->name('export-data');
+        Route::get('/delete', [App\Http\Controllers\Client\ProfileController::class, 'showDeleteForm'])->name('delete');
+        Route::delete('/delete', [App\Http\Controllers\Client\ProfileController::class, 'deleteAccount'])->name('delete.confirm');
+    });
+
+    // API Routes for Real-time Updates
+    Route::prefix('api')->name('api.')->group(function () {
+        Route::get('/dashboard/stats', [ClientDashboardController::class, 'getRealtimeStats'])->name('dashboard.stats');
+        Route::get('/notifications/count', [App\Http\Controllers\Client\NotificationController::class, 'getUnreadCount'])->name('notifications.count');
+        Route::get('/messages/count', [App\Http\Controllers\Client\MessageController::class, 'getUnreadCount'])->name('messages.count');
+        Route::get('/projects/stats', [App\Http\Controllers\Client\ProjectController::class, 'getStatistics'])->name('projects.stats');
+        Route::get('/quotations/stats', [App\Http\Controllers\Client\QuotationController::class, 'getStatistics'])->name('quotations.stats');
+    });
+
+    // Settings Routes for Client
+    Route::prefix('settings')->name('settings.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Client\SettingsController::class, 'index'])->name('index');
+        Route::get('/account', [App\Http\Controllers\Client\SettingsController::class, 'account'])->name('account');
+        Route::post('/account', [App\Http\Controllers\Client\SettingsController::class, 'updateAccount'])->name('account.update');
+        Route::get('/security', [App\Http\Controllers\Client\SettingsController::class, 'security'])->name('security');
+        Route::post('/security', [App\Http\Controllers\Client\SettingsController::class, 'updateSecurity'])->name('security.update');
+    });
 });
 
 /*
@@ -288,7 +354,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('/settings', [App\Http\Controllers\ChatController::class, 'updateSettings'])->name('settings.update');
         Route::get('/reports', [App\Http\Controllers\ChatController::class, 'reports'])->name('reports.index');
         Route::get('/reports/export', [App\Http\Controllers\ChatController::class, 'exportReport'])->name('reports.export');
-        
+
         // Individual chat session management
         Route::get('/{chatSession}', [App\Http\Controllers\ChatController::class, 'show'])->name('show');
         Route::post('/{chatSession}/reply', [App\Http\Controllers\ChatController::class, 'reply'])
@@ -369,7 +435,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/messages/email-reply-webhook', [App\Http\Controllers\Admin\MessageController::class, 'handleEmailReply'])
         ->name('messages.email-reply-webhook')
         ->middleware('throttle:100,1');
-    
+
     // Team management
     Route::resource('team', App\Http\Controllers\Admin\TeamController::class);
     Route::post('/team/{teamMember}/toggle-active', [App\Http\Controllers\Admin\TeamController::class, 'toggleActive'])->name('team.toggle-active');
@@ -380,7 +446,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::resource('team-member-departments', App\Http\Controllers\Admin\TeamMemberDepartmentController::class);
     Route::patch('/team-member-departments/{teamMemberDepartment}/toggle-active', [App\Http\Controllers\Admin\TeamMemberDepartmentController::class, 'toggleActive'])->name('team-member-departments.toggle-active');
     Route::post('/team-member-departments/update-order', [App\Http\Controllers\Admin\TeamMemberDepartmentController::class, 'updateOrder'])->name('team-member-departments.update-order');
-    
+
     // Testimonials management
     Route::resource('testimonials', App\Http\Controllers\Admin\TestimonialController::class);
     Route::post('/testimonials/{testimonial}/toggle-active', [App\Http\Controllers\Admin\TestimonialController::class, 'toggleActive'])->name('testimonials.toggle-active');
@@ -401,7 +467,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::delete('/posts/{post}', [App\Http\Controllers\Admin\PostController::class, 'destroy'])->name('posts.destroy');
     Route::post('/posts/{post}/toggle-featured', [App\Http\Controllers\Admin\PostController::class, 'toggleFeatured'])->name('posts.toggle-featured');
     Route::post('/posts/{post}/change-status', [App\Http\Controllers\Admin\PostController::class, 'changeStatus'])->name('posts.change-status');
-    
+
     // Post category management
     Route::get('/post-categories', [App\Http\Controllers\Admin\PostCategoryController::class, 'index'])->name('post-categories.index');
     Route::get('/post-categories/create', [App\Http\Controllers\Admin\PostCategoryController::class, 'create'])->name('post-categories.create');
@@ -417,7 +483,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::put('/company-profile', [App\Http\Controllers\Admin\CompanyProfileController::class, 'update'])->name('company-profile.update');
     Route::get('/company-profile/seo', [App\Http\Controllers\Admin\CompanyProfileController::class, 'seo'])->name('company-profile.seo');
     Route::put('/company-profile/seo', [App\Http\Controllers\Admin\CompanyProfileController::class, 'updateSeo'])->name('company-profile.seo.update');
-    
+
     // Company Profile (Alias routes for sidebar navigation)
     Route::prefix('company')->name('company.')->group(function () {
         Route::get('/edit', [App\Http\Controllers\Admin\CompanyProfileController::class, 'index'])->name('edit');
@@ -425,52 +491,52 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     Route::post('notifications/{notification}/mark-as-read', [App\Http\Controllers\Admin\DashboardController::class, 'markNotificationAsRead'])
         ->name('notifications.mark-as-read');
-    
+
     Route::post('notifications/mark-all-as-read', [App\Http\Controllers\Admin\DashboardController::class, 'markAllNotificationsAsRead'])
         ->name('notifications.mark-all-as-read');
-    
+
     Route::get('notifications/counts', [App\Http\Controllers\Admin\DashboardController::class, 'getNotificationCounts'])
         ->name('notifications.counts');
-    
+
     // Dashboard API endpoints
     Route::get('dashboard/stats', [App\Http\Controllers\Admin\DashboardController::class, 'getStats'])
         ->name('dashboard.stats');
-    
+
     Route::get('dashboard/chart-data', [App\Http\Controllers\Admin\DashboardController::class, 'getChartData'])
         ->name('dashboard.chart-data');
-    
+
     Route::post('dashboard/clear-cache', [App\Http\Controllers\Admin\DashboardController::class, 'clearCache'])
         ->name('dashboard.clear-cache');
-    
+
     Route::get('dashboard/export', [App\Http\Controllers\Admin\DashboardController::class, 'exportDashboard'])
         ->name('dashboard.export');
-    
+
     Route::get('dashboard/system-health', [App\Http\Controllers\Admin\DashboardController::class, 'getSystemHealth'])
         ->name('dashboard.system-health');
-    
+
     // Test notification (only in local environment)
     Route::post('dashboard/send-test-notification', [App\Http\Controllers\Admin\DashboardController::class, 'sendTestNotification'])
         ->name('dashboard.send-test-notification');
-    
+
     // Notification management
     Route::get('notifications', [App\Http\Controllers\NotificationController::class, 'index'])
         ->name('notifications.index');
-    
+
     Route::get('notifications/{notification}', [App\Http\Controllers\NotificationController::class, 'show'])
         ->name('notifications.show');
-    
+
     Route::delete('notifications/{notification}', [App\Http\Controllers\NotificationController::class, 'destroy'])
         ->name('notifications.destroy');
-    
+
     Route::post('notifications/bulk-mark-as-read', [App\Http\Controllers\NotificationController::class, 'bulkMarkAsRead'])
         ->name('notifications.bulk-mark-as-read');
-    
+
     Route::post('notifications/bulk-delete', [App\Http\Controllers\NotificationController::class, 'bulkDelete'])
         ->name('notifications.bulk-delete');
-    
+
     Route::get('notifications/settings', [App\Http\Controllers\NotificationController::class, 'settings'])
         ->name('notifications.settings');
-    
+
     Route::put('notifications/settings', [App\Http\Controllers\NotificationController::class, 'updateSettings'])
         ->name('notifications.settings.update');
 

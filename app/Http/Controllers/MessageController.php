@@ -18,9 +18,12 @@ class MessageController extends Controller
             'name' => $request->input('name'),
             'email' => $request->input('email'),
             'phone' => $request->input('phone'),
-            'subject' => $request->input('subject'),
-            'message' => $request->input('message'),
             'status' => 'unread',
+            'project_id' => $request->project_id, // Now this will work
+            'user_id' => auth()->id(),
+            'subject' => $request->subject,
+            'message' => $request->message,
+            'priority' => $request->priority ?? 'normal',
         ]);
         
         // Handle attachments if any

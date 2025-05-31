@@ -1,5 +1,8 @@
 <?php
 
+// Update your existing app/Models/Message.php file
+// Add these changes to the Message model
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,6 +29,8 @@ class Message extends Model
         'is_replied',
         'user_id',
         'parent_id',
+        'project_id',  // <- Add this if not already present
+        'priority',    // <- Add this if not already present
         'read_at',
         'replied_at',
         'replied_by',
@@ -52,6 +57,7 @@ class Message extends Model
         'is_read' => false,
         'is_replied' => false,
         'type' => 'contact_form',
+        'priority' => 'normal',  // <- Add this default
     ];
 
     /**
@@ -68,6 +74,16 @@ class Message extends Model
     public function client()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Get the project associated with this message.
+     * 
+     * ADD THIS RELATIONSHIP - This is what was missing!
+     */
+    public function project()
+    {
+        return $this->belongsTo(Project::class);
     }
 
     /**
@@ -172,6 +188,26 @@ class Message extends Model
     }
 
     /**
+     * Scope a query to filter by project.
+     * 
+     * ADD THIS SCOPE - For filtering messages by project
+     */
+    public function scopeByProject($query, $projectId)
+    {
+        return $query->where('project_id', $projectId);
+    }
+
+    /**
+     * Scope a query to filter by priority.
+     * 
+     * ADD THIS SCOPE - For filtering messages by priority
+     */
+    public function scopeByPriority($query, $priority)
+    {
+        return $query->where('priority', $priority);
+    }
+
+    /**
      * Get thread messages (all messages in the same conversation).
      */
     public function getThreadMessages()
@@ -228,6 +264,26 @@ class Message extends Model
     public function hasBeenReplied()
     {
         return $this->is_replied;
+    }
+
+    /**
+     * Check if message is urgent.
+     * 
+     * ADD THIS METHOD - For checking message urgency
+     */
+    public function isUrgent()
+    {
+        return $this->priority === 'urgent';
+    }
+
+    /**
+     * Check if message is related to a project.
+     * 
+     * ADD THIS METHOD - For checking if message has project context
+     */
+    public function hasProject()
+    {
+        return !is_null($this->project_id) && $this->project()->exists();
     }
 
     /**
@@ -326,6 +382,38 @@ class Message extends Model
     public function getShortMessageAttribute()
     {
         return \Illuminate\Support\Str::limit(strip_tags($this->message), 100);
+    }
+
+    /**
+     * Get priority badge color.
+     * 
+     * ADD THIS METHOD - For UI display of priority
+     */
+    public function getPriorityColorAttribute()
+    {
+        return match($this->priority) {
+            'urgent' => 'red',
+            'high' => 'orange',
+            'normal' => 'blue',
+            'low' => 'gray',
+            default => 'gray'
+        };
+    }
+
+    /**
+     * Get formatted priority name.
+     * 
+     * ADD THIS METHOD - For UI display of priority
+     */
+    public function getFormattedPriorityAttribute()
+    {
+        return match($this->priority) {
+            'urgent' => 'Urgent',
+            'high' => 'High',
+            'normal' => 'Normal',
+            'low' => 'Low',
+            default => 'Normal'
+        };
     }
 
     /**

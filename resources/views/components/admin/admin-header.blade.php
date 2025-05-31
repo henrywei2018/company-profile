@@ -1,10 +1,12 @@
-<header class="sticky top-0 inset-x-0 z-50 w-full bg-white border-b border-gray-200 text-sm dark:bg-gray-800 dark:border-gray-700 lg:ps-64">
-    <nav class="w-full mx-auto px-4 py-2.5 sm:flex sm:items-center sm:justify-between sm:px-6 lg:px-8" aria-label="Global">
+<header
+    class="sticky top-0 inset-x-0 z-50 w-full bg-white border-b border-gray-200 text-sm dark:bg-gray-800 dark:border-gray-700 lg:ps-64">
+    <nav class="w-full mx-auto px-4 py-2.5 sm:flex sm:items-center sm:justify-between sm:px-6 lg:px-8"
+        aria-label="Global">
         <!-- Left: Logo -->
         <div class="flex items-center lg:hidden">
             <a href="{{ route('admin.dashboard') }}" aria-label="{{ config('app.name') }}"
                 class="text-xl font-bold text-blue-600 dark:text-white">
-                @if(isset($companyProfile) && $companyProfile->logo)
+                @if (isset($companyProfile) && $companyProfile->logo)
                     <img src="{{ $companyProfile->logoUrl }}" alt="{{ config('app.name') }}" class="h-8 md:h-10">
                 @else
                     {{ config('app.name') }}
@@ -40,38 +42,39 @@
 
             <!-- Notification Icon -->
             <!-- Notification Dropdown -->
-<div class="hs-dropdown relative inline-block" data-hs-dropdown data-hs-dropdown-placement="bottom-end">
-    <button type="button"
-        class="size-8 flex justify-center items-center text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-neutral-700 rounded-full relative"
-        data-hs-dropdown-toggle>
-        <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-        </svg>
-        @if(($unreadMessagesCount ?? 0) > 0)
-            <span class="absolute top-0 end-0 h-2 w-2 bg-red-500 rounded-full"></span>
-        @endif
-        <span class="sr-only">Notifications</span>
-    </button>
+            <div class="hs-dropdown relative inline-block" data-hs-dropdown data-hs-dropdown-placement="bottom-end">
+                <button type="button"
+                    class="size-8 flex justify-center items-center text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-neutral-700 rounded-full relative"
+                    data-hs-dropdown-toggle>
+                    <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                    </svg>
+                    @if (($unreadMessagesCount ?? 0) > 0)
+                        <span class="absolute top-0 end-0 h-2 w-2 bg-red-500 rounded-full"></span>
+                    @endif
+                    <span class="sr-only">Notifications</span>
+                </button>
 
-    <!-- Dropdown Panel -->
-    <div class="hs-dropdown-menu hidden z-50 mt-2 min-w-60 bg-white shadow-md rounded-lg border dark:bg-neutral-800 dark:border-neutral-700"
-        aria-labelledby="hs-dropdown-toggle">
-        <div class="px-4 py-3">
-            <p class="text-sm text-gray-800 dark:text-white font-medium">Notifications</p>
-        </div>
-        <div class="max-h-64 overflow-y-auto">
-            @forelse($recentNotifications ?? [] as $notification)
-                <a href="{{ $notification->url }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
-                    {{ $notification->message }}
-                </a>
-            @empty
-                <p class="px-4 py-2 text-sm text-gray-500 dark:text-neutral-400">No new notifications.</p>
-            @endforelse
-        </div>
-    </div>
-</div>
+                <!-- Dropdown Panel -->
+                <div class="hs-dropdown-menu hidden z-50 mt-2 min-w-60 bg-white shadow-md rounded-lg border dark:bg-neutral-800 dark:border-neutral-700"
+                    aria-labelledby="hs-dropdown-toggle">
+                    <div class="px-4 py-3">
+                        <p class="text-sm text-gray-800 dark:text-white font-medium">Notifications</p>
+                    </div>
+                    <div class="max-h-64 overflow-y-auto">
+                        @forelse($recentNotifications ?? [] as $notification)
+                            <a href="{{ $notification->url }}"
+                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
+                                {{ $notification->message }}
+                            </a>
+                        @empty
+                            <p class="px-4 py-2 text-sm text-gray-500 dark:text-neutral-400">No new notifications.</p>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
 
 
             <!-- User Dropdown -->
@@ -93,9 +96,8 @@
                     <div class="p-1.5 space-y-0.5">
                         <a href="#"
                             class="flex items-center gap-3 py-2 px-3 rounded-lg text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
-                            <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" viewBox="0 0 24 24">
+                            <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                                 <circle cx="9" cy="7" r="4" />
                                 <path d="M22 21v-2a4 4 0 0 0-3-3.87" />

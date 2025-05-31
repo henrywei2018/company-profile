@@ -137,11 +137,11 @@ class Project extends Model
             if (empty($project->slug)) {
                 $project->slug = Str::slug($project->title);
             }
-            
+
             if (empty($project->status)) {
                 $project->status = self::STATUS_PLANNING;
             }
-            
+
             if (empty($project->priority)) {
                 $project->priority = self::PRIORITY_NORMAL;
             }
@@ -152,6 +152,34 @@ class Project extends Model
                 $project->slug = Str::slug($project->title);
             }
         });
+    }
+    public function messages()
+    {
+        return $this->hasMany(Message::class);
+    }
+
+    /**
+     * Get unread messages for this project.
+     */
+    public function unreadMessages()
+    {
+        return $this->hasMany(Message::class)->where('is_read', false);
+    }
+
+    /**
+     * Get urgent messages for this project.
+     */
+    public function urgentMessages()
+    {
+        return $this->hasMany(Message::class)->where('priority', 'urgent');
+    }
+
+    /**
+     * Get the latest message for this project.
+     */
+    public function latestMessage()
+    {
+        return $this->hasOne(Message::class)->latestOfMany();
     }
 
     /**
@@ -293,7 +321,7 @@ class Project extends Model
      */
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             self::STATUS_PLANNING => 'blue',
             self::STATUS_IN_PROGRESS => 'yellow',
             self::STATUS_ON_HOLD => 'orange',
@@ -308,7 +336,7 @@ class Project extends Model
      */
     public function getPriorityColorAttribute(): string
     {
-        return match($this->priority) {
+        return match ($this->priority) {
             self::PRIORITY_LOW => 'gray',
             self::PRIORITY_NORMAL => 'blue',
             self::PRIORITY_HIGH => 'orange',
@@ -338,9 +366,9 @@ class Project extends Model
      */
     public function isOverdue(): bool
     {
-        return $this->end_date && 
-               $this->end_date->isPast() && 
-               $this->status !== self::STATUS_COMPLETED;
+        return $this->end_date &&
+            $this->end_date->isPast() &&
+            $this->status !== self::STATUS_COMPLETED;
     }
 
     /**
