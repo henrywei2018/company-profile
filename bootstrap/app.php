@@ -8,20 +8,41 @@ use Illuminate\Console\Scheduling\Schedule;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',
-        commands: __DIR__.'/../routes/console.php',
-        channels: __DIR__.'/../routes/channels.php',
+        web: __DIR__ . '/../routes/web.php',
+        api: __DIR__ . '/../routes/api.php',
+        commands: __DIR__ . '/../routes/console.php',
+        channels: __DIR__ . '/../routes/channels.php',
         health: '/up',
     )
     ->withSchedule(function (Schedule $schedule) {
         $schedule->command('notifications:send-scheduled')
-                ->everyFiveMinutes()
-                ->withoutOverlapping();
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
 
         $schedule->command('notifications:cleanup')
-                ->daily()
-                ->at('02:00');
+            ->daily()
+            ->at('02:00');
+        $schedule->command('chat:cleanup')->weekly();
+
+        // Auto-assign waiting sessions
+        $schedule->call([app(\App\Services\ChatService::class), 'autoAssignWaitingSessions'])
+            ->everyMinute()
+            ->name('auto-assign-chat-sessions');
+
+        // Clean up stale sessions
+        $schedule->call([app(\App\Services\ChatService::class), 'cleanupStaleSessions'])
+            ->hourly()
+            ->name('cleanup-stale-chat-sessions');
+
+        // Check for sessions needing attention
+        $schedule->call(function () {
+            $sessions = app(\App\Services\ChatService::class)->getSessionsNeedingAttention();
+            foreach ($sessions as $session) {
+                \App\Facades\Notifications::send('chat.session_needs_attention', $session);
+            }
+        })
+            ->everyFiveMinutes()
+            ->name('check-chat-sessions-attention');
     })
     ->withProviders([
         App\Providers\RepositoryServiceProvider::class,
@@ -36,7 +57,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
             'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
-            
+
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'client' => \App\Http\Middleware\ClientMiddleware::class,
@@ -55,7 +76,7 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->expectsJson()) {
                 return response()->json(['error' => 'Forbidden'], 403);
             }
-            
+
             if (auth()->check()) {
                 $user = auth()->user();
                 if ($request->is('admin/*') && !$user->hasAnyRole(['super-admin', 'admin', 'manager', 'editor'])) {
@@ -65,7 +86,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     return redirect()->route('admin.dashboard')->with('error', 'Access denied.');
                 }
             }
-            
+
             return redirect()->back()->with('error', 'Access denied.');
         });
     })

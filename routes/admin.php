@@ -98,19 +98,25 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('/{chatSession}/priority', [ChatController::class, 'updatePriority'])->name('priority');
         Route::post('/{chatSession}/notes', [ChatController::class, 'updateNotes'])->name('notes');
         Route::post('/{chatSession}/typing', [ChatController::class, 'typing'])->name('typing');
-        Route::get('/api/statistics', [ChatController::class, 'statistics'])->name('statistics');
+        Route::post('/{chatSession}/transfer', [ChatController::class, 'transferSession'])->name('transfer');
+        Route::post('/{chatSession}/use-template', [ChatController::class, 'useTemplate'])->name('use-template');
+        Route::get('/{chatSession}/poll-messages', [ChatController::class, 'pollMessages'])->name('poll-messages');
+        Route::post('/{chatSession}/mark-messages-read', [ChatController::class, 'markMessagesRead'])->name('mark-messages-read');
         Route::get('/{chatSession}/messages', [ChatController::class, 'getChatMessages'])->name('messages');
+        Route::get('/api/statistics', [ChatController::class, 'statistics'])->name('statistics');
+        
         Route::post('/operator/online', [ChatController::class, 'goOnline'])->name('operator.online');
         Route::post('/operator/offline', [ChatController::class, 'goOffline'])->name('operator.offline');
         Route::get('/operator/status', [ChatController::class, 'getOperatorStatus'])->name('operator.status');
+        Route::get('/operators/available', [ChatController::class, 'getAvailableOperators'])->name('operators.available');
         Route::post('/operator/availability', [ChatController::class, 'updateAvailability'])->name('operator.availability');
         Route::get('/templates', [ChatController::class, 'templates'])->name('templates');
         Route::post('/templates', [ChatController::class, 'storeTemplate'])->name('templates.store');
-        Route::put('/templates/{template}', [ChatTemplateController::class, 'update'])->name('templates.update');
-        Route::delete('/templates/{template}', [ChatTemplateController::class, 'destroy'])->name('templates.destroy');
+        Route::put('/templates/{template}', [ChatController::class, 'updateTemplate'])->name('templates.update');
+        Route::delete('/templates/{template}', [ChatController::class, 'destroyTemplate'])->name('templates.destroy');
         Route::post('/bulk-update', [ChatController::class, 'bulkUpdate'])->name('bulk-update');
         Route::post('/archive-old', [ChatController::class, 'archiveOldSessions'])->name('archive-old');
-        Route::post('/{chatSession}/transfer', [ChatController::class, 'transferSession'])->name('transfer');
+        
         Route::get('/operators/available', [ChatController::class, 'getAvailableOperators'])->name('operators.available');
         Route::get('/reports/detailed', [ChatController::class, 'detailedReports'])->name('reports.detailed');
         Route::post('/reports/generate', [ChatController::class, 'generateReport'])->name('reports.generate');

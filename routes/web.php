@@ -74,23 +74,50 @@ Route::post('/messages', [MessageController::class, 'store'])
 */
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', function () {
-    $user = auth()->user();
+        $user = auth()->user();
 
-    // Prevent redirect loop
-    if (request()->routeIs('admin.dashboard') || request()->routeIs('client.dashboard')) {
-        abort(404);
-    }
+        // Prevent redirect loop
+        if (request()->routeIs('admin.dashboard') || request()->routeIs('client.dashboard')) {
+            abort(404);
+        }
 
-    if ($user->hasAnyRole(['super-admin', 'admin', 'manager', 'editor'])) {
-        return redirect()->route('admin.dashboard');
-    }
+        if ($user->hasAnyRole(['super-admin', 'admin', 'manager', 'editor'])) {
+            return redirect()->route('admin.dashboard');
+        }
 
-    if ($user->hasRole('client')) {
-        return redirect()->route('client.dashboard');
-    }
+        if ($user->hasRole('client')) {
+            return redirect()->route('client.dashboard');
+        }
 
-    abort(403, 'Unauthorized');
-})->name('dashboard');
+        abort(403, 'Unauthorized');
+    })->name('dashboard');
+    Route::get('/chat/notifications', function () {
+        $user = auth()->user();
+        
+        if ($user->hasAdminAccess()) {
+            // Get chat notifications for operators
+            $notifications = $user->notifications()
+                ->where('type', 'like', '%Chat%')
+                ->whereNull('read_at')
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
+        } else {
+            // Get chat notifications for clients
+            $notifications = $user->notifications()
+                ->where('type', 'like', '%chat%')
+                ->whereNull('read_at')
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
+        }
+        
+        return response()->json([
+            'success' => true,
+            'notifications' => $notifications,
+            'unread_count' => $notifications->count()
+        ]);
+    })->name('chat.notifications');
 
     Route::prefix('profile')->group(function () {
         Route::get('/', [ClientProfileController::class, 'edit'])->name('profile.edit');
@@ -100,6 +127,14 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/api/analytics/track', fn() => response()->json(['success' => true]))
         ->name('api.analytics.track');
+
+    Route::get('/chat/websocket-auth', function () {
+        return response()->json([
+            'auth' => auth()->check(),
+            'user_id' => auth()->id(),
+            'is_admin' => auth()->check() && auth()->user()->hasAdminAccess(),
+        ]);
+    })->name('chat.websocket-auth');
 });
 
 /*

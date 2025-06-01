@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use App\Traits\ImageableTrait;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -426,6 +427,153 @@ class User extends Authenticatable implements MustVerifyEmail
             'login_count' => $this->login_count,
             'account_age' => $this->created_at->diffForHumans(),
         ];
+    }
+
+    /**
+     * Get chat operator relationship
+     */
+    public function chatOperator()
+    {
+        return $this->hasOne(ChatOperator::class);
+    }
+
+    /**
+     * Get chat sessions where user is the client
+     */
+    public function chatSessions()
+    {
+        return $this->hasMany(ChatSession::class);
+    }
+
+    /**
+     * Get chat sessions where user is the operator
+     */
+    public function operatingChatSessions()
+    {
+        return $this->hasMany(ChatSession::class, 'assigned_operator_id');
+    }
+
+    /**
+     * Get active chat sessions for this user
+     */
+    public function activeChatSessions()
+    {
+        return $this->chatSessions()
+            ->whereIn('status', ['active', 'waiting']);
+    }
+
+    /**
+     * Get active chat sessions where user is operating
+     */
+    public function activeOperatingChatSessions()
+    {
+        return $this->operatingChatSessions()
+            ->whereIn('status', ['active', 'waiting']);
+    }
+
+    /**
+     * Check if user is currently online as chat operator
+     */
+    public function isChatOperatorOnline(): bool
+    {
+        return $this->chatOperator && $this->chatOperator->is_online;
+    }
+
+    /**
+     * Check if user is available for chat
+     */
+    public function isChatOperatorAvailable(): bool
+    {
+        return $this->chatOperator && 
+            $this->chatOperator->is_online && 
+            $this->chatOperator->is_available;
+    }
+
+    /**
+     * Get user's current chat operator status
+     */
+    public function getChatOperatorStatus(): array
+    {
+        $operator = $this->chatOperator;
+        
+        return [
+            'is_online' => $operator ? $operator->is_online : false,
+            'is_available' => $operator ? $operator->is_available : false,
+            'current_chats_count' => $operator ? $operator->current_chats_count : 0,
+            'max_concurrent_chats' => $operator ? $operator->max_concurrent_chats : 3,
+            'last_seen_at' => $operator ? $operator->last_seen_at : null,
+        ];
+    }
+
+    /**
+     * Get user's unread chat messages count (for operators)
+     */
+    public function getUnreadChatMessagesCount(): int
+    {
+        if (!$this->hasAdminAccess()) {
+            return 0;
+        }
+
+        return ChatMessage::whereHas('chatSession', function ($query) {
+            $query->where('assigned_operator_id', $this->id)
+                ->whereIn('status', ['active', 'waiting']);
+        })
+        ->where('sender_type', 'visitor')
+        ->where('is_read', false)
+        ->count();
+    }
+
+    /**
+     * Get user's chat statistics (for operators)
+     */
+    public function getChatStatistics(): array
+    {
+        if (!$this->hasAdminAccess()) {
+            return [];
+        }
+
+        $sessions = $this->operatingChatSessions();
+        
+        return [
+            'total_sessions' => $sessions->count(),
+            'active_sessions' => $sessions->where('status', 'active')->count(),
+            'closed_sessions' => $sessions->where('status', 'closed')->count(),
+            'avg_session_duration' => $sessions->where('status', 'closed')
+                ->get()
+                ->avg(function ($session) {
+                    return $session->getDuration();
+                }) ?? 0,
+            'total_messages_sent' => ChatMessage::where('sender_id', $this->id)
+                ->where('sender_type', 'operator')
+                ->count(),
+        ];
+    }
+
+    /**
+     * Check if user can handle more chat sessions
+     */
+    public function canTakeMoreChatSessions(): bool
+    {
+        if (!$this->hasAdminAccess() || !$this->isChatOperatorAvailable()) {
+            return false;
+        }
+
+        $operator = $this->chatOperator;
+        return $operator->current_chats_count < $operator->max_concurrent_chats;
+    }
+
+    /**
+     * Get user's avatar URL for chat
+     */
+    public function getChatAvatarUrl(): string
+    {
+        if ($this->avatar) {
+            return Storage::disk('public')->url($this->avatar);
+        }
+
+        // Generate avatar initials
+        $initials = substr($this->name, 0, 2);
+        return "https://ui-avatars.com/api/?name=" . urlencode($initials) . "&background=3B82F6&color=ffffff&size=128";
     }
     
     /**
