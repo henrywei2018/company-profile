@@ -1219,41 +1219,136 @@ public function getDashboardMetrics(): JsonResponse
     /**
      * Use template in chat
      */
+    public function getQuickTemplates(Request $request): JsonResponse
+    {
+        if (!auth()->user()->hasAdminAccess()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        try {
+            $type = $request->get('type', 'quick_reply');
+            
+            $templates = ChatTemplate::where('is_active', true)
+                ->where('type', $type)
+                ->orderBy('name')
+                ->get(['id', 'name', 'message', 'trigger', 'usage_count']);
+
+            return response()->json([
+                'success' => true,
+                'templates' => $templates
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get quick templates failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get templates'
+            ], 500);
+        }
+    }
+
+    /**
+     * Use template to send message
+     */
     public function useTemplate(Request $request, ChatSession $chatSession): JsonResponse
     {
         if (!auth()->user()->hasAdminAccess()) {
-            abort(403, 'Admin access required');
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $request->validate([
             'template_id' => 'required|exists:chat_templates,id',
+            'custom_message' => 'nullable|string|max:1000', // Allow customization
         ]);
 
-        $template = ChatTemplate::find($request->template_id);
+        try {
+            $template = ChatTemplate::find($request->template_id);
+            
+            // Use custom message if provided, otherwise use template message
+            $messageText = $request->custom_message ?: $template->message;
 
-        // Send template message
-        $message = $chatSession->messages()->create([
-            'sender_type' => 'operator',
-            'sender_id' => auth()->id(),
-            'message' => $template->message,
-            'message_type' => 'template',
-            'metadata' => ['template_id' => $template->id],
+            // Create operator message
+            $message = $chatSession->messages()->create([
+                'sender_type' => 'operator',
+                'sender_id' => auth()->id(),
+                'message' => $messageText,
+                'message_type' => 'template',
+                'metadata' => [
+                    'template_id' => $template->id,
+                    'template_name' => $template->name,
+                    'is_customized' => !empty($request->custom_message)
+                ],
+            ]);
+
+            // Update session activity
+            $chatSession->update([
+                'last_activity_at' => now(),
+                'status' => 'active',
+                'assigned_operator_id' => auth()->id(),
+            ]);
+
+            // Increment template usage
+            $template->incrementUsage();
+
+            // Notify client if they exist
+            if ($chatSession->user) {
+                Notifications::send('chat.operator_reply', $chatSession, $chatSession->user);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $this->formatMessage($message),
+                'template_used' => $template->name
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Use template failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to use template'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get templates by trigger word
+     */
+    public function searchTemplates(Request $request): JsonResponse
+    {
+        if (!auth()->user()->hasAdminAccess()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'query' => 'required|string|min:2|max:50',
         ]);
 
-        // Update session activity
-        $chatSession->update([
-            'last_activity_at' => now(),
-            'status' => 'active',
-            'assigned_operator_id' => auth()->id(),
-        ]);
+        try {
+            $query = strtolower($request->input('query'));
 
-        // Increment template usage
-        $template->incrementUsage();
+            $templates = ChatTemplate::where('is_active', true)
+                ->where(function ($q) use ($query) {
+                    $q->where('trigger', 'like', "%{$query}%")
+                      ->orWhere('name', 'like', "%{$query}%")
+                      ->orWhere('message', 'like', "%{$query}%");
+                })
+                ->orderBy('usage_count', 'desc')
+                ->limit(10)
+                ->get(['id', 'name', 'message', 'trigger', 'type']);
 
-        return response()->json([
-            'success' => true,
-            'message' => $this->formatMessage($message),
-        ]);
+            return response()->json([
+                'success' => true,
+                'templates' => $templates,
+                'query' => $query
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Search templates failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to search templates'
+            ], 500);
+        }
     }
 
     /**
@@ -1931,6 +2026,8 @@ public function getDashboardMetrics(): JsonResponse
         ], 500);
     }
 }
+
+
     public function operatorTyping(Request $request, ChatSession $chatSession): JsonResponse
     {
         if (!auth()->user()->hasAdminAccess()) {
