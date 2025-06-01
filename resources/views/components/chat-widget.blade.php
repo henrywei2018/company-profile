@@ -187,7 +187,7 @@
                                  message.sender_type === 'system' ? 'bg-gray-200 dark:bg-gray-700' : 
                                  'bg-gray-300 dark:bg-gray-600'">
                         <svg class="w-4 h-4" 
-                             x-bind:class=="message.sender_type === 'visitor' ? 'text-blue-600 dark:text-blue-400' : 
+                             x-bind:class="message.sender_type === 'visitor' ? 'text-blue-600 dark:text-blue-400' : 
                                      message.sender_type === 'system' ? 'text-gray-500' :
                                      'text-gray-600 dark:text-gray-300'" 
                              fill="currentColor" 
@@ -199,7 +199,7 @@
                     <!-- Message Bubble -->
                     <div class="flex-1">
                         <div class="rounded-lg px-3 py-2 max-w-xs shadow-sm"
-                             x-bind:class=="message.sender_type === 'visitor' ? 
+                             x-bind:class="message.sender_type === 'visitor' ? 
                                 'bg-blue-600 text-white rounded-tr-none ml-auto' : 
                                 message.sender_type === 'system' ? 
                                 'bg-gray-200 text-gray-700 rounded-lg italic text-center text-sm' :
@@ -207,7 +207,7 @@
                             <p class="text-sm" x-html="formatMessage(message.message)"></p>
                         </div>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" 
-                           x-bind:class=="message.sender_type === 'visitor' ? 'text-right' : 
+                           x-bind:class="message.sender_type === 'visitor' ? 'text-right' : 
                                    message.sender_type === 'system' ? 'text-center' : ''"
                            x-text="formatTime(message.created_at)"></p>
                     </div>
@@ -286,6 +286,9 @@
 @auth
 @push('scripts')
 <script>
+// Set global variable for authenticated user ID
+window.authUserId = {{ auth()->id() }};
+
 function chatWidget() {
     return {
         // State
@@ -382,7 +385,7 @@ function chatWidget() {
                     this.messages = data.messages || [];
                     
                     // Start listening to this session
-                    this.listenToSession(data.channel);
+                    this.listenToSession(`chat-session.${data.session_id}`);
                     
                     this.scrollToBottom();
                 } else {
@@ -409,7 +412,7 @@ function chatWidget() {
                     }
                     
                     // Start listening to this session
-                    this.listenToSession(data.channel);
+                    this.listenToSession(`chat-session.${data.session_id}`);
                 }
             } catch (error) {
                 // No existing session, which is fine
@@ -456,7 +459,10 @@ function chatWidget() {
 
                 const data = await response.json();
                 
-                if (!data.success) {
+                if (data.success) {
+                    // Messages are handled by WebSocket, no need to add manually
+                    this.scrollToBottom();
+                } else {
                     this.showError('Failed to send message');
                     this.currentMessage = message; // Restore message
                 }

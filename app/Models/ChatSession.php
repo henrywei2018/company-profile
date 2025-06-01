@@ -7,14 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
-use App\Events\ChatSessionStarted;
-use App\Events\ChatSessionClosed;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class ChatSession extends Model
 {
-
-    use HasFactory;
     protected $fillable = [
         'session_id',
         'user_id',
@@ -54,13 +49,37 @@ class ChatSession extends Model
 
         // Broadcast when session is created
         static::created(function ($model) {
-            broadcast(new ChatSessionStarted($model))->toOthers();
+            try {
+                broadcast(new \App\Events\ChatSessionStarted($model))->toOthers();
+                \Log::info('ChatSession created broadcast sent', ['session_id' => $model->session_id]);
+            } catch (\Exception $e) {
+                \Log::error('Failed to broadcast ChatSession created', [
+                    'session_id' => $model->session_id,
+                    'error' => $e->getMessage()
+                ]);
+            }
         });
 
-        // Broadcast when session status changes to closed
+        // Broadcast when session status changes
         static::updated(function ($model) {
-            if ($model->isDirty('status') && $model->status === 'closed') {
-                broadcast(new ChatSessionClosed($model))->toOthers();
+            try {
+                if ($model->isDirty('status')) {
+                    if ($model->status === 'closed') {
+                        broadcast(new \App\Events\ChatSessionClosed($model))->toOthers();
+                        \Log::info('ChatSession closed broadcast sent', ['session_id' => $model->session_id]);
+                    } else {
+                        broadcast(new \App\Events\ChatSessionUpdated($model))->toOthers();
+                        \Log::info('ChatSession updated broadcast sent', [
+                            'session_id' => $model->session_id,
+                            'status' => $model->status
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to broadcast ChatSession updated', [
+                    'session_id' => $model->session_id,
+                    'error' => $e->getMessage()
+                ]);
             }
         });
     }
@@ -164,5 +183,38 @@ class ChatSession extends Model
     public function getChannelName(): string
     {
         return "chat-session.{$this->session_id}";
+    }
+
+    // Get admin channel name for this session
+    public function getAdminChannelName(): string
+    {
+        return "admin-chat-session.{$this->session_id}";
+    }
+
+    // Broadcast to all relevant channels
+    public function broadcastToAllChannels($event, $data = [])
+    {
+        try {
+            $channels = [
+                $this->getChannelName(), // Client channel
+                $this->getAdminChannelName(), // Admin specific channel
+                'admin-chat-notifications', // Global admin notifications
+            ];
+
+            foreach ($channels as $channel) {
+                broadcast($event)->on($channel);
+            }
+
+            \Log::info('Broadcast sent to all channels', [
+                'session_id' => $this->session_id,
+                'event' => get_class($event),
+                'channels' => $channels
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to broadcast to all channels', [
+                'session_id' => $this->session_id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

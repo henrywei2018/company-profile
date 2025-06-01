@@ -1511,15 +1511,20 @@ class ChatController extends Controller
                 ], 404);
             }
 
-            // In a real implementation, this would broadcast via WebSocket
-            // For now, just return success
+            // Broadcast typing indicator
+            broadcast(new \App\Events\ChatTypingIndicator(
+                $session,
+                auth()->user(),
+                $request->is_typing
+            ))->toOthers();
+
             return response()->json([
                 'success' => true,
                 'is_typing' => $request->is_typing
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Send typing indicator failed: ' . $e->getMessage());
+            Log::error('Chat typing indicator failed: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -1646,24 +1651,21 @@ class ChatController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $validator = Validator::make($request->all(), [
+        $request->validate([
             'is_typing' => 'required|boolean',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
         try {
-            // In a real implementation, this would broadcast via WebSocket
-            // For now, just return success
+            // Broadcast typing indicator
+            broadcast(new \App\Events\ChatTypingIndicator(
+                $chatSession,
+                auth()->user(),
+                $request->is_typing
+            ))->toOthers();
+
             return response()->json([
                 'success' => true,
-                'is_typing' => $request->is_typing,
-                'operator_name' => auth()->user()->name
+                'is_typing' => $request->is_typing
             ]);
 
         } catch (\Exception $e) {

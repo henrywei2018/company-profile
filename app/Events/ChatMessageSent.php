@@ -26,9 +26,16 @@ class ChatMessageSent implements ShouldBroadcast
             new Channel($this->session->getChannelName()),
         ];
 
-        // Add admin notification channel if message is from visitor
+        // Add admin channels if message is from visitor
         if ($this->message->sender_type === 'visitor') {
             $channels[] = new Channel('admin-chat-notifications');
+            $channels[] = new Channel($this->session->getAdminChannelName());
+            $channels[] = new Channel('chat-lobby'); // For admin dashboard updates
+        }
+
+        // Add user channel if message is from operator
+        if ($this->message->sender_type === 'operator' && $this->session->user) {
+            $channels[] = new Channel("user.{$this->session->user->id}");
         }
 
         return $channels;
@@ -48,6 +55,9 @@ class ChatMessageSent implements ShouldBroadcast
                 'session_status' => $this->session->status,
                 'visitor_name' => $this->session->getVisitorName(),
                 'visitor_email' => $this->session->getVisitorEmail(),
+                'operator_name' => $this->session->operator?->name,
+                'chat_session_url' => route('admin.chat.show', $this->session),
+                'timestamp' => now()->toISOString(),
             ]
         );
     }

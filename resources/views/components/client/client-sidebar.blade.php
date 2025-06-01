@@ -16,15 +16,82 @@
         <div class="px-6 py-4 flex items-center">
             <a class="flex-none text-xl font-semibold dark:text-white" href="{{ route('client.dashboard') }}"
                 aria-label="{{ config('app.name') }}">
-                @if (isset($companyProfile) && $companyProfile->logo && $companyProfile->logoUrl)
-                    <img src="{{ $companyProfile->logoUrl }}" alt="{{ config('app.name') }}" class="h-8 md:h-10">
-                @elseif (asset('storage/logo.png'))
-                    <img src="{{ asset('storage/logo.png') }}" alt="{{ config('app.name') }}" class="h-8 md:h-10">
+                @php
+                    // Check for company profile logo
+                    $hasCompanyLogo = isset($companyProfile) && $companyProfile->logo && $companyProfile->logoUrl;
+
+                    // Check for default logo file
+                    $defaultLogoPath = 'storage/logo.png';
+                    $hasDefaultLogo = file_exists(public_path($defaultLogoPath));
+                @endphp
+
+                @if ($hasCompanyLogo)
+                    <img src="{{ $companyProfile->logoUrl }}" alt="{{ config('app.name') }}" class="h-8 md:h-10"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="hidden items-center space-x-2">
+                        <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <span class="text-blue-600 dark:text-blue-400 font-bold">{{ config('app.name') }}</span>
+                    </div>
+                @elseif ($hasDefaultLogo)
+                    <img src="{{ asset($defaultLogoPath) }}" alt="{{ config('app.name') }}" class="h-8 md:h-10"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="hidden items-center space-x-2">
+                        <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <span class="text-blue-600 dark:text-blue-400 font-bold">{{ config('app.name') }}</span>
+                    </div>
                 @else
-                    <svg class="w-20 h-auto" width="116" height="32" viewBox="0 0 116 32" fill="none"
-                        xmlns="http://www.w3.org/2000/svg">
-                        <!-- SVG path content same as admin -->
-                    </svg>
+                    <!-- Default SVG Logo -->
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <span
+                            class="text-blue-600 dark:text-blue-400 font-bold text-sm">{{ Str::limit(config('app.name'), 12) }}</span>
+                    </div>
+                @endif
+            </a>
+        </div>
+        <div class="flex items-center lg:hidden">
+            <!-- Mobile Menu Toggle -->
+            <button type="button"
+                class="size-8 flex justify-center items-center text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-neutral-700 rounded-full mr-2"
+                data-hs-overlay="#hs-application-sidebar" aria-controls="hs-application-sidebar"
+                aria-label="Toggle navigation">
+                <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+
+            <!-- Mobile Logo -->
+            <a href="{{ route('client.dashboard') }}" aria-label="{{ config('app.name') }}"
+                class="text-xl font-bold text-blue-600 dark:text-white">
+                @php
+                    $hasCompanyLogo = isset($companyProfile) && $companyProfile->logo && $companyProfile->logoUrl;
+                    $defaultLogoPath = 'storage/logo.png';
+                    $hasDefaultLogo = file_exists(public_path($defaultLogoPath));
+                @endphp
+
+                @if ($hasCompanyLogo)
+                    <img src="{{ $companyProfile->logoUrl }}" alt="{{ config('app.name') }}" class="h-8 md:h-10"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <span class="hidden text-blue-600 dark:text-blue-400 font-bold">{{ config('app.name') }}</span>
+                @elseif($hasDefaultLogo)
+                    <img src="{{ asset($defaultLogoPath) }}" alt="{{ config('app.name') }}" class="h-8 md:h-10"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <span class="hidden text-blue-600 dark:text-blue-400 font-bold">{{ config('app.name') }}</span>
+                @else
+                    <span class="text-blue-600 dark:text-blue-400 font-bold">{{ config('app.name') }}</span>
                 @endif
             </a>
         </div>
@@ -92,14 +159,16 @@
                                 {{ $pendingApprovalsCount }}
                             </span>
                         @endif
-                        <svg class="hs-accordion-active:block ms-auto hidden w-4 h-4" xmlns="http://www.w3.org/2000/svg"
-                            width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg class="hs-accordion-active:block ms-auto hidden w-4 h-4"
+                            xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round">
                             <path d="m18 15-6-6-6 6" />
                         </svg>
-                        <svg class="hs-accordion-active:hidden ms-auto block w-4 h-4" xmlns="http://www.w3.org/2000/svg"
-                            width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg class="hs-accordion-active:hidden ms-auto block w-4 h-4"
+                            xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round">
                             <path d="m6 9 6 6 6-6" />
                         </svg>
                     </button>
