@@ -94,7 +94,7 @@
                                     </div>
                                     
                                     <!-- Message content -->
-                                    <div class="text-sm whitespace-pre-wrap break-words">
+                                    <div class="text-sm">
                                         @if($message->message_type === 'system')
                                             <em>{{ $message->message }}</em>
                                         @else

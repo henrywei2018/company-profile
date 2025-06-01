@@ -195,23 +195,15 @@ class ChatSession extends Model
     public function broadcastToAllChannels($event, $data = [])
     {
         try {
-            $channels = [
-                $this->getChannelName(), // Client channel
-                $this->getAdminChannelName(), // Admin specific channel
-                'admin-chat-notifications', // Global admin notifications
-            ];
-
-            foreach ($channels as $channel) {
-                broadcast($event)->on($channel);
-            }
-
-            \Log::info('Broadcast sent to all channels', [
+            // Let the event handle the channel routing
+            broadcast($event)->toOthers();
+            
+            \Log::info('Broadcast sent for session', [
                 'session_id' => $this->session_id,
-                'event' => get_class($event),
-                'channels' => $channels
+                'event' => get_class($event)
             ]);
         } catch (\Exception $e) {
-            \Log::error('Failed to broadcast to all channels', [
+            \Log::error('Failed to broadcast session event', [
                 'session_id' => $this->session_id,
                 'error' => $e->getMessage()
             ]);

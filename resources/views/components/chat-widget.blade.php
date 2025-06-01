@@ -1,4 +1,4 @@
-{{-- resources/views/components/chat-widget.blade.php --}}
+{{-- resources/views/components/chat-widget.blade.php - Improved Real-time Version --}}
 @props([
     'position' => 'bottom-right',
     'theme' => 'primary', 
@@ -9,7 +9,9 @@
     'welcomeMessage' => 'Hello! How can we help you today?',
     'operatorName' => 'Support Team',
     'companyName' => 'CV Usaha Prima Lestari',
-    'offsetFromQuickAction' => true
+    'offsetFromQuickAction' => true,
+    'pollingInterval' => 1000,
+    'maxPollingInterval' => 5000
 ])
 
 @php
@@ -61,6 +63,8 @@
      data-auto-open="{{ $autoOpen ? 'true' : 'false' }}"
      data-enable-sound="{{ $enableSound ? 'true' : 'false' }}"
      data-theme="{{ $theme }}"
+     data-polling-interval="{{ $pollingInterval }}"
+     data-max-polling-interval="{{ $maxPollingInterval }}"
      x-data="chatWidget()"
      x-init="init()">
     
@@ -76,7 +80,7 @@
          
         <!-- Notification Badge -->
         <div x-show="unreadCount > 0" 
-             x-text="unreadCount"
+             x-text="unreadCount > 99 ? '99+' : unreadCount"
              class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 z-10 shadow-lg animate-pulse">
         </div>
         
@@ -152,6 +156,11 @@
             
             <!-- Header Actions -->
             <div class="flex items-center space-x-2">
+                <!-- Connection Status -->
+                <div x-show="connectionStatus !== 'connected'" class="flex items-center">
+                    <div class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                </div>
+                
                 <!-- Close Button -->
                 <button @click="closeChat()" 
                         class="w-7 h-7 rounded-full hover:bg-white hover:bg-opacity-20 flex items-center justify-center transition-colors duration-200"
@@ -164,21 +173,43 @@
             </div>
         </div>
         
-        <!-- Connection Status -->
+        <!-- Connection Status Bar -->
         <div x-show="connectionStatus !== 'connected'" 
              class="px-4 py-2 bg-yellow-50 border-b border-yellow-200 text-yellow-800 text-sm">
             <div class="flex items-center space-x-2">
                 <div class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
                 <span x-text="getConnectionStatusText()">Connecting...</span>
+                <span x-show="isRetrying" class="text-xs">(Retrying...)</span>
             </div>
         </div>
         
         <!-- Chat Messages -->
         <div id="chat-messages" 
              class="flex-1 overflow-y-auto px-4 py-3 space-y-4 bg-gray-50 dark:bg-gray-900"
-             x-ref="messagesContainer">
+             x-ref="messagesContainer"
+             @scroll="handleScroll($event)">
             
-            <!-- Messages will be populated by JavaScript -->
+            <!-- Welcome Message -->
+            <div x-show="messages.length === 0 && !isLoading" class="text-center py-8">
+                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                </div>
+                <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-1">{{ $welcomeMessage }}</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Our support team is here to help you</p>
+            </div>
+            
+            <!-- Loading Indicator -->
+            <div x-show="isLoading" class="text-center py-4">
+                <div class="inline-flex items-center space-x-2">
+                    <div class="w-4 h-4 bg-blue-600 rounded-full animate-bounce"></div>
+                    <div class="w-4 h-4 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                    <div class="w-4 h-4 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                </div>
+            </div>
+            
+            <!-- Messages -->
             <template x-for="message in messages" :key="message.id">
                 <div class="flex items-start space-x-3" x-bind:class="message.sender_type === 'visitor' ? 'flex-row-reverse space-x-reverse' : ''">
                     <!-- Avatar -->
@@ -205,6 +236,12 @@
                                 'bg-gray-200 text-gray-700 rounded-lg italic text-center text-sm' :
                                 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white rounded-tl-none'">
                             <p class="text-sm" x-html="formatMessage(message.message)"></p>
+                            
+                            <!-- Message status for sent messages -->
+                            <div x-show="message.sender_type === 'visitor' && message.status" 
+                                 class="text-xs opacity-75 mt-1" 
+                                 x-text="message.status">
+                            </div>
                         </div>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" 
                            x-bind:class="message.sender_type === 'visitor' ? 'text-right' : 
@@ -242,33 +279,55 @@
                     <div class="flex-1 relative">
                         <textarea x-model="currentMessage"
                                   x-ref="messageInput"
-                                  @keydown.enter.prevent="sendMessage()"
+                                  @keydown.enter.prevent="handleEnterKey($event)"
                                   @input="handleTyping()"
-                                  @focus="handleTyping()"
+                                  @focus="handleFocus()"
                                   @blur="stopTyping()"
-                                  :disabled="!isConnected || sessionStatus === 'closed'"
+                                  @paste="handlePaste($event)"
+                                  x-bind::disabled="!isConnected || sessionStatus === 'closed' || isSending"
                                   placeholder="Type your message..."
                                   rows="1"
                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-sm disabled:opacity-50"
                                   style="max-height: 80px; overflow-y: auto;"></textarea>
+                        
+                        <!-- Character Count -->
+                        <div x-show="currentMessage.length > 800" 
+                             class="absolute bottom-1 right-1 text-xs text-gray-400"
+                             x-text="currentMessage.length + '/1000'">
+                        </div>
                     </div>
                     
                     <!-- Send Button -->
                     <button type="submit" 
-                            :disabled="!currentMessage.trim() || !isConnected || sessionStatus === 'closed'"
+                            x-bind::disabled="!currentMessage.trim() || !isConnected || sessionStatus === 'closed' || isSending"
                             class="w-8 h-8 mb-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-full flex items-center justify-center transition-colors disabled:cursor-not-allowed">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg x-show="!isSending" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
                         </svg>
+                        <div x-show="isSending" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </button>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div x-show="messages.length === 0 && !isLoading" class="mt-3 flex flex-wrap gap-2">
+                    <button type="button" 
+                            @click="sendQuickMessage('Hello, I need help with your services')"
+                            class="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-full transition-colors">
+                        Need help with services
+                    </button>
+                    <button type="button" 
+                            @click="sendQuickMessage('I want to request a quotation')"
+                            class="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-full transition-colors">
+                        Request quotation
                     </button>
                 </div>
             </form>
             
             <!-- Session Closed Message -->
             <div x-show="sessionStatus === 'closed'" class="text-center py-4">
-                <p class="text-sm text-gray-500 dark:text-gray-400">This chat session has ended.</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">This chat session has ended.</p>
                 <button @click="startNewSession()" 
-                        class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">
                     Start New Chat
                 </button>
             </div>
@@ -296,6 +355,9 @@ function chatWidget() {
         isOnline: false,
         isTyping: false,
         isConnected: false,
+        isLoading: false,
+        isSending: false,
+        isRetrying: false,
         unreadCount: 0,
         currentMessage: '',
         messages: [],
@@ -304,12 +366,26 @@ function chatWidget() {
         connectionStatus: 'disconnected',
         operatorName: '{{ $operatorName }}',
         typingUser: '',
+        
+        // Timers
         typingTimer: null,
+        pollingTimer: null,
+        connectionTimer: null,
+        retryTimer: null,
+        
+        // Settings
+        pollingInterval: parseInt(this.$el?.dataset?.pollingInterval) || 1000,
+        maxPollingInterval: parseInt(this.$el?.dataset?.maxPollingInterval) || 5000,
+        currentPollingInterval: null,
+        lastMessageId: null,
+        maxRetries: 5,
+        retryCount: 0,
         
         // Initialize
         init() {
+            this.currentPollingInterval = this.pollingInterval;
             this.checkOnlineStatus();
-            this.setupWebSocketListeners();
+            this.setupEventListeners();
             
             // Auto-open if configured
             if (this.$el.dataset.autoOpen === 'true') {
@@ -319,33 +395,86 @@ function chatWidget() {
             // Check for existing session
             this.loadExistingSession();
             
-            // Periodic status checks
-            setInterval(() => this.checkOnlineStatus(), 30000);
+            // Start connection monitoring
+            this.startConnectionMonitoring();
         },
 
-        // WebSocket Setup
-        setupWebSocketListeners() {
-            if (!window.Echo) {
-                console.warn('Echo not available for chat widget');
-                return;
-            }
-
-            // Listen for connection status
-            window.Echo.connector.pusher.connection.bind('connected', () => {
-                this.connectionStatus = 'connected';
-                this.isConnected = true;
+        // Event Listeners
+        setupEventListeners() {
+            // Listen for visibility changes to adjust polling
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    this.reducePollingFrequency();
+                } else {
+                    this.increasePollingFrequency();
+                    if (this.sessionId) {
+                        this.pollMessages();
+                    }
+                }
             });
 
-            window.Echo.connector.pusher.connection.bind('disconnected', () => {
+            // Listen for online/offline events
+            window.addEventListener('online', () => {
+                this.connectionStatus = 'connecting';
+                this.retryConnection();
+            });
+
+            window.addEventListener('offline', () => {
                 this.connectionStatus = 'disconnected';
                 this.isConnected = false;
+                this.stopPolling();
             });
+        },
 
-            // Listen for operator status changes
-            window.Echo.channel('public-chat-status')
-                .listen('.operator.status.changed', (e) => {
-                    this.isOnline = e.total_online_operators > 0;
+        // Connection Management
+        startConnectionMonitoring() {
+            this.connectionTimer = setInterval(() => {
+                if (this.isOpen && this.sessionId) {
+                    this.checkConnectionHealth();
+                }
+                this.checkOnlineStatus();
+            }, 10000); // Check every 10 seconds
+        },
+
+        async checkConnectionHealth() {
+            try {
+                const response = await fetch('/api/chat/online-status', {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    }
                 });
+                
+                if (response.ok) {
+                    this.connectionStatus = 'connected';
+                    this.isConnected = true;
+                    this.retryCount = 0;
+                    this.isRetrying = false;
+                } else {
+                    throw new Error('Connection check failed');
+                }
+            } catch (error) {
+                this.handleConnectionError();
+            }
+        },
+
+        handleConnectionError() {
+            this.connectionStatus = 'disconnected';
+            this.isConnected = false;
+            this.retryConnection();
+        },
+
+        retryConnection() {
+            if (this.retryCount < this.maxRetries && !this.isRetrying) {
+                this.isRetrying = true;
+                this.retryCount++;
+                
+                const delay = Math.min(1000 * Math.pow(2, this.retryCount), 30000);
+                
+                this.retryTimer = setTimeout(() => {
+                    this.checkConnectionHealth();
+                }, delay);
+            }
         },
 
         // Chat Session Management
@@ -355,6 +484,8 @@ function chatWidget() {
             
             if (!this.sessionId) {
                 await this.startChatSession();
+            } else {
+                this.startPolling();
             }
             
             this.$nextTick(() => {
@@ -365,9 +496,12 @@ function chatWidget() {
 
         closeChat() {
             this.isOpen = false;
+            this.stopPolling();
         },
 
         async startChatSession() {
+            this.isLoading = true;
+            
             try {
                 const response = await fetch('/api/chat/start', {
                     method: 'POST',
@@ -383,9 +517,11 @@ function chatWidget() {
                     this.sessionId = data.session_id;
                     this.sessionStatus = data.status;
                     this.messages = data.messages || [];
+                    this.lastMessageId = this.getLastMessageId();
                     
-                    // Start listening to this session
-                    this.listenToSession(`chat-session.${data.session_id}`);
+                    this.connectionStatus = 'connected';
+                    this.isConnected = true;
+                    this.startPolling();
                     
                     this.scrollToBottom();
                 } else {
@@ -394,6 +530,9 @@ function chatWidget() {
             } catch (error) {
                 console.error('Failed to start chat:', error);
                 this.showError('Unable to connect to chat service');
+                this.handleConnectionError();
+            } finally {
+                this.isLoading = false;
             }
         },
 
@@ -406,13 +545,14 @@ function chatWidget() {
                     this.sessionId = data.session_id;
                     this.sessionStatus = data.status;
                     this.messages = data.messages || [];
+                    this.lastMessageId = this.getLastMessageId();
                     
                     if (data.operator) {
                         this.operatorName = data.operator.name;
                     }
                     
-                    // Start listening to this session
-                    this.listenToSession(`chat-session.${data.session_id}`);
+                    this.connectionStatus = 'connected';
+                    this.isConnected = true;
                 }
             } catch (error) {
                 // No existing session, which is fine
@@ -420,29 +560,153 @@ function chatWidget() {
             }
         },
 
-        listenToSession(channel) {
-            if (!window.Echo || !channel) return;
+        // Polling System
+        startPolling() {
+            if (this.pollingTimer) {
+                clearInterval(this.pollingTimer);
+            }
+            
+            this.pollingTimer = setInterval(() => {
+                this.pollMessages();
+            }, this.currentPollingInterval);
+            
+            // Initial poll
+            this.pollMessages();
+        },
 
-            // Listen for new messages
-            window.Echo.channel(channel)
-                .listen('.message.sent', (e) => {
-                    this.handleNewMessage(e);
-                })
-                .listen('.typing.indicator', (e) => {
-                    this.handleTypingIndicator(e);
-                })
-                .listen('.session.closed', (e) => {
-                    this.handleSessionClosed(e);
+        stopPolling() {
+            if (this.pollingTimer) {
+                clearInterval(this.pollingTimer);
+                this.pollingTimer = null;
+            }
+        },
+
+        async pollMessages() {
+            if (!this.sessionId || !this.isConnected) return;
+
+            try {
+                const url = new URL('/api/chat/messages', window.location.origin);
+                url.searchParams.append('session_id', this.sessionId);
+                if (this.lastMessageId) {
+                    url.searchParams.append('last_message_id', this.lastMessageId);
+                }
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
                 });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.connectionStatus = 'connected';
+                    this.isConnected = true;
+                    this.retryCount = 0;
+                    this.isRetrying = false;
+                    
+                    // Update session status
+                    this.sessionStatus = data.session_status;
+                    
+                    // Process new messages
+                    if (data.has_new_messages && data.messages.length > 0) {
+                        this.processNewMessages(data.messages);
+                        this.adaptivePolling(true); // Increase frequency when active
+                    } else {
+                        this.adaptivePolling(false); // Decrease frequency when inactive
+                    }
+                } else {
+                    throw new Error('Polling failed');
+                }
+            } catch (error) {
+                console.error('Polling error:', error);
+                this.handleConnectionError();
+            }
+        },
+
+        processNewMessages(newMessages) {
+            let hasNewOperatorMessages = false;
+            
+            newMessages.forEach(message => {
+                // Avoid duplicates
+                if (!this.messages.find(m => m.id === message.id)) {
+                    this.messages.push(message);
+                    this.lastMessageId = Math.max(this.lastMessageId || 0, message.id);
+                    
+                    // Check for operator messages when chat is closed
+                    if (!this.isOpen && message.sender_type === 'operator') {
+                        this.unreadCount++;
+                        hasNewOperatorMessages = true;
+                    }
+                }
+            });
+            
+            if (hasNewOperatorMessages) {
+                this.playNotificationSound();
+                this.showDesktopNotification();
+            }
+            
+            this.scrollToBottom();
+        },
+
+        adaptivePolling(isActive) {
+            if (isActive) {
+                // Increase polling frequency during active conversations
+                this.currentPollingInterval = Math.max(500, this.pollingInterval);
+            } else {
+                // Gradually decrease frequency during inactivity
+                this.currentPollingInterval = Math.min(
+                    this.currentPollingInterval * 1.2, 
+                    this.maxPollingInterval
+                );
+            }
+            
+            // Restart polling with new interval
+            if (this.pollingTimer) {
+                this.stopPolling();
+                this.startPolling();
+            }
+        },
+
+        reducePollingFrequency() {
+            this.currentPollingInterval = this.maxPollingInterval;
+            if (this.pollingTimer) {
+                this.stopPolling();
+                this.startPolling();
+            }
+        },
+
+        increasePollingFrequency() {
+            this.currentPollingInterval = this.pollingInterval;
+            if (this.pollingTimer) {
+                this.stopPolling();
+                this.startPolling();
+            }
         },
 
         // Message Handling
         async sendMessage() {
-            if (!this.currentMessage.trim() || !this.sessionId) return;
+            if (!this.currentMessage.trim() || !this.sessionId || this.isSending) return;
 
             const message = this.currentMessage.trim();
             this.currentMessage = '';
+            this.isSending = true;
             this.stopTyping();
+
+            // Add optimistic message
+            const optimisticMessage = {
+                id: Date.now(), // Temporary ID
+                message: message,
+                sender_type: 'visitor',
+                sender_name: 'You',
+                created_at: new Date().toISOString(),
+                status: 'sending',
+                isOptimistic: true
+            };
+            
+            this.messages.push(optimisticMessage);
+            this.scrollToBottom();
 
             try {
                 const response = await fetch('/api/chat/send-message', {
@@ -460,54 +724,82 @@ function chatWidget() {
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Messages are handled by WebSocket, no need to add manually
-                    this.scrollToBottom();
+                    // Remove optimistic message and add real messages
+                    this.messages = this.messages.filter(m => !m.isOptimistic);
+                    if (data.messages) {
+                        this.processNewMessages(data.messages);
+                    }
+                    
+                    // Trigger immediate poll for response
+                    setTimeout(() => this.pollMessages(), 100);
+                    this.adaptivePolling(true);
                 } else {
-                    this.showError('Failed to send message');
-                    this.currentMessage = message; // Restore message
+                    this.handleSendError(optimisticMessage, message);
                 }
             } catch (error) {
                 console.error('Failed to send message:', error);
-                this.showError('Failed to send message');
-                this.currentMessage = message; // Restore message
+                this.handleSendError(optimisticMessage, message);
+            } finally {
+                this.isSending = false;
             }
         },
 
-        handleNewMessage(event) {
-            // Add message if not already in list
-            if (!this.messages.find(m => m.id === event.id)) {
-                this.messages.push(event);
-                this.scrollToBottom();
-                
-                // Show notification if chat is closed and message is from operator
-                if (!this.isOpen && event.sender_type === 'operator') {
-                    this.unreadCount++;
-                    this.playNotificationSound();
-                }
+        handleSendError(optimisticMessage, originalMessage) {
+            // Update optimistic message to show error
+            const messageIndex = this.messages.findIndex(m => m.id === optimisticMessage.id);
+            if (messageIndex !== -1) {
+                this.messages[messageIndex].status = 'failed';
+                this.messages[messageIndex].retry = () => {
+                    this.currentMessage = originalMessage;
+                    this.messages.splice(messageIndex, 1);
+                    this.sendMessage();
+                };
+            }
+            this.showError('Failed to send message');
+        },
+
+        sendQuickMessage(message) {
+            this.currentMessage = message;
+            this.sendMessage();
+        },
+
+        // Input Handling
+        handleEnterKey(event) {
+            if (event.shiftKey) {
+                return; // Allow new line with Shift+Enter
+            }
+            this.sendMessage();
+        },
+
+        handleFocus() {
+            this.unreadCount = 0;
+            if (this.sessionId) {
+                this.adaptivePolling(true);
             }
         },
 
-        handleTypingIndicator(event) {
-            if (event.user_id !== parseInt(window.authUserId)) {
-                this.isTyping = event.is_typing;
-                this.typingUser = event.user_name;
-                
-                if (event.is_typing) {
-                    this.scrollToBottom();
-                }
+        handlePaste(event) {
+            // Handle pasted content
+            const paste = (event.clipboardData || window.clipboardData).getData('text');
+            if (paste.length > 1000) {
+                event.preventDefault();
+                this.currentMessage += paste.substring(0, 1000);
+                this.showWarning('Message truncated to 1000 characters');
             }
         },
 
-        handleSessionClosed(event) {
-            this.sessionStatus = 'closed';
-            this.showInfo('Chat session has been closed');
+        handleScroll(event) {
+            // Auto-load more messages when scrolling to top (if needed)
+            const container = event.target;
+            if (container.scrollTop === 0 && this.messages.length > 0) {
+                this.loadOlderMessages();
+            }
         },
 
         // Typing Indicators
         handleTyping() {
             if (!this.sessionId) return;
 
-            // Send typing indicator
             this.sendTypingIndicator(true);
 
             // Clear existing timer
@@ -530,7 +822,7 @@ function chatWidget() {
         },
 
         async sendTypingIndicator(isTyping) {
-            if (!this.sessionId) return;
+            if (!this.sessionId || !this.isConnected) return;
 
             try {
                 await fetch('/api/chat/typing', {
@@ -559,6 +851,11 @@ function chatWidget() {
                 console.error('Failed to check online status:', error);
                 this.isOnline = false;
             }
+        },
+
+        getLastMessageId() {
+            if (this.messages.length === 0) return null;
+            return Math.max(...this.messages.map(m => m.id));
         },
 
         scrollToBottom() {
@@ -605,6 +902,7 @@ function chatWidget() {
             }
         },
 
+        // Notifications
         playNotificationSound() {
             if (this.$el.dataset.enableSound === 'true') {
                 try {
@@ -617,8 +915,24 @@ function chatWidget() {
             }
         },
 
+        showDesktopNotification() {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('New message from support', {
+                    body: 'You have received a new message from our support team',
+                    icon: '/favicon.ico',
+                    tag: 'chat-notification'
+                });
+            } else if ('Notification' in window && Notification.permission !== 'denied') {
+                Notification.requestPermission();
+            }
+        },
+
         showError(message) {
             this.showNotification('error', message);
+        },
+
+        showWarning(message) {
+            this.showNotification('warning', message);
         },
 
         showInfo(message) {
@@ -629,7 +943,8 @@ function chatWidget() {
             // Create notification element
             const notification = document.createElement('div');
             notification.className = `fixed top-4 right-4 z-50 p-3 rounded-lg shadow-lg text-white max-w-sm ${
-                type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+                type === 'error' ? 'bg-red-500' : 
+                type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
             }`;
             notification.textContent = message;
 
@@ -645,10 +960,40 @@ function chatWidget() {
             this.sessionId = null;
             this.sessionStatus = null;
             this.messages = [];
+            this.lastMessageId = null;
+            this.stopPolling();
             await this.startChatSession();
+        },
+
+        async loadOlderMessages() {
+            // Implement if needed for chat history
+            console.log('Load older messages - implement if needed');
+        },
+
+        // Cleanup
+        destroy() {
+            this.stopPolling();
+            if (this.connectionTimer) {
+                clearInterval(this.connectionTimer);
+            }
+            if (this.retryTimer) {
+                clearTimeout(this.retryTimer);
+            }
+            if (this.typingTimer) {
+                clearTimeout(this.typingTimer);
+            }
         }
     }
 }
+
+// Cleanup when page unloads
+window.addEventListener('beforeunload', () => {
+    // Cleanup any timers
+    const widget = document.querySelector('#chat-widget');
+    if (widget && widget.__x) {
+        widget.__x.destroy();
+    }
+});
 </script>
 @endpush
 @endauth

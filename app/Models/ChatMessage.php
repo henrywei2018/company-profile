@@ -37,22 +37,11 @@ class ChatMessage extends Model
                 // Update session activity
                 $model->chatSession->updateActivity();
                 
-                // Broadcast message to multiple channels
+                // Create and broadcast the event
                 $event = new ChatMessageSent($model, $model->chatSession);
                 
                 // Broadcast to session channel (for participants)
-                broadcast($event)->on($model->chatSession->getChannelName());
-                
-                // Broadcast to admin channel if message is from visitor
-                if ($model->sender_type === 'visitor') {
-                    broadcast($event)->on('admin-chat-notifications');
-                    broadcast($event)->on($model->chatSession->getAdminChannelName());
-                }
-                
-                // Broadcast to client notifications if message is from operator
-                if ($model->sender_type === 'operator' && $model->chatSession->user) {
-                    broadcast($event)->on("user.{$model->chatSession->user->id}");
-                }
+                broadcast($event)->toOthers();
                 
                 \Log::info('ChatMessage broadcast sent', [
                     'message_id' => $model->id,
@@ -172,19 +161,14 @@ class ChatMessage extends Model
         try {
             $event = new ChatMessageSent($this, $this->chatSession);
             
-            // Always broadcast to session channel
-            broadcast($event)->on($this->chatSession->getChannelName());
+            // Broadcast to all channels at once - Laravel will handle the channel routing
+            broadcast($event)->toOthers();
             
-            // Broadcast to admin channels if from visitor
-            if ($this->sender_type === 'visitor') {
-                broadcast($event)->on('admin-chat-notifications');
-                broadcast($event)->on($this->chatSession->getAdminChannelName());
-            }
-            
-            // Broadcast to user channel if from operator
-            if ($this->sender_type === 'operator' && $this->chatSession->user) {
-                broadcast($event)->on("user.{$this->chatSession->user->id}");
-            }
+            \Log::info('Message broadcast sent to all channels', [
+                'message_id' => $this->id,
+                'session_id' => $this->chatSession->session_id,
+                'sender_type' => $this->sender_type
+            ]);
             
         } catch (\Exception $e) {
             \Log::error('Failed to broadcast message to all channels', [

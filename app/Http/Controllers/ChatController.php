@@ -1904,14 +1904,14 @@ public function getDashboardMetrics(): JsonResponse
             }
             
             // Broadcast operator status change
-            broadcast(new \App\Events\ChatOperatorStatusChanged($operator, true))->toOthers();
+            broadcast(new ChatOperatorStatusChanged($operator, true))->toOthers();
         } else {
             $this->chatService->setOperatorOffline($user);
             
             // Get operator for broadcast
             $operator = $this->chatService->getOperator($user);
             if ($operator) {
-                broadcast(new \App\Events\ChatOperatorStatusChanged($operator, false))->toOthers();
+                broadcast(new ChatOperatorStatusChanged($operator, false))->toOthers();
             }
         }
 

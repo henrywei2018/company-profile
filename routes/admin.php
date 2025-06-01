@@ -100,6 +100,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('/{chatSession}/typing', [ChatController::class, 'typing'])->name('typing');
         Route::post('/{chatSession}/transfer', [ChatController::class, 'transferSession'])->name('transfer');
         Route::post('/{chatSession}/use-template', [ChatController::class, 'useTemplate'])->name('use-template');
+        Route::post('/{chatSession}/assign-to-me', [ChatController::class, 'assignToMe'])->name('assign-to-me');
+        Route::post('/{chatSession}/take-over', [ChatController::class, 'takeOverSession'])->name('take-over');
         Route::get('/{chatSession}/poll-messages', [ChatController::class, 'pollMessages'])->name('poll-messages');
         Route::post('/{chatSession}/mark-messages-read', [ChatController::class, 'markMessagesRead'])->name('mark-messages-read');
         Route::get('/{chatSession}/messages', [ChatController::class, 'getChatMessages'])->name('messages');
