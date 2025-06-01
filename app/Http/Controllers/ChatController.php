@@ -402,15 +402,36 @@ class ChatController extends Controller
      */
     public function onlineStatus(): JsonResponse
     {
-        $onlineOperators = ChatOperator::where('is_online', true)
-            ->where('is_available', true)
-            ->count();
+        try {
+            $onlineOperators = ChatOperator::where('is_online', true)
+                ->where('is_available', true)
+                ->count();
 
-        return response()->json([
-            'is_online' => $onlineOperators > 0,
-            'operators_count' => $onlineOperators,
-            'estimated_wait_time' => $this->chatService->getEstimatedWaitTime(),
-        ]);
+            $totalOperators = ChatOperator::where('is_online', true)->count();
+
+            $estimatedWaitTime = $this->chatService->getEstimatedWaitTime();
+
+            return response()->json([
+                'is_online' => $onlineOperators > 0,
+                'operators_count' => $onlineOperators,
+                'total_operators' => $totalOperators,
+                'estimated_wait_time' => $estimatedWaitTime,
+                'status_message' => $onlineOperators > 0
+                    ? 'Support team is online'
+                    : 'Support team is currently offline',
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get online status failed: ' . $e->getMessage());
+
+            return response()->json([
+                'is_online' => false,
+                'operators_count' => 0,
+                'total_operators' => 0,
+                'estimated_wait_time' => 0,
+                'status_message' => 'Unable to check status',
+            ]);
+        }
     }
 
     // ===== ADMIN METHODS =====
@@ -516,7 +537,7 @@ class ChatController extends Controller
         $availableOperators = User::whereHas('roles', function ($q) {
             $q->whereIn('name', ['super-admin', 'admin', 'manager']);
         })->where('id', '!=', $chatSession->assigned_operator_id)
-          ->get();
+            ->get();
 
         return view('admin.chat.show', compact('chatSession', 'availableOperators'));
     }
@@ -566,7 +587,7 @@ class ChatController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Admin chat reply failed: ' . $e->getMessage());
-            
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -649,8 +670,8 @@ class ChatController extends Controller
         // Add system message about transfer
         $chatSession->messages()->create([
             'sender_type' => 'system',
-            'message' => "Chat transferred from {$oldOperatorName} to {$newOperator->name}" . 
-                        ($request->note ? " - Note: {$request->note}" : ''),
+            'message' => "Chat transferred from {$oldOperatorName} to {$newOperator->name}" .
+                ($request->note ? " - Note: {$request->note}" : ''),
             'message_type' => 'system',
         ]);
 
@@ -880,17 +901,17 @@ class ChatController extends Controller
         $operators = User::whereHas('roles', function ($q) {
             $q->whereIn('name', ['super-admin', 'admin', 'manager']);
         })->with(['chatOperator'])
-          ->get()
-          ->map(function ($user) {
-              return [
-                  'id' => $user->id,
-                  'name' => $user->name,
-                  'email' => $user->email,
-                  'is_online' => $user->chatOperator ? $user->chatOperator->is_online : false,
-                  'is_available' => $user->chatOperator ? $user->chatOperator->is_available : false,
-                  'current_chats_count' => $user->chatOperator ? $user->chatOperator->current_chats_count : 0,
-              ];
-          });
+            ->get()
+            ->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'is_online' => $user->chatOperator ? $user->chatOperator->is_online : false,
+                    'is_available' => $user->chatOperator ? $user->chatOperator->is_available : false,
+                    'current_chats_count' => $user->chatOperator ? $user->chatOperator->current_chats_count : 0,
+                ];
+            });
 
         return response()->json([
             'success' => true,
@@ -950,7 +971,7 @@ class ChatController extends Controller
         ]);
 
         $template = ChatTemplate::find($request->template_id);
-        
+
         // Send template message
         $message = $chatSession->messages()->create([
             'sender_type' => 'operator',
@@ -989,7 +1010,7 @@ class ChatController extends Controller
         $operators = User::whereHas('roles', function ($q) {
             $q->whereIn('name', ['super-admin', 'admin', 'manager', 'editor']);
         })->get();
-        
+
         $reportData = null;
         $sessions = null;
 
@@ -1066,7 +1087,8 @@ class ChatController extends Controller
         try {
             foreach ($sessionIds as $sessionId) {
                 $session = ChatSession::find($sessionId);
-                if (!$session) continue;
+                if (!$session)
+                    continue;
 
                 switch ($action) {
                     case 'close':
@@ -1197,11 +1219,11 @@ class ChatController extends Controller
                     $uq->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
                 })
-                ->orWhere('visitor_info->name', 'like', "%{$search}%")
-                ->orWhere('visitor_info->email', 'like', "%{$search}%")
-                ->orWhereHas('messages', function ($mq) use ($search) {
-                    $mq->where('message', 'like', "%{$search}%");
-                });
+                    ->orWhere('visitor_info->name', 'like', "%{$search}%")
+                    ->orWhere('visitor_info->email', 'like', "%{$search}%")
+                    ->orWhereHas('messages', function ($mq) use ($search) {
+                        $mq->where('message', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -1276,11 +1298,11 @@ class ChatController extends Controller
                     $uq->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
                 })
-                ->orWhere('visitor_info->name', 'like', "%{$search}%")
-                ->orWhere('visitor_info->email', 'like', "%{$search}%")
-                ->orWhereHas('messages', function ($mq) use ($search) {
-                    $mq->where('message', 'like', "%{$search}%");
-                });
+                    ->orWhere('visitor_info->name', 'like', "%{$search}%")
+                    ->orWhere('visitor_info->email', 'like', "%{$search}%")
+                    ->orWhereHas('messages', function ($mq) use ($search) {
+                        $mq->where('message', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -1463,4 +1485,195 @@ class ChatController extends Controller
     {
         return auth()->check() && auth()->user()->hasRole(['super-admin', 'admin', 'manager']);
     }
+
+    public function sendTyping(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'session_id' => 'required|string|exists:chat_sessions,session_id',
+            'is_typing' => 'required|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $session = ChatSession::where('session_id', $request->session_id)->first();
+
+            // Verify session belongs to authenticated user
+            if (!$session || $session->user_id !== auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Chat session not found or access denied'
+                ], 404);
+            }
+
+            // In a real implementation, this would broadcast via WebSocket
+            // For now, just return success
+            return response()->json([
+                'success' => true,
+                'is_typing' => $request->is_typing
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Send typing indicator failed: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send typing indicator'
+            ], 500);
+        }
+    }
+    public function getAdminSessions(): JsonResponse
+    {
+        if (!auth()->user()->hasAdminAccess()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        try {
+            $sessions = $this->chatService->getDashboardSessions();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'active_sessions' => $sessions['active']->map(function ($session) {
+                        return [
+                            'id' => $session->id,
+                            'session_id' => $session->session_id,
+                            'visitor_name' => $session->getVisitorName(),
+                            'visitor_email' => $session->getVisitorEmail(),
+                            'status' => $session->status,
+                            'priority' => $session->priority,
+                            'started_at' => $session->started_at->toISOString(),
+                            'last_activity_at' => $session->last_activity_at?->toISOString(),
+                            'operator' => $session->operator ? [
+                                'id' => $session->operator->id,
+                                'name' => $session->operator->name,
+                            ] : null,
+                            'latest_message' => $session->latestMessage ? [
+                                'message' => $session->latestMessage->message,
+                                'created_at' => $session->latestMessage->created_at->toISOString(),
+                            ] : null,
+                        ];
+                    }),
+                    'waiting_sessions' => $sessions['waiting']->map(function ($session) {
+                        return [
+                            'id' => $session->id,
+                            'session_id' => $session->session_id,
+                            'visitor_name' => $session->getVisitorName(),
+                            'visitor_email' => $session->getVisitorEmail(),
+                            'priority' => $session->priority,
+                            'created_at' => $session->started_at->toISOString(),
+                            'waiting_time' => now()->diffInMinutes($session->started_at),
+                        ];
+                    }),
+                    'recent_closed' => $sessions['recent_closed']->map(function ($session) {
+                        return [
+                            'id' => $session->id,
+                            'session_id' => $session->session_id,
+                            'visitor_name' => $session->getVisitorName(),
+                            'ended_at' => $session->ended_at?->toISOString(),
+                            'duration' => $session->getDuration(),
+                            'operator' => $session->operator ? [
+                                'name' => $session->operator->name,
+                            ] : null,
+                        ];
+                    }),
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get admin sessions failed: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get sessions'
+            ], 500);
+        }
+    }
+    public function setOperatorStatus(Request $request): JsonResponse
+    {
+        if (!auth()->user()->hasAdminAccess()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'is_online' => 'required|boolean',
+            'is_available' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $user = auth()->user();
+
+            if ($request->is_online) {
+                $operator = $this->chatService->setOperatorOnline($user);
+                if ($request->has('is_available')) {
+                    $this->chatService->setOperatorAvailability($user, $request->is_available);
+                }
+            } else {
+                $this->chatService->setOperatorOffline($user);
+            }
+
+            return response()->json([
+                'success' => true,
+                'is_online' => $request->is_online,
+                'is_available' => $request->get('is_available', true),
+                'message' => $request->is_online ? 'You are now online' : 'You are now offline'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Set operator status failed: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update status'
+            ], 500);
+        }
+    }
+    public function operatorTyping(Request $request, ChatSession $chatSession): JsonResponse
+    {
+        if (!auth()->user()->hasAdminAccess()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'is_typing' => 'required|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // In a real implementation, this would broadcast via WebSocket
+            // For now, just return success
+            return response()->json([
+                'success' => true,
+                'is_typing' => $request->is_typing,
+                'operator_name' => auth()->user()->name
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Operator typing indicator failed: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send typing indicator'
+            ], 500);
+        }
+    }
+
 }

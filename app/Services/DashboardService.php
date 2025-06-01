@@ -263,52 +263,168 @@ class DashboardService
      * Get client recent activities.
      */
     protected function getClientRecentActivities(User $user): array
-    {
+{
+    try {
+        $activities = [];
+
+        // Recent project updates dengan validasi yang aman
+        $recentProjects = $this->clientAccessService->getClientProjects($user)
+            ->latest()
+            ->limit(5)
+            ->get()
+            ->map(function ($project) {
+                return [
+                    'type' => 'project',
+                    'action' => 'updated',
+                    'title' => $project->title,
+                    'description' => "Status: " . $this->formatStatus($project->status),
+                    'status' => $project->status,
+                    'date' => $project->updated_at,
+                    'url' => route('client.projects.show', $project),
+                    'icon' => 'folder',
+                    'color' => $this->getActivityColor('project', $project->status),
+                ];
+            })->toArray();
+
+        // Recent quotation updates dengan validasi yang aman
+        $recentQuotations = $this->clientAccessService->getClientQuotations($user)
+            ->latest()
+            ->limit(5)
+            ->get()
+            ->map(function ($quotation) {
+                return [
+                    'type' => 'quotation',
+                    'action' => 'status_updated',
+                    'title' => $quotation->project_type,
+                    'description' => "Status: " . $this->formatStatus($quotation->status),
+                    'status' => $quotation->status,
+                    'date' => $quotation->updated_at,
+                    'url' => route('client.quotations.show', $quotation),
+                    'icon' => 'document-text',
+                    'color' => $this->getActivityColor('quotation', $quotation->status),
+                ];
+            })->toArray();
+
+        // Recent messages dengan validasi yang aman
+        $recentMessages = $this->clientAccessService->getClientMessages($user)
+            ->latest()
+            ->limit(5)
+            ->get()
+            ->map(function ($message) {
+                $messageStatus = $this->getMessageStatus($message);
+                return [
+                    'type' => 'message',
+                    'action' => $message->is_replied ? 'replied' : 'sent',
+                    'title' => $message->subject,
+                    'description' => $messageStatus['description'],
+                    'status' => $messageStatus['status'],
+                    'date' => $message->updated_at,
+                    'url' => route('client.messages.show', $message),
+                    'icon' => 'mail',
+                    'color' => $this->getActivityColor('message', $messageStatus['status']),
+                ];
+            })->toArray();
+
         return [
-            'recent_projects' => $this->clientAccessService->getClientProjects($user)
-                ->latest()
-                ->limit(5)
-                ->get()
-                ->map(function ($project) {
-                    return [
-                        'type' => 'project',
-                        'action' => 'updated',
-                        'title' => $project->title,
-                        'status' => $project->status,
-                        'date' => $project->updated_at,
-                        'url' => route('client.projects.show', $project),
-                    ];
-                }),
-            'recent_quotations' => $this->clientAccessService->getClientQuotations($user)
-                ->latest()
-                ->limit(5)
-                ->get()
-                ->map(function ($quotation) {
-                    return [
-                        'type' => 'quotation',
-                        'action' => 'status_updated',
-                        'title' => $quotation->project_type,
-                        'status' => $quotation->status,
-                        'date' => $quotation->updated_at,
-                        'url' => route('client.quotations.show', $quotation),
-                    ];
-                }),
-            'recent_messages' => $this->clientAccessService->getClientMessages($user)
-                ->latest()
-                ->limit(5)
-                ->get()
-                ->map(function ($message) {
-                    return [
-                        'type' => 'message',
-                        'action' => $message->is_replied ? 'replied' : 'sent',
-                        'title' => $message->subject,
-                        'status' => $message->is_read ? 'read' : 'unread',
-                        'date' => $message->updated_at,
-                        'url' => route('client.messages.show', $message),
-                    ];
-                }),
+            'recent_projects' => $recentProjects,
+            'recent_quotations' => $recentQuotations,
+            'recent_messages' => $recentMessages,
+        ];
+
+    } catch (\Exception $e) {
+        Log::error('Error getting client recent activities', [
+            'user_id' => $user->id,
+            'error' => $e->getMessage()
+        ]);
+        
+        return [
+            'recent_projects' => [],
+            'recent_quotations' => [],
+            'recent_messages' => [],
         ];
     }
+}
+
+protected function getActivityColor(string $type, string $status): string
+{
+    $colorMap = [
+        'project' => [
+            'completed' => 'green',
+            'in_progress' => 'blue',
+            'on_hold' => 'yellow',
+            'cancelled' => 'red',
+            'planning' => 'purple',
+            'default' => 'gray'
+        ],
+        'quotation' => [
+            'approved' => 'green',
+            'pending' => 'yellow',
+            'reviewed' => 'blue',
+            'rejected' => 'red',
+            'default' => 'gray'
+        ],
+        'message' => [
+            'urgent' => 'red',
+            'replied' => 'green',
+            'read' => 'blue',
+            'unread' => 'yellow',
+            'default' => 'gray'
+        ]
+    ];
+
+    return $colorMap[$type][$status] ?? $colorMap[$type]['default'] ?? 'gray';
+}
+
+/**
+ * Format status untuk display
+ */
+protected function formatStatus(string $status): string
+{
+    return match ($status) {
+        'in_progress' => 'In Progress',
+        'on_hold' => 'On Hold',
+        'pending' => 'Pending',
+        'reviewed' => 'Under Review',
+        'approved' => 'Approved',
+        'rejected' => 'Rejected',
+        'completed' => 'Completed',
+        'cancelled' => 'Cancelled',
+        'planning' => 'Planning',
+        default => ucfirst(str_replace('_', ' ', $status))
+    };
+}
+
+/**
+ * Get message status safely
+ */
+protected function getMessageStatus($message): array
+{
+    if ($message->priority === 'urgent') {
+        return [
+            'status' => 'urgent',
+            'description' => 'Urgent message'
+        ];
+    }
+
+    if ($message->is_replied) {
+        return [
+            'status' => 'replied',
+            'description' => 'Replied'
+        ];
+    }
+
+    if ($message->is_read) {
+        return [
+            'status' => 'read',
+            'description' => 'Read'
+        ];
+    }
+
+    return [
+        'status' => 'unread',
+        'description' => 'Unread'
+    ];
+}
 
     /**
      * Get admin alerts.

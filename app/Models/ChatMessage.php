@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Events\ChatMessageSent;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class ChatMessage extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'chat_session_id',
         'sender_type',

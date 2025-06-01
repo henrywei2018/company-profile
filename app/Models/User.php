@@ -429,6 +429,70 @@ class User extends Authenticatable implements MustVerifyEmail
         ];
     }
 
+    public function getNotificationPreferences(): array
+    {
+        return [
+            'email_notifications' => $this->email_notifications ?? true,
+            'project_update_notifications' => $this->project_update_notifications ?? true,
+            'quotation_update_notifications' => $this->quotation_update_notifications ?? true,
+            'message_reply_notifications' => $this->message_reply_notifications ?? true,
+            'deadline_alert_notifications' => $this->deadline_alert_notifications ?? true,
+            'system_notifications' => $this->system_notifications ?? false,
+            'marketing_notifications' => $this->marketing_notifications ?? false,
+        ];
+    }
+    public function shouldReceiveNotification(string $type): bool
+    {
+        $preferences = $this->getNotificationPreferences();
+        
+        return match($type) {
+            'project.created', 'project.updated', 'project.completed' => $preferences['project_update_notifications'],
+            'quotation.created', 'quotation.approved', 'quotation.rejected' => $preferences['quotation_update_notifications'],
+            'message.reply', 'message.created' => $preferences['message_reply_notifications'],
+            'project.deadline_approaching' => $preferences['deadline_alert_notifications'],
+            'system.maintenance', 'system.alert' => $preferences['system_notifications'],
+            'marketing.newsletter' => $preferences['marketing_notifications'],
+            default => $preferences['email_notifications']
+        };
+    }
+    public function getUnreadNotificationsCountAttribute(): int
+    {
+        return $this->unreadNotifications()->count();
+    }
+    public function getRecentNotifications(int $limit = 10)
+    {
+        return $this->notifications()
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Mark all notifications as read
+     */
+    public function markAllNotificationsAsRead(): int
+    {
+        $count = $this->unreadNotifications()->count();
+        $this->unreadNotifications()->update(['read_at' => now()]);
+        return $count;
+    }
+
+    /**
+     * Get notification route for specific channel
+     */
+    public function routeNotificationForMail($notification = null)
+    {
+        return $this->email;
+    }
+
+    /**
+     * Get notification route for database
+     */
+    public function routeNotificationForDatabase($notification = null)
+    {
+        return $this;
+    }
+
     /**
      * Get chat operator relationship
      */

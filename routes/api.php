@@ -47,6 +47,10 @@ Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
 | Public APIs
 |--------------------------------------------------------------------------
 */
+Route::prefix('chat')->group(function () {
+    Route::get('/online-status', [ChatController::class, 'onlineStatus'])->name('api.chat.online-status');
+    Route::get('/status', [ChatController::class, 'onlineStatus'])->name('api.chat.status');
+});
 
 // Project
 Route::prefix('projects')->name('api.projects.')->group(function () {
@@ -101,7 +105,7 @@ Route::prefix('chat')->middleware(['auth:sanctum'])->group(function () {
     Route::get('/messages', [ChatController::class, 'getMessages'])->name('api.chat.messages');
     Route::post('/update-info', [ChatController::class, 'updateClientInfo'])->name('api.chat.update-info');
     Route::get('/history', [ChatController::class, 'history'])->name('api.chat.history');
-    Route::get('/online-status', [ChatController::class, 'onlineStatus'])->name('api.chat.online-status');
+    Route::get('/online-status', [ChatController::class, 'onlineStatus'])->name('api.chat.client-online-status');
 });
 
 /*

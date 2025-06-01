@@ -44,29 +44,30 @@ class DashboardController extends Controller
             $dashboardData = $this->dashboardService->getDashboardData($user);
 
             // Get notification counts for header
-            $notificationCounts = $this->dashboardService->getClientNotificationCounts($user);
+            $notificationCounts = $this->getClientNotificationCounts($user);
 
-            // Get client permissions
-            $permissions = $this->clientAccessService->getClientPermissions($user);
+            // Get client permissions - handle if service doesn't exist
+            $permissions = [];
+            if (method_exists($this->clientAccessService, 'getClientPermissions')) {
+                $permissions = $this->clientAccessService->getClientPermissions($user);
+            }
 
             // Check for any important alerts
             $alerts = $this->getClientAlerts($user);
 
             // Get recent notifications for dropdown
-            $recentNotifications = $this->dashboardService->getRecentNotifications($user, 10);
+            $recentNotifications = $this->getRecentNotifications($user, 10);
 
             return view('client.dashboard', [
                 'user' => $user,
                 'statistics' => $dashboardData['statistics'] ?? [],
                 'recentActivities' => $dashboardData['recent_activities'] ?? [],
                 'upcomingDeadlines' => $dashboardData['upcoming_deadlines'] ?? [],
-                'performance' => $dashboardData['performance'] ?? [],
-                'quickActions' => $dashboardData['quick_actions'] ?? [],
-                'notificationCounts' => $notificationCounts,
+                'quickActions' => $this->getClientQuickActions(),
+                'notifications' => $notificationCounts,
                 'recentNotifications' => $recentNotifications,
                 'permissions' => $permissions,
                 'alerts' => $alerts,
-                'chartData' => $this->getClientChartData($user),
             ]);
         } catch (\Exception $e) {
             Log::error('Error loading client dashboard', [
@@ -79,13 +80,11 @@ class DashboardController extends Controller
                 'statistics' => [],
                 'recentActivities' => [],
                 'upcomingDeadlines' => [],
-                'performance' => [],
-                'quickActions' => [],
-                'notificationCounts' => [],
+                'quickActions' => $this->getClientQuickActions(),
+                'notifications' => [],
                 'recentNotifications' => [],
                 'permissions' => [],
                 'alerts' => [],
-                'chartData' => [],
                 'error' => 'Unable to load dashboard data. Please try again.'
             ]);
         }
@@ -145,13 +144,108 @@ class DashboardController extends Controller
         } catch (\Exception $e) {
             Log::error('Error getting realtime stats', [
                 'user_id' => auth()->id(),
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load statistics',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
+        }
+    }
+
+    protected function getClientQuickActions(): array
+    {
+        return [
+            [
+                'title' => 'Request Quote',
+                'description' => 'Submit new quotation request',
+                'icon' => 'document-add',
+                'color' => 'blue',
+                'url' => route('client.quotations.create'),
+            ],
+            [
+                'title' => 'Send Message',
+                'description' => 'Contact support team',
+                'icon' => 'mail',
+                'color' => 'green',
+                'url' => route('client.messages.create'),
+            ],
+            [
+                'title' => 'View Projects',
+                'description' => 'Check your projects',
+                'icon' => 'folder',
+                'color' => 'purple',
+                'url' => route('client.projects.index'),
+            ],
+            [
+                'title' => 'Leave Review',
+                'description' => 'Share your experience',
+                'icon' => 'star',
+                'color' => 'amber',
+                'url' => route('client.testimonials.create'),
+            ],
+        ];
+    }
+    protected function getRecentNotifications($user, int $limit = 10)
+    {
+        try {
+            return $user->notifications()
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get()
+                ->map(function ($notification) {
+                    $data = $notification->data;
+                    return [
+                        'id' => $notification->id,
+                        'type' => $data['type'] ?? 'notification',
+                        'title' => $data['title'] ?? 'Notification',
+                        'message' => $data['message'] ?? '',
+                        'url' => $data['action_url'] ?? '#',
+                        'created_at' => $notification->created_at,
+                        'read_at' => $notification->read_at,
+                        'is_read' => !is_null($notification->read_at),
+                        'formatted_time' => $notification->created_at->diffForHumans(),
+                    ];
+                });
+        } catch (\Exception $e) {
+            Log::error('Error getting recent notifications', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            return collect();
+        }
+    }
+    protected function getClientNotificationCounts($user): array
+    {
+        try {
+            return [
+                'unread_messages' => $this->clientAccessService->getClientMessages($user)
+                    ->where('is_read', false)->count(),
+                'pending_approvals' => $this->clientAccessService->getClientQuotations($user)
+                    ->where('status', 'approved')
+                    ->whereNull('client_approved')
+                    ->count(),
+                'overdue_projects' => $this->clientAccessService->getClientProjects($user)
+                    ->where('status', 'in_progress')
+                    ->where('end_date', '<', now())
+                    ->whereNotNull('end_date')
+                    ->count(),
+                'unread_notifications' => $user->unreadNotifications()->count(),
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error getting client notification counts', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            return [
+                'unread_messages' => 0,
+                'pending_approvals' => 0,
+                'overdue_projects' => 0,
+                'unread_notifications' => 0,
+            ];
         }
     }
 
@@ -277,14 +371,14 @@ class DashboardController extends Controller
     /**
      * Get recent activities for the client.
      */
-    public function getRecentActivities(): JsonResponse
+    protected function getRecentActivities(): JsonResponse
     {
         try {
             $user = auth()->user();
 
             $activities = collect();
 
-            // Recent project updates
+            // Recent project updates dengan color yang aman
             $recentProjects = $this->clientAccessService->getClientProjects($user)
                 ->orderBy('updated_at', 'desc')
                 ->limit(5)
@@ -293,15 +387,15 @@ class DashboardController extends Controller
                     return [
                         'type' => 'project',
                         'icon' => 'folder',
-                        'color' => $this->getProjectStatusColor($project->status),
+                        'color' => $this->getProjectStatusColor($project->status), // Pastikan method ini ada
                         'title' => $project->title,
-                        'description' => "Status: {$project->formatted_status}",
+                        'description' => "Status: " . $this->formatProjectStatus($project->status),
                         'timestamp' => $project->updated_at,
                         'url' => route('client.projects.show', $project),
                     ];
                 });
 
-            // Recent quotation updates
+            // Recent quotation updates dengan color yang aman
             $recentQuotations = $this->clientAccessService->getClientQuotations($user)
                 ->orderBy('updated_at', 'desc')
                 ->limit(5)
@@ -310,15 +404,15 @@ class DashboardController extends Controller
                     return [
                         'type' => 'quotation',
                         'icon' => 'document-text',
-                        'color' => $this->getQuotationStatusColor($quotation->status),
+                        'color' => $this->getQuotationStatusColor($quotation->status), // Pastikan method ini ada
                         'title' => $quotation->project_type,
-                        'description' => "Status: {$quotation->formatted_status}",
+                        'description' => "Status: " . $this->formatQuotationStatus($quotation->status),
                         'timestamp' => $quotation->updated_at,
                         'url' => route('client.quotations.show', $quotation),
                     ];
                 });
 
-            // Recent messages
+            // Recent messages dengan color yang aman
             $recentMessages = $this->clientAccessService->getClientMessages($user)
                 ->orderBy('created_at', 'desc')
                 ->limit(5)
@@ -327,7 +421,7 @@ class DashboardController extends Controller
                     return [
                         'type' => 'message',
                         'icon' => 'mail',
-                        'color' => $message->is_read ? 'gray' : 'blue',
+                        'color' => $this->getMessageStatusColor($message), // Pastikan method ini ada
                         'title' => $message->subject,
                         'description' => $message->is_replied ? 'Replied' : 'New message',
                         'timestamp' => $message->created_at,
@@ -335,7 +429,7 @@ class DashboardController extends Controller
                     ];
                 });
 
-            // Combine and sort all activities
+            // Combine dan sort all activities
             $activities = $activities
                 ->concat($recentProjects)
                 ->concat($recentQuotations)
@@ -352,6 +446,7 @@ class DashboardController extends Controller
                 'success' => true,
                 'data' => $activities,
             ]);
+
         } catch (\Exception $e) {
             Log::error('Error getting recent activities', [
                 'user_id' => auth()->id(),
@@ -672,6 +767,24 @@ class DashboardController extends Controller
 
         return true;
     }
+    protected function formatActivitiesData($activities): array
+    {
+        return collect($activities)->map(function ($activity) {
+            // Ensure semua required keys ada dengan default values
+            return [
+                'type' => $activity['type'] ?? 'unknown',
+                'icon' => $activity['icon'] ?? 'folder',
+                'color' => $activity['color'] ?? 'gray',
+                'title' => $activity['title'] ?? 'Unknown Activity',
+                'description' => $activity['description'] ?? '',
+                'date' => $activity['date'] ?? now(),
+                'url' => $activity['url'] ?? '#',
+                'formatted_time' => isset($activity['date']) && $activity['date']
+                    ? $activity['date']->diffForHumans()
+                    : 'Recently',
+            ];
+        })->toArray();
+    }
 
     /**
      * Get deadline urgency level.
@@ -721,15 +834,28 @@ class DashboardController extends Controller
      */
     protected function getNotificationIcon($type): string
     {
-        return match ($type) {
-            'project.created', 'project.updated', 'project.completed' => 'folder',
-            'project.deadline_approaching', 'project.overdue' => 'exclamation-triangle',
-            'quotation.created', 'quotation.approved', 'quotation.rejected' => 'document-text',
-            'message.created', 'message.reply' => 'mail',
-            'user.welcome', 'user.email_verified' => 'user',
+        $iconMap = [
+            'project.created' => 'folder',
+            'project.updated' => 'folder',
+            'project.completed' => 'folder',
+            'project.overdue' => 'exclamation-triangle',
+            'project.deadline_approaching' => 'exclamation-triangle',
+            'quotation.created' => 'document-text',
+            'quotation.approved' => 'document-text',
+            'quotation.rejected' => 'document-text',
+            'message.created' => 'mail',
+            'message.reply' => 'mail',
+            'message.urgent' => 'mail',
+            'chat.session_started' => 'chat',
+            'chat.message_received' => 'chat',
+            'user.welcome' => 'user',
+            'user.email_verified' => 'user',
+            'system.maintenance' => 'cog',
+            'system.alert' => 'cog',
             'testimonial.created' => 'star',
-            default => 'bell',
-        };
+        ];
+
+        return $iconMap[$type] ?? 'bell';
     }
 
     /**
@@ -737,13 +863,25 @@ class DashboardController extends Controller
      */
     protected function getNotificationColor($type): string
     {
-        return match ($type) {
-            'project.completed', 'quotation.approved', 'user.welcome' => 'green',
-            'project.overdue', 'message.urgent', 'quotation.rejected' => 'red',
+        $colorMap = [
+            'project.completed' => 'green',
+            'project.overdue' => 'red',
+            'message.urgent' => 'red',
             'project.deadline_approaching' => 'yellow',
-            'quotation.created', 'message.created', 'message.reply' => 'blue',
-            default => 'gray',
-        };
+            'quotation.approved' => 'green',
+            'quotation.rejected' => 'red',
+            'quotation.created' => 'blue',
+            'quotation.pending' => 'blue',
+            'message.created' => 'blue',
+            'message.reply' => 'blue',
+            'chat.session_started' => 'green',
+            'chat.session_waiting' => 'yellow',
+            'user.welcome' => 'green',
+            'system.alert' => 'red',
+            'system.maintenance' => 'yellow',
+        ];
+
+        return $colorMap[$type] ?? 'gray';
     }
 
     // Chart data methods (simplified versions)
@@ -874,4 +1012,43 @@ class DashboardController extends Controller
             'messages' => [5, 7, 4, 8, 6, 5],
         ];
     }
+
+    protected function getMessageStatusColor($message): string
+    {
+        if ($message->priority === 'urgent') {
+            return 'red';
+        }
+
+        return match (true) {
+            $message->is_read && $message->is_replied => 'green',
+            $message->is_read && !$message->is_replied => 'blue',
+            !$message->is_read => 'yellow',
+            default => 'gray'
+        };
+    }
+
+    protected function formatProjectStatus($status): string
+    {
+        return match ($status) {
+            'in_progress' => 'In Progress',
+            'on_hold' => 'On Hold',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled',
+            'planning' => 'Planning',
+            default => ucfirst($status)
+        };
+    }
+
+    protected function formatQuotationStatus($status): string
+    {
+        return match ($status) {
+            'pending' => 'Pending Review',
+            'reviewed' => 'Under Review',
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+            default => ucfirst($status)
+        };
+    }
+
+
 }

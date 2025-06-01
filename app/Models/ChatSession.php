@@ -9,9 +9,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 use App\Events\ChatSessionStarted;
 use App\Events\ChatSessionClosed;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class ChatSession extends Model
 {
+
+    use HasFactory;
     protected $fillable = [
         'session_id',
         'user_id',

@@ -10,7 +10,8 @@ use App\Http\Controllers\{
     ContactController,
     AboutController,
     ServiceController,
-    TeamController
+    TeamController,
+    ChatController
 };
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Client\{
@@ -66,6 +67,11 @@ Route::prefix('quotation')->group(function () {
 Route::post('/messages', [MessageController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('messages.store');
+
+Route::prefix('api/chat')->group(function () {
+    Route::get('/online-status', [App\Http\Controllers\ChatController::class, 'onlineStatus'])->name('api.chat.public-online-status');
+    Route::get('/status', [App\Http\Controllers\ChatController::class, 'onlineStatus'])->name('api.chat.public-status');
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -135,6 +141,22 @@ Route::middleware('auth')->group(function () {
             'is_admin' => auth()->check() && auth()->user()->hasAdminAccess(),
         ]);
     })->name('chat.websocket-auth');
+    
+    Route::prefix('api/chat')->group(function () {
+        Route::post('/start', [App\Http\Controllers\ChatController::class, 'start'])->name('api.chat.start');
+        Route::get('/session', [App\Http\Controllers\ChatController::class, 'getSession'])->name('api.chat.session');
+        Route::post('/close', [App\Http\Controllers\ChatController::class, 'close'])->name('api.chat.close');
+        Route::post('/send-message', [App\Http\Controllers\ChatController::class, 'sendMessage'])
+            ->middleware('throttle:30,1')
+            ->name('api.chat.send-message');
+        Route::post('/typing', [App\Http\Controllers\ChatController::class, 'sendTyping'])
+            ->middleware('throttle:60,1')
+            ->name('api.chat.typing');
+        Route::get('/messages', [App\Http\Controllers\ChatController::class, 'getMessages'])->name('api.chat.messages');
+        Route::post('/update-info', [App\Http\Controllers\ChatController::class, 'updateClientInfo'])->name('api.chat.update-info');
+        Route::get('/history', [App\Http\Controllers\ChatController::class, 'history'])->name('api.chat.history');
+        Route::get('/online-status', [App\Http\Controllers\ChatController::class, 'onlineStatus'])->name('api.chat.online-status');
+    });
 });
 
 /*

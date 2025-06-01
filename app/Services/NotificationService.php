@@ -156,46 +156,36 @@ class NotificationService
      */
     protected function createNotificationInstance(string $type, $data)
     {
-        // Check if notification type is registered
         if (!isset($this->notificationClasses[$type])) {
             Log::info("Notification type '{$type}' not registered, using GenericNotification");
-            
-            // Use GenericNotification as fallback
-            if (class_exists(\App\Notifications\GenericNotification::class)) {
-                return new \App\Notifications\GenericNotification($data, $type);
-            } else {
-                Log::warning("GenericNotification class not found, skipping notification");
-                return null;
-            }
+            return $this->fallbackNotification($data, $type);
         }
 
         $notificationClass = $this->notificationClasses[$type];
-        
-        // Check if class exists
+
         if (!class_exists($notificationClass)) {
             Log::warning("Notification class '{$notificationClass}' not found for type '{$type}', using GenericNotification");
-            
-            if (class_exists(\App\Notifications\GenericNotification::class)) {
-                return new \App\Notifications\GenericNotification($data, $type);
-            } else {
-                Log::warning("GenericNotification class not found, skipping notification");
-                return null;
-            }
+            return $this->fallbackNotification($data, $type);
         }
 
         try {
-            return new $notificationClass($data);
-        } catch (\Exception $e) {
+            return new $notificationClass(...(array) $data);
+        } catch (\Throwable $e) {
             Log::warning("Failed to instantiate {$notificationClass}: " . $e->getMessage());
-            
-            // Fallback to GenericNotification
-            if (class_exists(\App\Notifications\GenericNotification::class)) {
-                return new \App\Notifications\GenericNotification($data, $type);
-            }
-            
-            return null;
+            return $this->fallbackNotification($data, $type);
         }
     }
+
+    protected function fallbackNotification($data, string $type)
+    {
+        if (class_exists(\App\Notifications\GenericNotification::class)) {
+            return new \App\Notifications\GenericNotification($data, $type);
+        }
+
+        Log::warning("GenericNotification class not found, skipping notification");
+        return null;
+    }
+
 
     /**
      * Resolve notification recipients based on type and data
