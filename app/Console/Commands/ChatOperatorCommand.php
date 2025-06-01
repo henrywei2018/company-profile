@@ -41,7 +41,7 @@ class ChatOperatorCommand extends Command
                 return $this->showOperatorStatus($userIdentifier);
             default:
                 $this->error("Unknown action: {$action}");
-                return Command::FAILURE;
+                return \Symfony\Component\Console\Command\Command::FAILURE;
         }
     }
 
@@ -51,7 +51,7 @@ class ChatOperatorCommand extends Command
 
         if ($operators->isEmpty()) {
             $this->info('No chat operators found.');
-            return Command::SUCCESS;
+            return \Symfony\Component\Console\Command\Command::SUCCESS;
         }
 
         $this->info('👥 Chat Operators:');
@@ -71,7 +71,7 @@ class ChatOperatorCommand extends Command
             })->toArray()
         );
 
-        return Command::SUCCESS;
+        return \Symfony\Component\Console\Command\Command::SUCCESS;
     }
 
     protected function setOperatorStatus($userIdentifier, $online, $all)
@@ -87,13 +87,13 @@ class ChatOperatorCommand extends Command
             
             if (!$user) {
                 $this->error("User not found: {$userIdentifier}");
-                return Command::FAILURE;
+                return \Symfony\Component\Console\Command\Command::FAILURE;
             }
             
             $users = collect([$user]);
         } else {
             $this->error('Please specify a user ID/email or use --all flag');
-            return Command::FAILURE;
+            return \Symfony\Component\Console\Command\Command::FAILURE;
         }
 
         $status = $online ? 'online' : 'offline';
@@ -109,14 +109,14 @@ class ChatOperatorCommand extends Command
         }
 
         $this->info("✅ Set {$count} operator(s) {$status}");
-        return Command::SUCCESS;
+        return \Symfony\Component\Console\Command\Command::SUCCESS;
     }
 
     protected function showOperatorStatus($userIdentifier)
     {
         if (!$userIdentifier) {
             $this->error('Please specify a user ID or email');
-            return Command::FAILURE;
+            return \Symfony\Component\Console\Command\Command::FAILURE;
         }
 
         $user = is_numeric($userIdentifier) 
@@ -125,7 +125,7 @@ class ChatOperatorCommand extends Command
         
         if (!$user) {
             $this->error("User not found: {$userIdentifier}");
-            return Command::FAILURE;
+            return \Symfony\Component\Console\Command\Command::FAILURE;
         }
 
         $operator = $this->chatService->getOperator($user);
@@ -165,6 +165,6 @@ class ChatOperatorCommand extends Command
             );
         }
 
-        return Command::SUCCESS;
+        return \Symfony\Component\Console\Command\Command::SUCCESS;
     }
 }

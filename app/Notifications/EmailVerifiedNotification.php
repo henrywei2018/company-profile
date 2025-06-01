@@ -26,36 +26,40 @@ class EmailVerifiedNotification extends Notification implements ShouldQueue
 
     public function toMail($notifiable): MailMessage
     {
+        $companyName = settings('company_name', config('app.name'));
+        
         return (new MailMessage)
             ->subject('Email Verified Successfully')
-            ->success()
-            ->greeting('Welcome, ' . $this->user->name . '!')
-            ->line('✅ Your email address has been successfully verified.')
-            ->line('**Account Details:**')
-            ->line('• **Name:** ' . $this->user->name)
-            ->line('• **Email:** ' . $this->user->email)
-            ->line('• **Verified:** ' . now()->format('M d, Y H:i'))
-            ->line('**What You Can Do Now:**')
-            ->line('• Access your full account features')
-            ->line('• Submit quotation requests')
-            ->line('• Track your projects')
-            ->line('• Communicate with our team')
-            ->action('Go to Dashboard', $this->user->hasRole('client') ? route('client.dashboard') : route('admin.dashboard'))
-            ->line('Thank you for joining our platform!')
-            ->salutation('Welcome aboard,<br>' . config('app.name') . ' Team');
+            ->greeting("Welcome, {$this->user->name}!")
+            ->line("✅ Your email address has been successfully verified.")
+            ->line("**Account Details:**")
+            ->line("• **Name:** {$this->user->name}")
+            ->line("• **Email:** {$this->user->email}")
+            ->line("• **Verified:** " . now()->format('M d, Y H:i'))
+            ->line("**What You Can Do Now:**")
+            ->line("• Access your full account features")
+            ->line("• Submit quotation requests")
+            ->line("• Track your projects")
+            ->line("• Communicate with our team")
+            ->action(
+                'Go to Dashboard',
+                $this->user->hasRole('client') ? route('client.dashboard') : route('admin.dashboard')
+            )
+            ->salutation("Welcome aboard,<br>" . $companyName . " Team");
     }
 
     public function toArray($notifiable): array
     {
         return [
-            'type' => 'email_verified',
+            'type' => 'user.email_verified',
+            'title' => 'Email Verified Successfully',
+            'message' => "Your email address has been successfully verified. Welcome aboard!",
+            'action_url' => $this->user->hasRole('client') ? route('client.dashboard') : route('admin.dashboard'),
+            'action_text' => 'Go to Dashboard',
             'user_id' => $this->user->id,
             'user_name' => $this->user->name,
             'user_email' => $this->user->email,
             'verified_at' => now()->toISOString(),
-            'user_role' => $this->user->getRoleNames()->first(),
-            'title' => 'Email Verified',
-            'message' => 'Your email address has been successfully verified',
             'priority' => 'normal',
         ];
     }

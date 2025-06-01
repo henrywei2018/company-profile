@@ -68,7 +68,7 @@ class ChatStatsCommand extends Command
             $this->showDetailedStats($period);
         }
 
-        return Command::SUCCESS;
+        return \Symfony\Component\Console\Command\Command::SUCCESS;
     }
 
     protected function showDetailedStats($period)

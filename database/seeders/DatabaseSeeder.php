@@ -22,6 +22,8 @@ class DatabaseSeeder extends Seeder
             BannerCategorySeeder::class,
             TeamMemberDepartmentSeeder::class,
             
+            ChatTemplateSeeder::class,
+
             // Content data
             ServiceSeeder::class,
             TeamMemberSeeder::class,

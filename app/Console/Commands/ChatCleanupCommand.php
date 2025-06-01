@@ -9,6 +9,7 @@ use App\Services\ChatService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
+
 class ChatCleanupCommand extends Command
 {
     protected $signature = 'chat:cleanup
@@ -42,7 +43,7 @@ class ChatCleanupCommand extends Command
             
             if (!$this->confirm("This will delete {$sessionsToDelete} chat sessions and their messages. Continue?")) {
                 $this->info('Cleanup cancelled.');
-                return Command::SUCCESS;
+                return \Symfony\Component\Console\Command\Command::SUCCESS;
             }
         }
 
@@ -94,9 +95,9 @@ class ChatCleanupCommand extends Command
         } catch (\Exception $e) {
             $this->error('❌ Cleanup failed: ' . $e->getMessage());
             Log::error('Chat cleanup failed: ' . $e->getMessage());
-            return Command::FAILURE;
+            return \Symfony\Component\Console\Command\Command::FAILURE;
         }
 
-        return Command::SUCCESS;
+        return \Symfony\Component\Console\Command\Command::SUCCESS;
     }
 }

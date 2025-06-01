@@ -36,7 +36,7 @@ class ChatExportCommand extends Command
 
         if (!in_array($format, ['csv', 'json'])) {
             $this->error('Format must be either csv or json');
-            return Command::FAILURE;
+            return \Symfony\Component\Console\Command\Command::FAILURE;
         }
 
         $this->info("📤 Exporting chat sessions in {$format} format...");
@@ -81,10 +81,10 @@ class ChatExportCommand extends Command
 
         } catch (\Exception $e) {
             $this->error("❌ Export failed: {$e->getMessage()}");
-            return Command::FAILURE;
+            return \Symfony\Component\Console\Command\Command::FAILURE;
         }
 
-        return Command::SUCCESS;
+        return \Symfony\Component\Console\Command\Command::SUCCESS;
     }
 
     protected function exportToJson($filters, $filename)

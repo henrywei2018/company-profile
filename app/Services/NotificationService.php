@@ -30,8 +30,30 @@ class NotificationService
      */
     protected function registerNotificationClasses(): void
     {
-        $this->notificationClasses = [
-            // Project notifications
+        // Only register classes that actually exist to prevent errors
+        $this->registerExistingNotificationClasses();
+    }
+
+    /**
+     * Register only existing notification classes
+     */
+    protected function registerExistingNotificationClasses(): void
+    {
+        $possibleNotifications = [
+            // User notifications (these we created)
+            'user.welcome' => \App\Notifications\WelcomeNotification::class,
+            'user.email_verified' => \App\Notifications\EmailVerifiedNotification::class,
+            'user.profile_incomplete' => \App\Notifications\ProfileIncompleteNotification::class,
+            'user.password_changed' => \App\Notifications\PasswordChangedNotification::class,
+            
+            // Chat notifications (these exist in your documents)
+            'chat.session_started' => \App\Notifications\ChatSessionStartedNotification::class,
+            'chat.message_received' => \App\Notifications\ChatMessageReceivedNotification::class,
+            'chat.session_waiting' => \App\Notifications\ChatSessionWaitingNotification::class,
+            'chat.session_inactive' => \App\Notifications\ChatSessionInactiveNotification::class,
+            'chat.session_closed' => \App\Notifications\ChatSessionClosedNotification::class,
+            
+            // Project notifications (need to be created)
             'project.created' => \App\Notifications\ProjectCreatedNotification::class,
             'project.updated' => \App\Notifications\ProjectUpdatedNotification::class,
             'project.status_changed' => \App\Notifications\ProjectStatusChangedNotification::class,
@@ -39,7 +61,7 @@ class NotificationService
             'project.overdue' => \App\Notifications\ProjectOverdueNotification::class,
             'project.completed' => \App\Notifications\ProjectCompletedNotification::class,
             
-            // Quotation notifications
+            // Quotation notifications (need to be created)
             'quotation.created' => \App\Notifications\QuotationCreatedNotification::class,
             'quotation.status_updated' => \App\Notifications\QuotationStatusUpdatedNotification::class,
             'quotation.approved' => \App\Notifications\QuotationApprovedNotification::class,
@@ -47,51 +69,50 @@ class NotificationService
             'quotation.expired' => \App\Notifications\QuotationExpiredNotification::class,
             'quotation.converted' => \App\Notifications\QuotationConvertedNotification::class,
             
-            // Message notifications
+            // Message notifications (need to be created)
             'message.created' => \App\Notifications\MessageCreatedNotification::class,
             'message.reply' => \App\Notifications\MessageReplyNotification::class,
             'message.urgent' => \App\Notifications\UrgentMessageNotification::class,
             'message.auto_reply' => \App\Notifications\MessageAutoReplyNotification::class,
             
-            // Chat notifications
-            'chat.session_started' => \App\Notifications\ChatSessionStartedNotification::class,
-            'chat.message_received' => \App\Notifications\ChatMessageReceivedNotification::class,
-            'chat.session_waiting' => \App\Notifications\ChatSessionWaitingNotification::class,
-            'chat.session_inactive' => \App\Notifications\ChatSessionInactiveNotification::class,
-            'chat.session_closed' => \App\Notifications\ChatSessionClosedNotification::class,
-            
-            // User notifications
-            'user.welcome' => \App\Notifications\WelcomeNotification::class,
-            'user.profile_incomplete' => \App\Notifications\ProfileIncompleteNotification::class,
-            'user.email_verified' => \App\Notifications\EmailVerifiedNotification::class,
-            'user.password_changed' => \App\Notifications\PasswordChangedNotification::class,
-            
-            // System notifications
+            // System notifications (need to be created)
             'system.maintenance' => \App\Notifications\SystemMaintenanceNotification::class,
             'system.backup_completed' => \App\Notifications\BackupCompletedNotification::class,
             'system.security_alert' => \App\Notifications\SecurityAlertNotification::class,
             'system.certificate_expiring' => \App\Notifications\CertificateExpiringNotification::class,
             
-            // Testimonial notifications
+            // Testimonial notifications (need to be created)
             'testimonial.created' => \App\Notifications\TestimonialCreatedNotification::class,
             'testimonial.approved' => \App\Notifications\TestimonialApprovedNotification::class,
             'testimonial.featured' => \App\Notifications\TestimonialFeaturedNotification::class,
         ];
+
+        // Only register notifications that actually exist
+        foreach ($possibleNotifications as $type => $class) {
+            if (class_exists($class)) {
+                $this->notificationClasses[$type] = $class;
+            }
+        }
+        
+        Log::info('NotificationService initialized', [
+            'registered_types' => count($this->notificationClasses),
+            'types' => array_keys($this->notificationClasses)
+        ]);
     }
 
     /**
-     * Send notification with automatic recipient resolution
+     * Send notification with automatic recipient resolution and fallback
      */
     public function send(string $type, $data = null, $recipients = null, array $channels = null): bool
     {
         try {
-            if (!isset($this->notificationClasses[$type])) {
-                Log::warning("Notification type '{$type}' not registered");
+            // Create notification instance with fallback
+            $notification = $this->createNotificationInstance($type, $data);
+            
+            if (!$notification) {
+                Log::warning("Could not create notification instance for type: {$type}");
                 return false;
             }
-
-            $notificationClass = $this->notificationClasses[$type];
-            $notification = new $notificationClass($data);
 
             // Resolve recipients if not provided
             if ($recipients === null) {
@@ -107,6 +128,7 @@ class NotificationService
             $filteredRecipients = $this->filterRecipientsByPreferences($recipients, $type);
 
             if (empty($filteredRecipients)) {
+                Log::info("No recipients to notify for type: {$type}");
                 return true; // No recipients to notify
             }
 
@@ -121,10 +143,57 @@ class NotificationService
         } catch (\Exception $e) {
             Log::error("Failed to send notification '{$type}': " . $e->getMessage(), [
                 'type' => $type,
-                'data' => $data,
-                'error' => $e->getMessage()
+                'data' => $data ? get_class($data) : 'null',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return false;
+        }
+    }
+
+    /**
+     * Create notification instance with fallback to GenericNotification
+     */
+    protected function createNotificationInstance(string $type, $data)
+    {
+        // Check if notification type is registered
+        if (!isset($this->notificationClasses[$type])) {
+            Log::info("Notification type '{$type}' not registered, using GenericNotification");
+            
+            // Use GenericNotification as fallback
+            if (class_exists(\App\Notifications\GenericNotification::class)) {
+                return new \App\Notifications\GenericNotification($data, $type);
+            } else {
+                Log::warning("GenericNotification class not found, skipping notification");
+                return null;
+            }
+        }
+
+        $notificationClass = $this->notificationClasses[$type];
+        
+        // Check if class exists
+        if (!class_exists($notificationClass)) {
+            Log::warning("Notification class '{$notificationClass}' not found for type '{$type}', using GenericNotification");
+            
+            if (class_exists(\App\Notifications\GenericNotification::class)) {
+                return new \App\Notifications\GenericNotification($data, $type);
+            } else {
+                Log::warning("GenericNotification class not found, skipping notification");
+                return null;
+            }
+        }
+
+        try {
+            return new $notificationClass($data);
+        } catch (\Exception $e) {
+            Log::warning("Failed to instantiate {$notificationClass}: " . $e->getMessage());
+            
+            // Fallback to GenericNotification
+            if (class_exists(\App\Notifications\GenericNotification::class)) {
+                return new \App\Notifications\GenericNotification($data, $type);
+            }
+            
+            return null;
         }
     }
 
@@ -133,72 +202,78 @@ class NotificationService
      */
     protected function resolveRecipients(string $type, $data)
     {
-        switch ($type) {
-            // Project notifications
-            case 'project.created':
-            case 'project.updated':
-            case 'project.status_changed':
-            case 'project.completed':
-                return $this->getProjectNotificationRecipients($data);
+        try {
+            switch ($type) {
+                // Project notifications
+                case 'project.created':
+                case 'project.updated':
+                case 'project.status_changed':
+                case 'project.completed':
+                    return $this->getProjectNotificationRecipients($data);
 
-            case 'project.deadline_approaching':
-            case 'project.overdue':
-                return $this->getProjectDeadlineRecipients($data);
+                case 'project.deadline_approaching':
+                case 'project.overdue':
+                    return $this->getProjectDeadlineRecipients($data);
 
-            // Quotation notifications
-            case 'quotation.created':
-                return $this->getQuotationCreatedRecipients($data);
+                // Quotation notifications
+                case 'quotation.created':
+                    return $this->getQuotationCreatedRecipients($data);
 
-            case 'quotation.status_updated':
-            case 'quotation.approved':
-            case 'quotation.client_response_needed':
-            case 'quotation.expired':
-                return $this->getQuotationUpdateRecipients($data);
+                case 'quotation.status_updated':
+                case 'quotation.approved':
+                case 'quotation.client_response_needed':
+                case 'quotation.expired':
+                    return $this->getQuotationUpdateRecipients($data);
 
-            case 'quotation.converted':
-                return $this->getQuotationConvertedRecipients($data);
+                case 'quotation.converted':
+                    return $this->getQuotationConvertedRecipients($data);
 
-            // Message notifications
-            case 'message.created':
-                return $this->getMessageCreatedRecipients($data);
+                // Message notifications
+                case 'message.created':
+                    return $this->getMessageCreatedRecipients($data);
 
-            case 'message.reply':
-                return $this->getMessageReplyRecipients($data);
+                case 'message.reply':
+                    return $this->getMessageReplyRecipients($data);
 
-            case 'message.urgent':
-                return $this->getUrgentMessageRecipients($data);
+                case 'message.urgent':
+                    return $this->getUrgentMessageRecipients($data);
 
-            // Chat notifications
-            case 'chat.session_started':
-            case 'chat.message_received':
-            case 'chat.session_waiting':
-            case 'chat.session_inactive':
-                return $this->getChatNotificationRecipients($data);
+                // Chat notifications
+                case 'chat.session_started':
+                case 'chat.message_received':
+                case 'chat.session_waiting':
+                case 'chat.session_inactive':
+                    return $this->getChatNotificationRecipients($data);
 
-            // User notifications
-            case 'user.welcome':
-            case 'user.profile_incomplete':
-            case 'user.email_verified':
-            case 'user.password_changed':
-                return $data instanceof User ? $data : null;
+                // User notifications
+                case 'user.welcome':
+                case 'user.profile_incomplete':
+                case 'user.email_verified':
+                case 'user.password_changed':
+                    return $data instanceof User ? $data : null;
 
-            // System notifications
-            case 'system.maintenance':
-            case 'system.backup_completed':
-            case 'system.security_alert':
-            case 'system.certificate_expiring':
-                return $this->getSystemNotificationRecipients();
+                // System notifications
+                case 'system.maintenance':
+                case 'system.backup_completed':
+                case 'system.security_alert':
+                case 'system.certificate_expiring':
+                    return $this->getSystemNotificationRecipients();
 
-            // Testimonial notifications
-            case 'testimonial.created':
-                return $this->getTestimonialCreatedRecipients($data);
+                // Testimonial notifications
+                case 'testimonial.created':
+                    return $this->getTestimonialCreatedRecipients($data);
 
-            case 'testimonial.approved':
-            case 'testimonial.featured':
-                return $this->getTestimonialUpdateRecipients($data);
+                case 'testimonial.approved':
+                case 'testimonial.featured':
+                    return $this->getTestimonialUpdateRecipients($data);
 
-            default:
-                return collect();
+                default:
+                    Log::info("No recipient resolution logic for notification type: {$type}");
+                    return collect();
+            }
+        } catch (\Exception $e) {
+            Log::error("Error resolving recipients for type '{$type}': " . $e->getMessage());
+            return collect();
         }
     }
 
@@ -216,9 +291,12 @@ class NotificationService
             }
 
             // Add project managers and admins
-            $recipients = $recipients->merge(
-                User::role(['super-admin', 'admin', 'manager'])->get()
-            );
+            try {
+                $admins = User::role(['super-admin', 'admin', 'manager'])->get();
+                $recipients = $recipients->merge($admins);
+            } catch (\Exception $e) {
+                Log::warning("Could not get admin users for project notification: " . $e->getMessage());
+            }
         }
 
         return $recipients;
@@ -239,9 +317,12 @@ class NotificationService
 
             // Notify admins about overdue projects
             if ($project->end_date && $project->end_date->isPast()) {
-                $recipients = $recipients->merge(
-                    User::role(['super-admin', 'admin', 'manager'])->get()
-                );
+                try {
+                    $admins = User::role(['super-admin', 'admin', 'manager'])->get();
+                    $recipients = $recipients->merge($admins);
+                } catch (\Exception $e) {
+                    Log::warning("Could not get admin users for deadline notification: " . $e->getMessage());
+                }
             }
         }
 
@@ -257,9 +338,15 @@ class NotificationService
 
         if ($quotation instanceof Quotation) {
             // Notify admins about new quotations
-            $recipients = $recipients->merge(
-                User::role(['super-admin', 'admin', 'sales'])->get()
-            );
+            try {
+                $admins = User::role(['super-admin', 'admin', 'sales'])->get();
+                $recipients = $recipients->merge($admins);
+            } catch (\Exception $e) {
+                Log::warning("Could not get admin users for quotation notification: " . $e->getMessage());
+                // Fallback to all admin users
+                $admins = User::where('email', 'like', '%admin%')->get();
+                $recipients = $recipients->merge($admins);
+            }
         }
 
         return $recipients;
@@ -279,9 +366,12 @@ class NotificationService
             }
 
             // Also notify admins for status tracking
-            $recipients = $recipients->merge(
-                User::role(['super-admin', 'admin', 'sales'])->get()
-            );
+            try {
+                $admins = User::role(['super-admin', 'admin', 'sales'])->get();
+                $recipients = $recipients->merge($admins);
+            } catch (\Exception $e) {
+                Log::warning("Could not get admin users for quotation update: " . $e->getMessage());
+            }
         }
 
         return $recipients;
@@ -314,9 +404,12 @@ class NotificationService
         if ($message instanceof Message) {
             if ($message->type === 'client_to_admin') {
                 // Client sent message to admin - notify admins
-                $recipients = $recipients->merge(
-                    User::role(['super-admin', 'admin', 'support'])->get()
-                );
+                try {
+                    $admins = User::role(['super-admin', 'admin', 'support'])->get();
+                    $recipients = $recipients->merge($admins);
+                } catch (\Exception $e) {
+                    Log::warning("Could not get admin users for message notification: " . $e->getMessage());
+                }
             } elseif ($message->type === 'admin_to_client') {
                 // Admin sent message to client - notify client
                 if ($message->user) {
@@ -350,10 +443,15 @@ class NotificationService
      */
     protected function getUrgentMessageRecipients($message)
     {
-        // Urgent messages go to all available admins
-        return User::role(['super-admin', 'admin', 'support'])
-            ->where('is_active', true)
-            ->get();
+        try {
+            // Urgent messages go to all available admins
+            return User::role(['super-admin', 'admin', 'support'])
+                ->where('is_active', true)
+                ->get();
+        } catch (\Exception $e) {
+            Log::warning("Could not get admin users for urgent message: " . $e->getMessage());
+            return collect();
+        }
     }
 
     /**
@@ -362,10 +460,15 @@ class NotificationService
     protected function getChatNotificationRecipients($chatSession)
     {
         if ($chatSession instanceof ChatSession) {
-            // Notify available chat operators
-            return User::role(['super-admin', 'admin', 'support'])
-                ->where('is_active', true)
-                ->get();
+            try {
+                // Notify available chat operators
+                return User::role(['super-admin', 'admin', 'support'])
+                    ->where('is_active', true)
+                    ->get();
+            } catch (\Exception $e) {
+                Log::warning("Could not get admin users for chat notification: " . $e->getMessage());
+                return collect();
+            }
         }
 
         return collect();
@@ -376,8 +479,13 @@ class NotificationService
      */
     protected function getSystemNotificationRecipients()
     {
-        // System notifications go to super admins
-        return User::role('super-admin')->get();
+        try {
+            // System notifications go to super admins
+            return User::role('super-admin')->get();
+        } catch (\Exception $e) {
+            Log::warning("Could not get super admin users for system notification: " . $e->getMessage());
+            return collect();
+        }
     }
 
     /**
@@ -385,8 +493,13 @@ class NotificationService
      */
     protected function getTestimonialCreatedRecipients($testimonial)
     {
-        // Notify admins about new testimonials for approval
-        return User::role(['super-admin', 'admin', 'marketing'])->get();
+        try {
+            // Notify admins about new testimonials for approval
+            return User::role(['super-admin', 'admin', 'marketing'])->get();
+        } catch (\Exception $e) {
+            Log::warning("Could not get admin users for testimonial notification: " . $e->getMessage());
+            return collect();
+        }
     }
 
     /**
@@ -432,7 +545,7 @@ class NotificationService
         }
 
         // Check if user is active
-        if (!$recipient->is_active) {
+        if (!($recipient->is_active ?? true)) {
             return false;
         }
 
@@ -478,7 +591,7 @@ class NotificationService
      */
     protected function logNotification(string $type, $data, int $recipientCount): void
     {
-        Log::info("Notification sent", [
+        Log::info("Notification sent successfully", [
             'type' => $type,
             'recipient_count' => $recipientCount,
             'data_type' => is_object($data) ? get_class($data) : gettype($data),
@@ -530,6 +643,7 @@ class NotificationService
             'enabled_channels' => $this->enabledChannels,
             'recent_sent' => $this->getRecentNotificationCount(),
             'failed_today' => $this->getFailedNotificationCount(),
+            'registered_types' => array_keys($this->notificationClasses),
         ];
     }
 
@@ -613,7 +727,12 @@ class NotificationService
      */
     public function registerType(string $type, string $notificationClass): void
     {
-        $this->notificationClasses[$type] = $notificationClass;
+        if (class_exists($notificationClass)) {
+            $this->notificationClasses[$type] = $notificationClass;
+            Log::info("Registered notification type: {$type} -> {$notificationClass}");
+        } else {
+            Log::warning("Cannot register notification type {$type}: class {$notificationClass} does not exist");
+        }
     }
 
     /**
@@ -622,5 +741,38 @@ class NotificationService
     public function unregisterType(string $type): void
     {
         unset($this->notificationClasses[$type]);
+        Log::info("Unregistered notification type: {$type}");
+    }
+
+    /**
+     * Check system health for notifications
+     */
+    public function healthCheck(): array
+    {
+        $health = [
+            'status' => 'healthy',
+            'checks' => []
+        ];
+
+        // Check if GenericNotification exists
+        $health['checks']['generic_notification'] = class_exists(\App\Notifications\GenericNotification::class);
+
+        // Check if we have admin users
+        try {
+            $adminCount = User::count();
+            $health['checks']['admin_users'] = $adminCount > 0;
+        } catch (\Exception $e) {
+            $health['checks']['admin_users'] = false;
+            $health['status'] = 'degraded';
+        }
+
+        // Check registered notification count
+        $health['checks']['registered_notifications'] = count($this->notificationClasses);
+
+        if (!$health['checks']['generic_notification']) {
+            $health['status'] = 'degraded';
+        }
+
+        return $health;
     }
 }

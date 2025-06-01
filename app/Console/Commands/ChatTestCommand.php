@@ -38,7 +38,7 @@ class ChatTestCommand extends Command
                 return $this->testPerformance();
             default:
                 $this->error("Unknown test type: {$type}");
-                return Command::FAILURE;
+                return \Symfony\Component\Console\Command\Command::FAILURE;
         }
     }
 
@@ -53,13 +53,13 @@ class ChatTestCommand extends Command
             
             if (!$user) {
                 $this->error('No client users found. Please specify --user option.');
-                return Command::FAILURE;
+                return \Symfony\Component\Console\Command\Command::FAILURE;
             }
         } else {
             $user = User::find($userId);
             if (!$user) {
                 $this->error("User not found: {$userId}");
-                return Command::FAILURE;
+                return \Symfony\Component\Console\Command\Command::FAILURE;
             }
         }
 
@@ -114,10 +114,10 @@ class ChatTestCommand extends Command
 
         } catch (\Exception $e) {
             $this->error("❌ Test failed: {$e->getMessage()}");
-            return Command::FAILURE;
+            return \Symfony\Component\Console\Command\Command::FAILURE;
         }
 
-        return Command::SUCCESS;
+        return \Symfony\Component\Console\Command\Command::SUCCESS;
     }
 
     protected function testNotifications()
@@ -154,10 +154,10 @@ class ChatTestCommand extends Command
 
         } catch (\Exception $e) {
             $this->error("❌ Notification test failed: {$e->getMessage()}");
-            return Command::FAILURE;
+            return \Symfony\Component\Console\Command\Command::FAILURE;
         }
 
-        return Command::SUCCESS;
+        return \Symfony\Component\Console\Command\Command::SUCCESS;
     }
 
     protected function testPerformance()
@@ -230,9 +230,9 @@ class ChatTestCommand extends Command
 
         } catch (\Exception $e) {
             $this->error("❌ Performance test failed: {$e->getMessage()}");
-            return Command::FAILURE;
+            return \Symfony\Component\Console\Command\Command::FAILURE;
         }
 
-        return Command::SUCCESS;
+        return \Symfony\Component\Console\Command\Command::SUCCESS;
     }
 }
