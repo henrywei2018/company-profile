@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ChatTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class ChatTemplateController extends Controller
 {
@@ -46,6 +47,39 @@ class ChatTemplateController extends Controller
 
         return view('admin.chat.templates.index', compact('templates'));
     }
+    public function getStatistics(): JsonResponse
+{
+    try {
+        $statistics = [
+            'total_templates' => ChatTemplate::count(),
+            'active_templates' => ChatTemplate::where('is_active', true)->count(),
+            'by_type' => ChatTemplate::selectRaw('type, COUNT(*) as count')
+                ->groupBy('type')
+                ->pluck('count', 'type')
+                ->toArray(),
+            'most_used' => ChatTemplate::where('is_active', true)
+                ->orderBy('usage_count', 'desc')
+                ->limit(5)
+                ->get(['id', 'name', 'type', 'usage_count']),
+            'recent_templates' => ChatTemplate::latest()
+                ->limit(5)
+                ->get(['id', 'name', 'type', 'created_at']),
+        ];
+
+        return response()->json([
+            'success' => true,
+            'statistics' => $statistics
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Get template statistics failed: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to get statistics'
+        ], 500);
+    }
+}
 
     /**
      * Show the form for creating a new template.

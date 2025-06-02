@@ -39,6 +39,19 @@ class User extends Authenticatable implements MustVerifyEmail
         'login_count',
         'failed_login_attempts',
         'locked_at',
+        
+        // Notification preferences fields from migration
+        'email_notifications',
+        'project_update_notifications',
+        'quotation_update_notifications',
+        'message_reply_notifications',
+        'deadline_alert_notifications',
+        'system_notifications',
+        'marketing_emails',
+        'profile_reminder_sent_at',
+        'last_notification_sent_at',
+        'notification_frequency',
+        'quiet_hours',
     ];
 
     /**
@@ -65,6 +78,18 @@ class User extends Authenticatable implements MustVerifyEmail
         'locked_at' => 'datetime',
         'login_count' => 'integer',
         'failed_login_attempts' => 'integer',
+        
+        // Notification preferences casts
+        'email_notifications' => 'boolean',
+        'project_update_notifications' => 'boolean',
+        'quotation_update_notifications' => 'boolean',
+        'message_reply_notifications' => 'boolean',
+        'deadline_alert_notifications' => 'boolean',
+        'system_notifications' => 'boolean',
+        'marketing_emails' => 'boolean',
+        'profile_reminder_sent_at' => 'datetime',
+        'last_notification_sent_at' => 'datetime',
+        'quiet_hours' => 'array', // JSON field for storing quiet hours
     ];
     
     /**
@@ -429,6 +454,9 @@ class User extends Authenticatable implements MustVerifyEmail
         ];
     }
 
+    /**
+     * Get notification preferences with defaults.
+     */
     public function getNotificationPreferences(): array
     {
         return [
@@ -438,27 +466,90 @@ class User extends Authenticatable implements MustVerifyEmail
             'message_reply_notifications' => $this->message_reply_notifications ?? true,
             'deadline_alert_notifications' => $this->deadline_alert_notifications ?? true,
             'system_notifications' => $this->system_notifications ?? false,
-            'marketing_notifications' => $this->marketing_notifications ?? false,
+            'marketing_emails' => $this->marketing_emails ?? false,
+            'notification_frequency' => $this->notification_frequency ?? 'immediate',
+            'quiet_hours' => $this->quiet_hours ?? null,
         ];
     }
+
+    /**
+     * Check if user should receive specific notification type.
+     */
     public function shouldReceiveNotification(string $type): bool
     {
-        $preferences = $this->getNotificationPreferences();
-        
+        // Check if email notifications are globally disabled
+        if (!($this->email_notifications ?? true)) {
+            return false;
+        }
+
+        // Check if user is active
+        if (!$this->is_active) {
+            return false;
+        }
+
+        // Check specific notification type preferences
         return match($type) {
-            'project.created', 'project.updated', 'project.completed' => $preferences['project_update_notifications'],
-            'quotation.created', 'quotation.approved', 'quotation.rejected' => $preferences['quotation_update_notifications'],
-            'message.reply', 'message.created' => $preferences['message_reply_notifications'],
-            'project.deadline_approaching' => $preferences['deadline_alert_notifications'],
-            'system.maintenance', 'system.alert' => $preferences['system_notifications'],
-            'marketing.newsletter' => $preferences['marketing_notifications'],
-            default => $preferences['email_notifications']
+            'project.created', 'project.updated', 'project.completed', 'project.status_changed' => 
+                $this->project_update_notifications ?? true,
+            
+            'quotation.created', 'quotation.approved', 'quotation.rejected', 'quotation.status_updated' => 
+                $this->quotation_update_notifications ?? true,
+            
+            'message.reply', 'message.created', 'message.auto_reply' => 
+                $this->message_reply_notifications ?? true,
+            
+            'project.deadline_approaching', 'project.overdue' => 
+                $this->deadline_alert_notifications ?? true,
+            
+            'system.maintenance', 'system.alert', 'system.backup_completed' => 
+                $this->system_notifications ?? false,
+            
+            'marketing.newsletter', 'marketing.promotion' => 
+                $this->marketing_emails ?? false,
+            
+            default => $this->email_notifications ?? true
         };
     }
+
+    /**
+     * Check if user is in quiet hours.
+     */
+    public function isInQuietHours(): bool
+    {
+        if (!$this->quiet_hours) {
+            return false;
+        }
+
+        $quietHours = is_array($this->quiet_hours) ? $this->quiet_hours : json_decode($this->quiet_hours, true);
+        
+        if (!isset($quietHours['start']) || !isset($quietHours['end'])) {
+            return false;
+        }
+
+        $currentHour = now()->format('H:i');
+        $start = $quietHours['start'];
+        $end = $quietHours['end'];
+
+        // Handle overnight quiet hours (e.g., 22:00 to 06:00)
+        if ($start > $end) {
+            return $currentHour >= $start || $currentHour <= $end;
+        }
+
+        // Handle same-day quiet hours (e.g., 12:00 to 14:00)
+        return $currentHour >= $start && $currentHour <= $end;
+    }
+
+    /**
+     * Get unread notifications count.
+     */
     public function getUnreadNotificationsCountAttribute(): int
     {
         return $this->unreadNotifications()->count();
     }
+
+    /**
+     * Get recent notifications.
+     */
     public function getRecentNotifications(int $limit = 10)
     {
         return $this->notifications()
@@ -468,7 +559,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Mark all notifications as read
+     * Mark all notifications as read.
      */
     public function markAllNotificationsAsRead(): int
     {
@@ -478,7 +569,54 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get notification route for specific channel
+     * Update notification timestamp for tracking.
+     */
+    public function updateNotificationTimestamp(): void
+    {
+        $this->update(['last_notification_sent_at' => now()]);
+    }
+
+    /**
+     * Check if profile reminder should be sent.
+     */
+    public function shouldSendProfileReminder(): bool
+    {
+        // Don't send if already sent within last 7 days
+        if ($this->profile_reminder_sent_at && 
+            $this->profile_reminder_sent_at->diffInDays(now()) < 7) {
+            return false;
+        }
+
+        // Check if profile is incomplete
+        return !$this->isProfileComplete();
+    }
+
+    /**
+     * Check if user profile is complete.
+     */
+    public function isProfileComplete(): bool
+    {
+        $requiredFields = ['name', 'email', 'phone', 'company', 'address'];
+        
+        foreach ($requiredFields as $field) {
+            if (empty($this->$field)) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    /**
+     * Mark profile reminder as sent.
+     */
+    public function markProfileReminderSent(): void
+    {
+        $this->update(['profile_reminder_sent_at' => now()]);
+    }
+
+    /**
+     * Get notification route for specific channel.
      */
     public function routeNotificationForMail($notification = null)
     {
@@ -486,7 +624,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get notification route for database
+     * Get notification route for database.
      */
     public function routeNotificationForDatabase($notification = null)
     {
@@ -494,7 +632,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get chat operator relationship
+     * Get chat operator relationship.
      */
     public function chatOperator()
     {
@@ -502,7 +640,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get chat sessions where user is the client
+     * Get chat sessions where user is the client.
      */
     public function chatSessions()
     {
@@ -510,7 +648,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get chat sessions where user is the operator
+     * Get chat sessions where user is the operator.
      */
     public function operatingChatSessions()
     {
@@ -518,7 +656,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get active chat sessions for this user
+     * Get active chat sessions for this user.
      */
     public function activeChatSessions()
     {
@@ -527,7 +665,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get active chat sessions where user is operating
+     * Get active chat sessions where user is operating.
      */
     public function activeOperatingChatSessions()
     {
@@ -536,7 +674,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Check if user is currently online as chat operator
+     * Check if user is currently online as chat operator.
      */
     public function isChatOperatorOnline(): bool
     {
@@ -544,7 +682,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Check if user is available for chat
+     * Check if user is available for chat.
      */
     public function isChatOperatorAvailable(): bool
     {
@@ -554,7 +692,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get user's current chat operator status
+     * Get user's current chat operator status.
      */
     public function getChatOperatorStatus(): array
     {
@@ -570,7 +708,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get user's unread chat messages count (for operators)
+     * Get user's unread chat messages count (for operators).
      */
     public function getUnreadChatMessagesCount(): int
     {
@@ -588,7 +726,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get user's chat statistics (for operators)
+     * Get user's chat statistics (for operators).
      */
     public function getChatStatistics(): array
     {
@@ -614,7 +752,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Check if user can handle more chat sessions
+     * Check if user can handle more chat sessions.
      */
     public function canTakeMoreChatSessions(): bool
     {
@@ -627,7 +765,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get user's avatar URL for chat
+     * Get user's avatar URL for chat.
      */
     public function getChatAvatarUrl(): string
     {
