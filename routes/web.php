@@ -159,6 +159,96 @@ Route::middleware('auth')->group(function () {
     });
 });
 
+Route::group(['prefix' => 'test-notifications', 'middleware' => 'auth'], function () {
+    
+    // Test message notifications
+    Route::get('/message', function () {
+        $message = new \App\Models\Message([
+            'id' => 999,
+            'subject' => 'Test Message',
+            'name' => 'Test User',
+            'email' => auth()->user()->email,
+            'message' => 'This is a test message.',
+            'type' => 'client_to_admin',
+            'priority' => 'normal',
+            'created_at' => now()
+        ]);
+        
+        // This should trigger MessageCreatedNotification
+        \App\Facades\Notifications::send('message.created', $message);
+        
+        return 'Message notification sent! Check your notifications table.';
+    });
+    
+    // Test project notifications
+    Route::get('/project', function () {
+        $project = \App\Models\Project::first();
+        
+        if ($project) {
+            // This should trigger proper project notification
+            \App\Facades\Notifications::send('project.updated', $project);
+            return 'Project notification sent!';
+        }
+        
+        return 'No projects found to test with.';
+    });
+    
+    // Test user notifications  
+    Route::get('/user', function () {
+        $user = auth()->user();
+        
+        // This should trigger WelcomeNotification
+        \App\Facades\Notifications::send('user.welcome', $user, $user);
+        
+        return 'User notification sent!';
+    });
+    
+    // Test quotation notifications
+    Route::get('/quotation', function () {
+        $quotation = \App\Models\Quotation::first();
+        
+        if ($quotation) {
+            \App\Facades\Notifications::send('quotation.status_updated', $quotation);
+            return 'Quotation notification sent!';
+        }
+        
+        return 'No quotations found to test with.';
+    });
+    
+    // Test auto-observer functionality
+    Route::get('/create-message', function () {
+        // This should automatically trigger notifications via observer
+        $message = \App\Models\Message::create([
+            'name' => 'Test Observer',
+            'email' => 'test@example.com',
+            'subject' => 'Observer Test Message',
+            'message' => 'This message should trigger automatic notifications.',
+            'type' => 'client_to_admin',
+            'priority' => 'normal'
+        ]);
+        
+        return "Message created with ID: {$message->id}. Check notifications table for auto-generated notifications!";
+    });
+    
+    // Check notification data format
+    Route::get('/check-format', function () {
+        $notifications = auth()->user()->notifications()->latest()->take(5)->get();
+        
+        return response()->json([
+            'count' => $notifications->count(),
+            'sample_data' => $notifications->first()?->data,
+            'recent_notifications' => $notifications->map(function ($n) {
+                return [
+                    'type' => $n->type,
+                    'title' => $n->data['title'] ?? 'No title',
+                    'message' => $n->data['message'] ?? 'No message',
+                    'created' => $n->created_at->diffForHumans()
+                ];
+            })
+        ]);
+    });
+});
+
 /*
 |--------------------------------------------------------------------------
 | Role-Based Area Routes

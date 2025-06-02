@@ -11,6 +11,7 @@ use App\Http\Controllers\Client\{
     ProfileController
 };
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\NotificationController;
 
 Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(function () {
     Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
@@ -25,16 +26,23 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
     Route::post('/dashboard/clear-cache', [ClientDashboardController::class, 'clearCache'])->name('dashboard.clear-cache');
 
     Route::prefix('notifications')->name('notifications.')->group(function () {
-        Route::get('/', [App\Http\Controllers\Client\NotificationController::class, 'index'])->name('index');
-        Route::get('/recent', [App\Http\Controllers\Client\NotificationController::class, 'getRecent'])->name('recent');
-        Route::post('/{notification}/read', [App\Http\Controllers\Client\NotificationController::class, 'markAsRead'])->name('mark-read');
-        Route::post('/mark-all-read', [App\Http\Controllers\Client\NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
-        Route::delete('/{notification}', [App\Http\Controllers\Client\NotificationController::class, 'destroy'])->name('destroy');
-        Route::post('/clear-read', [App\Http\Controllers\Client\NotificationController::class, 'clearRead'])->name('clear-read');
-        Route::get('/summary', [App\Http\Controllers\Client\NotificationController::class, 'getSummary'])->name('summary');
-        Route::get('/unread-count', [App\Http\Controllers\Client\NotificationController::class, 'getUnreadCount'])->name('unread-count');
-        Route::get('/preferences', [NotificationPreferencesController::class, 'show'])->name('preferences');
-        Route::put('/preferences', [NotificationPreferencesController::class, 'update'])->name('preferences.update');
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('/recent', [NotificationController::class, 'getRecent'])->name('recent');
+        Route::get('/preferences', [NotificationController::class, 'preferences'])->name('preferences');
+        Route::put('/preferences', [NotificationController::class, 'updatePreferences'])->name('preferences.update');
+        Route::get('/summary', [NotificationController::class, 'getSummary'])->name('summary');
+        Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
+        Route::post('/test', [NotificationController::class, 'sendTest'])->name('test');
+        Route::get('/export', [NotificationController::class, 'export'])->name('export');
+        
+        // Individual notification actions
+        Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('mark-as-read');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
+        Route::delete('/clear-read', [NotificationController::class, 'clearRead'])->name('clear-read');
+        Route::post('/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('bulk-delete');
+        
+        Route::get('/{notification}', [NotificationController::class, 'show'])->name('show');
     });
 
     Route::prefix('projects')->name('projects.')->group(function () {

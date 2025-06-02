@@ -15,34 +15,63 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withSchedule(function (Schedule $schedule) {
-        $schedule->command('notifications:send-scheduled')
-            ->everyFiveMinutes()
-            ->withoutOverlapping();
+        // Project notifications
+            $schedule->call([\App\Observers\ProjectObserver::class, 'checkOverdueProjects'])
+                ->daily()->at('09:00')->name('check-overdue-projects');
 
-        $schedule->command('notifications:cleanup')
-            ->daily()
-            ->at('02:00');
-        $schedule->command('chat:cleanup')->weekly();
+            // Quotation notifications
+            $schedule->call([\App\Observers\QuotationObserver::class, 'checkExpiredQuotations'])
+                ->daily()->at('10:00')->name('check-expired-quotations');
 
-        // Auto-assign waiting sessions
-        $schedule->call([app(\App\Services\ChatService::class), 'autoAssignWaitingSessions'])
-            ->everyMinute()
-            ->name('auto-assign-chat-sessions');
+            $schedule->call([\App\Observers\QuotationObserver::class, 'checkPendingClientResponses'])
+                ->daily()->at('14:00')->name('check-pending-responses');
 
-        // Clean up stale sessions
-        $schedule->call([app(\App\Services\ChatService::class), 'cleanupStaleSessions'])
-            ->hourly()
-            ->name('cleanup-stale-chat-sessions');
+            // Certification notifications
+            $schedule->call([\App\Observers\CertificationObserver::class, 'checkExpiringCertifications'])
+                ->daily()->at('08:00')->name('check-expiring-certifications');
 
-        // Check for sessions needing attention
-        $schedule->call(function () {
-            $sessions = app(\App\Services\ChatService::class)->getSessionsNeedingAttention();
-            foreach ($sessions as $session) {
-                \App\Facades\Notifications::send('chat.session_needs_attention', $session);
-            }
-        })
-            ->everyFiveMinutes()
-            ->name('check-chat-sessions-attention');
+            $schedule->call([\App\Observers\CertificationObserver::class, 'checkExpiredCertifications'])
+                ->daily()->at('08:30')->name('check-expired-certifications');
+
+            // Chat session cleanup
+            $schedule->call([\App\Observers\ChatSessionObserver::class, 'checkAbandonedSessions'])
+                ->hourly()->name('check-abandoned-chats');
+
+            $schedule->call([\App\Observers\ChatSessionObserver::class, 'checkInactiveSessions'])
+                ->everyThirtyMinutes()->name('check-inactive-chats');
+
+            // User notifications
+            $schedule->call([\App\Observers\UserObserver::class, 'checkIncompleteProfiles'])
+                ->weekly()->mondays()->at('10:00')->name('check-incomplete-profiles');
+
+            // Testimonial follow-ups
+            $schedule->call([\App\Observers\TestimonialObserver::class, 'checkTestimonialFollowups'])
+                ->weekly()->fridays()->at('15:00')->name('testimonial-followups');
+
+            // Monthly reports
+            $schedule->call([\App\Observers\CertificationObserver::class, 'generateMonthlyCertificationReport'])
+                ->monthlyOn(1, '09:00')->name('monthly-certification-report');
+
+            $schedule->call([\App\Observers\TestimonialObserver::class, 'sendMonthlyTestimonialSummary'])
+                ->monthlyOn(1, '10:00')->name('monthly-testimonial-summary');
+
+            // Daily chat report
+            $schedule->call([\App\Observers\ChatSessionObserver::class, 'generateDailyChatReport'])
+                ->daily()->at('23:30')->name('daily-chat-report');
+
+            // Notification cleanup
+            $schedule->call(function () {
+                \DB::table('notifications')
+                    ->whereNotNull('read_at')
+                    ->where('created_at', '<', now()->subDays(30))
+                    ->delete();
+
+                \DB::table('notifications')
+                    ->whereNull('read_at')
+                    ->where('created_at', '<', now()->subDays(90))
+                    ->delete();
+            })->daily()->at('02:00')->name('cleanup-old-notifications');
+
     })
     ->withProviders([
         App\Providers\RepositoryServiceProvider::class,

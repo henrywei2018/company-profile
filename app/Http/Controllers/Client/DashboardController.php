@@ -5,31 +5,30 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Services\DashboardService;
 use App\Services\ClientAccessService;
-use App\Services\ClientNotificationService;
+use App\Services\NotificationService;
+use App\Services\NotificationDataService;
 use App\Facades\Notifications;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
     protected DashboardService $dashboardService;
     protected ClientAccessService $clientAccessService;
-    protected ClientNotificationService $clientNotificationService;
+    protected NotificationService $notificationService;
 
     public function __construct(
         DashboardService $dashboardService,
         ClientAccessService $clientAccessService,
-        ClientNotificationService $clientNotificationService
+        NotificationService $notificationService
     ) {
         $this->dashboardService = $dashboardService;
         $this->clientAccessService = $clientAccessService;
-        $this->clientNotificationService = $clientNotificationService;
-
-        // Apply client middleware
-        $this->middleware(['auth', 'verified', 'role:client']);
+        $this->notificationService = $notificationService;
     }
 
     /**
@@ -88,7 +87,8 @@ class DashboardController extends Controller
                 'error' => 'Unable to load dashboard data. Please try again.'
             ]);
         }
-    }
+    }    
+    
 
     /**
      * Get real-time statistics for AJAX updates.
@@ -96,62 +96,35 @@ class DashboardController extends Controller
     public function getRealtimeStats(): JsonResponse
     {
         try {
-            $user = auth()->user();
-
-            $stats = [
-                'projects' => [
-                    'total' => $this->clientAccessService->getClientProjects($user)->count(),
-                    'active' => $this->clientAccessService->getClientProjects($user)
-                        ->whereIn('status', ['in_progress', 'on_hold'])->count(),
-                    'completed' => $this->clientAccessService->getClientProjects($user)
-                        ->where('status', 'completed')->count(),
-                    'overdue' => $this->clientAccessService->getClientProjects($user)
-                        ->where('status', 'in_progress')
-                        ->where('end_date', '<', now())
-                        ->whereNotNull('end_date')
-                        ->count(),
-                ],
-                'quotations' => [
-                    'total' => $this->clientAccessService->getClientQuotations($user)->count(),
-                    'pending' => $this->clientAccessService->getClientQuotations($user)
-                        ->where('status', 'pending')->count(),
-                    'approved' => $this->clientAccessService->getClientQuotations($user)
-                        ->where('status', 'approved')->count(),
-                    'awaiting_approval' => $this->clientAccessService->getClientQuotations($user)
-                        ->where('status', 'approved')
-                        ->whereNull('client_approved')
-                        ->count(),
-                ],
-                'messages' => [
-                    'total' => $this->clientAccessService->getClientMessages($user)->count(),
-                    'unread' => $this->clientAccessService->getClientMessages($user)
-                        ->where('is_read', false)->count(),
-                    'urgent' => $this->clientAccessService->getClientMessages($user)
-                        ->where('priority', 'urgent')
-                        ->where('is_read', false)
-                        ->count(),
-                ],
-                'notifications' => [
-                    'unread' => $user->unreadNotifications()->count(),
-                ],
-            ];
-
+            $user = Auth::user();
+            $notificationCounts = $this->dashboardService->getClientNotificationCounts($user);
+            
             return response()->json([
                 'success' => true,
-                'data' => $stats,
-                'timestamp' => now()->toISOString(),
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error getting realtime stats', [
-                'user_id' => auth()->id(),
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'data' => [
+                    'notifications' => [
+                        'unread' => $notificationCounts['unread_database_notifications'],
+                        'total' => $notificationCounts['total_notifications'],
+                    ],
+                    'messages' => [
+                        'unread' => $notificationCounts['unread_messages'],
+                    ],
+                    'quotations' => [
+                        'awaiting_approval' => $notificationCounts['pending_approvals'],
+                    ],
+                    'projects' => [
+                        'overdue' => $notificationCounts['overdue_projects'],
+                        'upcoming_deadlines' => $notificationCounts['upcoming_deadlines'],
+                    ],
+                ]
             ]);
 
+        } catch (\Exception $e) {
+            Log::error('Failed to get client realtime stats: ' . $e->getMessage());
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load statistics',
-                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+                'data' => []
             ], 500);
         }
     }
@@ -514,40 +487,44 @@ class DashboardController extends Controller
     public function markNotificationRead(Request $request): JsonResponse
     {
         try {
-            $user = auth()->user();
-            $notificationId = $request->get('notification_id');
-
+            $notificationId = $request->input('notification_id');
+            
             if ($notificationId === 'all') {
-                $user->unreadNotifications->markAsRead();
-                $message = 'All notifications marked as read';
+                // Mark all as read
+                $count = Auth::user()->unreadNotifications()->update(['read_at' => now()]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => "{$count} notifications marked as read",
+                    'count' => $count
+                ]);
             } else {
-                $notification = $user->notifications()->find($notificationId);
-                if ($notification) {
-                    $notification->markAsRead();
-                    $message = 'Notification marked as read';
-                } else {
+                // Mark single notification as read
+                $notification = Auth::user()->notifications()->find($notificationId);
+                
+                if (!$notification) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Notification not found',
+                        'message' => 'Notification not found'
                     ], 404);
                 }
+                
+                if (!$notification->read_at) {
+                    $notification->markAsRead();
+                }
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Notification marked as read'
+                ]);
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => $message,
-                'unread_count' => $user->unreadNotifications()->count(),
-            ]);
         } catch (\Exception $e) {
-            Log::error('Error marking notification as read', [
-                'user_id' => auth()->id(),
-                'notification_id' => $request->get('notification_id'),
-                'error' => $e->getMessage()
-            ]);
-
+            Log::error('Failed to mark client notification as read: ' . $e->getMessage());
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to mark notification as read',
+                'message' => 'Failed to mark notification as read'
             ], 500);
         }
     }
@@ -558,30 +535,23 @@ class DashboardController extends Controller
     public function testNotification(): JsonResponse
     {
         try {
-            $user = auth()->user();
-
-            $success = $this->clientNotificationService->sendTestNotification($user);
-
-            if ($success) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Test notification sent successfully! Check your email and notifications.',
-                ]);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to send test notification. Please check your settings.',
-                ], 500);
-            }
-        } catch (\Exception $e) {
-            Log::error('Error sending test notification', [
-                'user_id' => auth()->id(),
-                'error' => $e->getMessage()
-            ]);
+            $user = Auth::user();
+            
+            $success = $this->notificationService->send('user.welcome', $user, $user);
 
             return response()->json([
+                'success' => $success,
+                'message' => $success 
+                    ? 'Test notification sent successfully! Check your email and notifications.' 
+                    : 'Failed to send test notification'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send client test notification: ' . $e->getMessage());
+            
+            return response()->json([
                 'success' => false,
-                'message' => 'Failed to send test notification',
+                'message' => 'Failed to send test notification: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -861,27 +831,17 @@ class DashboardController extends Controller
     /**
      * Get notification color.
      */
-    protected function getNotificationColor($type): string
+    protected function getNotificationColor(string $type): string
     {
-        $colorMap = [
-            'project.completed' => 'green',
-            'project.overdue' => 'red',
-            'message.urgent' => 'red',
-            'project.deadline_approaching' => 'yellow',
-            'quotation.approved' => 'green',
-            'quotation.rejected' => 'red',
-            'quotation.created' => 'blue',
-            'quotation.pending' => 'blue',
-            'message.created' => 'blue',
-            'message.reply' => 'blue',
-            'chat.session_started' => 'green',
-            'chat.session_waiting' => 'yellow',
-            'user.welcome' => 'green',
-            'system.alert' => 'red',
-            'system.maintenance' => 'yellow',
-        ];
-
-        return $colorMap[$type] ?? 'gray';
+        return match(true) {
+            str_contains($type, 'completed') => 'green',
+            str_contains($type, 'overdue') || str_contains($type, 'urgent') => 'red',
+            str_contains($type, 'deadline') => 'yellow',
+            str_contains($type, 'approved') => 'green',
+            str_contains($type, 'rejected') => 'red',
+            str_contains($type, 'created') || str_contains($type, 'pending') => 'blue',
+            default => 'gray',
+        };
     }
 
     // Chart data methods (simplified versions)

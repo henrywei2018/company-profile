@@ -250,7 +250,35 @@
                     <!-- Notification List -->
                     <div class="max-h-80 overflow-y-auto" id="notification-list">
                         @forelse($recentNotifications as $notification)
-                            @include('components.admin.notification-item', ['notification' => $notification])
+                            <div class="px-4 py-3 border-b border-gray-100 dark:border-neutral-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-neutral-700 cursor-pointer"
+                                 onclick="handleNotificationClick('{{ $notification['id'] }}', '{{ $notification['url'] ?? '#' }}')"
+                                 data-notification-id="{{ $notification['id'] }}">
+                                <div class="flex items-start space-x-3">
+                                    <div class="flex-shrink-0">
+                                        <x-notification.icon :type="$notification['icon']" :color="$notification['color']" size="sm" />
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                {{ $notification['title'] }}
+                                            </p>
+                                            <div class="flex items-center space-x-1">
+                                                @if(!$notification['is_read'])
+                                                    <span class="flex-shrink-0 w-2 h-2 bg-blue-600 rounded-full"></span>
+                                                @endif
+                                                <span class="text-xs text-gray-500 dark:text-neutral-400 whitespace-nowrap">
+                                                    {{ $notification['formatted_time'] }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        @if(!empty($notification['message']))
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-neutral-300 line-clamp-2">
+                                            {{ $notification['message'] }}
+                                        </p>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
                         @empty
                             <div class="px-4 py-8 text-center">
                                 <svg class="mx-auto size-12 text-gray-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -300,7 +328,35 @@
                         @endphp
                         
                         @forelse($recentMessages as $message)
-                            @include('components.admin.message-item', ['message' => $message])
+                            <div class="px-4 py-3 border-b border-gray-100 dark:border-neutral-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-neutral-700">
+                                <a href="{{ route('client.messages.show', $message) }}" class="block">
+                                    <div class="flex items-start space-x-3">
+                                        <div class="flex-shrink-0">
+                                            <div class="size-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                                                <svg class="size-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center justify-between">
+                                                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                    {{ $message->subject }}
+                                                </p>
+                                                @if(!$message->is_read)
+                                                    <span class="flex-shrink-0 w-2 h-2 bg-green-500 rounded-full"></span>
+                                                @endif
+                                            </div>
+                                            <p class="text-xs text-gray-500 dark:text-neutral-400 truncate">
+                                                {{ Str::limit($message->message, 50) }}
+                                            </p>
+                                            <p class="text-xs text-gray-400 dark:text-neutral-500 mt-1">
+                                                {{ $message->created_at->diffForHumans() }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
                         @empty
                             <div class="px-4 py-6 text-center">
                                 <svg class="mx-auto size-8 text-gray-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -457,6 +513,16 @@
 @push('scripts')
 <script>
     // Client Notification management functions
+    function handleNotificationClick(notificationId, url) {
+        // Mark as read first
+        markNotificationAsRead(notificationId);
+        
+        // Navigate to URL if provided
+        if (url && url !== '#') {
+            window.location.href = url;
+        }
+    }
+
     function markNotificationAsRead(notificationId) {
         fetch(`{{ route('client.dashboard.mark-notification-read') }}`, {
             method: 'POST',
@@ -504,7 +570,7 @@
         .then(data => {
             if (data.success) {
                 // Update UI - remove all unread indicators
-                const notificationItems = document.querySelectorAll('.notification-item');
+                const notificationItems = document.querySelectorAll('[data-notification-id]');
                 notificationItems.forEach(item => {
                     item.classList.remove('bg-blue-50', 'dark:bg-blue-900/10');
                     const unreadDot = item.querySelector('.size-2.bg-blue-600');
@@ -579,6 +645,7 @@
                 // Refresh notifications after a short delay
                 setTimeout(() => {
                     updateNotificationCounts();
+                    refreshNotificationList();
                 }, 2000);
             } else {
                 showToast('error', data.message);
@@ -587,6 +654,58 @@
         .catch(error => {
             console.error('Failed to send test notification:', error);
             showToast('error', 'Failed to send test notification');
+        });
+    }
+
+    function refreshNotificationList() {
+        fetch('{{ route("client.dashboard.notifications") }}?limit=5')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data.length > 0) {
+                const notificationList = document.getElementById('notification-list');
+                if (notificationList) {
+                    // Update the notification list with new data
+                    let html = '';
+                    data.data.forEach(notification => {
+                        const unreadIndicator = !notification.is_read ? 
+                            '<span class="flex-shrink-0 w-2 h-2 bg-blue-600 rounded-full"></span>' : '';
+                        
+                        html += `
+                            <div class="px-4 py-3 border-b border-gray-100 dark:border-neutral-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-neutral-700 cursor-pointer"
+                                 onclick="handleNotificationClick('${notification.id}', '${notification.url || '#'}')"
+                                 data-notification-id="${notification.id}">
+                                <div class="flex items-start space-x-3">
+                                    <div class="flex-shrink-0">
+                                        <div class="flex items-center justify-center w-8 h-8 text-gray-500 bg-gray-100 dark:bg-neutral-700 rounded-full">
+                                            <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5-5-5h5V8a1 1 0 011-1h3a1 1 0 011 1v9z"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                ${notification.title}
+                                            </p>
+                                            <div class="flex items-center space-x-1">
+                                                ${unreadIndicator}
+                                                <span class="text-xs text-gray-500 dark:text-neutral-400 whitespace-nowrap">
+                                                    ${notification.formatted_time}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        ${notification.message ? `<p class="mt-1 text-xs text-gray-600 dark:text-neutral-300 line-clamp-2">${notification.message}</p>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    notificationList.innerHTML = html;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Failed to refresh notification list:', error);
         });
     }
 
@@ -639,6 +758,23 @@
                 console.error('Failed to update urgent alerts:', error);
             });
         }, 60000);
+
+        // Initialize notification polling for real-time updates
+        if (typeof(EventSource) !== "undefined") {
+            // Note: You would need to implement Server-Sent Events for real-time notifications
+            // This is a placeholder for future implementation
+        }
+    });
+
+    // Add click outside to close dropdowns
+    document.addEventListener('click', function(event) {
+        const dropdowns = document.querySelectorAll('.hs-dropdown-menu:not(.hidden)');
+        dropdowns.forEach(dropdown => {
+            const toggle = dropdown.previousElementSibling;
+            if (!toggle.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
     });
 </script>
 @endpush

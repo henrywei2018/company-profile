@@ -1,5 +1,5 @@
 <?php
-// File: app/Providers/NotificationServiceProvider.php
+// File: app/Providers/NotificationServiceProvider.php - UPDATED
 
 namespace App\Providers;
 
@@ -7,6 +7,8 @@ use Illuminate\Support\ServiceProvider;
 use App\Services\NotificationService;
 use App\Services\ClientNotificationService;
 use App\Services\EmailNotificationService;
+
+// Import all observers
 use App\Observers\ProjectObserver;
 use App\Observers\QuotationObserver;
 use App\Observers\MessageObserver;
@@ -14,6 +16,8 @@ use App\Observers\TestimonialObserver;
 use App\Observers\UserObserver;
 use App\Observers\ChatSessionObserver;
 use App\Observers\CertificationObserver;
+
+// Import all models
 use App\Models\Project;
 use App\Models\Quotation;
 use App\Models\Message;
@@ -54,6 +58,9 @@ class NotificationServiceProvider extends ServiceProvider
 
         // Load custom notification templates
         $this->loadNotificationTemplates();
+
+        // Register scheduled notification checks
+        $this->registerScheduledChecks();
     }
 
     /**
@@ -100,13 +107,18 @@ class NotificationServiceProvider extends ServiceProvider
     {
         // Only register observers if auto notifications are enabled
         if (config('notifications.auto_notifications', true)) {
+            
+            // Core business model observers
             Project::observe(ProjectObserver::class);
             Quotation::observe(QuotationObserver::class);
             Message::observe(MessageObserver::class);
-            Testimonial::observe(TestimonialObserver::class);
             User::observe(UserObserver::class);
             
-            // Register additional observers if models exist
+            // Additional observers if models exist
+            if (class_exists(Testimonial::class)) {
+                Testimonial::observe(TestimonialObserver::class);
+            }
+            
             if (class_exists(ChatSession::class)) {
                 ChatSession::observe(ChatSessionObserver::class);
             }
@@ -114,9 +126,10 @@ class NotificationServiceProvider extends ServiceProvider
             if (class_exists(Certification::class)) {
                 Certification::observe(CertificationObserver::class);
             }
+
+            \Illuminate\Support\Facades\Log::info('Notification observers registered successfully');
         }
     }
-
 
     /**
      * Load custom notification templates
@@ -135,6 +148,25 @@ class NotificationServiceProvider extends ServiceProvider
     }
 
     /**
+     * Register scheduled notification checks
+     */
+    protected function registerScheduledChecks(): void
+    {
+        // These would be called by Laravel's task scheduler
+        // Add to App\Console\Kernel.php schedule method
+        
+        if ($this->app->runningInConsole()) {
+            \Illuminate\Support\Facades\Log::info('Scheduled notification checks available:
+            - ProjectObserver::checkOverdueProjects()
+            - QuotationObserver::checkExpiredQuotations()
+            - CertificationObserver::checkExpiringCertifications()
+            - ChatSessionObserver::checkAbandonedSessions()
+            - UserObserver::checkIncompleteProfiles()
+            - TestimonialObserver::checkTestimonialFollowups()');
+        }
+    }
+
+    /**
      * Get services provided by this provider
      */
     public function provides(): array
@@ -145,9 +177,6 @@ class NotificationServiceProvider extends ServiceProvider
             EmailNotificationService::class,
             'notifications',
             'notification.email',
-            'notification.slack',
-            'notification.discord',
-            'notification.teams',
         ];
     }
 }
