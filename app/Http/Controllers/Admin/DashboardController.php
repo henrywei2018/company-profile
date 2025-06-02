@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\Service;
 use App\Models\Message;
 use App\Models\Quotation;
+use App\Models\ChatOperator;
 use App\Models\User;
 use App\Models\CompanyProfile;
 use Carbon\Carbon;
@@ -60,6 +61,8 @@ class DashboardController extends Controller
 
         // Get company profile
         $companyProfile = CompanyProfile::getInstance();
+        $currentOperator = ChatOperator::where('user_id', auth()->id())->first();
+        $isOperatorOnline = optional($currentOperator)->is_online ?? false;
 
         // Enable charts for dashboard
         $enableCharts = true;
@@ -74,7 +77,8 @@ class DashboardController extends Controller
             'recentMessages' => $recentMessages,
             'recentQuotations' => $recentQuotations,
             'recentProjects' => $recentProjects,
-            'companyProfile' => $companyProfile,
+            'companyProfile' => $companyProfile,,
+            'isOperatorOnline' => $isOperatorOnline,
             'enableCharts' => true
         ]);
     }

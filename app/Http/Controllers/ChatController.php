@@ -644,12 +644,14 @@ public function getDashboardMetrics(): JsonResponse
             ->orderBy('ended_at', 'desc')
             ->limit(10)
             ->get();
-
+        $currentOperator = ChatOperator::where('user_id', auth()->id())->first();
+        $isOperatorOnline = optional($currentOperator)->is_online ?? false;
         return view('admin.chat.index', compact(
             'statistics',
             'activeSessions',
             'waitingSessions',
-            'recentClosedSessions'
+            'recentClosedSessions',
+            'isOperatorOnline'
         ));
     }
 
@@ -1125,7 +1127,7 @@ public function getDashboardMetrics(): JsonResponse
             'last_seen_at' => $operator ? $operator->last_seen_at : null,
             'current_chats_count' => $operator ? $operator->current_chats_count : 0,
             'max_concurrent_chats' => $operator ? $operator->max_concurrent_chats : 5,
-            'active_sessions' => $activeSessions->map(function ($session) {
+            'active_sessions' => collect($$activeSessions)->map(function ($session) {
                 return [
                     'session_id' => $session->session_id,
                     'visitor_name' => $session->getVisitorName(),

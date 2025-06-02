@@ -99,7 +99,7 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::get('/{chatSession}', [ChatController::class, 'show'])->name('show');
     });
 
-    Route::prefix('client/profile')->name('client.profile.')->group(function () {
+    Route::prefix('/profile')->name('profile.')->group(function () {
         Route::get('/', [ProfileController::class, 'show'])->name('show');
         Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
         Route::post('/update', [ProfileController::class, 'update'])->name('update');

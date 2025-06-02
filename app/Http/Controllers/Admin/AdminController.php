@@ -79,7 +79,7 @@ class AdminController extends Controller
                 ->get();
             $recent_activities['projects'] = $recent_projects;
         }
-
+        
         return view('admin.dashboard', compact('stats', 'recent_activities'));
     }
 }
