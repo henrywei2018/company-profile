@@ -1,6 +1,5 @@
 <?php
 
-// app/Notifications/ProfileIncompleteNotification.php
 namespace App\Notifications;
 
 use App\Models\User;

@@ -37,7 +37,7 @@ abstract class BaseNotification extends Notification implements ShouldQueue
     public function via($notifiable): array
     {
         $channels = ['database'];
-
+\Log::info('Channels for ' . static::class, $channels);
         // Add mail channel if user has email notifications enabled
         if ($this->shouldSendEmail($notifiable)) {
             $channels[] = 'mail';
@@ -151,84 +151,3 @@ abstract class BaseNotification extends Notification implements ShouldQueue
         return $this;
     }
 }
-
-// File: app/Notifications/ProfileIncompleteNotification.php
-
-namespace App\Notifications;
-
-use App\Models\User;
-
-class ProfileIncompleteNotification extends BaseNotification
-{
-    protected function configure(): void
-    {
-        $user = $this->data;
-        
-        if ($user instanceof User) {
-            $this->subject = "Complete Your Profile - " . config('app.name');
-            $this->greeting = "Hello {$user->name}!";
-            
-            $this->addLine("We noticed your profile is incomplete.");
-            $this->addLine("Completing your profile helps us serve you better and ensures smooth communication.");
-            
-            $missingFields = [];
-            if (empty($user->phone)) $missingFields[] = 'Phone number';
-            if (empty($user->company)) $missingFields[] = 'Company name';
-            if (empty($user->address)) $missingFields[] = 'Address';
-            
-            if (!empty($missingFields)) {
-                $this->addLine("Missing information: " . implode(', ', $missingFields));
-            }
-            
-            $this->setAction('Complete Profile', route('profile.edit'));
-            $this->salutation = 'Best regards,<br>' . config('app.name') . ' Team';
-        }
-    }
-}
-
-// File: app/Notifications/SystemMaintenanceNotification.php
-
-
-
-// File: app/Notifications/CertificateExpiringNotification.php
-
-namespace App\Notifications;
-
-use App\Models\Certification;
-
-class CertificateExpiringNotification extends BaseNotification
-{
-    protected function configure(): void
-    {
-        $certification = $this->data;
-        
-        if ($certification instanceof Certification) {
-            $daysUntilExpiry = $certification->expiry_date ? now()->diffInDays($certification->expiry_date, false) : 0;
-            $isExpired = $daysUntilExpiry < 0;
-            
-            if ($isExpired) {
-                $this->subject = "Certificate Expired: {$certification->name}";
-                $this->greeting = "Critical Alert!";
-                $this->addLine("Certificate '{$certification->name}' has expired " . abs($daysUntilExpiry) . " day(s) ago.");
-            } else {
-                $this->subject = "Certificate Expiring Soon: {$certification->name}";
-                $this->greeting = "Attention Required!";
-                $this->addLine("Certificate '{$certification->name}' will expire in {$daysUntilExpiry} day(s).");
-            }
-            
-            $this->addLine("Issuer: {$certification->issuer}");
-            $this->addLine("Expiry Date: " . $certification->expiry_date->format('M d, Y'));
-            $this->addLine("Please take immediate action to renew this certificate.");
-            
-            $this->setAction('View Certificate', route('admin.certifications.show', $certification));
-            $this->salutation = 'Best regards,<br>' . config('app.name') . ' System';
-        }
-    }
-}
-
-// File: app/Notifications/TestimonialCreatedNotification.php
-
-
-
-// File: app/Notifications/TestimonialApprovedNotification.php
-

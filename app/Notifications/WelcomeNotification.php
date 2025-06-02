@@ -1,68 +1,98 @@
 <?php
+// File: app/Notifications/WelcomeNotification.php - SAFE VERSION
 
 namespace App\Notifications;
 
 use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class WelcomeNotification extends Notification implements ShouldQueue
+class WelcomeNotification extends Notification
 {
     use Queueable;
 
-    protected User $user;
+    protected ?User $user;
 
-    public function __construct(User $user)
+    public function __construct(?User $user = null)
     {
         $this->user = $user;
+        
+        // If user is null, throw a more helpful error
+        if (!$this->user) {
+            throw new \InvalidArgumentException('WelcomeNotification requires a valid User object. Received null.');
+        }
     }
 
     public function via($notifiable): array
     {
-        return ['mail', 'database'];
+        return ['database']; // Removed mail for testing, removed ShouldQueue for immediate processing
+    }
+
+    public function toArray($notifiable): array
+    {
+        // Ensure we have a user
+        if (!$this->user) {
+            throw new \Exception('No user available for notification data');
+        }
+
+        return [
+            'type' => 'user.welcome',
+            'title' => 'Welcome to ' . $this->getCompanyName(),
+            'message' => "Welcome {$this->user->name}! Thank you for joining us.",
+            'action_url' => $this->getActionUrl(),
+            'action_text' => $this->getActionText(),
+            'user_id' => $this->user->id,
+            'user_name' => $this->user->name,
+            'user_email' => $this->user->email,
+            'priority' => 'normal',
+            'created_at' => now()->toISOString(),
+        ];
+    }
+
+    protected function getCompanyName(): string
+    {
+        try {
+            return settings('company_name', config('app.name', 'CV Usaha Prima Lestari'));
+        } catch (\Exception $e) {
+            return 'CV Usaha Prima Lestari';
+        }
+    }
+
+    protected function getActionUrl(): string
+    {
+        try {
+            if (method_exists($this->user, 'hasRole') && $this->user->hasRole('client')) {
+                return route('client.dashboard');
+            }
+            return route('home');
+        } catch (\Exception $e) {
+            return url('/'); // Fallback to home URL
+        }
+    }
+
+    protected function getActionText(): string
+    {
+        try {
+            if (method_exists($this->user, 'hasRole') && $this->user->hasRole('client')) {
+                return 'Go to Dashboard';
+            }
+            return 'Visit Website';
+        } catch (\Exception $e) {
+            return 'Visit Website';
+        }
     }
 
     public function toMail($notifiable): MailMessage
     {
-        $companyName = settings('company_name', config('app.name'));
+        $companyName = $this->getCompanyName();
         
         return (new MailMessage)
             ->subject("Welcome to {$companyName}!")
             ->greeting("Welcome {$this->user->name}!")
             ->line("Thank you for joining {$companyName}. We're excited to have you on board!")
-            ->when($this->user->hasRole('client'), function ($mail) {
-                return $mail
-                    ->line("As a client, you can:")
-                    ->line("• View and track your projects")
-                    ->line("• Request quotations for new projects")
-                    ->line("• Communicate with our team through messages")
-                    ->line("• Leave testimonials for completed projects");
-            })
-            ->when(!$this->user->hasRole('client'), function ($mail) {
-                return $mail->line("We're here to help you with all your construction and supply needs.");
-            })
-            ->action(
-                $this->user->hasRole('client') ? 'Explore Client Portal' : 'Visit Our Website',
-                $this->user->hasRole('client') ? route('client.dashboard') : route('home')
-            )
+            ->action($this->getActionText(), $this->getActionUrl())
             ->line('If you have any questions, feel free to contact us.')
             ->salutation("Welcome aboard!<br>" . $companyName . " Team");
-    }
-
-    public function toArray($notifiable): array
-    {
-        return [
-            'type' => 'user.welcome',
-            'title' => 'Welcome to ' . settings('company_name', config('app.name')),
-            'message' => "Welcome {$this->user->name}! Thank you for joining us.",
-            'action_url' => $this->user->hasRole('client') ? route('client.dashboard') : route('home'),
-            'action_text' => $this->user->hasRole('client') ? 'Go to Dashboard' : 'Visit Website',
-            'user_id' => $this->user->id,
-            'user_name' => $this->user->name,
-            'user_email' => $this->user->email,
-            'priority' => 'normal',
-        ];
     }
 }

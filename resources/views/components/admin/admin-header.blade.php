@@ -1,3 +1,4 @@
+{{-- resources/views/components/admin/admin-header.blade.php --}}
 <header
     class="sticky top-0 inset-x-0 z-50 w-full bg-white border-b border-gray-200 text-sm dark:bg-gray-800 dark:border-gray-700 lg:ps-64">
     <nav class="w-full mx-auto px-4 py-2.5 sm:flex sm:items-center sm:justify-between sm:px-6 lg:px-8"
@@ -40,28 +41,47 @@
                 <span class="sr-only">Toggle dark mode</span>
             </button>
 
-            <!-- Notification Icon -->
-            <!-- Notification Dropdown -->
-            <x-admin.notification.dropdown :notifications="$recentNotifications ?? []" :unread-count="$unreadNotificationsCount ?? 0" variant="admin" :max-display="5"
-                :show-all="true" />
+            <!-- Improved Notification Dropdown -->
+            <x-notification.dropdown 
+                :notifications="$recentNotifications ?? collect()" 
+                :unread-count="$unreadNotificationsCount ?? 0" 
+                variant="admin" 
+                :max-display="8"
+                :show-all="true" 
+            />
+
             <!-- User Dropdown -->
             <div class="hs-dropdown relative inline-block" data-hs-dropdown data-hs-dropdown-placement="bottom-end">
                 <button type="button"
                     class="size-8 inline-flex justify-center items-center rounded-full text-sm font-semibold text-gray-800 dark:text-white"
                     data-hs-dropdown-toggle>
-                    <img class="size-8 rounded-full"
-                        src="https://images.unsplash.com/photo-1568602471122-7832951cc4c5?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=320&h=320&q=80"
-                        alt="User Avatar">
+                    @if(auth()->user()->avatar)
+                        <img class="size-8 rounded-full object-cover" src="{{ auth()->user()->avatar_url }}" alt="{{ auth()->user()->name }}">
+                    @else
+                        <img class="size-8 rounded-full"
+                            src="https://images.unsplash.com/photo-1568602471122-7832951cc4c5?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=320&h=320&q=80"
+                            alt="User Avatar">
+                    @endif
                 </button>
 
-                <div class="hs-dropdown-menu hidden z-50 min-w-60 mt-2 bg-white shadow-md rounded-lg border dark:bg-neutral-800 dark:border-neutral-700"
+                <div class="hs-dropdown-menu hidden z-50 min-w-60 mt-2 bg-white shadow-lg rounded-lg border dark:bg-neutral-800 dark:border-neutral-700"
                     aria-labelledby="hs-dropdown-toggle">
-                    <div class="px-5 py-3 bg-gray-100 dark:bg-neutral-700 rounded-t-lg">
+                    <div class="px-5 py-3 bg-gray-50 dark:bg-neutral-700 rounded-t-lg">
                         <p class="text-sm text-gray-500 dark:text-neutral-400">Signed in as</p>
-                        <p class="text-sm font-medium text-gray-800 dark:text-white">admin@usahaprimalestari.com</p>
+                        <p class="text-sm font-medium text-gray-800 dark:text-white truncate">{{ auth()->user()->name }}</p>
+                        <p class="text-xs text-gray-500 dark:text-neutral-400 truncate">{{ auth()->user()->email }}</p>
                     </div>
                     <div class="p-1.5 space-y-0.5">
-                        <a href="#"
+                        <a href="{{ route('admin.dashboard') }}"
+                            class="flex items-center gap-3 py-2 px-3 rounded-lg text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
+                            <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                                <polyline points="9,22 9,12 15,12 15,22" />
+                            </svg>
+                            Dashboard
+                        </a>
+                        <a href="{{ route('admin.profile.edit') }}"
                             class="flex items-center gap-3 py-2 px-3 rounded-lg text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
                             <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
@@ -76,10 +96,14 @@
                             class="flex items-center gap-3 py-2 px-3 rounded-lg text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
                             <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                                <path d="M3 12h18M12 3v18" />
+                                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                                <circle cx="12" cy="12" r="3" />
                             </svg>
                             Settings
                         </a>
+                        
+                        <div class="border-t border-gray-200 dark:border-neutral-700 my-1"></div>
+                        
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <button type="submit"
@@ -100,3 +124,49 @@
         </div>
     </nav>
 </header>
+
+@push('scripts')
+<script>
+    function testAdminNotification() {
+        fetch('{{ route("admin.notifications.test") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('success', data.message);
+                
+                // Refresh notifications after a short delay
+                setTimeout(() => {
+                    window.notificationManager.updateBadgeCount();
+                    window.notificationManager.refresh();
+                }, 2000);
+            } else {
+                showToast('error', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Failed to send test notification:', error);
+            showToast('error', 'Failed to send test notification');
+        });
+    }
+
+    function showToast(type, message) {
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white ${
+            type === 'success' ? 'bg-green-500' : 'bg-red-500'
+        }`;
+        toast.textContent = message;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+</script>
+@endpush

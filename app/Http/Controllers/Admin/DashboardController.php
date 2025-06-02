@@ -77,7 +77,7 @@ class DashboardController extends Controller
             'recentMessages' => $recentMessages,
             'recentQuotations' => $recentQuotations,
             'recentProjects' => $recentProjects,
-            'companyProfile' => $companyProfile,,
+            'companyProfile' => $companyProfile,
             'isOperatorOnline' => $isOperatorOnline,
             'enableCharts' => true
         ]);
