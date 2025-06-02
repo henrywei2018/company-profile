@@ -1,5 +1,5 @@
 @props(['session'])
-<div class="p-4 border border-gray-200 dark:border-neutral-700 rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors" 
+<div class="p-4 group border border-gray-200 dark:border-neutral-700 rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors" 
      data-session-id="{{ $session->session_id }}">
     <div class="flex items-start justify-between">
         <div class="flex-1 min-w-0">
@@ -49,24 +49,23 @@
                 </p>
             </div>
         </div>
-        <div class="flex flex-col space-y-2 ml-4">
-            <x-admin.button 
-                href="{{ route('admin.chat.show', $session) }}" 
-                color="success" 
-                size="sm"
-                icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>'>
-                Join Chat
-            </x-admin.button>
-            @if($session->assigned_operator_id !== auth()->id())
-                <x-admin.button 
-                    onclick="takeOverSession('{{ $session->session_id }}')" 
-                    color="warning" 
-                    size="sm"
-                    icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>'>
-                    Take Over
-                </x-admin.button>
-            @endif
-        </div>
+        <!-- Hover-revealed actions -->
+<div class="ml-4 flex flex-col items-end justify-start group relative">
+    <div class="absolute top-0 right-0 hidden group-hover:flex flex-col space-y-2 z-10">
+        <a href="{{ route('admin.chat.show', $session) }}"
+           class="px-2 py-1 text-xs rounded bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800 transition-colors">
+            Open
+        </a>
+
+        @if($session->assigned_operator_id !== auth()->id())
+            <button onclick="takeOverSession('{{ $session->session_id }}')"
+                    class="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-800 transition-colors">
+                Take Over
+            </button>
+        @endif
+    </div>
+</div>
+
     </div>
     
     <!-- Unread message indicator -->

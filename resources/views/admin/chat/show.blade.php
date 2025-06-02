@@ -146,18 +146,7 @@
                                 </div>
                             </div>
                             
-                            <!-- Quick responses -->
-                            <div class="flex flex-wrap gap-2">
-                                <button type="button" onclick="insertQuickResponse('Thank you for contacting us. How can I help you today?')" class="quick-response-btn">
-                                    Quick: Greeting
-                                </button>
-                                <button type="button" onclick="insertQuickResponse('I understand your concern. Let me check that for you.')" class="quick-response-btn">
-                                    Quick: Acknowledge
-                                </button>
-                                <button type="button" onclick="insertQuickResponse('Is there anything else I can help you with today?')" class="quick-response-btn">
-                                    Quick: Follow-up
-                                </button>
-                            </div>
+                            <x-admin.chat-quick-response />
                             
                         </form>
                     </div>

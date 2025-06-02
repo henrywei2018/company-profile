@@ -107,17 +107,17 @@
     </div>
 
     <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
         
         <!-- Waiting Sessions -->
         <div class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl">
-            <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
+            <div class="p-3 border-b border-gray-200 dark:border-neutral-700">
                 <div class="flex items-center justify-between">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Waiting Queue</h2>
                     <x-admin.badge id="waiting-count-badge" type="warning" size="sm">{{ count($waitingSessions) }}</x-admin.badge>
                 </div>
             </div>
-            <div class="p-6">
+            <div class="p-3">
                 <div id="waiting-sessions-container" class="space-y-4">
                     @forelse($waitingSessions as $session)
                         <x-admin.waiting-session :session="$session" />
@@ -136,13 +136,13 @@
 
         <!-- Active Sessions -->
         <div class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl">
-            <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
+            <div class="p-3 border-b border-gray-200 dark:border-neutral-700">
                 <div class="flex items-center justify-between">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Active Chats</h2>
                     <x-admin.badge id="active-count-badge" type="success" size="sm">{{ count($activeSessions) }}</x-admin.badge>
                 </div>
             </div>
-            <div class="p-6">
+            <div class="p-3">
                 <div id="active-sessions-container" class="space-y-4">
                     @forelse($activeSessions as $session)
                         <x-admin.active-session :session="$session" />
@@ -161,13 +161,13 @@
 
         <!-- Recent Closed Sessions -->
         <div class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl">
-            <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
+            <div class="p-3 border-b border-gray-200 dark:border-neutral-700">
                 <div class="flex items-center justify-between">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Recent Closed</h2>
                     <x-admin.badge type="info" size="sm">{{ count($recentClosedSessions) }}</x-admin.badge>
                 </div>
             </div>
-            <div class="p-6">
+            <div class="p-3">
                 <div class="space-y-4">
                     @forelse($recentClosedSessions as $session)
                         <x-admin.closed-session :session="$session" />

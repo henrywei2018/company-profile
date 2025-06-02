@@ -1181,18 +1181,59 @@ public function getDashboardMetrics(): JsonResponse
     /**
      * Show chat templates
      */
-    public function templates()
+
+    public function getTemplatesByType(Request $request): JsonResponse
     {
         if (!auth()->user()->hasAdminAccess()) {
-            abort(403, 'Admin access required');
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $templates = ChatTemplate::where('is_active', true)
-            ->orderBy('type')
-            ->orderBy('name')
-            ->get();
+        $request->validate([
+            'type' => 'required|in:greeting,auto_response,quick_reply,offline',
+        ]);
 
-        return view('admin.chat.templates', compact('templates'));
+        try {
+            $templates = ChatTemplate::where('is_active', true)
+                ->where('type', $request->type)
+                ->orderBy('usage_count', 'desc')
+                ->orderBy('name')
+                ->get(['id', 'name', 'message', 'trigger', 'usage_count']);
+
+            return response()->json([
+                'success' => true,
+                'templates' => $templates
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get templates by type failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get templates'
+            ], 500);
+        }
+    }
+
+    public function trackTemplateUsage(ChatTemplate $template): JsonResponse
+    {
+        if (!auth()->user()->hasAdminAccess()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        try {
+            $template->incrementUsage();
+
+            return response()->json([
+                'success' => true,
+                'usage_count' => $template->usage_count
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Track template usage failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to track usage'
+            ], 500);
+        }
     }
 
     /**

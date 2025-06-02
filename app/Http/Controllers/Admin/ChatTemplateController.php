@@ -13,9 +13,34 @@ class ChatTemplateController extends Controller
     /**
      * Display a listing of chat templates.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $templates = ChatTemplate::orderBy('type')
+        $query = ChatTemplate::query();
+
+        // Apply filters
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        if ($request->filled('status')) {
+            if ($request->status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($request->status === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('message', 'like', "%{$search}%")
+                    ->orWhere('trigger', 'like', "%{$search}%");
+            });
+        }
+
+        $templates = $query->orderBy('type')
+            ->orderBy('usage_count', 'desc')
             ->orderBy('name')
             ->paginate(15);
 
@@ -28,6 +53,25 @@ class ChatTemplateController extends Controller
     public function create()
     {
         return view('admin.chat.templates.create');
+    }
+
+    public function duplicate(Request $request, ChatTemplate $template)
+    {
+        $newTemplate = $template->replicate();
+        $newTemplate->name = $template->name . ' (Copy)';
+        $newTemplate->usage_count = 0;
+        $newTemplate->save();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Template duplicated successfully',
+                'template' => $newTemplate
+            ]);
+        }
+
+        return redirect()->route('admin.chat.templates.edit', $newTemplate)
+            ->with('success', 'Template duplicated successfully! You can now edit the copy.');
     }
 
     /**
@@ -131,9 +175,9 @@ class ChatTemplateController extends Controller
     public function getByType(Request $request): JsonResponse
     {
         $type = $request->get('type');
-        
+
         $templates = ChatTemplate::where('is_active', true)
-            ->when($type, function($query, $type) {
+            ->when($type, function ($query, $type) {
                 return $query->where('type', $type);
             })
             ->orderBy('name')
