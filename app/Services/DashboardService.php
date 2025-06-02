@@ -80,6 +80,11 @@ class DashboardService
             'recent_notifications' => $this->getRecentNotifications($user),
         ];
     }
+    public function clearCache(User $user): void
+    {
+        $cacheKey = "dashboard_data_{$user->id}_" . $user->getRoleNames()->implode('_');
+        Cache::forget($cacheKey);
+    }
 
     /**
      * Get admin statistics.

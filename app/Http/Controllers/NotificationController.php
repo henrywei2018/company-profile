@@ -4,91 +4,99 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\NotificationService;
+use App\Services\DashboardService;
+use App\Services\UserService;
 use App\Facades\Notifications;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Notifications\DatabaseNotification;
 
 class NotificationController extends Controller
 {
+    protected NotificationService $notificationService;
+    protected DashboardService $dashboardService;
+    protected UserService $userService;
+
+    public function __construct(
+        NotificationService $notificationService,
+        DashboardService $dashboardService,
+        UserService $userService
+    ) {
+        $this->notificationService = $notificationService;
+        $this->dashboardService = $dashboardService;
+        $this->userService = $userService;
+        
+        // Ensure only admin access
+        $this->middleware(function ($request, $next) {
+            if (!Auth::user()->hasAdminAccess()) {
+                abort(403, 'Admin access required');
+            }
+            return $next($request);
+        });
+    }
+
     /**
      * Display notifications for admin users
      */
     public function index(Request $request)
     {
-        if (!Auth::user()->hasAdminAccess()) {
-            abort(403, 'Admin access required');
-        }
+        $filters = $request->validate([
+            'read_status' => 'nullable|string|in:read,unread',
+            'type' => 'nullable|string',
+            'search' => 'nullable|string|max:255',
+            'sort' => 'nullable|string|in:asc,desc',
+            'per_page' => 'nullable|integer|min:10|max:100',
+        ]);
 
+        $perPage = $filters['per_page'] ?? 20;
         $query = Auth::user()->notifications();
 
-        // Filter by read status
-        if ($request->filled('read_status')) {
-            if ($request->read_status === 'unread') {
+        // Apply filters
+        if (!empty($filters['read_status'])) {
+            if ($filters['read_status'] === 'unread') {
                 $query->whereNull('read_at');
-            } elseif ($request->read_status === 'read') {
+            } elseif ($filters['read_status'] === 'read') {
                 $query->whereNotNull('read_at');
             }
         }
 
-        // Filter by type
-        if ($request->filled('type')) {
-            $query->where('type', 'like', '%' . $request->type . '%');
+        if (!empty($filters['type'])) {
+            $query->where('type', 'like', '%' . $filters['type'] . '%');
         }
 
-        // Search in notification data
-        if ($request->filled('search')) {
-            $search = $request->search;
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('data->title', 'like', "%{$search}%")
                   ->orWhere('data->message', 'like', "%{$search}%");
             });
         }
 
-        // Sort by date
-        $query->orderBy('created_at', $request->get('sort', 'desc'));
-
-        $notifications = $query->paginate(20);
+        $query->orderBy('created_at', $filters['sort'] ?? 'desc');
+        $notifications = $query->paginate($perPage);
 
         // Format notifications for display
         $formattedNotifications = $notifications->getCollection()->map(function ($notification) {
-            return [
-                'id' => $notification->id,
-                'type' => $this->getNotificationType($notification->type),
-                'title' => $notification->data['title'] ?? 'Notification',
-                'message' => $notification->data['message'] ?? '',
-                'action_url' => $notification->data['action_url'] ?? null,
-                'action_text' => $notification->data['action_text'] ?? null,
-                'created_at' => $notification->created_at,
-                'read_at' => $notification->read_at,
-                'is_read' => !is_null($notification->read_at),
-                'time_ago' => $notification->created_at->diffForHumans(),
-                'notification' => $notification, // For additional processing if needed
-            ];
+            return $this->formatNotificationForDisplay($notification);
         });
+
+        $statistics = $this->getNotificationStatistics(Auth::user());
 
         return view('admin.notifications.index', [
             'notifications' => $notifications->setCollection($formattedNotifications),
-            'filters' => [
-                'read_status' => $request->read_status,
-                'type' => $request->type,
-                'search' => $request->search,
-                'sort' => $request->sort,
-            ],
-            'stats' => [
-                'total' => Auth::user()->notifications()->count(),
-                'unread' => Auth::user()->unreadNotifications()->count(),
-                'today' => Auth::user()->notifications()->whereDate('created_at', today())->count(),
-            ]
+            'filters' => $filters,
+            'stats' => $statistics
         ]);
     }
 
     /**
      * Show a specific notification
      */
-    public function show(Request $request, $notificationId)
+    public function show($notificationId)
     {
         $notification = Auth::user()->notifications()
             ->where('id', $notificationId)
@@ -99,17 +107,7 @@ class NotificationController extends Controller
             $notification->markAsRead();
         }
 
-        $formattedNotification = [
-            'id' => $notification->id,
-            'type' => $this->getNotificationType($notification->type),
-            'title' => $notification->data['title'] ?? 'Notification',
-            'message' => $notification->data['message'] ?? '',
-            'action_url' => $notification->data['action_url'] ?? null,
-            'action_text' => $notification->data['action_text'] ?? null,
-            'created_at' => $notification->created_at,
-            'read_at' => $notification->read_at,
-            'full_data' => $notification->data,
-        ];
+        $formattedNotification = $this->formatNotificationForDisplay($notification, true);
 
         return view('admin.notifications.show', [
             'notification' => $formattedNotification
@@ -117,31 +115,89 @@ class NotificationController extends Controller
     }
 
     /**
+     * Mark a notification as read
+     */
+    public function markAsRead(Request $request, $notificationId): JsonResponse
+    {
+        try {
+            $notification = Auth::user()->notifications()
+                ->where('id', $notificationId)
+                ->firstOrFail();
+
+            if (!$notification->read_at) {
+                $notification->markAsRead();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Notification marked as read'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to mark notification as read: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to mark notification as read'
+            ], 500);
+        }
+    }
+
+    /**
+     * Mark all notifications as read
+     */
+    public function markAllAsRead(): JsonResponse
+    {
+        try {
+            $count = Auth::user()->unreadNotifications()->update(['read_at' => now()]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$count} notifications marked as read",
+                'count' => $count
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to mark all notifications as read: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to mark notifications as read'
+            ], 500);
+        }
+    }
+
+    /**
      * Delete a notification
      */
-    public function destroy(Request $request, $notificationId)
+    public function destroy($notificationId): JsonResponse
     {
-        $notification = Auth::user()->notifications()
-            ->where('id', $notificationId)
-            ->firstOrFail();
+        try {
+            $notification = Auth::user()->notifications()
+                ->where('id', $notificationId)
+                ->firstOrFail();
 
-        $notification->delete();
+            $notification->delete();
 
-        if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Notification deleted successfully'
             ]);
-        }
 
-        return redirect()->route('admin.notifications.index')
-            ->with('success', 'Notification deleted successfully');
+        } catch (\Exception $e) {
+            Log::error('Failed to delete notification: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete notification'
+            ], 500);
+        }
     }
 
     /**
      * Bulk mark notifications as read
      */
-    public function bulkMarkAsRead(Request $request)
+    public function bulkMarkAsRead(Request $request): JsonResponse
     {
         $request->validate([
             'notification_ids' => 'required|array',
@@ -155,14 +211,15 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "{$count} notification(s) marked as read"
+            'message' => "{$count} notification(s) marked as read",
+            'count' => $count
         ]);
     }
 
     /**
      * Bulk delete notifications
      */
-    public function bulkDelete(Request $request)
+    public function bulkDelete(Request $request): JsonResponse
     {
         $request->validate([
             'notification_ids' => 'required|array',
@@ -175,41 +232,22 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "{$count} notification(s) deleted"
+            'message' => "{$count} notification(s) deleted",
+            'count' => $count
         ]);
     }
 
     /**
      * Show notification settings for admin
      */
-    public function settings(Request $request)
+    public function settings()
     {
-        if (!Auth::user()->hasAdminAccess()) {
-            abort(403, 'Admin access required');
-        }
-
         $user = Auth::user();
         
-        // Get current notification preferences
-        $preferences = [
-            'email_notifications' => $user->email_notifications ?? true,
-            'database_notifications' => $user->database_notifications ?? true,
-            'project_notifications' => $user->project_notifications ?? true,
-            'quotation_notifications' => $user->quotation_notifications ?? true,
-            'message_notifications' => $user->message_notifications ?? true,
-            'chat_notifications' => $user->chat_notifications ?? true,
-            'system_notifications' => $user->system_notifications ?? true,
-            'urgent_only' => $user->urgent_notifications_only ?? false,
-            'notification_frequency' => $user->notification_frequency ?? 'immediate',
-            'quiet_hours_enabled' => $user->quiet_hours_enabled ?? false,
-            'quiet_hours_start' => $user->quiet_hours_start ?? '22:00',
-            'quiet_hours_end' => $user->quiet_hours_end ?? '08:00',
-        ];
+        $preferences = $this->getUserNotificationPreferences($user);
+        $notificationTypes = $this->getNotificationTypes();
 
-        return view('admin.notifications.settings', [
-            'preferences' => $preferences,
-            'notification_types' => $this->getNotificationTypes(),
-        ]);
+        return view('admin.notifications.settings', compact('preferences', 'notificationTypes'));
     }
 
     /**
@@ -217,11 +255,7 @@ class NotificationController extends Controller
      */
     public function updateSettings(Request $request)
     {
-        if (!Auth::user()->hasAdminAccess()) {
-            abort(403, 'Admin access required');
-        }
-
-        $request->validate([
+        $validated = $request->validate([
             'email_notifications' => 'boolean',
             'database_notifications' => 'boolean',
             'project_notifications' => 'boolean',
@@ -236,277 +270,121 @@ class NotificationController extends Controller
             'quiet_hours_end' => 'nullable|date_format:H:i',
         ]);
 
-        $user = Auth::user();
-        
-        $user->update([
-            'email_notifications' => $request->boolean('email_notifications'),
-            'database_notifications' => $request->boolean('database_notifications'),
-            'project_notifications' => $request->boolean('project_notifications'),
-            'quotation_notifications' => $request->boolean('quotation_notifications'),
-            'message_notifications' => $request->boolean('message_notifications'),
-            'chat_notifications' => $request->boolean('chat_notifications'),
-            'system_notifications' => $request->boolean('system_notifications'),
-            'urgent_notifications_only' => $request->boolean('urgent_only'),
-            'notification_frequency' => $request->notification_frequency,
-            'quiet_hours_enabled' => $request->boolean('quiet_hours_enabled'),
-            'quiet_hours_start' => $request->quiet_hours_start,
-            'quiet_hours_end' => $request->quiet_hours_end,
-        ]);
+        $success = $this->userService->updateNotificationPreferences(Auth::user(), $validated);
+
+        if ($success) {
+            return redirect()->route('admin.notifications.settings')
+                ->with('success', 'Notification settings updated successfully');
+        }
 
         return redirect()->route('admin.notifications.settings')
-            ->with('success', 'Notification settings updated successfully');
+            ->with('error', 'Failed to update notification settings');
     }
 
     /**
-     * Show notification preferences for clients
+     * Get recent notifications for header dropdown
      */
-    public function preferences(Request $request)
+    public function getRecent(Request $request): JsonResponse
     {
-        $user = Auth::user();
-        
-        $preferences = [
-            'email_notifications' => $user->email_notifications ?? true,
-            'project_update_notifications' => $user->project_update_notifications ?? true,
-            'quotation_update_notifications' => $user->quotation_update_notifications ?? true,
-            'message_reply_notifications' => $user->message_reply_notifications ?? true,
-            'deadline_reminder_notifications' => $user->deadline_reminder_notifications ?? true,
-            'newsletter_subscription' => $user->newsletter_subscription ?? false,
-            'marketing_emails' => $user->marketing_emails ?? false,
-            'notification_frequency' => $user->notification_frequency ?? 'immediate',
-        ];
-
-        return view('client.notifications.preferences', [
-            'preferences' => $preferences
-        ]);
-    }
-
-    /**
-     * Update client notification preferences
-     */
-    public function updatePreferences(Request $request)
-    {
-        $request->validate([
-            'email_notifications' => 'boolean',
-            'project_update_notifications' => 'boolean',
-            'quotation_update_notifications' => 'boolean',
-            'message_reply_notifications' => 'boolean',
-            'deadline_reminder_notifications' => 'boolean',
-            'newsletter_subscription' => 'boolean',
-            'marketing_emails' => 'boolean',
-            'notification_frequency' => 'in:immediate,daily,weekly',
-        ]);
-
-        $user = Auth::user();
-        
-        $user->update([
-            'email_notifications' => $request->boolean('email_notifications'),
-            'project_update_notifications' => $request->boolean('project_update_notifications'),
-            'quotation_update_notifications' => $request->boolean('quotation_update_notifications'),
-            'message_reply_notifications' => $request->boolean('message_reply_notifications'),
-            'deadline_reminder_notifications' => $request->boolean('deadline_reminder_notifications'),
-            'newsletter_subscription' => $request->boolean('newsletter_subscription'),
-            'marketing_emails' => $request->boolean('marketing_emails'),
-            'notification_frequency' => $request->notification_frequency,
-        ]);
-
-        if ($request->wantsJson()) {
+        try {
+            $limit = $request->get('limit', 10);
+            $user = Auth::user();
+            
+            $notifications = $this->dashboardService->getRecentNotifications($user, $limit);
+            
             return response()->json([
                 'success' => true,
-                'message' => 'Notification preferences updated successfully'
+                'notifications' => $notifications,
+                'unread_count' => $user->unreadNotifications()->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get recent notifications: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'notifications' => [],
+                'unread_count' => 0
             ]);
         }
-
-        return redirect()->route('client.notifications.preferences')
-            ->with('success', 'Notification preferences updated successfully');
     }
 
     /**
-     * Handle email delivery webhooks
+     * Get notification statistics
      */
-    public function handleEmailDelivery(Request $request)
+    public function getStats(): JsonResponse
     {
-        // Verify webhook signature if needed
-        $this->verifyWebhookSignature($request);
+        try {
+            $stats = [
+                'total_sent' => \DB::table('notifications')->count(),
+                'unread_count' => \DB::table('notifications')->whereNull('read_at')->count(),
+                'today_sent' => \DB::table('notifications')->whereDate('created_at', today())->count(),
+                'this_week' => \DB::table('notifications')->whereBetween('created_at', [
+                    now()->startOfWeek(),
+                    now()->endOfWeek()
+                ])->count(),
+                'types_breakdown' => $this->getNotificationTypeBreakdown(),
+                'daily_trends' => $this->getDailyNotificationTrends(),
+            ];
 
-        $data = $request->all();
-        
-        Log::info('Email delivery webhook received', ['data' => $data]);
+            return response()->json([
+                'success' => true,
+                'stats' => $stats
+            ]);
 
-        // Process email delivery confirmation
-        // Update notification status, track delivery metrics, etc.
-        
-        return response()->json(['status' => 'success']);
+        } catch (\Exception $e) {
+            Log::error('Failed to get notification stats: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'stats' => []
+            ], 500);
+        }
     }
 
     /**
-     * Handle email bounce webhooks
+     * Send test notification
      */
-    public function handleEmailBounce(Request $request)
+    public function sendTestNotification(Request $request): JsonResponse
     {
-        $this->verifyWebhookSignature($request);
-
-        $data = $request->all();
-        
-        Log::warning('Email bounce webhook received', ['data' => $data]);
-
-        // Handle bounced emails
-        if (isset($data['email'])) {
-            $user = User::where('email', $data['email'])->first();
-            if ($user) {
-                // Mark email as bounced, potentially disable email notifications
-                $user->update([
-                    'email_bounced' => true,
-                    'email_notifications' => false,
-                    'bounce_reason' => $data['reason'] ?? 'Unknown',
-                    'bounced_at' => now()
-                ]);
-            }
-        }
-        
-        return response()->json(['status' => 'success']);
-    }
-
-    /**
-     * Handle email complaint webhooks
-     */
-    public function handleEmailComplaint(Request $request)
-    {
-        $this->verifyWebhookSignature($request);
-
-        $data = $request->all();
-        
-        Log::warning('Email complaint webhook received', ['data' => $data]);
-
-        // Handle spam complaints
-        if (isset($data['email'])) {
-            $user = User::where('email', $data['email'])->first();
-            if ($user) {
-                // Disable all email notifications for this user
-                $user->update([
-                    'email_notifications' => false,
-                    'marketing_emails' => false,
-                    'newsletter_subscription' => false,
-                    'complaint_filed' => true,
-                    'complaint_reason' => $data['reason'] ?? 'Spam complaint',
-                    'complained_at' => now()
-                ]);
-            }
-        }
-        
-        return response()->json(['status' => 'success']);
-    }
-
-    /**
-     * Handle unsubscribe requests
-     */
-    public function unsubscribe(Request $request, $token)
-    {
-        $user = $this->findUserByUnsubscribeToken($token);
-        
-        if (!$user) {
-            abort(404, 'Invalid unsubscribe link');
+        if (!app()->environment(['local', 'staging'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Test notifications only available in development environments'
+            ], 403);
         }
 
-        return view('notifications.unsubscribe', [
-            'user' => $user,
-            'token' => $token
-        ]);
-    }
-
-    /**
-     * Process unsubscribe request
-     */
-    public function processUnsubscribe(Request $request, $token)
-    {
-        $user = $this->findUserByUnsubscribeToken($token);
-        
-        if (!$user) {
-            abort(404, 'Invalid unsubscribe link');
-        }
-
-        $request->validate([
-            'unsubscribe_type' => 'required|in:all,marketing,notifications',
-            'reason' => 'nullable|string|max:500'
-        ]);
-
-        switch ($request->unsubscribe_type) {
-            case 'all':
-                $user->update([
-                    'email_notifications' => false,
-                    'marketing_emails' => false,
-                    'newsletter_subscription' => false,
-                ]);
-                $message = 'You have been unsubscribed from all emails.';
-                break;
-                
-            case 'marketing':
-                $user->update([
-                    'marketing_emails' => false,
-                    'newsletter_subscription' => false,
-                ]);
-                $message = 'You have been unsubscribed from marketing emails.';
-                break;
-                
-            case 'notifications':
-                $user->update([
-                    'email_notifications' => false,
-                ]);
-                $message = 'You have been unsubscribed from notification emails.';
-                break;
-        }
-
-        // Log unsubscribe
-        Log::info('User unsubscribed', [
-            'user_id' => $user->id,
-            'email' => $user->email,
-            'type' => $request->unsubscribe_type,
-            'reason' => $request->reason
-        ]);
-
-        return view('notifications.unsubscribe-success', [
-            'message' => $message,
-            'user' => $user
-        ]);
-    }
-
-    /**
-     * Send test notification (for debugging in local environment)
-     */
-    public function sendTestNotification(Request $request)
-    {
-        if (!app()->environment('local')) {
-            abort(403, 'Test notifications only available in local environment');
-        }
-
-        $request->validate([
+        $validated = $request->validate([
             'type' => 'required|string',
             'recipient_email' => 'nullable|email',
             'test_data' => 'nullable|array'
         ]);
 
-        $user = Auth::user();
-        $recipient = $request->recipient_email 
-            ? User::where('email', $request->recipient_email)->first() ?? $user
-            : $user;
-
-        $testData = $request->test_data ?? [
-            'title' => 'Test Notification',
-            'message' => 'This is a test notification sent at ' . now()->format('Y-m-d H:i:s'),
-            'action_url' => route('admin.dashboard'),
-            'action_text' => 'View Dashboard'
-        ];
-
         try {
-            Notifications::send($request->type, $testData, $recipient);
+            $user = Auth::user();
+            $recipient = $validated['recipient_email'] 
+                ? User::where('email', $validated['recipient_email'])->first() ?? $user
+                : $user;
+
+            $testData = $validated['test_data'] ?? [
+                'title' => 'Test Notification',
+                'message' => 'This is a test notification sent at ' . now()->format('Y-m-d H:i:s'),
+                'action_url' => route('admin.dashboard'),
+                'action_text' => 'View Dashboard'
+            ];
+
+            $success = $this->notificationService->send($validated['type'], $testData, $recipient);
             
             return response()->json([
-                'success' => true,
-                'message' => 'Test notification sent successfully',
+                'success' => $success,
+                'message' => $success ? 'Test notification sent successfully' : 'Failed to send test notification',
                 'recipient' => $recipient->email,
-                'type' => $request->type
+                'type' => $validated['type']
             ]);
             
         } catch (\Exception $e) {
+            Log::error('Failed to send test notification: ' . $e->getMessage());
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to send test notification: ' . $e->getMessage()
@@ -515,96 +393,159 @@ class NotificationController extends Controller
     }
 
     /**
-     * Get notification statistics for admin dashboard
+     * Export notifications
      */
-    public function getStats(Request $request)
+    public function export(Request $request)
     {
-        if (!Auth::user()->hasAdminAccess()) {
-            abort(403, 'Admin access required');
+        $filters = $request->validate([
+            'format' => 'nullable|string|in:csv,json',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
+            'type' => 'nullable|string',
+            'read_status' => 'nullable|string|in:read,unread',
+        ]);
+
+        $format = $filters['format'] ?? 'csv';
+        $query = Auth::user()->notifications();
+
+        // Apply filters
+        if (!empty($filters['date_from'])) {
+            $query->whereDate('created_at', '>=', $filters['date_from']);
         }
 
-        $stats = [
-            'total_sent' => \DB::table('notifications')->count(),
-            'unread_count' => \DB::table('notifications')->whereNull('read_at')->count(),
-            'today_sent' => \DB::table('notifications')->whereDate('created_at', today())->count(),
-            'this_week' => \DB::table('notifications')->whereBetween('created_at', [
-                now()->startOfWeek(),
-                now()->endOfWeek()
-            ])->count(),
-            'types_breakdown' => \DB::table('notifications')
-                ->select('type', \DB::raw('count(*) as count'))
-                ->groupBy('type')
-                ->orderBy('count', 'desc')
-                ->limit(10)
-                ->get()
-                ->mapWithKeys(function ($item) {
-                    return [$this->getNotificationType($item->type) => $item->count];
-                }),
-            'daily_trends' => $this->getDailyNotificationTrends(),
+        if (!empty($filters['date_to'])) {
+            $query->whereDate('created_at', '<=', $filters['date_to']);
+        }
+
+        if (!empty($filters['type'])) {
+            $query->where('type', 'like', "%{$filters['type']}%");
+        }
+
+        if (!empty($filters['read_status'])) {
+            if ($filters['read_status'] === 'unread') {
+                $query->whereNull('read_at');
+            } else {
+                $query->whereNotNull('read_at');
+            }
+        }
+
+        $notifications = $query->orderBy('created_at', 'desc')->get();
+        $filename = 'admin_notifications_export_' . now()->format('Y-m-d_H-i-s');
+
+        if ($format === 'json') {
+            return response()->json($notifications)
+                ->header('Content-Disposition', "attachment; filename=\"{$filename}.json\"");
+        }
+
+        return $this->exportToCsv($notifications, $filename);
+    }
+
+    // Protected helper methods
+
+    /**
+     * Format notification for display
+     */
+    protected function formatNotificationForDisplay($notification, bool $detailed = false): array
+    {
+        $data = [
+            'id' => $notification->id,
+            'type' => $this->getNotificationType($notification->type),
+            'title' => $notification->data['title'] ?? 'Notification',
+            'message' => $notification->data['message'] ?? '',
+            'action_url' => $notification->data['action_url'] ?? null,
+            'action_text' => $notification->data['action_text'] ?? null,
+            'created_at' => $notification->created_at,
+            'read_at' => $notification->read_at,
+            'is_read' => !is_null($notification->read_at),
+            'time_ago' => $notification->created_at->diffForHumans(),
+            'icon' => $this->getNotificationIcon($notification->type),
+            'color' => $this->getNotificationColor($notification->type),
         ];
 
-        return response()->json([
-            'success' => true,
-            'stats' => $stats
-        ]);
+        if ($detailed) {
+            $data['full_data'] = $notification->data;
+            $data['notification'] = $notification;
+        }
+
+        return $data;
     }
 
     /**
-     * Helper methods
+     * Get notification statistics
      */
-    private function verifyWebhookSignature(Request $request): void
+    protected function getNotificationStatistics($user): array
     {
-        // Implement webhook signature verification based on your email service provider
-        // Example for AWS SES, SendGrid, Mailgun, etc.
-        
-        $signature = $request->header('X-Webhook-Signature');
-        $secret = config('services.email.webhook_secret');
-        
-        if (!$signature || !$secret) {
-            return; // Skip verification if not configured
-        }
-
-        $expectedSignature = hash_hmac('sha256', $request->getContent(), $secret);
-        
-        if (!hash_equals($signature, $expectedSignature)) {
-            abort(401, 'Invalid webhook signature');
-        }
-    }
-
-    private function findUserByUnsubscribeToken(string $token): ?User
-    {
-        // Decode the unsubscribe token to find user
-        // This is a simple implementation - you might want to use JWT or encrypted tokens
         try {
-            $decoded = base64_decode($token);
-            $parts = explode(':', $decoded);
-            
-            if (count($parts) !== 2) {
-                return null;
-            }
-            
-            [$userId, $hash] = $parts;
-            $user = User::find($userId);
-            
-            if (!$user || !Hash::check($user->email . $user->created_at, $hash)) {
-                return null;
-            }
-            
-            return $user;
-            
+            return [
+                'total' => $user->notifications()->count(),
+                'unread' => $user->unreadNotifications()->count(),
+                'today' => $user->notifications()->whereDate('created_at', today())->count(),
+                'this_week' => $user->notifications()->whereBetween('created_at', [
+                    now()->startOfWeek(), 
+                    now()->endOfWeek()
+                ])->count(),
+                'this_month' => $user->notifications()->whereMonth('created_at', now()->month)->count(),
+                'by_type' => $this->getNotificationsByType($user),
+            ];
         } catch (\Exception $e) {
-            return null;
+            Log::error('Failed to get notification statistics: ' . $e->getMessage());
+            
+            return [
+                'total' => 0,
+                'unread' => 0,
+                'today' => 0,
+                'this_week' => 0,
+                'this_month' => 0,
+                'by_type' => [],
+            ];
         }
     }
 
-    private function getNotificationType(string $class): string
+    /**
+     * Get notifications grouped by type
+     */
+    protected function getNotificationsByType($user): array
     {
-        // Extract readable notification type from class name
-        $shortName = class_basename($class);
-        return str_replace('Notification', '', $shortName);
+        try {
+            return $user->notifications()
+                ->selectRaw('type, COUNT(*) as count')
+                ->groupBy('type')
+                ->pluck('count', 'type')
+                ->mapWithKeys(function ($count, $type) {
+                    return [$this->getNotificationType($type) => $count];
+                })
+                ->toArray();
+        } catch (\Exception $e) {
+            Log::error('Failed to get notifications by type: ' . $e->getMessage());
+            return [];
+        }
     }
 
-    private function getNotificationTypes(): array
+    /**
+     * Get user notification preferences
+     */
+    protected function getUserNotificationPreferences($user): array
+    {
+        return [
+            'email_notifications' => $user->email_notifications ?? true,
+            'database_notifications' => $user->database_notifications ?? true,
+            'project_notifications' => $user->project_notifications ?? true,
+            'quotation_notifications' => $user->quotation_notifications ?? true,
+            'message_notifications' => $user->message_notifications ?? true,
+            'chat_notifications' => $user->chat_notifications ?? true,
+            'system_notifications' => $user->system_notifications ?? true,
+            'urgent_only' => $user->urgent_notifications_only ?? false,
+            'notification_frequency' => $user->notification_frequency ?? 'immediate',
+            'quiet_hours_enabled' => $user->quiet_hours_enabled ?? false,
+            'quiet_hours_start' => $user->quiet_hours_start ?? '22:00',
+            'quiet_hours_end' => $user->quiet_hours_end ?? '08:00',
+        ];
+    }
+
+    /**
+     * Get available notification types
+     */
+    protected function getNotificationTypes(): array
     {
         return [
             'project' => 'Project Updates',
@@ -617,7 +558,69 @@ class NotificationController extends Controller
         ];
     }
 
-    private function getDailyNotificationTrends(): array
+    /**
+     * Extract readable notification type from class name
+     */
+    protected function getNotificationType(string $class): string
+    {
+        $shortName = class_basename($class);
+        return str_replace('Notification', '', $shortName);
+    }
+
+    /**
+     * Get notification icon based on type
+     */
+    protected function getNotificationIcon(string $type): string
+    {
+        return match(true) {
+            str_contains($type, 'project') => 'folder',
+            str_contains($type, 'quotation') => 'document-text',
+            str_contains($type, 'message') => 'mail',
+            str_contains($type, 'chat') => 'chat',
+            str_contains($type, 'user') => 'user',
+            str_contains($type, 'system') => 'cog',
+            str_contains($type, 'testimonial') => 'star',
+            default => 'bell',
+        };
+    }
+
+    /**
+     * Get notification color based on type
+     */
+    protected function getNotificationColor(string $type): string
+    {
+        return match(true) {
+            str_contains($type, 'completed') => 'green',
+            str_contains($type, 'overdue') || str_contains($type, 'urgent') => 'red',
+            str_contains($type, 'deadline') => 'yellow',
+            str_contains($type, 'approved') => 'green',
+            str_contains($type, 'rejected') => 'red',
+            str_contains($type, 'created') || str_contains($type, 'pending') => 'blue',
+            default => 'gray',
+        };
+    }
+
+    /**
+     * Get notification type breakdown for stats
+     */
+    protected function getNotificationTypeBreakdown(): array
+    {
+        return \DB::table('notifications')
+            ->selectRaw('type, COUNT(*) as count')
+            ->groupBy('type')
+            ->orderBy('count', 'desc')
+            ->limit(10)
+            ->get()
+            ->mapWithKeys(function ($item) {
+                return [$this->getNotificationType($item->type) => $item->count];
+            })
+            ->toArray();
+    }
+
+    /**
+     * Get daily notification trends
+     */
+    protected function getDailyNotificationTrends(): array
     {
         $trends = [];
         
@@ -637,33 +640,9 @@ class NotificationController extends Controller
     }
 
     /**
-     * Export notifications data
+     * Export notifications to CSV
      */
-    public function export(Request $request)
-    {
-        if (!Auth::user()->hasAdminAccess()) {
-            abort(403, 'Admin access required');
-        }
-
-        $format = $request->get('format', 'csv');
-        $notifications = Auth::user()->notifications()
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        $filename = 'notifications_export_' . now()->format('Y-m-d_H-i-s');
-
-        switch ($format) {
-            case 'json':
-                return response()->json($notifications)
-                    ->header('Content-Disposition', "attachment; filename=\"{$filename}.json\"");
-                    
-            case 'csv':
-            default:
-                return $this->exportToCsv($notifications, $filename);
-        }
-    }
-
-    private function exportToCsv($notifications, string $filename)
+    protected function exportToCsv($notifications, string $filename)
     {
         $headers = [
             'Content-Type' => 'text/csv',

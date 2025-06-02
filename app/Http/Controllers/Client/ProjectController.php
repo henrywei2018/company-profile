@@ -9,26 +9,28 @@ use App\Models\ProjectFile;
 use App\Models\Testimonial;
 use App\Services\ClientAccessService;
 use App\Services\DashboardService;
+use App\Services\TestimonialService;
 use App\Facades\Notifications;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 
 class ProjectController extends Controller
 {
     protected ClientAccessService $clientAccessService;
     protected DashboardService $dashboardService;
-    protected NotificationAlertService $notificationService;
+    protected TestimonialService $testimonialService;
 
     public function __construct(
         ClientAccessService $clientAccessService,
         DashboardService $dashboardService,
-        NotificationAlertService $notificationService
+        TestimonialService $testimonialService
     ) {
         $this->clientAccessService = $clientAccessService;
         $this->dashboardService = $dashboardService;
-        $this->notificationService = $notificationService;
+        $this->testimonialService = $testimonialService;
     }
 
     /**
@@ -68,13 +70,12 @@ class ProjectController extends Controller
         $categories = \App\Models\ProjectCategory::active()->orderBy('name')->get();
         $years = $this->getProjectYears($user);
         
-        // Get statistics
-        $statistics = $this->getProjectStatistics($user);
-        
-        // Get recent activities
+        // Get statistics using existing DashboardService
         $dashboardData = $this->dashboardService->getDashboardData($user);
-        $recentActivities = collect($dashboardData['recent_activities'] ?? [])
-            ->where('type', 'project')
+        $statistics = $dashboardData['statistics']['projects'] ?? [];
+        
+        // Get recent activities using existing DashboardService
+        $recentActivities = collect($dashboardData['recent_activities']['recent_projects'] ?? [])
             ->take(5)
             ->values();
 
@@ -139,7 +140,7 @@ class ProjectController extends Controller
             ->limit(5)
             ->get();
 
-        // Get project notifications/alerts
+        // Get project notifications/alerts using existing notification system
         $projectAlerts = $this->getProjectAlerts($project);
 
         return view('client.projects.show', compact(
@@ -154,7 +155,7 @@ class ProjectController extends Controller
     }
 
     /**
-     * Get project alerts and notifications.
+     * Get project alerts and notifications using existing notification system.
      */
     protected function getProjectAlerts(Project $project): array
     {
@@ -170,6 +171,7 @@ class ProjectController extends Controller
                     'title' => 'Deadline Approaching',
                     'message' => "Project deadline is in {$daysUntilDeadline} day(s)",
                     'action' => null,
+                    'notification_type' => 'project.deadline_approaching',
                 ];
             } elseif ($daysUntilDeadline < 0) {
                 $daysOverdue = abs($daysUntilDeadline);
@@ -181,13 +183,14 @@ class ProjectController extends Controller
                         'text' => 'Contact Support',
                         'url' => route('client.messages.create', ['project_id' => $project->id]),
                     ],
+                    'notification_type' => 'project.overdue',
                 ];
             }
         }
         
         // Check for low progress alerts
         if ($project->status === 'in_progress' && 
-            $project->progress_percentage < 25 && 
+            ($project->progress_percentage ?? 0) < 25 && 
             $project->created_at->diffInDays(now()) > 30) {
             
             $alerts[] = [
@@ -201,6 +204,20 @@ class ProjectController extends Controller
                         'subject' => 'Project Progress Update Request'
                     ]),
                 ],
+                'notification_type' => 'project.low_progress',
+            ];
+        }
+        
+        // Check for completion eligibility
+        if ($project->status === 'in_progress' && 
+            ($project->progress_percentage ?? 0) >= 95) {
+            
+            $alerts[] = [
+                'type' => 'success',
+                'title' => 'Near Completion',
+                'message' => 'Your project is almost complete! Awaiting final review.',
+                'action' => null,
+                'notification_type' => 'project.near_completion',
             ];
         }
         
@@ -227,7 +244,23 @@ class ProjectController extends Controller
             abort(404, 'File not found in storage.');
         }
         
+        // Log file download for analytics
+        Log::info('Project file downloaded', [
+            'user_id' => auth()->id(),
+            'project_id' => $project->id,
+            'file_id' => $file->id,
+            'file_name' => $file->file_name,
+        ]);
+        
         return Storage::disk('public')->download($file->file_path, $file->file_name);
+    }
+
+    /**
+     * Download a document from project.
+     */
+    public function downloadDocument(Project $project, ProjectFile $document)
+    {
+        return $this->downloadFile($project, $document);
     }
 
     /**
@@ -291,7 +324,7 @@ class ProjectController extends Controller
     }
 
     /**
-     * Store a testimonial for a completed project.
+     * Store a testimonial for a completed project using TestimonialService.
      */
     public function storeTestimonial(Request $request, Project $project)
     {
@@ -320,43 +353,78 @@ class ProjectController extends Controller
             'image' => 'nullable|image|max:1024',
         ]);
         
-        // Create testimonial
-        $testimonial = Testimonial::create([
+        // Prepare testimonial data
+        $testimonialData = [
             'project_id' => $project->id,
             'client_name' => $user->name,
             'client_company' => $user->company,
             'client_position' => $validated['client_position'] ?? 'Client',
             'content' => $validated['content'],
             'rating' => $validated['rating'],
+            'status' => 'pending', // Using new status field from migration
             'is_active' => false, // Needs admin approval
             'featured' => false,
-        ]);
+        ];
         
-        // Handle image upload if provided
-        if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('testimonials', 'public');
-            $testimonial->update(['image' => $path]);
+        try {
+            // Create testimonial using service (which handles notifications)
+            $testimonial = $this->testimonialService->createTestimonial(
+                $testimonialData, 
+                $request->file('image')
+            );
+            
+            // Send confirmation notification to client
+            try {
+                Notifications::send('testimonial.submitted', $testimonial, $user);
+            } catch (\Exception $e) {
+                Log::warning('Failed to send testimonial submission notification', [
+                    'testimonial_id' => $testimonial->id,
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+            
+            return redirect()->route('client.projects.show', $project)
+                ->with('success', 'Thank you for your testimonial! It will be reviewed by our team before being published.');
+                
+        } catch (\Exception $e) {
+            Log::error('Failed to create testimonial', [
+                'project_id' => $project->id,
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return redirect()->route('client.projects.show', $project)
+                ->with('error', 'Sorry, there was an issue submitting your testimonial. Please try again.');
         }
-        
-        // Clear dashboard cache
-        $this->dashboardService->clearCache($user);
-        
-        return redirect()->route('client.projects.show', $project)
-            ->with('success', 'Thank you for your testimonial! It will be reviewed by our team before being published.');
     }
 
     /**
-     * Get project statistics for API.
+     * Get project statistics for API using existing DashboardService.
      */
     public function getStatistics(): JsonResponse
     {
-        $user = auth()->user();
-        $statistics = $this->getProjectStatistics($user);
-        
-        return response()->json([
-            'success' => true,
-            'data' => $statistics,
-        ]);
+        try {
+            $user = auth()->user();
+            $dashboardData = $this->dashboardService->getDashboardData($user);
+            $statistics = $dashboardData['statistics']['projects'] ?? [];
+            
+            return response()->json([
+                'success' => true,
+                'data' => $statistics,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get project statistics', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load statistics',
+                'data' => [],
+            ], 500);
+        }
     }
 
     /**
@@ -364,34 +432,59 @@ class ProjectController extends Controller
      */
     public function getTimeline(Project $project): JsonResponse
     {
-        // Ensure the project belongs to the authenticated client
-        if (!$this->clientAccessService->canAccessProject(auth()->user(), $project)) {
-            abort(403, 'Unauthorized access to this project.');
+        try {
+            // Ensure the project belongs to the authenticated client
+            if (!$this->clientAccessService->canAccessProject(auth()->user(), $project)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access to this project.'
+                ], 403);
+            }
+            
+            $timeline = [
+                'milestones' => $project->milestones()
+                    ->orderBy('due_date')
+                    ->get()
+                    ->map(function ($milestone) {
+                        return [
+                            'id' => $milestone->id,
+                            'title' => $milestone->title,
+                            'description' => $milestone->description,
+                            'due_date' => $milestone->due_date,
+                            'completed_at' => $milestone->completed_at,
+                            'status' => $milestone->status,
+                            'progress_percentage' => $milestone->progress_percentage ?? 0,
+                        ];
+                    }),
+                'progress' => $this->calculateProjectProgress($project),
+                'key_dates' => [
+                    'start_date' => $project->start_date,
+                    'end_date' => $project->end_date,
+                    'actual_completion_date' => $project->actual_completion_date,
+                    'created_at' => $project->created_at,
+                    'updated_at' => $project->updated_at,
+                ],
+                'status_history' => $this->getProjectStatusHistory($project),
+            ];
+            
+            return response()->json([
+                'success' => true,
+                'data' => $timeline,
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to get project timeline', [
+                'project_id' => $project->id,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load project timeline',
+                'data' => [],
+            ], 500);
         }
-        
-        $timeline = [
-            'milestones' => $project->milestones()->orderBy('due_date')->get(),
-            'progress' => $this->calculateProjectProgress($project),
-            'key_dates' => [
-                'start_date' => $project->start_date,
-                'end_date' => $project->end_date,
-                'actual_completion_date' => $project->actual_completion_date,
-            ],
-        ];
-        
-        return response()->json([
-            'success' => true,
-            'data' => $timeline,
-        ]);
-    }
-
-    /**
-     * Get project statistics for the client.
-     */
-    protected function getProjectStatistics($user): array
-    {
-        $dashboardData = $this->dashboardService->getDashboardData($user);
-        return $dashboardData['statistics']['projects'] ?? [];
     }
 
     /**
@@ -399,12 +492,20 @@ class ProjectController extends Controller
      */
     protected function getProjectYears($user): array
     {
-        return $this->clientAccessService->getClientProjects($user)
-            ->selectRaw('DISTINCT YEAR(created_at) as year')
-            ->whereNotNull('created_at')
-            ->orderBy('year', 'desc')
-            ->pluck('year')
-            ->toArray();
+        try {
+            return $this->clientAccessService->getClientProjects($user)
+                ->selectRaw('DISTINCT YEAR(created_at) as year')
+                ->whereNotNull('created_at')
+                ->orderBy('year', 'desc')
+                ->pluck('year')
+                ->toArray();
+        } catch (\Exception $e) {
+            Log::error('Failed to get project years', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
     }
 
     /**
@@ -412,6 +513,16 @@ class ProjectController extends Controller
      */
     protected function calculateProjectProgress(Project $project): array
     {
+        // Use existing progress_percentage field if available
+        if (!is_null($project->progress_percentage)) {
+            return [
+                'percentage' => $project->progress_percentage,
+                'method' => 'manual',
+                'total_milestones' => $project->milestones->count(),
+                'completed_milestones' => $project->milestones->where('status', 'completed')->count(),
+            ];
+        }
+        
         $milestones = $project->milestones;
         
         if ($milestones->isEmpty()) {
@@ -459,5 +570,130 @@ class ProjectController extends Controller
             'in_progress_milestones' => $milestones->where('status', 'in_progress')->count(),
             'delayed_milestones' => $milestones->where('status', 'delayed')->count(),
         ];
+    }
+
+    /**
+     * Get project status history for timeline.
+     */
+    protected function getProjectStatusHistory(Project $project): array
+    {
+        // This would ideally come from an audit log or status history table
+        // For now, return basic status information
+        $history = [];
+        
+        // Add creation event
+        $history[] = [
+            'status' => 'created',
+            'date' => $project->created_at,
+            'description' => 'Project created',
+        ];
+        
+        // Add start date if available
+        if ($project->start_date) {
+            $history[] = [
+                'status' => 'started',
+                'date' => $project->start_date,
+                'description' => 'Project started',
+            ];
+        }
+        
+        // Add completion date if completed
+        if ($project->status === 'completed' && $project->actual_completion_date) {
+            $history[] = [
+                'status' => 'completed',
+                'date' => $project->actual_completion_date,
+                'description' => 'Project completed',
+            ];
+        }
+        
+        return $history;
+    }
+
+    /**
+     * Get upcoming deadlines for this client.
+     */
+    public function getUpcomingDeadlines(): JsonResponse
+    {
+        try {
+            $user = auth()->user();
+            $deadlines = $this->clientAccessService->getUpcomingDeadlines($user, 30);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $deadlines,
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to get upcoming deadlines', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load deadlines',
+                'data' => [],
+            ], 500);
+        }
+    }
+
+    /**
+     * Request project update from admin.
+     */
+    public function requestUpdate(Project $project, Request $request): JsonResponse
+    {
+        try {
+            // Ensure the project belongs to the authenticated client
+            if (!$this->clientAccessService->canAccessProject(auth()->user(), $project)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access to this project.'
+                ], 403);
+            }
+            
+            $validated = $request->validate([
+                'message' => 'required|string|max:500',
+                'priority' => 'nullable|string|in:low,normal,high,urgent',
+            ]);
+            
+            // Create message request for project update
+            $message = \App\Models\Message::create([
+                'user_id' => auth()->id(),
+                'project_id' => $project->id,
+                'subject' => "Project Update Request: {$project->title}",
+                'message' => $validated['message'],
+                'type' => 'project_update_request',
+                'priority' => $validated['priority'] ?? 'normal',
+                'requires_response' => true,
+            ]);
+            
+            // Send notification to admins using existing notification system
+            try {
+                Notifications::send('message.created', $message);
+            } catch (\Exception $e) {
+                Log::warning('Failed to send project update request notification', [
+                    'message_id' => $message->id,
+                    'project_id' => $project->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Project update request sent successfully',
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to request project update', [
+                'project_id' => $project->id,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send update request',
+            ], 500);
+        }
     }
 }

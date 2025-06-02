@@ -42,41 +42,8 @@
 
             <!-- Notification Icon -->
             <!-- Notification Dropdown -->
-            <div class="hs-dropdown relative inline-block" data-hs-dropdown data-hs-dropdown-placement="bottom-end">
-                <button type="button"
-                    class="size-8 flex justify-center items-center text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-neutral-700 rounded-full relative"
-                    data-hs-dropdown-toggle>
-                    <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor"
-                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-                        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-                    </svg>
-                    @if (($unreadMessagesCount ?? 0) > 0)
-                        <span class="absolute top-0 end-0 h-2 w-2 bg-red-500 rounded-full"></span>
-                    @endif
-                    <span class="sr-only">Notifications</span>
-                </button>
-
-                <!-- Dropdown Panel -->
-                <div class="hs-dropdown-menu hidden z-50 mt-2 min-w-60 bg-white shadow-md rounded-lg border dark:bg-neutral-800 dark:border-neutral-700"
-                    aria-labelledby="hs-dropdown-toggle">
-                    <div class="px-4 py-3">
-                        <p class="text-sm text-gray-800 dark:text-white font-medium">Notifications</p>
-                    </div>
-                    <div class="max-h-64 overflow-y-auto">
-                        @forelse($recentNotifications ?? [] as $notification)
-                            <a href="{{ $notification->url }}"
-                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
-                                {{ $notification->message }}
-                            </a>
-                        @empty
-                            <p class="px-4 py-2 text-sm text-gray-500 dark:text-neutral-400">No new notifications.</p>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
-
-
+            <x-admin.notification.dropdown :notifications="$recentNotifications ?? []" :unread-count="$unreadNotificationsCount ?? 0" variant="admin" :max-display="5"
+                :show-all="true" />
             <!-- User Dropdown -->
             <div class="hs-dropdown relative inline-block" data-hs-dropdown data-hs-dropdown-placement="bottom-end">
                 <button type="button"
@@ -107,9 +74,8 @@
                         </a>
                         <a href="#"
                             class="flex items-center gap-3 py-2 px-3 rounded-lg text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
-                            <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" viewBox="0 0 24 24">
+                            <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                                 <path d="M3 12h18M12 3v18" />
                             </svg>
                             Settings

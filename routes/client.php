@@ -8,8 +8,7 @@ use App\Http\Controllers\Client\{
     QuotationController,
     MessageController,
     TestimonialController,
-    ProfileController,
-    SettingsController
+    ProfileController
 };
 use App\Http\Controllers\ChatController;
 
@@ -100,21 +99,31 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::get('/{chatSession}', [ChatController::class, 'show'])->name('show');
     });
 
-    Route::prefix('profile')->name('profile.')->group(function () {
+    Route::prefix('client/profile')->name('client.profile.')->group(function () {
         Route::get('/', [ProfileController::class, 'show'])->name('show');
         Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
         Route::post('/update', [ProfileController::class, 'update'])->name('update');
-        Route::get('/change-password', [ProfileController::class, 'showChangePasswordForm'])->name('change-password');
-        Route::post('/change-password', [ProfileController::class, 'changePassword'])->name('change-password.update');
+
+        Route::get('/change-password', [ProfileController::class, 'showChangePasswordForm'])->name('password.form');
+        Route::post('/change-password', [ProfileController::class, 'changePassword'])->name('password.change');
+
         Route::get('/preferences', [ProfileController::class, 'preferences'])->name('preferences');
         Route::post('/preferences', [ProfileController::class, 'updatePreferences'])->name('preferences.update');
+
         Route::get('/privacy', [ProfileController::class, 'privacy'])->name('privacy');
         Route::post('/privacy', [ProfileController::class, 'updatePrivacy'])->name('privacy.update');
+
+        Route::get('/security', [ProfileController::class, 'security'])->name('security');
+        Route::post('/security', [ProfileController::class, 'updateSecurity'])->name('security.update');
+
+        Route::get('/delete', [ProfileController::class, 'showDeleteForm'])->name('delete.form');
+        Route::post('/delete', [ProfileController::class, 'deleteAccount'])->name('delete');
+
+        Route::get('/export', [ProfileController::class, 'exportData'])->name('export');
         Route::get('/activity', [ProfileController::class, 'activity'])->name('activity');
-        Route::get('/export-data', [ProfileController::class, 'exportData'])->name('export-data');
-        Route::get('/delete', [ProfileController::class, 'showDeleteForm'])->name('delete');
-        Route::delete('/delete', [ProfileController::class, 'deleteAccount'])->name('delete.confirm');
+        Route::get('/test-notification', [ProfileController::class, 'testNotification'])->name('test.notification');
     });
+
 
     Route::prefix('api')->name('api.')->group(function () {
         Route::get('/dashboard/stats', [ClientDashboardController::class, 'getRealtimeStats'])->name('dashboard.stats');
@@ -122,13 +131,5 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::get('/messages/count', [MessageController::class, 'getUnreadCount'])->name('messages.count');
         Route::get('/projects/stats', [ProjectController::class, 'getStatistics'])->name('projects.stats');
         Route::get('/quotations/stats', [QuotationController::class, 'getStatistics'])->name('quotations.stats');
-    });
-
-    Route::prefix('settings')->name('settings.')->group(function () {
-        Route::get('/', [SettingsController::class, 'index'])->name('index');
-        Route::get('/account', [SettingsController::class, 'account'])->name('account');
-        Route::post('/account', [SettingsController::class, 'updateAccount'])->name('account.update');
-        Route::get('/security', [SettingsController::class, 'security'])->name('security');
-        Route::post('/security', [SettingsController::class, 'updateSecurity'])->name('security.update');
     });
 });
