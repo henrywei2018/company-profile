@@ -42,10 +42,13 @@ class DashboardController extends Controller
             // Get comprehensive dashboard data
             $dashboardData = $this->dashboardService->getDashboardData($user);
 
-            // Get notification counts for header
+            // FIXED: Get notification counts for header
             $notificationCounts = $this->getClientNotificationCounts($user);
 
-            // Get client permissions - handle if service doesn't exist
+            // FIXED: Get recent notifications for dropdown - properly formatted
+            $recentNotifications = $this->getFormattedRecentNotifications($user, 10);
+
+            // Get client permissions
             $permissions = [];
             if (method_exists($this->clientAccessService, 'getClientPermissions')) {
                 $permissions = $this->clientAccessService->getClientPermissions($user);
@@ -54,9 +57,7 @@ class DashboardController extends Controller
             // Check for any important alerts
             $alerts = $this->getClientAlerts($user);
 
-            // Get recent notifications for dropdown
-            $recentNotifications = $this->getRecentNotifications($user, 10);
-
+            // FIXED: Return view with all required data for header component
             return view('client.dashboard', [
                 'user' => $user,
                 'statistics' => $dashboardData['statistics'] ?? [],
@@ -64,16 +65,25 @@ class DashboardController extends Controller
                 'upcomingDeadlines' => $dashboardData['upcoming_deadlines'] ?? [],
                 'quickActions' => $this->getClientQuickActions(),
                 'notifications' => $notificationCounts,
-                'recentNotifications' => $recentNotifications,
                 'permissions' => $permissions,
                 'alerts' => $alerts,
+                
+                // FIXED: These are required by the client header component
+                'recentNotifications' => $recentNotifications,
+                'unreadNotificationsCount' => $notificationCounts['unread_notifications'] ?? 0,
+                'unreadMessagesCount' => $notificationCounts['unread_messages'] ?? 0,
+                'pendingApprovalsCount' => $notificationCounts['pending_approvals'] ?? 0,
+                'overdueProjectsCount' => $notificationCounts['overdue_projects'] ?? 0,
             ]);
+            
         } catch (\Exception $e) {
             Log::error('Error loading client dashboard', [
                 'user_id' => auth()->id(),
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
+            // FIXED: Return safe fallback with empty but properly structured data
             return view('client.dashboard', [
                 'user' => auth()->user(),
                 'statistics' => [],
@@ -81,13 +91,19 @@ class DashboardController extends Controller
                 'upcomingDeadlines' => [],
                 'quickActions' => $this->getClientQuickActions(),
                 'notifications' => [],
-                'recentNotifications' => [],
                 'permissions' => [],
                 'alerts' => [],
-                'error' => 'Unable to load dashboard data. Please try again.'
+                'error' => 'Unable to load dashboard data. Please try again.',
+                
+                // FIXED: Empty but properly typed data for header
+                'recentNotifications' => collect(),
+                'unreadNotificationsCount' => 0,
+                'unreadMessagesCount' => 0,
+                'pendingApprovalsCount' => 0,
+                'overdueProjectsCount' => 0,
             ]);
         }
-    }    
+    }
     
 
     /**
@@ -162,35 +178,41 @@ class DashboardController extends Controller
             ],
         ];
     }
-    protected function getRecentNotifications($user, int $limit = 10)
+    protected function getFormattedRecentNotifications($user, int $limit = 10)
     {
         try {
-            return $user->notifications()
+            $notifications = $user->notifications()
                 ->orderBy('created_at', 'desc')
                 ->limit($limit)
-                ->get()
-                ->map(function ($notification) {
-                    $data = $notification->data;
-                    return [
-                        'id' => $notification->id,
-                        'type' => $data['type'] ?? 'notification',
-                        'title' => $data['title'] ?? 'Notification',
-                        'message' => $data['message'] ?? '',
-                        'url' => $data['action_url'] ?? '#',
-                        'created_at' => $notification->created_at,
-                        'read_at' => $notification->read_at,
-                        'is_read' => !is_null($notification->read_at),
-                        'formatted_time' => $notification->created_at->diffForHumans(),
-                    ];
-                });
+                ->get();
+
+            return $notifications->map(function ($notification) {
+                $data = $notification->data;
+                
+                return [
+                    'id' => $notification->id,
+                    'type' => $data['type'] ?? 'notification',
+                    'title' => $data['title'] ?? 'Notification',
+                    'message' => $data['message'] ?? '',
+                    'url' => $data['action_url'] ?? '#',
+                    'created_at' => $notification->created_at,
+                    'read_at' => $notification->read_at,
+                    'is_read' => !is_null($notification->read_at),
+                    'formatted_time' => $notification->created_at->diffForHumans(),
+                    'icon' => $this->getNotificationIcon($data['type'] ?? 'notification'),
+                    'color' => $this->getNotificationColor($data['type'] ?? 'notification'),
+                ];
+            });
+            
         } catch (\Exception $e) {
-            Log::error('Error getting recent notifications', [
+            Log::error('Error getting formatted recent notifications', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage()
             ]);
             return collect();
         }
     }
+    
     protected function getClientNotificationCounts($user): array
     {
         try {
@@ -440,32 +462,11 @@ class DashboardController extends Controller
     {
         try {
             $user = auth()->user();
-
-            $notifications = $user->notifications()
-                ->orderBy('created_at', 'desc')
-                ->limit(20)
-                ->get()
-                ->map(function ($notification) {
-                    $data = $notification->data;
-
-                    return [
-                        'id' => $notification->id,
-                        'type' => $data['type'] ?? 'notification',
-                        'title' => $data['title'] ?? 'Notification',
-                        'message' => $data['message'] ?? '',
-                        'url' => $data['action_url'] ?? '#',
-                        'created_at' => $notification->created_at,
-                        'read_at' => $notification->read_at,
-                        'is_read' => !is_null($notification->read_at),
-                        'formatted_time' => $notification->created_at->diffForHumans(),
-                        'icon' => $this->getNotificationIcon($data['type'] ?? 'notification'),
-                        'color' => $this->getNotificationColor($data['type'] ?? 'notification'),
-                    ];
-                });
+            $recentNotifications = $this->getFormattedRecentNotifications($user, 20);
 
             return response()->json([
                 'success' => true,
-                'data' => $notifications,
+                'data' => $recentNotifications,
                 'unread_count' => $user->unreadNotifications()->count(),
             ]);
         } catch (\Exception $e) {
@@ -477,6 +478,8 @@ class DashboardController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load notifications',
+                'data' => [],
+                'unread_count' => 0,
             ], 500);
         }
     }
@@ -586,8 +589,6 @@ class DashboardController extends Controller
             ], 500);
         }
     }
-
-    // Helper methods below...
 
     /**
      * Get client-specific alerts.
