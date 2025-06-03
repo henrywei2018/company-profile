@@ -496,12 +496,6 @@ class NotificationService
         return true;
     }
 
-    // ... REST OF THE METHODS REMAIN THE SAME (resolveRecipients, filterRecipientsByPreferences, etc.)
-    // I'll include the key ones below:
-
-    /**
-     * Resolve notification recipients based on type and data
-     */
     protected function resolveRecipients(string $type, $data)
     {
         try {

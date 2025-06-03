@@ -237,12 +237,13 @@ class NotificationController extends Controller
             $limit = $request->get('limit', 10);
             $user = auth()->user();
             
-            // Use existing DashboardService method
-            $notifications = $this->dashboardService->getRecentNotifications($user, $limit);
+            // Use DashboardController's logic for consistency
+            $dashboardController = app(\App\Http\Controllers\Client\DashboardController::class);
+            $formattedNotifications = $dashboardController->getFormattedRecentNotificationsPublic($user, $limit);
             
-            return response()->json([ 
+            return response()->json([
                 'success' => true,
-                'notifications' => $notifications,
+                'notifications' => $formattedNotifications,
                 'unread_count' => $user->unreadNotifications()->count()
             ]);
 
@@ -253,8 +254,58 @@ class NotificationController extends Controller
                 'success' => false,
                 'notifications' => [],
                 'unread_count' => 0
-            ]);
+            ], 500);
         }
+    }
+    protected function getNotificationIcon($type): string
+    {
+        return match(true) {
+            str_contains($type, 'project') => 'folder',
+            str_contains($type, 'quotation') => 'document-text',
+            str_contains($type, 'message') => 'mail',
+            str_contains($type, 'chat') => 'chat',
+            str_contains($type, 'user') => 'user',
+            str_contains($type, 'system') => 'cog',
+            str_contains($type, 'testimonial') => 'star',
+            default => 'bell',
+        };
+    }
+    protected function getNotificationColor($type): string
+    {
+        return match(true) {
+            str_contains($type, 'completed') => 'green',
+            str_contains($type, 'overdue') || str_contains($type, 'urgent') => 'red',
+            str_contains($type, 'deadline') => 'yellow',
+            str_contains($type, 'approved') => 'green',
+            str_contains($type, 'rejected') => 'red',
+            str_contains($type, 'created') || str_contains($type, 'pending') => 'blue',
+            str_contains($type, 'chat') => 'indigo',
+            str_contains($type, 'system') => 'orange',
+            default => 'gray',
+        };
+    }
+    protected function getGenericTitle($type): string
+    {
+        return match($type) {
+            'user.welcome' => 'Welcome!',
+            'project.created' => 'New Project',
+            'project.updated' => 'Project Updated',
+            'quotation.created' => 'New Quotation',
+            'message.created' => 'New Message',
+            'chat.operator_reply' => 'Chat Reply',
+            default => 'Notification'
+        };
+    }
+
+    protected function getDefaultUrl($type): string
+    {
+        return match(true) {
+            str_contains($type, 'project') => route('client.projects.index'),
+            str_contains($type, 'quotation') => route('client.quotations.index'),
+            str_contains($type, 'message') => route('client.messages.index'),
+            str_contains($type, 'chat') => route('client.dashboard'),
+            default => route('client.dashboard'),
+        };
     }
 
     /**

@@ -314,13 +314,35 @@ class NotificationController extends Controller
     {
         try {
             $limit = $request->get('limit', 10);
-            $user = Auth::user();
+            $user = auth()->user();
             
-            $notifications = $this->dashboardService->getRecentNotifications($user, $limit);
+            $notifications = $user->notifications()
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get();
+            
+            $formattedNotifications = $notifications->map(function ($notification) {
+                $data = $notification->data;
+                $type = $data['type'] ?? $notification->type ?? 'notification';
+                
+                return [
+                    'id' => $notification->id,
+                    'type' => $type,
+                    'title' => $data['title'] ?? $this->getGenericTitle($type),
+                    'message' => $data['message'] ?? '',
+                    'url' => $data['action_url'] ?? $this->getDefaultUrl($type),
+                    'created_at' => $notification->created_at,
+                    'read_at' => $notification->read_at,
+                    'is_read' => !is_null($notification->read_at),
+                    'formatted_time' => $notification->created_at->diffForHumans(),
+                    'icon' => $this->getNotificationIcon($type),
+                    'color' => $this->getNotificationColor($type),
+                ];
+            });
             
             return response()->json([
                 'success' => true,
-                'notifications' => $notifications,
+                'notifications' => $formattedNotifications,
                 'unread_count' => $user->unreadNotifications()->count()
             ]);
 
@@ -331,8 +353,20 @@ class NotificationController extends Controller
                 'success' => false,
                 'notifications' => [],
                 'unread_count' => 0
-            ]);
+            ], 500);
         }
+    }
+    protected function getGenericTitle($type): string
+    {
+        return match($type) {
+            'user.welcome' => 'Welcome!',
+            'project.created' => 'New Project',
+            'project.updated' => 'Project Updated',
+            'quotation.created' => 'New Quotation',
+            'message.created' => 'New Message',
+            'chat.operator_reply' => 'Chat Reply',
+            default => 'Notification'
+        };
     }
 
     /**

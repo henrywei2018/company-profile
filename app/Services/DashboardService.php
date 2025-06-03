@@ -55,9 +55,7 @@ class DashboardService
             'alerts' => $this->getAdminAlerts(),
             'notifications' => $this->getAdminNotifications(),
             'notification_counts' => $this->getAdminNotificationCounts(),
-            'charts' => $this->getAdminChartData(),
             'performance' => $this->getSystemPerformance(),
-            'quick_actions' => $this->getAdminQuickActions($user),
             'pending_items' => $this->getPendingItems(),
             'recent_notifications' => $this->getRecentNotifications($user),
         ];
@@ -508,19 +506,6 @@ protected function getMessageStatus($message): array
     }
 
     /**
-     * Get admin chart data.
-     */
-    protected function getAdminChartData(): array
-    {
-        return [
-            'project_trends' => $this->getProjectTrends(),
-            'quotation_conversion' => $this->getQuotationConversionData(),
-            'revenue_trends' => $this->getRevenueTrends(),
-            'client_growth' => $this->getClientGrowthData(),
-        ];
-    }
-
-    /**
      * Get system performance data.
      */
     protected function getSystemPerformance(): array
@@ -532,19 +517,6 @@ protected function getMessageStatus($message): array
             'cpu_usage' => 23,
             'uptime' => '99.9%',
             'last_backup' => now()->subHours(6),
-        ];
-    }
-
-    /**
-     * Get admin quick actions.
-     */
-    protected function getAdminQuickActions(User $user): array
-    {
-        return [
-            ['label' => 'Add Project', 'url' => route('admin.projects.create'), 'icon' => 'plus'],
-            ['label' => 'View Quotations', 'url' => route('admin.quotations.index'), 'icon' => 'document'],
-            ['label' => 'Messages', 'url' => route('admin.messages.index'), 'icon' => 'mail'],
-            ['label' => 'Reports', 'url' => route('admin.reports.index'), 'icon' => 'chart'],
         ];
     }
 

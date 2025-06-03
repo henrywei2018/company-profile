@@ -113,21 +113,9 @@ class NotificationServiceProvider extends ServiceProvider
             Quotation::observe(QuotationObserver::class);
             Message::observe(MessageObserver::class);
             User::observe(UserObserver::class);
-            
-            // Additional observers if models exist
-            if (class_exists(Testimonial::class)) {
-                Testimonial::observe(TestimonialObserver::class);
-            }
-            
-            if (class_exists(ChatSession::class)) {
-                ChatSession::observe(ChatSessionObserver::class);
-            }
-            
-            if (class_exists(Certification::class)) {
-                Certification::observe(CertificationObserver::class);
-            }
-
-            \Illuminate\Support\Facades\Log::info('Notification observers registered successfully');
+            Testimonial::observe(TestimonialObserver::class);
+            ChatSession::observe(ChatSessionObserver::class);
+            Certification::observe(CertificationObserver::class);
         }
     }
 
@@ -152,17 +140,8 @@ class NotificationServiceProvider extends ServiceProvider
      */
     protected function registerScheduledChecks(): void
     {
-        // These would be called by Laravel's task scheduler
-        // Add to App\Console\Kernel.php schedule method
-        
         if ($this->app->runningInConsole()) {
-            \Illuminate\Support\Facades\Log::info('Scheduled notification checks available:
-            - ProjectObserver::checkOverdueProjects()
-            - QuotationObserver::checkExpiredQuotations()
-            - CertificationObserver::checkExpiringCertifications()
-            - ChatSessionObserver::checkAbandonedSessions()
-            - UserObserver::checkIncompleteProfiles()
-            - TestimonialObserver::checkTestimonialFollowups()');
+            
         }
     }
 
