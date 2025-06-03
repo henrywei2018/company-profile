@@ -657,7 +657,7 @@ protected function getMessageStatus($message): array
             return [
                 'id' => $notification->id,
                 'type' => $actualType, // Now uses proper dot notation like 'chat.operator_reply'
-                'title' => $data['title'] ?? NotificationTypeHelper::getDisplayTitle($actualType),
+                'title' => NotificationTypeHelper::getDisplayTitle($actualType),
                 'message' => $data['message'] ?? '',
                 'url' => $data['action_url'] ?? '#',
                 'created_at' => $notification->created_at,

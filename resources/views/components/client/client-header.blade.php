@@ -200,7 +200,6 @@
 
 @push('scripts')
 <script>
-// FIXED: Client Notification JavaScript
 document.addEventListener('DOMContentLoaded', function() {
     // Load notifications when page loads
     loadNotifications();
@@ -216,16 +215,10 @@ function loadNotifications() {
     if (loadingEl) loadingEl.style.display = 'block';
     if (contentEl) contentEl.style.display = 'none';
     
+    // Use your simple route
     fetch('{{ route("client.notifications.recent") }}?limit=10')
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
-        console.log('Notifications loaded:', data); // Debug log
-        
         if (data.success) {
             renderNotifications(data.notifications);
             updateNotificationBadge(data.unread_count);
@@ -247,7 +240,7 @@ function renderNotifications(notifications) {
     
     if (!notifications || notifications.length === 0) {
         contentEl.innerHTML = `
-            <div class="px-4 py-8 text-center" id="empty-state">
+            <div class="px-4 py-8 text-center">
                 <svg class="mx-auto size-12 text-gray-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM9 7h6m-6 4h6m-6 4h6M3 7h3m-3 4h3m-3 4h3" />
                 </svg>
@@ -258,6 +251,7 @@ function renderNotifications(notifications) {
         return;
     }
     
+    // Render notifications in your existing dropdown structure
     const html = notifications.map(notification => {
         const unreadClass = !notification.is_read ? 'bg-blue-50 dark:bg-blue-900/10' : '';
         const unreadDot = !notification.is_read ? 
@@ -265,11 +259,15 @@ function renderNotifications(notifications) {
         
         return `
             <div class="px-4 py-3 border-b border-gray-100 dark:border-neutral-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-neutral-700 cursor-pointer transition-colors ${unreadClass}"
-                 onclick="handleNotificationClick('${notification.id}', '${notification.url || '#'}')"
+                 onclick="handleNotificationClick('${notification.id}', '${notification.action_url || '#'}')"
                  data-notification-id="${notification.id}">
                 <div class="flex items-start space-x-3">
                     <div class="flex-shrink-0">
-                        ${getNotificationIconHtml(notification.icon, notification.color)}
+                        <div class="size-8 bg-${notification.color}-100 dark:bg-${notification.color}-900/30 rounded-lg flex items-center justify-center">
+                            <svg class="size-4 text-${notification.color}-600 dark:text-${notification.color}-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM9 7h6m-6 4h6m-6 4h6M3 7h3m-3 4h3m-3 4h3" />
+                            </svg>
+                        </div>
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between">
@@ -293,18 +291,8 @@ function renderNotifications(notifications) {
     contentEl.innerHTML = html;
 }
 
-function getNotificationIconHtml(icon, color) {
-    return `
-        <div class="size-8 bg-${color}-100 dark:bg-${color}-900/30 rounded-lg flex items-center justify-center">
-            <svg class="size-4 text-${color}-600 dark:text-${color}-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM9 7h6m-6 4h6m-6 4h6M3 7h3m-3 4h3m-3 4h3" />
-            </svg>
-        </div>
-    `;
-}
-
 function handleNotificationClick(notificationId, url) {
-    // Mark as read first
+    // Mark as read using your simple route
     markNotificationAsRead(notificationId);
     
     // Navigate to URL if provided
@@ -316,47 +304,39 @@ function handleNotificationClick(notificationId, url) {
 }
 
 function markNotificationAsRead(notificationId) {
-    fetch('{{ route("client.dashboard.mark-notification-read") }}', {
+    fetch(`{{ route("client.notifications.mark-as-read", ":id") }}`.replace(':id', notificationId), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: JSON.stringify({
-            notification_id: notificationId
-        })
+        }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             // Update UI
-            const notificationItem = document.querySelector(`[data-notification-id="${notificationId}"]`);
-            if (notificationItem) {
-                notificationItem.classList.remove('bg-blue-50', 'dark:bg-blue-900/10');
-                const unreadDot = notificationItem.querySelector('.notification-unread-dot');
+            const notificationElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
+            if (notificationElement) {
+                notificationElement.classList.remove('bg-blue-50', 'dark:bg-blue-900/10');
+                const unreadDot = notificationElement.querySelector('.notification-unread-dot');
                 if (unreadDot) {
                     unreadDot.remove();
                 }
             }
             
-            updateNotificationCounts();
+            updateNotificationBadge(data.unread_count);
         }
     })
-    .catch(error => {
-        console.error('Failed to mark notification as read:', error);
-    });
+    .catch(error => console.error('Error:', error));
 }
 
 function markAllNotificationsAsRead() {
-    fetch('{{ route("client.dashboard.mark-notification-read") }}', {
+    fetch('{{ route("client.notifications.mark-all-read") }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: JSON.stringify({
-            notification_id: 'all'
-        })
+        }
     })
     .then(response => response.json())
     .then(data => {
@@ -365,22 +345,18 @@ function markAllNotificationsAsRead() {
             loadNotifications();
         }
     })
-    .catch(error => {
-        console.error('Failed to mark all notifications as read:', error);
-    });
+    .catch(error => console.error('Error:', error));
 }
 
 function updateNotificationCounts() {
-    fetch('{{ route("client.dashboard.realtime-stats") }}')
+    fetch('{{ route("client.notifications.unread-count") }}')
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            updateNotificationBadge(data.data.notifications.unread);
+            updateNotificationBadge(data.count);
         }
     })
-    .catch(error => {
-        console.error('Error updating notification counts:', error);
-    });
+    .catch(error => console.error('Error updating notification counts:', error));
 }
 
 function updateNotificationBadge(count) {

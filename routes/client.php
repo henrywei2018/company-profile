@@ -26,13 +26,15 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
     Route::post('/dashboard/clear-cache', [ClientDashboardController::class, 'clearCache'])->name('dashboard.clear-cache');
 
     Route::prefix('notifications')->name('notifications.')->group(function () {
+        // Main views
         Route::get('/', [NotificationController::class, 'index'])->name('index');
-        Route::get('/recent', [NotificationController::class, 'getRecent'])->name('recent');
         Route::get('/preferences', [NotificationController::class, 'preferences'])->name('preferences');
         Route::put('/preferences', [NotificationController::class, 'updatePreferences'])->name('preferences.update');
+        
+        // API endpoints for AJAX calls
+        Route::get('/recent', [NotificationController::class, 'getRecent'])->name('recent');
         Route::get('/summary', [NotificationController::class, 'getSummary'])->name('summary');
         Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
-        Route::get('/export', [NotificationController::class, 'export'])->name('export');
         
         // Individual notification actions
         Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('mark-as-read');
@@ -41,7 +43,11 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::delete('/clear-read', [NotificationController::class, 'clearRead'])->name('clear-read');
         Route::post('/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('bulk-delete');
         
+        // Individual notification view
         Route::get('/{notification}', [NotificationController::class, 'show'])->name('show');
+        
+        // Export functionality
+        Route::get('/export', [NotificationController::class, 'export'])->name('export');
     });
 
     Route::prefix('projects')->name('projects.')->group(function () {
@@ -140,3 +146,6 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::get('/quotations/stats', [QuotationController::class, 'getStatistics'])->name('quotations.stats');
     });
 });
+
+Route::post('/dashboard/mark-notification-read', [ClientDashboardController::class, 'markNotificationRead'])->name('dashboard.mark-notification-read');
+Route::post('/dashboard/test-notification', [ClientDashboardController::class, 'testNotification'])->name('dashboard.test-notification');

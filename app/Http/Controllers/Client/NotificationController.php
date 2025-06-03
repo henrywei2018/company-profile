@@ -363,7 +363,7 @@ class NotificationController extends Controller
             
             // Use enhanced DashboardService method
             $notifications = $this->dashboardService->getRecentNotifications($user, $limit);
-            
+            Log::info(json_encode($notifications));
             // Apply additional filtering if requested
             if ($category) {
                 $notifications = array_filter($notifications, function($notification) use ($category) {

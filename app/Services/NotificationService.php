@@ -93,12 +93,7 @@ class NotificationService
             if (class_exists($class)) {
                 $this->notificationClasses[$type] = $class;
             }
-        }
-        
-        Log::info('NotificationService initialized', [
-            'registered_types' => count($this->notificationClasses),
-            'types' => array_keys($this->notificationClasses)
-        ]);
+        };
     }
 
     /**
@@ -355,14 +350,54 @@ class NotificationService
     protected function getGenericTitle(string $type): string
     {
         return match($type) {
-            'project.created' => 'New Project Created',
+            'chat.session_started' => 'New Chat Session',
+            'chat.operator_reply' => 'Chat Reply',
+            'chat.message_received' => 'New Chat Message',
+            'chat.session_closed' => 'Chat Session Closed',
+            'chat.operator_joined' => 'Operator Joined',
+            'chat.operator_changed' => 'Operator Changed',
+            'chat.session_waiting' => 'Chat Waiting',
+            'chat.session_inactive' => 'Chat Inactive',
+            
+            // Project notifications
+            'project.created' => 'New Project',
             'project.updated' => 'Project Updated',
+            'project.status_changed' => 'Project Status Changed',
             'project.completed' => 'Project Completed',
-            'quotation.created' => 'New Quotation Request',
+            'project.deadline_approaching' => 'Deadline Approaching',
+            'project.overdue' => 'Project Overdue',
+            
+            // Quotation notifications
+            'quotation.created' => 'New Quotation',
+            'quotation.status_updated' => 'Quotation Updated',
             'quotation.approved' => 'Quotation Approved',
+            'quotation.rejected' => 'Quotation Rejected',
+            'quotation.client_response_needed' => 'Response Needed',
+            'quotation.expired' => 'Quotation Expired',
+            'quotation.converted' => 'Quotation Converted',
+            
+            // Message notifications
             'message.created' => 'New Message',
             'message.reply' => 'Message Reply',
-            'user.welcome' => 'Welcome!',
+            'message.urgent' => 'Urgent Message',
+            'message.auto_reply' => 'Auto Reply',
+            
+            // User notifications
+            'user.welcome' => 'Welcome',
+            'user.email_verified' => 'Email Verified',
+            'user.password_changed' => 'Password Changed',
+            'user.profile_incomplete' => 'Profile Incomplete',
+            
+            // System notifications
+            'system.maintenance' => 'System Maintenance',
+            'system.backup_completed' => 'Backup Completed',
+            'system.security_alert' => 'Security Alert',
+            'system.certificate_expiring' => 'Certificate Expiring',
+            
+            // Testimonial notifications
+            'testimonial.created' => 'New Review',
+            'testimonial.approved' => 'Review Approved',
+            'testimonial.featured' => 'Review Featured',
             default => 'Notification'
         };
     }
