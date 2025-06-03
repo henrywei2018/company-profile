@@ -256,23 +256,32 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     // Notifications (global)
     Route::prefix('notifications')->name('notifications.')->group(function () {
+        // Main views
         Route::get('/', [NotificationController::class, 'index'])->name('index');
-        Route::get('/recent', [NotificationController::class, 'getRecent'])->name('recent');
         Route::get('/preferences', [NotificationController::class, 'preferences'])->name('preferences');
         Route::put('/preferences', [NotificationController::class, 'updatePreferences'])->name('preferences.update');
+        
+        // API endpoints for AJAX calls (ADDED/FIXED)
+        Route::get('/recent', [NotificationController::class, 'getRecent'])->name('recent');
         Route::get('/summary', [NotificationController::class, 'getSummary'])->name('summary');
         Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
-        Route::get('/mark-read', [NotificationController::class, 'mark-read'])->name('mark-read');
-        Route::get('/export', [NotificationController::class, 'export'])->name('export');
         
-        // Individual notification actions
+        // Individual notification actions (FIXED)
         Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('mark-as-read');
         Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
         Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
         Route::delete('/clear-read', [NotificationController::class, 'clearRead'])->name('clear-read');
         Route::post('/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('bulk-delete');
+        Route::post('/bulk-mark-as-read', [NotificationController::class, 'bulkMarkAsRead'])->name('bulk-mark-as-read');
         
+        // Individual notification view
         Route::get('/{notification}', [NotificationController::class, 'show'])->name('show');
+        
+        // Export functionality
+        Route::get('/export', [NotificationController::class, 'export'])->name('export');
+        
+        // Test notification (ADDED)
+        Route::post('/test', [NotificationController::class, 'sendTestNotification'])->name('test');
     });
 
 

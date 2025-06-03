@@ -1,9 +1,15 @@
-<!-- resources/views/components/layouts/admin.blade.php -->
+{{-- resources/views/components/layouts/admin.blade.php - FIXED --}}
 @props([
-    'title' => config('app.name', 'Admin Panel'), 
+    'title' => 'Dashboard',
     'enableCharts' => false,
     'unreadMessages' => 0,
-    'pendingQuotations' => 0
+    'pendingQuotations' => 0,
+    'recentNotifications' => null,
+    'unreadNotificationsCount' => 0,
+    'unreadMessagesCount' => 0,
+    'pendingQuotationsCount' => 0,
+    'waitingChatsCount' => 0,
+    'urgentItemsCount' => 0
 ])
 
 <!DOCTYPE html>
@@ -17,6 +23,7 @@
         <meta name="auth-user-id" content="{{ auth()->id() }}">
         <meta name="is-admin" content="{{ auth()->user()->hasRole(['admin', 'super-admin']) ? 'true' : 'false' }}">
     @endauth
+
     <title>{{ $title }} - Admin Panel</title>
 
     <!-- Fonts -->
@@ -60,7 +67,14 @@
 
 <body class="bg-gray-50 dark:bg-neutral-900">
     <!-- ========== HEADER ========== -->
-    <x-admin.admin-header :unreadMessagesCount="$unreadMessages" />
+    <x-admin.admin-header 
+            :unreadMessagesCount="$unreadMessagesCount ?? $unreadMessages ?? 0" 
+            :pendingQuotationsCount="$pendingQuotationsCount ?? $pendingQuotations ?? 0"
+            :recentNotifications="$recentNotifications ?? collect()"
+            :unreadNotificationsCount="$unreadNotificationsCount ?? 0"
+            :waitingChatsCount="$waitingChatsCount ?? 0"
+            :urgentItemsCount="$urgentItemsCount ?? 0"
+    />
     <!-- ========== END HEADER ========== -->
 
     <!-- ========== MAIN CONTENT ========== -->
@@ -68,7 +82,7 @@
     <x-admin.breadcrumb-mobile />
 
     <!-- Sidebar -->
-    <x-admin.admin-sidebar :unreadMessagesCount="$unreadMessages" :pendingQuotationsCount="$pendingQuotations" />
+    <x-admin.admin-sidebar />
 
     <!-- Content -->
     <div class="w-full lg:ps-64">
@@ -98,170 +112,179 @@
                 </x-admin.alert>
             @endif
 
+            <!-- Error Display (if any from controller) -->
+            @if(isset($error))
+                <div class="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800">Dashboard Error</h3>
+                            <div class="mt-2 text-sm text-red-700">{{ $error }}</div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <!-- Page Content -->
             {{ $slot }}
         </div>
     </div>
-
-    <!-- Quick Actions Implementation -->
-    @php
-    $quickActions = [
-        [
-            'title' => 'Add New Project',
-            'description' => 'Create a new client project',
-            'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />',
-            'href' => route('admin.projects.create'),
-            'color_classes' => 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800'
-        ],
-        [
-            'title' => 'Add New Service',
-            'description' => 'Create a new service offering',
-            'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />',
-            'href' => route('admin.services.create'),
-            'color_classes' => 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800'
-        ],
-        [
-            'title' => 'New Blog Post',
-            'description' => 'Write a new article',
-            'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />',
-            'href' => route('admin.posts.create'),
-            'color_classes' => 'bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800'
-        ],
-        [
-            'title' => 'Update Company',
-            'description' => 'Manage company information',
-            'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />',
-            'href' => route('admin.company.edit'),
-            'color_classes' => 'bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-800'
-        ]
-    ];
-    @endphp
-
-    <x-admin.floating-action-button :actions="$quickActions" class="pr-4" />
+    
+    <!-- Chat Widget for Admins -->
     <x-chat-widget 
         size="compact"
-        theme="primary"
+        theme="admin"
         :show-online-status="true"
-        welcome-message="Butuh bantuan?"
-        operator-name="Customer Service" />
+        welcome-message="Admin Chat System"
+        operator-name="System Admin" />
     
     <!-- ========== END MAIN CONTENT ========== -->
 
-    <script src="https://cdn.jsdelivr.net/npm/preline/dist/index.js"></script>
-    @if ($enableCharts)
-        <!-- Charts Libraries -->
-        <script src="https://cdn.jsdelivr.net/npm/lodash/lodash.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/preline/dist/helper-apexcharts.js"></script>
-    @endif
+    <!-- Global JavaScript -->
+    <script>
+        // Hide loading screen when page is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.style.display = 'none';
+            }
+        });
+
+        // Dark mode toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggle = document.getElementById('theme-toggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', function() {
+                    if (document.documentElement.classList.contains('dark')) {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                    }
+                });
+            }
+        });
+
+        // Global error handler for admin
+        window.addEventListener('error', function(e) {
+            console.error('Admin global error:', e.error);
+        });
+
+        // Global unhandled promise rejection handler
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Admin unhandled promise rejection:', e.reason);
+        });
+
+        // Auto-refresh admin stats every minute
+        document.addEventListener('DOMContentLoaded', function() {
+            setInterval(function() {
+                updateAdminStats();
+            }, 60000); // Every minute for admin
+        });
+
+        function updateAdminStats() {
+            fetch('{{ route("admin.dashboard.stats") }}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update various admin counters
+                    updateAdminCounters(data.data);
+                }
+            })
+            .catch(error => console.error('Error updating admin stats:', error));
+        }
+
+        function updateAdminCounters(data) {
+            // Update notification badge
+            if (data.notifications && typeof updateAdminNotificationBadge === 'function') {
+                updateAdminNotificationBadge(data.notifications.unread);
+            }
+            
+            // Update other counters if elements exist
+            const elements = {
+                'pending-quotations-count': data.quotations?.pending,
+                'waiting-chats-count': data.chat?.waiting,
+                'unread-messages-count': data.messages?.unread,
+                'urgent-items-count': data.urgent_items
+            };
+
+            Object.entries(elements).forEach(([elementId, value]) => {
+                const element = document.getElementById(elementId);
+                if (element && value !== undefined) {
+                    element.textContent = value;
+                    
+                    // Show/hide based on value
+                    if (value > 0) {
+                        element.style.display = 'inline-flex';
+                    } else {
+                        element.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        // Admin-specific helper functions
+        function handleAdminError(error, context = 'admin') {
+            console.error(`Admin error in ${context}:`, error);
+            
+            // Show user-friendly error message
+            const errorContainer = document.getElementById('admin-error-container');
+            if (errorContainer) {
+                errorContainer.innerHTML = `
+                    <div class="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800">Admin System Notice</h3>
+                                <div class="mt-2 text-sm text-red-700">
+                                    Some admin features may be temporarily unavailable. Please refresh the page or contact system administrator.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // System health check for admin
+        function checkSystemHealth() {
+            fetch('{{ route("admin.dashboard.system-health") }}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateSystemHealthIndicator(data.overall_status);
+                }
+            })
+            .catch(error => {
+                console.error('System health check failed:', error);
+                updateSystemHealthIndicator('error');
+            });
+        }
+
+        function updateSystemHealthIndicator(status) {
+            const indicator = document.getElementById('system-health-indicator');
+            if (indicator) {
+                indicator.className = `system-health-${status}`;
+                indicator.title = `System Status: ${status}`;
+            }
+        }
+
+        // Run system health check every 5 minutes for admin
+        document.addEventListener('DOMContentLoaded', function() {
+            checkSystemHealth();
+            setInterval(checkSystemHealth, 300000); // 5 minutes
+        });
+    </script>
 
     @stack('scripts')
 </body>
-
-<style>
-    .admin-table {
-        @apply w-full border-collapse;
-    }
-
-    .admin-table th,
-    .admin-table td {
-        @apply px-6 py-3 text-left;
-    }
-
-    .admin-table thead th {
-        @apply bg-gray-50 dark:bg-neutral-800 font-medium text-xs text-gray-500 dark:text-neutral-400 uppercase tracking-wider border-b border-gray-200 dark:border-neutral-700;
-    }
-
-    .admin-table tbody td {
-        @apply bg-white dark:bg-neutral-800 border-b border-gray-200 dark:border-neutral-700 text-sm;
-    }
-
-    .admin-table tbody tr:hover td {
-        @apply bg-gray-50 dark:bg-neutral-700;
-    }
-
-    /* Header Actions Alignment */
-    .table-header-actions {
-        @apply flex items-center justify-between w-full px-6 py-4 bg-gray-50 dark:bg-neutral-800/50 border-b border-gray-200 dark:border-neutral-700;
-    }
-
-    .table-header-actions .left-actions {
-        @apply flex items-center space-x-3;
-    }
-
-    .table-header-actions .right-info {
-        @apply flex items-center space-x-4 text-sm text-gray-600 dark:text-neutral-400;
-    }
-
-    /* Pagination Spacing */
-    .table-pagination {
-        @apply px-6 py-4 bg-gray-50 dark:bg-neutral-800/50 border-t border-gray-200 dark:border-neutral-700;
-    }
-
-    /* Priority Indicators */
-    .message-row-urgent {
-        @apply border-l-4 border-red-500 bg-red-50 dark:bg-red-900/10;
-    }
-
-    .message-row-needs-reply {
-        @apply border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-900/10;
-    }
-
-    .message-row-unread {
-        @apply border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/10;
-    }
-
-    /* Compact Badge Styles */
-    .status-badges {
-        @apply flex flex-col space-y-1;
-    }
-
-    .status-badges .badge {
-        @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
-    }
-
-    /* Action Buttons Spacing */
-    .action-buttons {
-        @apply flex items-center space-x-1 pr-4;
-    }
-
-    .action-buttons .btn-icon {
-        @apply p-1.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors;
-    }
-
-    /* Responsive Table Adjustments */
-    @media (max-width: 768px) {
-        .admin-table th,
-        .admin-table td {
-            @apply px-3 py-2;
-        }
-        
-        .table-header-actions {
-            @apply px-3 py-3 flex-col space-y-3;
-        }
-        
-        .table-header-actions .left-actions,
-        .table-header-actions .right-info {
-            @apply w-full justify-center;
-        }
-    }
-
-    /* Fix for cards with tables */
-    .card-with-table {
-        @apply bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl overflow-hidden shadow-sm;
-    }
-
-    .card-with-table .card-header {
-        @apply px-6 py-4 bg-gray-50 dark:bg-neutral-800/50 border-b border-gray-200 dark:border-neutral-700;
-    }
-
-    .card-with-table .card-body {
-        @apply p-0; /* Remove padding for tables */
-    }
-
-    .card-with-table .card-footer {
-        @apply px-6 py-4 bg-gray-50 dark:bg-neutral-800/50 border-t border-gray-200 dark:border-neutral-700;
-    }
-</style>
-
 </html>

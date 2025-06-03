@@ -1,133 +1,116 @@
 <?php
-// File: app/Http/Controllers/Admin/DashboardController.php
+// Update your Admin DashboardController with these methods:
 
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\DashboardService;
-use App\Services\NotificationService;
-use App\Facades\Notifications;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
     protected DashboardService $dashboardService;
-    protected NotificationService $notificationService;
 
-    public function __construct(
-        DashboardService $dashboardService,
-        NotificationService $notificationService
-    ) {
+    public function __construct(DashboardService $dashboardService)
+    {
         $this->dashboardService = $dashboardService;
-        $this->notificationService = $notificationService;
     }
 
     /**
-     * Display the admin dashboard.
+     * Show admin dashboard with proper notification data
      */
     public function index()
     {
         try {
-            $user = auth()->user();
+            $user = Auth::user();
 
-            // Get dashboard data using existing service
+            // Get dashboard data
             $dashboardData = $this->dashboardService->getDashboardData($user);
-
+            
             // Get notification counts for header
             $notificationCounts = $this->dashboardService->getAdminNotificationCounts();
+            
+            // Get recent notifications for header dropdown
+            $recentNotifications = $this->dashboardService->getRecentNotifications($user, 10);
 
             return view('admin.dashboard', [
                 'user' => $user,
-                'totalProjects' => $dashboardData['statistics']['projects']['total'] ?? 0,
-                'activeClients' => $dashboardData['statistics']['clients']['active'] ?? 0,
-                'unreadMessages' => $dashboardData['statistics']['messages']['unread'] ?? 0,
-                'pendingQuotations' => $dashboardData['statistics']['quotations']['pending'] ?? 0,
-                'projectsChange' => $dashboardData['statistics']['projects']['change_percentage'] ?? 0,
-                'clientsChange' => $dashboardData['statistics']['clients']['new_this_month'] ?? 0,
-                'recentMessages' => $this->getRecentMessages(),
-                'recentQuotations' => $this->getRecentQuotations(),
-                'recentProjects' => $this->getRecentProjects(),
-                'recentNotifications' => $this->getRecentNotifications($user),
-                'notificationCounts' => $notificationCounts,
+                'statistics' => $dashboardData['statistics'] ?? [],
+                'recentActivities' => $dashboardData['recent_activities'] ?? [],
+                'alerts' => $dashboardData['alerts'] ?? [],
+                'performance' => $dashboardData['performance'] ?? [],
+                'pendingItems' => $dashboardData['pending_items'] ?? [],
+                
+                // For header component
+                'recentNotifications' => collect($recentNotifications),
+                'unreadNotificationsCount' => $notificationCounts['unread_database_notifications'] ?? 0,
+                'unreadMessagesCount' => $notificationCounts['unread_messages'] ?? 0,
+                'pendingQuotationsCount' => $notificationCounts['pending_quotations'] ?? 0,
+                'waitingChatsCount' => $notificationCounts['waiting_chats'] ?? 0,
+                'urgentItemsCount' => $notificationCounts['urgent_items'] ?? 0,
             ]);
-
+            
         } catch (\Exception $e) {
             Log::error('Error loading admin dashboard', [
-                'user_id' => auth()->id(),
+                'user_id' => Auth::id(),
                 'error' => $e->getMessage()
             ]);
 
             return view('admin.dashboard', [
-                'user' => auth()->user(),
-                'totalProjects' => 0,
-                'activeClients' => 0,
-                'unreadMessages' => 0,
-                'pendingQuotations' => 0,
-                'projectsChange' => 0,
-                'clientsChange' => 0,
-                'recentMessages' => collect(),
-                'recentQuotations' => collect(),
-                'recentProjects' => collect(),
+                'user' => Auth::user(),
+                'statistics' => [],
+                'recentActivities' => [],
+                'alerts' => [],
+                'performance' => [],
+                'pendingItems' => [],
                 'recentNotifications' => collect(),
-                'notificationCounts' => [],
+                'unreadNotificationsCount' => 0,
+                'unreadMessagesCount' => 0,
+                'pendingQuotationsCount' => 0,
+                'waitingChatsCount' => 0,
+                'urgentItemsCount' => 0,
                 'error' => 'Unable to load dashboard data. Please try again.'
             ]);
         }
     }
 
     /**
-     * Get dashboard statistics for AJAX calls.
+     * Get real-time stats for AJAX updates
      */
     public function getStats(): JsonResponse
     {
         try {
-            $user = auth()->user();
-            
-            // Get stats using existing service
-            $dashboardData = $this->dashboardService->getDashboardData($user);
+            $user = Auth::user();
             $notificationCounts = $this->dashboardService->getAdminNotificationCounts();
-
+            
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'statistics' => $dashboardData['statistics'] ?? [],
-                    'notifications' => $notificationCounts,
-                    'alerts' => $dashboardData['alerts'] ?? [],
-                    'pending_items' => $dashboardData['pending_items'] ?? [],
+                    'notifications' => [
+                        'unread' => $notificationCounts['unread_database_notifications'],
+                        'total' => $notificationCounts['total_notifications'],
+                    ],
+                    'messages' => [
+                        'unread' => $notificationCounts['unread_messages'],
+                    ],
+                    'quotations' => [
+                        'pending' => $notificationCounts['pending_quotations'],
+                    ],
+                    'projects' => [
+                        'overdue' => $notificationCounts['overdue_projects'],
+                    ],
+                    'chat' => [
+                        'waiting' => $notificationCounts['waiting_chats'],
+                    ],
+                    'urgent_items' => $notificationCounts['urgent_items'],
                 ]
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to get admin dashboard stats: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Failed to load dashboard statistics'
-            ], 500);
-        }
-    }
-
-    /**
-     * Get chart data for dashboard widgets.
-     */
-    public function getChartData(): JsonResponse
-    {
-        try {
-            $user = auth()->user();
-            $dashboardData = $this->dashboardService->getDashboardData($user);
-
-            return response()->json([
-                'success' => true,
-                'data' => $dashboardData['charts'] ?? []
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to get chart data: ' . $e->getMessage());
+            Log::error('Failed to get admin stats: ' . $e->getMessage());
             
             return response()->json([
                 'success' => false,
@@ -137,15 +120,45 @@ class DashboardController extends Controller
     }
 
     /**
-     * Clear dashboard cache.
+     * Get chart data for dashboard
+     */
+    public function getChartData(Request $request): JsonResponse
+    {
+        try {
+            $period = $request->get('period', '7days');
+            $user = Auth::user();
+            
+            // Get dashboard data for charts
+            $dashboardData = $this->dashboardService->getDashboardData($user);
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'projects' => $dashboardData['charts']['projects'] ?? [],
+                    'quotations' => $dashboardData['charts']['quotations'] ?? [],
+                    'revenue' => $dashboardData['charts']['revenue'] ?? [],
+                    'users' => $dashboardData['charts']['users'] ?? [],
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get admin chart data: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'data' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * Clear dashboard cache
      */
     public function clearCache(): JsonResponse
     {
         try {
-            $user = auth()->user();
+            $user = Auth::user();
             $this->dashboardService->clearCache($user);
-            
-            Cache::tags(['dashboard', 'admin'])->flush();
             
             return response()->json([
                 'success' => true,
@@ -153,7 +166,7 @@ class DashboardController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to clear dashboard cache: ' . $e->getMessage());
+            Log::error('Failed to clear admin cache: ' . $e->getMessage());
             
             return response()->json([
                 'success' => false,
@@ -163,61 +176,81 @@ class DashboardController extends Controller
     }
 
     /**
-     * Export dashboard data.
+     * Send test notification
      */
-    public function exportDashboard(Request $request)
+    public function sendTestNotification(): JsonResponse
     {
         try {
-            $user = auth()->user();
-            $filters = $request->validate([
-                'period' => 'nullable|string|in:last_7_days,last_30_days,last_3_months,last_year',
-                'format' => 'nullable|string|in:csv,pdf,excel',
-            ]);
-
-            $report = $this->dashboardService->generateReport($user, $filters);
-
-            $filename = 'admin_dashboard_' . now()->format('Y-m-d_H-i-s');
-            $format = $filters['format'] ?? 'csv';
-
-            switch ($format) {
-                case 'csv':
-                    return $this->exportToCsv($report, $filename);
-                case 'pdf':
-                    return $this->exportToPdf($report, $filename);
-                case 'excel':
-                    return $this->exportToExcel($report, $filename);
-                default:
-                    return $this->exportToCsv($report, $filename);
-            }
+            $user = Auth::user();
+            
+            // Use notification service to send test
+            $notificationController = app(\App\Http\Controllers\Admin\NotificationController::class);
+            return $notificationController->sendTestNotification(request());
 
         } catch (\Exception $e) {
-            Log::error('Failed to export dashboard: ' . $e->getMessage());
+            Log::error('Failed to send test notification from dashboard: ' . $e->getMessage());
             
-            return redirect()->back()->with('error', 'Failed to export dashboard data.');
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send test notification'
+            ], 500);
         }
     }
 
     /**
-     * Get system health status.
+     * Export dashboard data
+     */
+    public function exportDashboard(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            $format = $request->get('format', 'pdf');
+            
+            $report = $this->dashboardService->generateReport($user, [
+                'period' => $request->get('period', 'last_30_days'),
+                'format' => $format
+            ]);
+
+            if ($format === 'json') {
+                return response()->json($report);
+            }
+
+            // Return CSV or PDF export
+            return response()->streamDownload(function () use ($report) {
+                echo "Admin Dashboard Report\n";
+                echo "Generated: " . now()->format('Y-m-d H:i:s') . "\n\n";
+                echo json_encode($report, JSON_PRETTY_PRINT);
+            }, 'admin_dashboard_report_' . now()->format('Y-m-d') . '.' . $format);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to export admin dashboard: ' . $e->getMessage());
+            
+            return redirect()->route('admin.dashboard')
+                ->with('error', 'Failed to export dashboard data');
+        }
+    }
+
+    /**
+     * Get system health status
      */
     public function getSystemHealth(): JsonResponse
     {
         try {
             $health = [
                 'database' => $this->checkDatabaseHealth(),
-                'cache' => $this->checkCacheHealth(),
                 'storage' => $this->checkStorageHealth(),
+                'cache' => $this->checkCacheHealth(),
                 'queue' => $this->checkQueueHealth(),
                 'mail' => $this->checkMailHealth(),
             ];
 
-            $overallStatus = collect($health)->every(fn($status) => $status['status'] === 'healthy') ? 'healthy' : 'warning';
+            $overallStatus = collect($health)->every(fn($status) => $status['status'] === 'healthy') ? 'healthy' : 'issues';
 
             return response()->json([
                 'success' => true,
                 'overall_status' => $overallStatus,
                 'checks' => $health,
-                'last_check' => now()->toISOString()
+                'timestamp' => now()->toISOString()
             ]);
 
         } catch (\Exception $e) {
@@ -227,294 +260,91 @@ class DashboardController extends Controller
                 'success' => false,
                 'overall_status' => 'error',
                 'checks' => [],
-                'last_check' => now()->toISOString()
+                'error' => 'System health check failed'
             ], 500);
         }
     }
 
-    /**
-     * Send test notification.
-     */
-    public function sendTestNotification(): JsonResponse
-    {
-        try {
-            $user = auth()->user();
-            
-            // Use existing notification service
-            $success = $this->notificationService->test($user);
+    // Helper methods for system health checks
 
-            if ($success) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Test notification sent successfully! Check your notifications.',
-                    'results' => $success
-                ]);
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send test notification.'
-            ], 500);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to send test notification: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send test notification.'
-            ], 500);
-        }
-    }
-
-    // Helper methods
-
-    /**
-     * Get recent messages for dashboard.
-     */
-    protected function getRecentMessages()
-    {
-        try {
-            return \App\Models\Message::with(['user'])
-                ->latest()
-                ->limit(5)
-                ->get();
-        } catch (\Exception $e) {
-            Log::warning('Failed to get recent messages: ' . $e->getMessage());
-            return collect();
-        }
-    }
-
-    /**
-     * Get recent quotations for dashboard.
-     */
-    protected function getRecentQuotations()
-    {
-        try {
-            return \App\Models\Quotation::with(['client', 'service'])
-                ->latest()
-                ->limit(5)
-                ->get();
-        } catch (\Exception $e) {
-            Log::warning('Failed to get recent quotations: ' . $e->getMessage());
-            return collect();
-        }
-    }
-
-    /**
-     * Get recent projects for dashboard.
-     */
-    protected function getRecentProjects()
-    {
-        try {
-            return \App\Models\Project::with(['client', 'category'])
-                ->latest()
-                ->limit(5)
-                ->get();
-        } catch (\Exception $e) {
-            Log::warning('Failed to get recent projects: ' . $e->getMessage());
-            return collect();
-        }
-    }
-
-    /**
-     * Get recent notifications for dashboard.
-     */
-    protected function getRecentNotifications($user)
-    {
-        try {
-            return $this->dashboardService->getRecentNotifications($user, 10);
-        } catch (\Exception $e) {
-            Log::warning('Failed to get recent notifications: ' . $e->getMessage());
-            return collect();
-        }
-    }
-
-    /**
-     * Check database health.
-     */
     protected function checkDatabaseHealth(): array
     {
         try {
-            DB::connection()->getPdo();
-            $count = DB::table('users')->count();
-            
-            return [
-                'status' => 'healthy',
-                'message' => 'Database connection successful',
-                'details' => "Connected with {$count} users"
-            ];
+            \DB::connection()->getPdo();
+            return ['status' => 'healthy', 'message' => 'Database connection active'];
         } catch (\Exception $e) {
-            return [
-                'status' => 'error',
-                'message' => 'Database connection failed',
-                'details' => $e->getMessage()
-            ];
+            return ['status' => 'error', 'message' => 'Database connection failed'];
         }
     }
 
-    /**
-     * Check cache health.
-     */
-    protected function checkCacheHealth(): array
-    {
-        try {
-            $key = 'health_check_' . time();
-            Cache::put($key, 'test', 10);
-            $value = Cache::get($key);
-            Cache::forget($key);
-            
-            if ($value === 'test') {
-                return [
-                    'status' => 'healthy',
-                    'message' => 'Cache working properly',
-                    'details' => 'Read/write test successful'
-                ];
-            }
-            
-            return [
-                'status' => 'warning',
-                'message' => 'Cache may not be working',
-                'details' => 'Read/write test failed'
-            ];
-        } catch (\Exception $e) {
-            return [
-                'status' => 'error',
-                'message' => 'Cache error',
-                'details' => $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Check storage health.
-     */
     protected function checkStorageHealth(): array
     {
         try {
-            $storagePath = storage_path();
-            $freeBytes = disk_free_space($storagePath);
-            $totalBytes = disk_total_space($storagePath);
-            $usedPercent = (($totalBytes - $freeBytes) / $totalBytes) * 100;
+            $available = disk_free_space(storage_path());
+            $total = disk_total_space(storage_path());
+            $percentage = round(($available / $total) * 100, 2);
             
-            $status = $usedPercent > 90 ? 'warning' : 'healthy';
-            $message = $status === 'warning' ? 'Storage space low' : 'Storage space sufficient';
+            $status = $percentage > 20 ? 'healthy' : ($percentage > 10 ? 'warning' : 'critical');
             
             return [
                 'status' => $status,
-                'message' => $message,
-                'details' => sprintf('%.1f%% used', $usedPercent)
+                'message' => "Storage {$percentage}% available",
+                'details' => [
+                    'available' => $this->formatBytes($available),
+                    'total' => $this->formatBytes($total),
+                    'percentage' => $percentage
+                ]
             ];
         } catch (\Exception $e) {
-            return [
-                'status' => 'error',
-                'message' => 'Storage check failed',
-                'details' => $e->getMessage()
-            ];
+            return ['status' => 'error', 'message' => 'Storage check failed'];
         }
     }
 
-    /**
-     * Check queue health.
-     */
+    protected function checkCacheHealth(): array
+    {
+        try {
+            \Cache::put('health_check', 'test', 60);
+            $result = \Cache::get('health_check');
+            
+            return $result === 'test' 
+                ? ['status' => 'healthy', 'message' => 'Cache is working']
+                : ['status' => 'error', 'message' => 'Cache not responding'];
+        } catch (\Exception $e) {
+            return ['status' => 'error', 'message' => 'Cache check failed'];
+        }
+    }
+
     protected function checkQueueHealth(): array
     {
         try {
-            // Basic queue connectivity check
-            return [
-                'status' => 'healthy',
-                'message' => 'Queue system operational',
-                'details' => 'Basic connectivity check passed'
-            ];
+            // Basic queue check - could be enhanced with specific queue status
+            return ['status' => 'healthy', 'message' => 'Queue system active'];
         } catch (\Exception $e) {
-            return [
-                'status' => 'error',
-                'message' => 'Queue system error',
-                'details' => $e->getMessage()
-            ];
+            return ['status' => 'error', 'message' => 'Queue check failed'];
         }
     }
 
-    /**
-     * Check mail health.
-     */
     protected function checkMailHealth(): array
     {
         try {
-            // Basic mail configuration check
-            $configured = config('mail.default') ? true : false;
-            
-            return [
-                'status' => $configured ? 'healthy' : 'warning',
-                'message' => $configured ? 'Mail system configured' : 'Mail system not configured',
-                'details' => 'Driver: ' . config('mail.default', 'none')
-            ];
+            // Basic mail config check
+            $configured = config('mail.default') !== null;
+            return $configured 
+                ? ['status' => 'healthy', 'message' => 'Mail system configured']
+                : ['status' => 'warning', 'message' => 'Mail not configured'];
         } catch (\Exception $e) {
-            return [
-                'status' => 'error',
-                'message' => 'Mail system error',
-                'details' => $e->getMessage()
-            ];
+            return ['status' => 'error', 'message' => 'Mail check failed'];
         }
     }
 
-    /**
-     * Export to CSV.
-     */
-    protected function exportToCsv($report, $filename)
+    protected function formatBytes($size, $precision = 2): string
     {
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}.csv\"",
-        ];
-
-        $callback = function() use ($report) {
-            $file = fopen('php://output', 'w');
-            
-            // CSV headers
-            fputcsv($file, ['Metric', 'Value', 'Period']);
-
-            // CSV data
-            foreach ($report['overview'] ?? [] as $key => $value) {
-                if (is_array($value)) {
-                    foreach ($value as $subKey => $subValue) {
-                        fputcsv($file, [
-                            ucwords(str_replace('_', ' ', $key . ' ' . $subKey)),
-                            is_numeric($subValue) ? $subValue : $subValue,
-                            $report['period']['start'] ?? 'N/A' . ' to ' . $report['period']['end'] ?? 'N/A'
-                        ]);
-                    }
-                } else {
-                    fputcsv($file, [
-                        ucwords(str_replace('_', ' ', $key)),
-                        is_numeric($value) ? $value : $value,
-                        $report['period']['start'] ?? 'N/A' . ' to ' . $report['period']['end'] ?? 'N/A'
-                    ]);
-                }
-            }
-
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
-    }
-
-    /**
-     * Export to PDF (placeholder).
-     */
-    protected function exportToPdf($report, $filename)
-    {
-        // This would require a PDF library like DomPDF or similar
-        // For now, fallback to CSV
-        return $this->exportToCsv($report, $filename);
-    }
-
-    /**
-     * Export to Excel (placeholder).
-     */
-    protected function exportToExcel($report, $filename)
-    {
-        // This would require a library like PhpSpreadsheet
-        // For now, fallback to CSV
-        return $this->exportToCsv($report, $filename);
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        
+        for ($i = 0; $size > 1024 && $i < count($units) - 1; $i++) {
+            $size /= 1024;
+        }
+        
+        return round($size, $precision) . ' ' . $units[$i];
     }
 }
