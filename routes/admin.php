@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\{
     DashboardController,
     RoleController,
     PermissionController,
+    ProfileController,
     RBACController,
     UserController,
     ServiceController,
@@ -22,10 +23,10 @@ use App\Http\Controllers\Admin\{
     CompanyProfileController,
     SettingController,
     EmailSettingsController,
+    NotificationController,
     ChatTemplateController
 };
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\NotificationController;
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
     // Dashboard
@@ -54,6 +55,30 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/rbac/audit-log', [RBACController::class, 'auditLog'])->name('rbac.audit-log');
     Route::post('/rbac/clear-cache', [RBACController::class, 'clearCache'])->name('rbac.clear-cache');
 
+    Route::prefix('/profile')->name('profile.')->group(function () {
+        Route::get('/', [ProfileController::class, 'show'])->name('show');
+        Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
+        Route::post('/update', [ProfileController::class, 'update'])->name('update');
+
+        Route::get('/change-password', [ProfileController::class, 'showChangePasswordForm'])->name('password.form');
+        Route::post('/change-password', [ProfileController::class, 'changePassword'])->name('password.change');
+
+        Route::get('/preferences', [ProfileController::class, 'preferences'])->name('preferences');
+        Route::post('/preferences', [ProfileController::class, 'updatePreferences'])->name('preferences.update');
+
+        Route::get('/privacy', [ProfileController::class, 'privacy'])->name('privacy');
+        Route::post('/privacy', [ProfileController::class, 'updatePrivacy'])->name('privacy.update');
+
+        Route::get('/security', [ProfileController::class, 'security'])->name('security');
+        Route::post('/security', [ProfileController::class, 'updateSecurity'])->name('security.update');
+
+        Route::get('/delete', [ProfileController::class, 'showDeleteForm'])->name('delete.form');
+        Route::post('/delete', [ProfileController::class, 'deleteAccount'])->name('delete');
+
+        Route::get('/export', [ProfileController::class, 'exportData'])->name('export');
+        Route::get('/activity', [ProfileController::class, 'activity'])->name('activity');
+        Route::get('/test-notification', [ProfileController::class, 'testNotification'])->name('test.notification');
+    });
     // Users
     Route::resource('users', UserController::class);
     Route::get('/users/{user}/roles', [UserController::class, 'showRoles'])->name('users.roles');
@@ -178,6 +203,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::get('/{quotation}/communications', [QuotationController::class, 'communications'])->name('communications');
     });
 
+    
+
     // Messages
     Route::resource('messages', MessageController::class);
     Route::post('/messages/{message}/reply', [MessageController::class, 'reply'])->middleware('throttle:20,1')->name('messages.reply');
@@ -218,26 +245,36 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::resource('post-categories', PostCategoryController::class);
 
     // Company Profile
-    Route::get('/company-profile', [CompanyProfileController::class, 'index'])->name('company-profile.index');
-    Route::get('/company-profile/edit', [CompanyProfileController::class, 'edit'])->name('company-profile.edit');
-    Route::put('/company-profile', [CompanyProfileController::class, 'update'])->name('company-profile.update');
-    Route::get('/company-profile/seo', [CompanyProfileController::class, 'seo'])->name('company-profile.seo');
-    Route::put('/company-profile/seo', [CompanyProfileController::class, 'updateSeo'])->name('company-profile.seo.update');
+    
     Route::prefix('company')->name('company.')->group(function () {
-        Route::get('/edit', [CompanyProfileController::class, 'index'])->name('edit');
+        Route::get('/', [CompanyProfileController::class, 'index'])->name('index');        
+        Route::get('/edit', [CompanyProfileController::class, 'edit'])->name('edit');        
+        Route::put('/', [CompanyProfileController::class, 'update'])->name('update');
+        Route::get('/seo', [CompanyProfileController::class, 'seo'])->name('seo');
+        Route::put('/seo', [CompanyProfileController::class, 'updateSeo'])->name('seo.update');
     });
 
     // Notifications (global)
-    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::get('notifications/{notification}', [NotificationController::class, 'show'])->name('notifications.show');
-    Route::delete('notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
-    Route::post('notifications/bulk-mark-as-read', [NotificationController::class, 'bulkMarkAsRead'])->name('notifications.bulk-mark-as-read');
-    Route::post('notifications/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('notifications.bulk-delete');
-    Route::get('notifications/settings', [NotificationController::class, 'settings'])->name('notifications.settings');
-    Route::put('notifications/settings', [NotificationController::class, 'updateSettings'])->name('notifications.settings.update');
-    Route::post('notifications/{notification}/mark-as-read', [DashboardController::class, 'markNotificationAsRead'])->name('notifications.mark-as-read');
-    Route::post('notifications/mark-all-as-read', [DashboardController::class, 'markAllNotificationsAsRead'])->name('notifications.mark-all-as-read');
-    Route::get('notifications/counts', [DashboardController::class, 'getNotificationCounts'])->name('notifications.counts');
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('/recent', [NotificationController::class, 'getRecent'])->name('recent');
+        Route::get('/preferences', [NotificationController::class, 'preferences'])->name('preferences');
+        Route::put('/preferences', [NotificationController::class, 'updatePreferences'])->name('preferences.update');
+        Route::get('/summary', [NotificationController::class, 'getSummary'])->name('summary');
+        Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
+        Route::get('/mark-read', [NotificationController::class, 'mark-read'])->name('mark-read');
+        Route::get('/export', [NotificationController::class, 'export'])->name('export');
+        
+        // Individual notification actions
+        Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('mark-as-read');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
+        Route::delete('/clear-read', [NotificationController::class, 'clearRead'])->name('clear-read');
+        Route::post('/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('bulk-delete');
+        
+        Route::get('/{notification}', [NotificationController::class, 'show'])->name('show');
+    });
+
 
     // Settings
     Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');

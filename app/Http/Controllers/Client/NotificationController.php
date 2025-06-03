@@ -240,7 +240,7 @@ class NotificationController extends Controller
             // Use existing DashboardService method
             $notifications = $this->dashboardService->getRecentNotifications($user, $limit);
             
-            return response()->json([
+            return response()->json([ 
                 'success' => true,
                 'notifications' => $notifications,
                 'unread_count' => $user->unreadNotifications()->count()

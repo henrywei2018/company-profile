@@ -113,6 +113,32 @@ class NotificationController extends Controller
             'notification' => $formattedNotification
         ]);
     }
+    public function getUnreadCount(): JsonResponse
+    {
+        try {
+            $user = auth()->user();
+            
+            // Use existing DashboardService method
+            $counts = $this->dashboardService->getClientNotificationCounts($user);
+            
+            return response()->json([
+                'success' => true,
+                'count' => $counts['unread_database_notifications'],
+                'total_badge_count' => $counts['total_notifications'],
+                'counts' => $counts
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get unread count: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => true,
+                'count' => 0,
+                'total_badge_count' => 0,
+                'counts' => []
+            ]);
+        }
+    }
 
     /**
      * Mark a notification as read

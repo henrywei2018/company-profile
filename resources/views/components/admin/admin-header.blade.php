@@ -126,7 +126,7 @@
 </header>
 
 @push('scripts')
-<script>
+{{-- <script>
     function testAdminNotification() {
         fetch('{{ route("admin.notifications.test") }}', {
             method: 'POST',
@@ -168,5 +168,5 @@
             toast.remove();
         }, 3000);
     }
-</script>
+</script> --}}
 @endpush

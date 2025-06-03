@@ -8,10 +8,10 @@ use App\Http\Controllers\Client\{
     QuotationController,
     MessageController,
     TestimonialController,
+    NotificationController,
     ProfileController
 };
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\NotificationController;
 
 Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(function () {
     Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
@@ -32,7 +32,6 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::put('/preferences', [NotificationController::class, 'updatePreferences'])->name('preferences.update');
         Route::get('/summary', [NotificationController::class, 'getSummary'])->name('summary');
         Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
-        Route::post('/test', [NotificationController::class, 'sendTest'])->name('test');
         Route::get('/export', [NotificationController::class, 'export'])->name('export');
         
         // Individual notification actions
@@ -135,7 +134,7 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
 
     Route::prefix('api')->name('api.')->group(function () {
         Route::get('/dashboard/stats', [ClientDashboardController::class, 'getRealtimeStats'])->name('dashboard.stats');
-        Route::get('/notifications/count', [App\Http\Controllers\Client\NotificationController::class, 'getUnreadCount'])->name('notifications.count');
+        Route::get('/notifications/count', [NotificationController::class, 'getUnreadCount'])->name('notifications.count');
         Route::get('/messages/count', [MessageController::class, 'getUnreadCount'])->name('messages.count');
         Route::get('/projects/stats', [ProjectController::class, 'getStatistics'])->name('projects.stats');
         Route::get('/quotations/stats', [QuotationController::class, 'getStatistics'])->name('quotations.stats');
