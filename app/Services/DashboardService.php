@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use App\Services\NotificationTypeHelper;
 
 class DashboardService
 {
@@ -637,35 +638,140 @@ protected function getMessageStatus($message): array
      * Get recent notifications for dropdown display.
      */
     public function getRecentNotifications(User $user, int $limit = 10): array
-    {
-        try {
-            $notifications = $user->notifications()
-                ->orderBy('created_at', 'desc')
-                ->limit($limit)
-                ->get();
+{
+    try {
+        $notifications = $user->notifications()
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
 
-            return $notifications->map(function ($notification) {
-                $data = $notification->data;
-                
-                return [
-                    'id' => $notification->id,
-                    'type' => $data['type'] ?? 'notification',
-                    'title' => $data['title'] ?? 'Notification',
-                    'message' => $data['message'] ?? '',
-                    'url' => $data['action_url'] ?? '#',
-                    'created_at' => $notification->created_at,
-                    'read_at' => $notification->read_at,
-                    'is_read' => !is_null($notification->read_at),
-                    'formatted_time' => $notification->created_at->diffForHumans(),
-                    'icon' => $this->getNotificationIcon($data['type'] ?? 'notification'),
-                    'color' => $this->getNotificationColor($data['type'] ?? 'notification'),
-                ];
-            })->toArray();
-        } catch (\Exception $e) {
-            Log::error('Failed to get recent notifications: ' . $e->getMessage());
-            return [];
-        }
+        return $notifications->map(function ($notification) {
+            $data = $notification->data;
+            
+            // Convert Laravel notification class to proper dot notation type
+            $actualType = NotificationTypeHelper::classToType($notification->type);
+            
+            // Extract category from type (first part before dot)
+            $typeCategory = NotificationTypeHelper::getCategory($actualType);
+            
+            return [
+                'id' => $notification->id,
+                'type' => $actualType, // Now uses proper dot notation like 'chat.operator_reply'
+                'title' => $data['title'] ?? NotificationTypeHelper::getDisplayTitle($actualType),
+                'message' => $data['message'] ?? '',
+                'url' => $data['action_url'] ?? '#',
+                'created_at' => $notification->created_at,
+                'read_at' => $notification->read_at,
+                'is_read' => !is_null($notification->read_at),
+                'formatted_time' => $notification->created_at->diffForHumans(),
+                'icon' => $this->getNotificationIcon($actualType),
+                'color' => $this->getNotificationColor($actualType),
+                'category' => $typeCategory, // Add category field (chat, project, etc.)
+            ];
+        })->toArray();
+    } catch (\Exception $e) {
+        Log::error('Failed to get recent notifications: ' . $e->getMessage());
+        return [];
     }
+}
+protected function extractTypeCategory(string $type): string
+{
+    $parts = explode('.', $type);
+    return $parts[0] ?? 'system';
+}
+
+protected function generateTitleFromType(string $type): string
+{
+    $titleMapping = [
+        // Chat notifications
+        'chat.session_started' => 'New Chat Session',
+        'chat.operator_reply' => 'Chat Reply',
+        'chat.message_received' => 'New Chat Message',
+        'chat.session_closed' => 'Chat Session Closed',
+        'chat.operator_joined' => 'Operator Joined',
+        'chat.operator_changed' => 'Operator Changed',
+        'chat.session_waiting' => 'Chat Waiting',
+        'chat.session_inactive' => 'Chat Inactive',
+        
+        // Project notifications
+        'project.created' => 'New Project',
+        'project.updated' => 'Project Updated',
+        'project.status_changed' => 'Project Status Changed',
+        'project.completed' => 'Project Completed',
+        'project.deadline_approaching' => 'Deadline Approaching',
+        'project.overdue' => 'Project Overdue',
+        
+        // Quotation notifications
+        'quotation.created' => 'New Quotation',
+        'quotation.status_updated' => 'Quotation Updated',
+        'quotation.approved' => 'Quotation Approved',
+        'quotation.rejected' => 'Quotation Rejected',
+        'quotation.client_response_needed' => 'Response Needed',
+        'quotation.expired' => 'Quotation Expired',
+        'quotation.converted' => 'Quotation Converted',
+        
+        // Message notifications
+        'message.created' => 'New Message',
+        'message.reply' => 'Message Reply',
+        'message.urgent' => 'Urgent Message',
+        'message.auto_reply' => 'Auto Reply',
+        
+        // User notifications
+        'user.welcome' => 'Welcome',
+        'user.email_verified' => 'Email Verified',
+        'user.password_changed' => 'Password Changed',
+        'user.profile_incomplete' => 'Profile Incomplete',
+        
+        // System notifications
+        'system.maintenance' => 'System Maintenance',
+        'system.backup_completed' => 'Backup Completed',
+        'system.security_alert' => 'Security Alert',
+        'system.certificate_expiring' => 'Certificate Expiring',
+        
+        // Testimonial notifications
+        'testimonial.created' => 'New Review',
+        'testimonial.approved' => 'Review Approved',
+        'testimonial.featured' => 'Review Featured',
+    ];
+    
+    return $titleMapping[$type] ?? ucwords(str_replace(['.', '_'], ' ', $type));
+}
+protected function extractActualNotificationType(string $laravelType): string
+{
+    // Laravel stores notification type as full class name like:
+    // App\Notifications\ChatOperatorReplyNotification
+    // We want to convert this back to chat.operator_reply
+    
+    // Remove namespace prefix
+    $className = class_basename($laravelType);
+    
+    // Remove "Notification" suffix
+    $withoutSuffix = str_replace('Notification', '', $className);
+    
+    // Convert CamelCase to dot notation
+    $dotNotation = strtolower(preg_replace('/([a-z])([A-Z])/', '$1.$2', $withoutSuffix));
+    
+    // Handle special cases and common patterns
+    $typeMapping = [
+        'chat.operator.reply' => 'chat.operator_reply',
+        'chat.session.started' => 'chat.session_started',
+        'chat.session.closed' => 'chat.session_closed',
+        'chat.message.received' => 'chat.message_received',
+        'project.status.changed' => 'project.status_changed',
+        'project.deadline.approaching' => 'project.deadline_approaching',
+        'quotation.status.updated' => 'quotation.status_updated',
+        'quotation.client.response' => 'quotation.client_response_needed',
+        'message.auto.reply' => 'message.auto_reply',
+        'user.email.verified' => 'user.email_verified',
+        'user.password.changed' => 'user.password_changed',
+        'system.backup.completed' => 'system.backup_completed',
+        'system.security.alert' => 'system.security_alert',
+        'system.certificate.expiring' => 'system.certificate_expiring',
+        'testimonial.featured' => 'testimonial.featured',
+    ];
+    
+    return $typeMapping[$dotNotation] ?? $dotNotation;
+}
 
     // Private helper methods...
 
@@ -709,39 +815,143 @@ protected function getMessageStatus($message): array
         return $user->unreadNotifications()->count();
     }
 
-    protected function getNotificationIcon(string $type): string
-    {
-        return match($type) {
-            'project.created', 'project.updated', 'project.completed' => 'folder',
-            'project.overdue', 'project.deadline_approaching' => 'exclamation-triangle',
-            'quotation.created', 'quotation.approved', 'quotation.rejected' => 'document-text',
-            'message.created', 'message.reply', 'message.urgent' => 'mail',
-            'chat.session_started', 'chat.message_received' => 'chat',
-            'user.welcome', 'user.email_verified' => 'user',
-            'system.maintenance', 'system.alert' => 'cog',
-            'testimonial.created' => 'star',
-            default => 'bell',
-        };
-    }
+    public function getNotificationIcon(string $type): string
+{
+    $iconMapping = [
+        // Chat icons
+        'chat.session_started' => 'chat',
+        'chat.operator_reply' => 'chat',
+        'chat.message_received' => 'chat',
+        'chat.session_closed' => 'chat',
+        'chat.operator_joined' => 'user',
+        'chat.operator_changed' => 'user',
+        'chat.session_waiting' => 'chat',
+        'chat.session_inactive' => 'chat',
+        
+        // Project icons
+        'project.created' => 'folder',
+        'project.updated' => 'folder',
+        'project.status_changed' => 'folder',
+        'project.completed' => 'folder',
+        'project.deadline_approaching' => 'exclamation-triangle',
+        'project.overdue' => 'exclamation-triangle',
+        
+        // Quotation icons
+        'quotation.created' => 'document-text',
+        'quotation.status_updated' => 'document-text',
+        'quotation.approved' => 'document-text',
+        'quotation.rejected' => 'document-text',
+        'quotation.client_response_needed' => 'document-text',
+        'quotation.expired' => 'document-text',
+        'quotation.converted' => 'document-text',
+        
+        // Message icons
+        'message.created' => 'mail',
+        'message.reply' => 'mail',
+        'message.urgent' => 'exclamation-triangle',
+        'message.auto_reply' => 'mail',
+        
+        // User icons
+        'user.welcome' => 'user',
+        'user.email_verified' => 'user',
+        'user.password_changed' => 'user',
+        'user.profile_incomplete' => 'user',
+        
+        // System icons
+        'system.maintenance' => 'cog',
+        'system.backup_completed' => 'cog',
+        'system.security_alert' => 'exclamation-triangle',
+        'system.certificate_expiring' => 'exclamation-triangle',
+        
+        // Testimonial icons
+        'testimonial.created' => 'star',
+        'testimonial.approved' => 'star',
+        'testimonial.featured' => 'star',
+    ];
+    
+    // Extract category for fallback
+    $category = $this->extractTypeCategory($type);
+    $fallbackIcons = [
+        'chat' => 'chat',
+        'project' => 'folder',
+        'quotation' => 'document-text',
+        'message' => 'mail',
+        'user' => 'user',
+        'system' => 'cog',
+        'testimonial' => 'star',
+    ];
+    
+    return $iconMapping[$type] ?? $fallbackIcons[$category] ?? 'bell';
+}
 
-    protected function getNotificationColor(string $type): string
-    {
-        return match($type) {
-            'project.completed' => 'green',
-            'project.overdue', 'message.urgent' => 'red',
-            'project.deadline_approaching' => 'yellow',
-            'quotation.approved' => 'green',
-            'quotation.rejected' => 'red',
-            'quotation.created', 'quotation.pending' => 'blue',
-            'message.created', 'message.reply' => 'blue',
-            'chat.session_started' => 'green',
-            'chat.session_waiting' => 'yellow',
-            'user.welcome' => 'green',
-            'system.alert' => 'red',
-            'system.maintenance' => 'yellow',
-            default => 'gray',
-        };
-    }
+    public function getNotificationColor(string $type): string
+{
+    $colorMapping = [
+        // Chat colors
+        'chat.session_started' => 'green',
+        'chat.operator_reply' => 'blue',
+        'chat.message_received' => 'blue',
+        'chat.session_closed' => 'gray',
+        'chat.operator_joined' => 'green',
+        'chat.operator_changed' => 'blue',
+        'chat.session_waiting' => 'yellow',
+        'chat.session_inactive' => 'yellow',
+        
+        // Project colors
+        'project.created' => 'blue',
+        'project.updated' => 'blue',
+        'project.status_changed' => 'blue',
+        'project.completed' => 'green',
+        'project.deadline_approaching' => 'yellow',
+        'project.overdue' => 'red',
+        
+        // Quotation colors
+        'quotation.created' => 'blue',
+        'quotation.status_updated' => 'blue',
+        'quotation.approved' => 'green',
+        'quotation.rejected' => 'red',
+        'quotation.client_response_needed' => 'yellow',
+        'quotation.expired' => 'red',
+        'quotation.converted' => 'green',
+        
+        // Message colors
+        'message.created' => 'blue',
+        'message.reply' => 'green',
+        'message.urgent' => 'red',
+        'message.auto_reply' => 'gray',
+        
+        // User colors
+        'user.welcome' => 'green',
+        'user.email_verified' => 'green',
+        'user.password_changed' => 'blue',
+        'user.profile_incomplete' => 'yellow',
+        
+        // System colors
+        'system.maintenance' => 'yellow',
+        'system.backup_completed' => 'green',
+        'system.security_alert' => 'red',
+        'system.certificate_expiring' => 'yellow',
+        
+        // Testimonial colors
+        'testimonial.created' => 'purple',
+        'testimonial.approved' => 'green',
+        'testimonial.featured' => 'yellow',
+    ];
+    
+    // Extract category for fallback
+    $category = $this->extractTypeCategory($type);
+    $fallbackColors = [
+        'chat' => 'blue',
+        'project' => 'purple',
+        'quotation' => 'amber',
+        'message' => 'green',
+        'user' => 'indigo',
+        'system' => 'orange',
+        'testimonial' => 'pink',
+    ];
+    
+    return $colorMapping[$type] ?? $fallbackColors[$category] ?? 'gray';
+}
 
     protected function isProfileComplete(User $user): bool
     {
