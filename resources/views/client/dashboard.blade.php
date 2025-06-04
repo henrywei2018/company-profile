@@ -143,10 +143,10 @@
     @endif
 
     <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-8">
         
         <!-- Left Column: Recent Activities & Quick Actions -->
-        <div class="lg:col-span-2 space-y-8">
+        <div class="lg:col-span-2 space-y-1">
             
             <!-- Recent Activities dengan Safe Array Access -->
             <div class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl">
@@ -237,6 +237,9 @@
                 </div>
             </div>
 
+        </div>
+        <!-- Right Column: Quick Actions -->
+        <div class="lg:col-span-1 space-y-1">            
             <!-- Performance Summary dengan Safe Array Access -->
             <div class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl">
                 <div class="p-6 border-b border-gray-200 dark:border-neutral-700">

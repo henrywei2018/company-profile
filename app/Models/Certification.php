@@ -49,4 +49,9 @@ class Certification extends Model
                 ->orWhere('expiry_date', '>=', now());
         });
     }
+
+    public function companyProfile()
+    {
+        return $this->belongsTo(CompanyProfile::class);
+    }
 }

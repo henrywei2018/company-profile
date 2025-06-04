@@ -245,13 +245,23 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::resource('post-categories', PostCategoryController::class);
 
     // Company Profile
-    
     Route::prefix('company')->name('company.')->group(function () {
-        Route::get('/', [CompanyProfileController::class, 'index'])->name('index');        
-        Route::get('/edit', [CompanyProfileController::class, 'edit'])->name('edit');        
-        Route::put('/', [CompanyProfileController::class, 'update'])->name('update');
-        Route::get('/seo', [CompanyProfileController::class, 'seo'])->name('seo');
-        Route::put('/seo', [CompanyProfileController::class, 'updateSeo'])->name('seo.update');
+        // Main company profile routes
+        Route::get('/', [App\Http\Controllers\Admin\CompanyProfileController::class, 'index'])->name('index');
+        Route::get('/edit', [App\Http\Controllers\Admin\CompanyProfileController::class, 'edit'])->name('edit');
+        Route::put('/update', [App\Http\Controllers\Admin\CompanyProfileController::class, 'update'])->name('update');
+        Route::get('/show', [App\Http\Controllers\Admin\CompanyProfileController::class, 'show'])->name('show');
+        
+        // SEO management
+        Route::get('/seo', [App\Http\Controllers\Admin\CompanyProfileController::class, 'seo'])->name('seo');
+        Route::put('/seo', [App\Http\Controllers\Admin\CompanyProfileController::class, 'updateSeo'])->name('seo.update');
+        
+        // Certificates management
+        Route::get('/certificates', [App\Http\Controllers\Admin\CompanyProfileController::class, 'certificates'])->name('certificates');
+        
+        // Additional actions
+        Route::post('/reset', [App\Http\Controllers\Admin\CompanyProfileController::class, 'reset'])->name('reset');
+        Route::get('/export', [App\Http\Controllers\Admin\CompanyProfileController::class, 'export'])->name('export');
     });
 
     // Notifications (global)

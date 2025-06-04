@@ -135,12 +135,12 @@
     </div>
     
     <!-- Chat Widget for Admins -->
-    <x-chat-widget 
+    {{-- <x-chat-widget 
         size="compact"
         theme="admin"
         :show-online-status="true"
         welcome-message="Admin Chat System"
-        operator-name="System Admin" />
+        operator-name="System Admin" /> --}}
     
     <!-- ========== END MAIN CONTENT ========== -->
 
