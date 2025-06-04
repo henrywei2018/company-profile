@@ -4,127 +4,131 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\SeoableTrait;
+use Illuminate\Support\Str;
 
 class PostCategory extends Model
 {
-    use HasFactory, SeoableTrait;
+    use HasFactory;
 
     protected $fillable = [
         'name',
         'slug',
-        'description',
+        'description'
     ];
 
-    protected $appends = [
-        'posts_count',
-        'published_posts_count'
-    ];
-
-    /**
-     * Relationships
-     */
-    public function posts()
-    {
-        return $this->belongsToMany(Post::class, 'post_post_category');
-    }
-
-    public function publishedPosts()
-    {
-        return $this->posts()->published();
-    }
-
-    /**
-     * Scopes
-     */
-    public function scopeWithPostsCount($query)
-    {
-        return $query->withCount(['posts', 'publishedPosts']);
-    }
-
-    public function scopeHasPosts($query)
-    {
-        return $query->whereHas('posts');
-    }
-
-    public function scopeSearch($query, $search)
-    {
-        if (!empty($search)) {
-            return $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
-            });
-        }
-        return $query;
-    }
-
-    /**
-     * Accessors
-     */
-    public function getPostsCountAttribute(): int
-    {
-        return $this->posts()->count();
-    }
-
-    public function getPublishedPostsCountAttribute(): int
-    {
-        return $this->publishedPosts()->count();
-    }
-
-    public function getUrlAttribute(): string
-    {
-        return route('blog.category', $this->slug);
-    }
-
-    /**
-     * Boot method
-     */
     protected static function boot()
     {
         parent::boot();
 
-        // Auto-generate slug from name if not provided
+        // Auto-generate slug when creating
         static::creating(function ($category) {
             if (empty($category->slug)) {
-                $category->slug = \Illuminate\Support\Str::slug($category->name);
-            }
-        });
-
-        static::updating(function ($category) {
-            if ($category->isDirty('name') && empty($category->slug)) {
-                $category->slug = \Illuminate\Support\Str::slug($category->name);
+                $category->slug = static::generateUniqueSlug($category->name);
             }
         });
     }
 
+    // RELATIONSHIPS
+
     /**
-     * Helper methods
+     * Get the posts for the category.
      */
-    public function canDelete(): bool
+    public function posts()
     {
-        return $this->posts_count === 0;
+        return $this->belongsToMany(
+            Post::class,
+            'post_post_category',
+            'post_category_id',
+            'post_id'
+        );
+    }
+
+    // SCOPES
+
+    /**
+     * Scope to include posts count.
+     */
+    public function scopeWithPostsCount($query)
+    {
+        return $query->withCount('posts');
     }
 
     /**
-     * Get categories for sitemap
+     * Scope to include published posts count.
      */
-    public static function forSitemap()
+    public function scopeWithPublishedPostsCount($query)
     {
-        return static::has('publishedPosts')
-                    ->select(['slug', 'updated_at'])
-                    ->orderBy('name')
-                    ->get();
+        return $query->withCount([
+            'posts as published_posts_count' => function ($q) {
+                $q->where('status', 'published')
+                  ->where('published_at', '<=', now());
+            }
+        ]);
+    }
+
+    // ACCESSORS
+
+    /**
+     * Get the category URL.
+     */
+    public function getUrlAttribute(): string
+    {
+        return route('categories.show', $this->slug);
+    }
+
+    // METHODS
+
+    /**
+     * Get published posts for this category.
+     */
+    public function publishedPosts()
+    {
+        return $this->posts()
+                   ->where('status', 'published')
+                   ->where('published_at', '<=', now())
+                   ->orderByDesc('published_at');
     }
 
     /**
-     * Get popular categories
+     * Generate unique slug.
      */
-    public static function popular($limit = 10)
+    public static function generateUniqueSlug(string $name, ?int $excludeId = null): string
     {
-        return static::withCount('publishedPosts')
-                    ->having('published_posts_count', '>', 0)
-                    ->orderByDesc('published_posts_count')
-                    ->limit($limit)
-                    ->get();
+        $slug = Str::slug($name);
+        $originalSlug = $slug;
+        $counter = 1;
+
+        while (true) {
+            $query = static::where('slug', $slug);
+            
+            if ($excludeId) {
+                $query->where('id', '!=', $excludeId);
+            }
+            
+            if (!$query->exists()) {
+                break;
+            }
+            
+            $slug = $originalSlug . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
+    }
+
+    /**
+     * Get posts count.
+     */
+    public function getPostsCount(): int
+    {
+        return $this->posts()->count();
+    }
+
+    /**
+     * Get published posts count.
+     */
+    public function getPublishedPostsCount(): int
+    {
+        return $this->publishedPosts()->count();
     }
 }

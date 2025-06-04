@@ -69,115 +69,73 @@ class PostController extends Controller
      * Store a newly created post.
      */
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:posts,slug',
-            'excerpt' => 'nullable|string|max:500',
-            'content' => 'required|string',
-            'categories' => 'nullable|array',
-            'categories.*' => 'exists:post_categories,id',
-            'status' => 'required|in:draft,published,archived',
-            'featured' => 'boolean',
-            'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-            'published_at' => 'nullable|date',
-            'seo_title' => 'nullable|string|max:60',
-            'seo_description' => 'nullable|string|max:160',
-            'seo_keywords' => 'nullable|string|max:255',
-        ]);
+{
+    $validated = $request->validate([
+        'title' => 'required|string|max:255',
+        'slug' => 'nullable|string|max:255|unique:posts,slug',
+        'excerpt' => 'nullable|string',
+        'content' => 'required|string',
+        'categories' => 'nullable|array',
+        'categories.*' => 'exists:post_categories,id',
+        'status' => 'required|in:draft,published,archived',
+        'featured' => 'boolean',
+        'featured_image' => 'nullable|image|max:2048',
+        'published_at' => 'nullable|date',
+    ]);
 
-        try {
-            // Generate slug if not provided
-            if (empty($validated['slug'])) {
-                $validated['slug'] = $this->generateUniqueSlug($validated['title']);
+    try {
+        // Generate slug if not provided
+        if (empty($validated['slug'])) {
+            $validated['slug'] = Str::slug($validated['title']);
+            
+            // Ensure slug is unique
+            $originalSlug = $validated['slug'];
+            $counter = 1;
+            while (Post::where('slug', $validated['slug'])->exists()) {
+                $validated['slug'] = $originalSlug . '-' . $counter;
+                $counter++;
             }
-
-            // Set current user as author
-            $validated['user_id'] = Auth::id();
-
-            // Handle published_at
-            if ($validated['status'] === 'published' && empty($validated['published_at'])) {
-                $validated['published_at'] = now();
-            }
-
-            // Handle featured image upload
-            if ($request->hasFile('featured_image')) {
-                try {
-                    // Upload featured image
-                    $imagePath = $this->fileUploadService->uploadImage(
-                        $request->file('featured_image'),
-                        'posts',
-                        null,
-                        1200, // max width
-                        800   // max height
-                    );
-
-                    // Create thumbnail
-                    $this->fileUploadService->createThumbnail(
-                        $request->file('featured_image'),
-                        'posts/thumbnails',
-                        basename($imagePath),
-                        400, // thumbnail width
-                        300  // thumbnail height
-                    );
-
-                    $validated['featured_image'] = $imagePath;
-                } catch (\Exception $e) {
-                    Log::error('Failed to upload featured image: ' . $e->getMessage());
-                    return redirect()->back()
-                        ->withInput()
-                        ->with('error', 'Failed to upload featured image.');
-                }
-            }
-
-            // Create post
-            $post = Post::create($validated);
-
-            // Attach categories
-            if (!empty($validated['categories'])) {
-                $post->categories()->attach($validated['categories']);
-            }
-
-            // Handle SEO data
-            if ($request->filled(['seo_title', 'seo_description', 'seo_keywords'])) {
-                $seoData = array_filter([
-                    'title' => $request->seo_title,
-                    'description' => $request->seo_description,
-                    'keywords' => $request->seo_keywords,
-                ]);
-
-                if (!empty($seoData)) {
-                    $post->updateSeo($seoData);
-                }
-            }
-
-            Log::info('Post created successfully', [
-                'post_id' => $post->id,
-                'title' => $post->title,
-                'author_id' => Auth::id()
-            ]);
-
-            // Send notification
-            try {
-                if ($post->status === 'published') {
-                    Notifications::send('post.published', $post);
-                } else {
-                    Notifications::send('post.created', $post);
-                }
-            } catch (\Exception $e) {
-                Log::warning('Failed to send post notification: ' . $e->getMessage());
-            }
-
-            return redirect()->route('admin.posts.index')
-                ->with('success', 'Post created successfully!');
-
-        } catch (\Exception $e) {
-            Log::error('Failed to create post: ' . $e->getMessage());
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Failed to create post. Please try again.');
         }
+
+        // Set current user as author
+        $validated['user_id'] = auth()->id();
+        
+        // Handle featured checkbox
+        $validated['featured'] = $request->has('featured') ? true : false;
+        
+        // Set published_at date if status is published and date not provided
+        if ($validated['status'] === 'published' && empty($validated['published_at'])) {
+            $validated['published_at'] = now();
+        }
+
+        // Create post (remove categories from main data)
+        $postData = collect($validated)->except(['categories', 'featured_image'])->toArray();
+        $post = Post::create($postData);
+
+        // Handle featured image upload
+        if ($request->hasFile('featured_image')) {
+            $image = $request->file('featured_image');
+            $filename = time() . '_' . $image->getClientOriginalName();
+            $path = $image->storeAs('posts', $filename, 'public');
+            $post->update(['featured_image' => $path]);
+        }
+
+        // Attach categories if provided
+        if (!empty($validated['categories'])) {
+            $post->categories()->attach($validated['categories']);
+        }
+
+        return redirect()->route('admin.posts.index')
+            ->with('success', 'Post created successfully!');
+            
+    } catch (\Exception $e) {
+        \Log::error('Failed to create post: ' . $e->getMessage());
+        
+        return redirect()->back()
+            ->withInput()
+            ->with('error', 'Failed to create post. Please try again.');
     }
+}
 
     /**
      * Display the specified post.
@@ -213,132 +171,69 @@ class PostController extends Controller
      * Update the specified post.
      */
     public function update(Request $request, Post $post)
-    {
-        dd('Update hit!', $request->all());
-        // $validated = $request->validate([
-        //     'title' => 'required|string|max:255',
-        //     'slug' => [
-        //         'nullable',
-        //         'string',
-        //         'max:255',
-        //         Rule::unique('posts', 'slug')->ignore($post->id)
-        //     ],
-        //     'excerpt' => 'nullable|string|max:500',
-        //     'content' => 'required|string',
-        //     'categories' => 'nullable|array',
-        //     'categories.*' => 'exists:post_categories,id',
-        //     'status' => 'required|in:draft,published,archived',
-        //     'featured' => 'boolean',
-        //     'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-        //     'published_at' => 'nullable|date',
-        //     'seo_title' => 'nullable|string|max:60',
-        //     'seo_description' => 'nullable|string|max:160',
-        //     'seo_keywords' => 'nullable|string|max:255',
-        // ]);
+{
+    $validated = $request->validate([
+        'title' => 'required|string|max:255',
+        'slug' => 'nullable|string|max:255|unique:posts,slug,' . $post->id,
+        'excerpt' => 'nullable|string',
+        'content' => 'required|string',
+        'categories' => 'nullable|array',
+        'categories.*' => 'exists:post_categories,id',
+        'status' => 'required|in:draft,published,archived',
+        'featured' => 'boolean',
+        'featured_image' => 'nullable|image|max:2048',
+        'published_at' => 'nullable|date',
+    ]);
 
-        // try {
-        //     // Generate slug if not provided
-        //     if (empty($validated['slug'])) {
-        //         $validated['slug'] = $this->generateUniqueSlug($validated['title'], $post->id);
-        //     }
+    try {
+        // Generate slug if not provided
+        if (empty($validated['slug'])) {
+            $validated['slug'] = Str::slug($validated['title']);
+        }
 
-        //     // Handle published_at
-        //     if ($validated['status'] === 'published' && $post->status !== 'published' && empty($validated['published_at'])) {
-        //         $validated['published_at'] = now();
-        //     }
+        // Handle featured checkbox
+        $validated['featured'] = $request->has('featured') ? true : false;
+        
+        // Set published_at date if status changed to published and date not provided
+        if ($validated['status'] === 'published' && $post->status !== 'published' && empty($validated['published_at'])) {
+            $validated['published_at'] = now();
+        }
 
-        //     // Handle featured image upload
-        //     if ($request->hasFile('featured_image')) {
-        //         try {
-        //             // Delete old images
-        //             if ($post->featured_image) {
-        //                 Storage::disk('public')->delete($post->featured_image);
-                        
-        //                 $thumbnailPath = 'posts/thumbnails/' . basename($post->featured_image);
-        //                 if (Storage::disk('public')->exists($thumbnailPath)) {
-        //                     Storage::disk('public')->delete($thumbnailPath);
-        //                 }
-        //             }
+        // Update post (remove categories and image from main data)
+        $postData = collect($validated)->except(['categories', 'featured_image'])->toArray();
+        $post->update($postData);
 
-        //             // Upload new featured image
-        //             $imagePath = $this->fileUploadService->uploadImage(
-        //                 $request->file('featured_image'),
-        //                 'posts',
-        //                 null,
-        //                 1200,
-        //                 800
-        //             );
+        // Handle featured image upload
+        if ($request->hasFile('featured_image')) {
+            // Delete old image
+            if ($post->featured_image) {
+                \Storage::disk('public')->delete($post->featured_image);
+            }
+            
+            $image = $request->file('featured_image');
+            $filename = time() . '_' . $image->getClientOriginalName();
+            $path = $image->storeAs('posts', $filename, 'public');
+            $post->update(['featured_image' => $path]);
+        }
 
-        //             // Create thumbnail
-        //             $this->fileUploadService->createThumbnail(
-        //                 $request->file('featured_image'),
-        //                 'posts/thumbnails',
-        //                 basename($imagePath),
-        //                 400,
-        //                 300
-        //             );
+        // Sync categories
+        if (isset($validated['categories'])) {
+            $post->categories()->sync($validated['categories']);
+        } else {
+            $post->categories()->detach();
+        }
 
-        //             $validated['featured_image'] = $imagePath;
-        //         } catch (\Exception $e) {
-        //             Log::error('Failed to update featured image: ' . $e->getMessage());
-        //             return redirect()->back()
-        //                 ->withInput()
-        //                 ->with('error', 'Failed to update featured image.');
-        //         }
-        //     }
-
-        //     // Update post
-        //     $post->update($validated);
-
-        //     // Sync categories
-        //     if (isset($validated['categories'])) {
-        //         $post->categories()->sync($validated['categories']);
-        //     } else {
-        //         $post->categories()->detach();
-        //     }
-
-        //     // Handle SEO data
-        //     $seoData = array_filter([
-        //         'title' => $request->seo_title,
-        //         'description' => $request->seo_description,
-        //         'keywords' => $request->seo_keywords,
-        //     ]);
-
-        //     if (!empty($seoData)) {
-        //         $post->updateSeo($seoData);
-        //     }
-
-        //     Log::info('Post updated successfully', [
-        //         'post_id' => $post->id,
-        //         'title' => $post->title,
-        //         'updated_by' => Auth::id()
-        //     ]);
-
-        //     // Send notification for status changes
-        //     try {
-        //         if ($post->wasChanged('status')) {
-        //             if ($post->status === 'published') {
-        //                 Notifications::send('post.published', $post);
-        //             } else {
-        //                 Notifications::send('post.status_changed', $post);
-        //             }
-        //         } else {
-        //             Notifications::send('post.updated', $post);
-        //         }
-        //     } catch (\Exception $e) {
-        //         Log::warning('Failed to send post update notification: ' . $e->getMessage());
-        //     }
-
-        //     return redirect()->route('admin.posts.index')
-        //         ->with('success', 'Post updated successfully!');
-
-        // } catch (\Exception $e) {
-        //     Log::error('Failed to update post: ' . $e->getMessage());
-        //     return redirect()->back()
-        //         ->withInput()
-        //         ->with('error', 'Failed to update post. Please try again.');
-        // }
+        return redirect()->route('admin.posts.index')
+            ->with('success', 'Post updated successfully!');
+            
+    } catch (\Exception $e) {
+        \Log::error('Failed to update post: ' . $e->getMessage());
+        
+        return redirect()->back()
+            ->withInput()
+            ->with('error', 'Failed to update post. Please try again.');
     }
+}
 
     /**
      * Remove the specified post.

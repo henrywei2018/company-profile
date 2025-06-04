@@ -6,12 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use App\Traits\SeoableTrait;
-use Carbon\Carbon;
 
 class Post extends Model
 {
-    use HasFactory, SeoableTrait;
+    use HasFactory, SoftDeletes, SeoableTrait;
 
     protected $fillable = [
         'title',
@@ -22,7 +22,7 @@ class Post extends Model
         'featured_image',
         'status',
         'published_at',
-        'featured',
+        'featured'
     ];
 
     protected $casts = [
@@ -32,184 +32,27 @@ class Post extends Model
 
     protected $appends = [
         'featured_image_url',
-        'thumbnail_url',
-        'status_badge',
         'reading_time',
-        'is_published'
+        'excerpt_or_content'
     ];
 
-    // Status constants
-    const STATUS_DRAFT = 'draft';
-    const STATUS_PUBLISHED = 'published';
-    const STATUS_ARCHIVED = 'archived';
-
-    public static function getStatuses(): array
-    {
-        return [
-            self::STATUS_DRAFT => 'Draft',
-            self::STATUS_PUBLISHED => 'Published',
-            self::STATUS_ARCHIVED => 'Archived',
-        ];
-    }
-
-    /**
-     * Relationships
-     */
-    public function author()
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
-
-    public function categories()
-    {
-        return $this->belongsToMany(PostCategory::class, 'post_post_category');
-    }
-
-    /**
-     * Scopes
-     */
-    public function scopePublished($query)
-    {
-        return $query->where('status', self::STATUS_PUBLISHED)
-                    ->where('published_at', '<=', now());
-    }
-
-    public function scopeFeatured($query)
-    {
-        return $query->where('featured', true);
-    }
-
-    public function scopeByStatus($query, $status)
-    {
-        return $query->where('status', $status);
-    }
-
-    public function scopeByCategory($query, $categoryId)
-    {
-        return $query->whereHas('categories', function ($q) use ($categoryId) {
-            $q->where('post_categories.id', $categoryId);
-        });
-    }
-
-    public function scopeSearch($query, $search)
-    {
-        if (!empty($search)) {
-            return $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('excerpt', 'like', "%{$search}%")
-                  ->orWhere('content', 'like', "%{$search}%");
-            });
-        }
-        return $query;
-    }
-
-    public function scopeRecentlyPublished($query, $days = 30)
-    {
-        return $query->published()
-                    ->where('published_at', '>=', now()->subDays($days));
-    }
-
-    /**
-     * Accessors & Mutators
-     */
-    public function getFeaturedImageUrlAttribute(): ?string
-    {
-        if (!$this->featured_image) {
-            return null;
-        }
-
-        if (Storage::disk('public')->exists($this->featured_image)) {
-            return asset('storage/' . $this->featured_image);
-        }
-
-        return null;
-    }
-
-    public function getThumbnailUrlAttribute(): ?string
-    {
-        if (!$this->featured_image) {
-            return null;
-        }
-
-        // Try to get thumbnail version
-        $thumbnailPath = 'posts/thumbnails/' . basename($this->featured_image);
-        
-        if (Storage::disk('public')->exists($thumbnailPath)) {
-            return asset('storage/' . $thumbnailPath);
-        }
-
-        // Fallback to featured image
-        return $this->featured_image_url;
-    }
-
-    public function getStatusBadgeAttribute(): array
-    {
-        $badges = [
-            self::STATUS_DRAFT => ['color' => 'warning', 'text' => 'Draft'],
-            self::STATUS_PUBLISHED => ['color' => 'success', 'text' => 'Published'],
-            self::STATUS_ARCHIVED => ['color' => 'danger', 'text' => 'Archived'],
-        ];
-
-        return $badges[$this->status] ?? ['color' => 'secondary', 'text' => 'Unknown'];
-    }
-
-    public function getReadingTimeAttribute(): int
-    {
-        $wordCount = str_word_count(strip_tags($this->content));
-        return max(1, ceil($wordCount / 200)); // Average reading speed: 200 words per minute
-    }
-
-    public function getIsPublishedAttribute(): bool
-    {
-        return $this->status === self::STATUS_PUBLISHED && 
-               $this->published_at && 
-               $this->published_at->isPast();
-    }
-
-    public function getExcerptAttribute($value): string
-    {
-        if (!empty($value)) {
-            return $value;
-        }
-
-        // Auto-generate excerpt from content if not provided
-        $content = strip_tags($this->content);
-        return \Illuminate\Support\Str::limit($content, 160);
-    }
-
-    /**
-     * Boot method
-     */
     protected static function boot()
     {
         parent::boot();
 
-        // Auto-generate slug from title if not provided
+        // Auto-generate slug when creating
         static::creating(function ($post) {
             if (empty($post->slug)) {
-                $post->slug = \Illuminate\Support\Str::slug($post->title);
+                $post->slug = static::generateUniqueSlug($post->title);
             }
         });
 
-        static::updating(function ($post) {
-            if ($post->isDirty('title') && empty($post->slug)) {
-                $post->slug = \Illuminate\Support\Str::slug($post->title);
-            }
-        });
-
-        // Auto-set published_at when status changes to published
-        static::saving(function ($post) {
-            if ($post->status === self::STATUS_PUBLISHED && !$post->published_at) {
-                $post->published_at = now();
-            }
-        });
-
-        // Clean up images on delete
+        // Clean up files when deleting
         static::deleting(function ($post) {
             if ($post->featured_image) {
                 Storage::disk('public')->delete($post->featured_image);
                 
-                // Also delete thumbnail
+                // Delete thumbnail too
                 $thumbnailPath = 'posts/thumbnails/' . basename($post->featured_image);
                 if (Storage::disk('public')->exists($thumbnailPath)) {
                     Storage::disk('public')->delete($thumbnailPath);
@@ -218,152 +61,379 @@ class Post extends Model
         });
     }
 
+    // RELATIONSHIPS
+
     /**
-     * Helper methods
+     * Get the author of the post.
      */
-    public function toggleFeatured(): bool
+    public function author()
     {
-        $this->featured = !$this->featured;
-        return $this->save();
-    }
-
-    public function publish(): bool
-    {
-        $this->status = self::STATUS_PUBLISHED;
-        if (!$this->published_at) {
-            $this->published_at = now();
-        }
-        return $this->save();
-    }
-
-    public function unpublish(): bool
-    {
-        $this->status = self::STATUS_DRAFT;
-        return $this->save();
-    }
-
-    public function archive(): bool
-    {
-        $this->status = self::STATUS_ARCHIVED;
-        return $this->save();
-    }
-
-    public function canEdit(User $user = null): bool
-    {
-        $user = $user ?? auth()->user();
-        
-        if (!$user) {
-            return false;
-        }
-
-        // Admin can edit any post
-        if ($user->hasRole(['admin', 'super-admin'])) {
-            return true;
-        }
-
-        // Author can edit their own post
-        return $this->user_id === $user->id;
-    }
-
-    public function canDelete(User $user = null): bool
-    {
-        $user = $user ?? auth()->user();
-        
-        if (!$user) {
-            return false;
-        }
-
-        // Only admin can delete posts
-        return $user->hasRole(['admin', 'super-admin']);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     /**
-     * Get posts for sitemap
+     * Get the categories for the post.
      */
-    public static function forSitemap()
+    public function categories()
+    {
+        return $this->belongsToMany(
+            PostCategory::class,
+            'post_post_category',
+            'post_id',
+            'post_category_id'
+        );
+    }
+
+    // SCOPES
+
+    /**
+     * Scope to get published posts.
+     */
+    public function scopePublished($query)
+    {
+        return $query->where('status', 'published')
+                    ->where('published_at', '<=', now());
+    }
+
+    /**
+     * Scope to get featured posts.
+     */
+    public function scopeFeatured($query)
+    {
+        return $query->where('featured', true);
+    }
+
+    /**
+     * Scope to filter by status.
+     */
+    public function scopeByStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    /**
+     * Scope to filter by category.
+     */
+    public function scopeByCategory($query, $categoryId)
+    {
+        return $query->whereHas('categories', function ($q) use ($categoryId) {
+            $q->where('post_categories.id', $categoryId);
+        });
+    }
+
+    /**
+     * Scope to search posts.
+     */
+    public function scopeSearch($query, $search)
+    {
+        return $query->where(function ($q) use ($search) {
+            $q->where('title', 'like', "%{$search}%")
+                ->orWhere('excerpt', 'like', "%{$search}%")
+                ->orWhere('content', 'like', "%{$search}%");
+        });
+    }
+
+    // ACCESSORS
+
+    /**
+     * Get the featured image URL.
+     */
+    public function getFeaturedImageUrlAttribute(): ?string
+    {
+        if ($this->featured_image && Storage::disk('public')->exists($this->featured_image)) {
+            return Storage::disk('public')->url($this->featured_image);
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get the reading time in minutes.
+     */
+    public function getReadingTimeAttribute(): int
+    {
+        $wordCount = str_word_count(strip_tags($this->content));
+        $wordsPerMinute = 200;
+        return max(1, ceil($wordCount / $wordsPerMinute));
+    }
+
+    /**
+     * Get excerpt or truncated content.
+     */
+    public function getExcerptOrContentAttribute(): string
+    {
+        if ($this->excerpt) {
+            return $this->excerpt;
+        }
+        
+        return Str::limit(strip_tags($this->content), 160);
+    }
+
+    /**
+     * Get the post's URL.
+     */
+    public function getUrlAttribute(): string
+    {
+        return route('posts.show', $this->slug);
+    }
+
+    // METHODS
+
+    /**
+     * Publish the post.
+     */
+    public function publish(): void
+    {
+        $this->update([
+            'status' => 'published',
+            'published_at' => $this->published_at ?: now()
+        ]);
+    }
+
+    /**
+     * Unpublish the post.
+     */
+    public function unpublish(): void
+    {
+        $this->update([
+            'status' => 'draft',
+            'published_at' => null
+        ]);
+    }
+
+    /**
+     * Archive the post.
+     */
+    public function archive(): void
+    {
+        $this->update(['status' => 'archived']);
+    }
+
+    /**
+     * Toggle featured status.
+     */
+    public function toggleFeatured(): void
+    {
+        $this->update(['featured' => !$this->featured]);
+    }
+
+    /**
+     * Check if post is published.
+     */
+    public function isPublished(): bool
+    {
+        return $this->status === 'published' && 
+               $this->published_at && 
+               $this->published_at <= now();
+    }
+
+    /**
+     * Check if post is draft.
+     */
+    public function isDraft(): bool
+    {
+        return $this->status === 'draft';
+    }
+
+    /**
+     * Check if post is archived.
+     */
+    public function isArchived(): bool
+    {
+        return $this->status === 'archived';
+    }
+
+    /**
+     * Get next published post.
+     */
+    public function getNextPost()
     {
         return static::published()
-                    ->select(['slug', 'updated_at'])
-                    ->orderByDesc('updated_at')
-                    ->get();
+                    ->where('published_at', '>', $this->published_at)
+                    ->orderBy('published_at')
+                    ->first();
     }
 
     /**
-     * Get related posts
+     * Get previous published post.
+     */
+    public function getPreviousPost()
+    {
+        return static::published()
+                    ->where('published_at', '<', $this->published_at)
+                    ->orderByDesc('published_at')
+                    ->first();
+    }
+
+    /**
+     * Get related posts based on categories.
      */
     public function getRelatedPosts($limit = 3)
     {
-        $categoryIds = $this->categories->pluck('id');
-        
+        if ($this->categories->isEmpty()) {
+            return collect();
+        }
+
         return static::published()
                     ->where('id', '!=', $this->id)
-                    ->whereHas('categories', function ($query) use ($categoryIds) {
-                        $query->whereIn('post_categories.id', $categoryIds);
+                    ->whereHas('categories', function ($query) {
+                        $query->whereIn('post_categories.id', $this->categories->pluck('id'));
                     })
-                    ->inRandomOrder()
                     ->limit($limit)
                     ->get();
     }
 
     /**
-     * Get posts by year/month for archives
+     * Generate unique slug.
      */
-    public static function getArchives()
+    public static function generateUniqueSlug(string $title, ?int $excludeId = null): string
     {
-        return static::published()
-                    ->selectRaw('YEAR(published_at) as year, MONTH(published_at) as month, COUNT(*) as count')
-                    ->groupByRaw('YEAR(published_at), MONTH(published_at)')
-                    ->orderByRaw('YEAR(published_at) DESC, MONTH(published_at) DESC')
-                    ->get()
-                    ->map(function ($item) {
-                        return [
-                            'year' => $item->year,
-                            'month' => $item->month,
-                            'month_name' => Carbon::create($item->year, $item->month)->format('F'),
-                            'count' => $item->count,
-                            'url' => route('blog.archive', ['year' => $item->year, 'month' => $item->month])
-                        ];
-                    });
+        $slug = Str::slug($title);
+        $originalSlug = $slug;
+        $counter = 1;
+
+        while (true) {
+            $query = static::where('slug', $slug);
+            
+            if ($excludeId) {
+                $query->where('id', '!=', $excludeId);
+            }
+            
+            if (!$query->exists()) {
+                break;
+            }
+            
+            $slug = $originalSlug . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
     }
 
     /**
-     * Search posts
+     * Get thumbnail URL.
      */
-    public static function searchPosts($query, $filters = [])
+    public function getThumbnailUrl(): ?string
     {
-        $posts = static::with(['author', 'categories']);
-
-        // Search in title, excerpt, content
-        if (!empty($query)) {
-            $posts->where(function ($q) use ($query) {
-                $q->where('title', 'like', "%{$query}%")
-                  ->orWhere('excerpt', 'like', "%{$query}%")
-                  ->orWhere('content', 'like', "%{$query}%");
-            });
+        if (!$this->featured_image) {
+            return null;
         }
 
-        // Filter by category
-        if (!empty($filters['category'])) {
-            $posts->byCategory($filters['category']);
+        $thumbnailPath = 'posts/thumbnails/' . basename($this->featured_image);
+        
+        if (Storage::disk('public')->exists($thumbnailPath)) {
+            return Storage::disk('public')->url($thumbnailPath);
         }
+        
+        return $this->featured_image_url;
+    }
 
-        // Filter by status
-        if (!empty($filters['status'])) {
-            $posts->byStatus($filters['status']);
-        } else {
-            // Default to published for public search
-            $posts->published();
+    /**
+     * Get post status badge color.
+     */
+    public function getStatusBadgeColor(): string
+    {
+        return match ($this->status) {
+            'published' => 'success',
+            'draft' => 'warning',
+            'archived' => 'danger',
+            default => 'secondary'
+        };
+    }
+
+    /**
+     * Get formatted published date.
+     */
+    public function getFormattedPublishedDate(): ?string
+    {
+        if (!$this->published_at) {
+            return null;
         }
+        
+        return $this->published_at->format('M d, Y');
+    }
 
-        // Filter by date range
-        if (!empty($filters['from_date'])) {
-            $posts->where('published_at', '>=', $filters['from_date']);
+    /**
+     * Get post content without HTML tags.
+     */
+    public function getPlainContent(): string
+    {
+        return strip_tags($this->content);
+    }
+
+    /**
+     * Get word count.
+     */
+    public function getWordCount(): int
+    {
+        return str_word_count($this->getPlainContent());
+    }
+
+    /**
+     * Get character count.
+     */
+    public function getCharacterCount(): int
+    {
+        return strlen($this->getPlainContent());
+    }
+
+    /**
+     * Check if post has featured image.
+     */
+    public function hasFeaturedImage(): bool
+    {
+        return !empty($this->featured_image) && 
+               Storage::disk('public')->exists($this->featured_image);
+    }
+
+    /**
+     * Get category names as comma-separated string.
+     */
+    public function getCategoryNames(): string
+    {
+        return $this->categories->pluck('name')->join(', ');
+    }
+
+    /**
+     * Get category slugs as array.
+     */
+    public function getCategorySlugs(): array
+    {
+        return $this->categories->pluck('slug')->toArray();
+    }
+
+    /**
+     * Duplicate post.
+     */
+    public function duplicate(array $overrides = []): self
+    {
+        $newPost = $this->replicate();
+        
+        // Default overrides
+        $defaults = [
+            'title' => $this->title . ' (Copy)',
+            'slug' => static::generateUniqueSlug($this->title . ' Copy'),
+            'status' => 'draft',
+            'published_at' => null,
+            'featured' => false,
+            'user_id' => auth()->id() ?: $this->user_id,
+        ];
+        
+        $newPost->fill(array_merge($defaults, $overrides));
+        $newPost->save();
+        
+        // Duplicate categories
+        $newPost->categories()->attach($this->categories->pluck('id'));
+        
+        // Duplicate SEO data if exists
+        if ($this->seo) {
+            $newPost->updateSeo([
+                'title' => $this->seo->title,
+                'description' => $this->seo->description,
+                'keywords' => $this->seo->keywords,
+            ]);
         }
-
-        if (!empty($filters['to_date'])) {
-            $posts->where('published_at', '<=', $filters['to_date']);
-        }
-
-        return $posts->latest('published_at');
+        
+        return $newPost;
     }
 }

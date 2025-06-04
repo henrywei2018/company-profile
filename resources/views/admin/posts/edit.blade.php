@@ -2,7 +2,7 @@
     <!-- Breadcrumb -->
     <x-admin.breadcrumb :items="['Posts' => route('admin.posts.index'), 'Edit Post' => '']" />
 
-    <form action="{{ route('admin.posts.update', $post) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+    <form action="{{ route('admin.posts.update', $post) }}" method="PUT" enctype="multipart/form-data" class="space-y-2">
         @csrf
         @method('PUT')
         
