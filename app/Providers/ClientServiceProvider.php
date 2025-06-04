@@ -145,8 +145,7 @@ class ClientServiceProvider extends ServiceProvider
         View::composer('layouts.client', function ($view) {
             if (auth()->check()) {
                 $clientService = app(ClientAccessService::class);
-                $view->with([
-                    'clientNavigation' => $clientService->getClientNavigationMenu(auth()->user()),
+                $view->with([                    
                     'clientPermissions' => $clientService->getClientPermissions(auth()->user()),
                 ]);
             }

@@ -189,20 +189,7 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function registerEventListeners(): void
     {
-        // Clear client cache when models are updated
-        $this->app['events']->listen([
-            'eloquent.saved: App\\Models\\Project',
-            'eloquent.deleted: App\\Models\\Project',
-        ], function ($event, $models) {
-            $this->clearClientCacheFromModel($models);
-        });
-
-        $this->app['events']->listen([
-            'eloquent.saved: App\\Models\\Quotation',
-            'eloquent.deleted: App\\Models\\Quotation',
-        ], function ($event, $models) {
-            $this->clearClientCacheFromModel($models);
-        });
+        
     }
 
     /**
