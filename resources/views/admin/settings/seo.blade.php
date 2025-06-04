@@ -1,250 +1,215 @@
-<!-- resources/views/admin/settings/seo.blade.php -->
-<x-layouts.admin>
-    <x-slot name="title">SEO Settings</x-slot>
-    
-    <div class="max-w-4xl mx-auto">
-        <form action="{{ route('admin.settings.seo.update') }}" method="POST" enctype="multipart/form-data">
+{{-- resources/views/admin/settings/seo.blade.php --}}
+<x-layouts.admin title="SEO Settings">
+    <!-- Page Header -->
+    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">SEO Settings</h2>
+            <p class="text-sm text-gray-600 dark:text-neutral-400">Configure search engine optimization settings</p>
+        </div>
+    </div>
+
+    <!-- Settings Tabs -->
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+        <div class="border-b border-gray-200 dark:border-gray-700">
+            <nav class="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+                <a href="{{ route('admin.settings.index') }}" 
+                   class="border-transparent border-b-2 py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300">
+                    General
+                </a>
+                <a href="{{ route('admin.settings.seo') }}" 
+                   class="border-b-2 border-indigo-500 py-4 px-1 text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                    SEO
+                </a>
+                <a href="{{ route('admin.settings.email') }}" 
+                   class="border-transparent border-b-2 py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300">
+                    Email
+                </a>
+            </nav>
+        </div>
+
+        <form action="{{ route('admin.settings.seo.update') }}" method="POST" class="p-6 space-y-8">
             @csrf
             @method('PUT')
-            
+
+            <!-- Basic SEO -->
             <div class="space-y-6">
-                <!-- Global SEO Settings -->
-                <x-form-section title="Global SEO Settings" description="Set default SEO values for your website.">
-                    <div class="grid grid-cols-1 gap-6">
-                        <div>
-                            <x-form.input 
-                                name="site_title" 
-                                label="Site Title" 
-                                :value="config('settings.site_title', config('app.name'))" 
-                                required 
-                                helper="The main title that appears in search engine results"
-                            />
-                        </div>
-                        
-                        <div>
-                            <x-form.input 
-                                name="title_separator" 
-                                label="Title Separator" 
-                                :value="config('settings.title_separator', '|')" 
-                                required 
-                                helper="Character that separates page titles and site name (e.g., '|', '-', '»')"
-                            />
-                        </div>
-                        
-                        <div>
-                            <x-form.textarea 
-                                name="meta_description" 
-                                label="Default Meta Description" 
-                                :value="config('settings.meta_description')" 
-                                rows="3"
-                                required
-                                helper="Default description that appears in search engine results (max 160 characters)"
-                            />
-                        </div>
-                        
-                        <div>
-                            <x-form.input 
-                                name="meta_keywords" 
-                                label="Default Meta Keywords" 
-                                :value="config('settings.meta_keywords')" 
-                                helper="Comma-separated list of keywords (less important for modern SEO)"
-                            />
-                        </div>
-                    </div>
-                </x-form-section>
-                
-                <!-- Social Media SEO -->
-                <x-form-section title="Social Media SEO" description="Set up Open Graph and Twitter Card metadata for social sharing.">
-                    <div class="grid grid-cols-1 gap-6">
-                        <div>
-                            <x-form.file-input 
-                                name="og_image" 
-                                label="Default Social Share Image" 
-                                accept="image/*" 
-                                :preview="config('settings.og_image') ? asset('storage/' . config('settings.og_image')) : null" 
-                                helper="Image that appears when your site is shared on social media (1200×630px recommended)"
-                            />
-                        </div>
-                        
-                        <div>
-                            <x-form.input 
-                                name="twitter_site" 
-                                label="Twitter Username" 
-                                :value="config('settings.twitter_site')" 
-                                helper="Your company's Twitter handle, including the @ symbol (e.g., @yourcompany)"
-                            />
-                        </div>
-                        
-                        <div>
-                            <x-form.select 
-                                name="twitter_card_type" 
-                                label="Twitter Card Type" 
-                                :options="[
-                                    'summary' => 'Summary',
-                                    'summary_large_image' => 'Summary with Large Image',
-                                ]" 
-                                :selected="config('settings.twitter_card_type', 'summary_large_image')" 
-                                helper="Type of Twitter card to use when sharing your content"
-                            />
-                        </div>
-                        
-                        <div>
-                            <x-form.input 
-                                name="fb_app_id" 
-                                label="Facebook App ID" 
-                                :value="config('settings.fb_app_id')" 
-                                helper="Your Facebook App ID (optional, for Facebook Insights)"
-                            />
-                        </div>
-                    </div>
-                </x-form-section>
-                
-                <!-- Robots & Indexing -->
-                <x-form-section title="Robots & Indexing" description="Control how search engines interact with your website.">
-                    <div class="grid grid-cols-1 gap-6">
-                        <div>
-                            <x-form.checkbox 
-                                name="enable_indexing" 
-                                label="Allow search engines to index your site" 
-                                :checked="config('settings.enable_indexing', true)" 
-                                helper="Uncheck to add noindex meta tag to all pages"
-                            />
-                        </div>
-                        
-                        <div>
-                            <x-form.checkbox 
-                                name="follow_links" 
-                                label="Allow search engines to follow links" 
-                                :checked="config('settings.follow_links', true)" 
-                                helper="Uncheck to add nofollow meta tag to all pages"
-                            />
-                        </div>
-                        
-                        <div>
-                            <x-form.textarea 
-                                name="robots_txt" 
-                                label="Robots.txt Content" 
-                                :value="config('settings.robots_txt')" 
-                                rows="6"
-                                helper="Content for your robots.txt file (leave empty for default)"
-                            />
-                        </div>
-                    </div>
-                </x-form-section>
-                
-                <!-- Verification Codes -->
-                <x-form-section title="Site Verification" description="Add verification codes for search engines and webmaster tools.">
-                    <div class="grid grid-cols-1 gap-6">
-                        <div>
-                            <x-form.input 
-                                name="google_verification" 
-                                label="Google Search Console Verification" 
-                                :value="config('settings.google_verification')" 
-                                helper="Content of the google-site-verification meta tag"
-                            />
-                        </div>
-                        
-                        <div>
-                            <x-form.input 
-                                name="bing_verification" 
-                                label="Bing Webmaster Tools Verification" 
-                                :value="config('settings.bing_verification')" 
-                                helper="Content of the msvalidate.01 meta tag"
-                            />
-                        </div>
-                        
-                        <div>
-                            <x-form.input 
-                                name="yandex_verification" 
-                                label="Yandex Verification" 
-                                :value="config('settings.yandex_verification')" 
-                                helper="Content of the yandex-verification meta tag"
-                            />
-                        </div>
-                    </div>
-                </x-form-section>
-                
-                <!-- Structured Data -->
-                <x-form-section title="Structured Data" description="Add schema.org structured data for rich search results.">
-                    <div class="grid grid-cols-1 gap-6">
-                        <div>
-                            <x-form.select 
-                                name="business_type" 
-                                label="Business Type" 
-                                :options="[
-                                    'Organization' => 'Organization (Default)',
-                                    'LocalBusiness' => 'Local Business',
-                                    'Corporation' => 'Corporation',
-                                    'ProfessionalService' => 'Professional Service',
-                                    'GeneralContractor' => 'General Contractor',
-                                    'HomeAndConstructionBusiness' => 'Home And Construction Business',
-                                    'RoofingContractor' => 'Roofing Contractor',
-                                ]" 
-                                :selected="config('settings.business_type', 'Organization')" 
-                                helper="The type of business for structured data markup"
-                            />
-                        </div>
-                        
-                        <div>
-                            <x-form.textarea 
-                                name="custom_schema" 
-                                label="Custom Schema.org JSON-LD" 
-                                :value="config('settings.custom_schema')" 
-                                rows="8"
-                                helper="Advanced: Add custom JSON-LD structured data (optional, leave empty if unsure)"
-                            />
-                        </div>
-                    </div>
-                </x-form-section>
-                
-                <!-- Google Analytics & Tracking -->
-                <x-form-section title="Analytics & Tracking" description="Set up website analytics and tracking codes.">
-                    <div class="grid grid-cols-1 gap-6">
-                        <div>
-                            <x-form.input 
-                                name="google_analytics" 
-                                label="Google Analytics Measurement ID" 
-                                :value="config('settings.google_analytics')" 
-                                helper="Your GA4 measurement ID (G-XXXXXXXXXX)"
-                            />
-                        </div>
-                        
-                        <div>
-                            <x-form.input 
-                                name="google_tag_manager" 
-                                label="Google Tag Manager Container ID" 
-                                :value="config('settings.google_tag_manager')" 
-                                helper="Your GTM container ID (GTM-XXXXXXX)"
-                            />
-                        </div>
-                        
-                        <div>
-                            <x-form.textarea 
-                                name="head_scripts" 
-                                label="Additional Head Scripts" 
-                                :value="config('settings.head_scripts')" 
-                                rows="6"
-                                helper="Additional scripts to be included in the <head> section"
-                            />
-                        </div>
-                        
-                        <div>
-                            <x-form.textarea 
-                                name="body_scripts" 
-                                label="Additional Body Scripts" 
-                                :value="config('settings.body_scripts')" 
-                                rows="6"
-                                helper="Additional scripts to be included at the end of the <body> section"
-                            />
-                        </div>
-                    </div>
-                </x-form-section>
-                
-                <!-- Form Buttons -->
-                <div class="flex justify-end">
-                    <x-form.button submitText="Save SEO Settings" />
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Basic SEO Settings</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Configure basic search engine optimization settings.</p>
                 </div>
+
+                <div class="grid grid-cols-1 gap-6">
+                    <div>
+                        <label for="seo_title_format" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Title Format</label>
+                        <input type="text" 
+                               name="seo_title_format" 
+                               id="seo_title_format" 
+                               value="{{ old('seo_title_format', settings('seo_title_format', '%title% | %site_name%')) }}" 
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Use %title% for page title and %site_name% for site name</p>
+                        @error('seo_title_format')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label for="seo_description" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Default Meta Description</label>
+                        <textarea id="seo_description" 
+                                  name="seo_description" 
+                                  rows="3" 
+                                  maxlength="160"
+                                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">{{ old('seo_description', settings('seo_description')) }}</textarea>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Maximum 160 characters. This will be used as default description for pages without specific meta descriptions.</p>
+                        @error('seo_description')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label for="seo_keywords" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Default Meta Keywords</label>
+                        <input type="text" 
+                               name="seo_keywords" 
+                               id="seo_keywords" 
+                               value="{{ old('seo_keywords', settings('seo_keywords')) }}" 
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Comma-separated keywords relevant to your business</p>
+                        @error('seo_keywords')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Engine Verification -->
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Search Engine Verification</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Add verification codes for search engine webmaster tools.</p>
+                </div>
+
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div>
+                        <label for="seo_google_verification" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Google Verification Code</label>
+                        <input type="text" 
+                               name="seo_google_verification" 
+                               id="seo_google_verification" 
+                               value="{{ old('seo_google_verification', settings('seo_google_verification')) }}" 
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Google Search Console verification code</p>
+                        @error('seo_google_verification')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label for="seo_bing_verification" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Bing Verification Code</label>
+                        <input type="text" 
+                               name="seo_bing_verification" 
+                               id="seo_bing_verification" 
+                               value="{{ old('seo_bing_verification', settings('seo_bing_verification')) }}" 
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Bing Webmaster Tools verification code</p>
+                        @error('seo_bing_verification')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics -->
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Analytics & Tracking</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Configure website analytics and tracking codes.</p>
+                </div>
+
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div>
+                        <label for="google_analytics_id" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Google Analytics ID</label>
+                        <input type="text" 
+                               name="google_analytics_id" 
+                               id="google_analytics_id" 
+                               value="{{ old('google_analytics_id', settings('google_analytics_id')) }}" 
+                               placeholder="G-XXXXXXXXXX or UA-XXXXXXXXX-X"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Your Google Analytics tracking ID</p>
+                        @error('google_analytics_id')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label for="google_tag_manager_id" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Google Tag Manager ID</label>
+                        <input type="text" 
+                               name="google_tag_manager_id" 
+                               id="google_tag_manager_id" 
+                               value="{{ old('google_tag_manager_id', settings('google_tag_manager_id')) }}" 
+                               placeholder="GTM-XXXXXXX"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Your Google Tag Manager container ID</p>
+                        @error('google_tag_manager_id')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
+            <!-- Robots.txt -->
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Robots.txt</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Configure how search engines crawl your website.</p>
+                </div>
+
+                <div>
+                    <label for="seo_robots_txt" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Robots.txt Content</label>
+                    <textarea id="seo_robots_txt" 
+                              name="seo_robots_txt" 
+                              rows="6" 
+                              class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">{{ old('seo_robots_txt', settings('seo_robots_txt', "User-agent: *\nDisallow: /admin\nDisallow: /api\n\nSitemap: " . url('/sitemap.xml'))) }}</textarea>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Content for your robots.txt file. Leave empty to use default settings.</p>
+                    @error('seo_robots_txt')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
+                <button type="submit" 
+                        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Save SEO Settings
+                </button>
             </div>
         </form>
     </div>
+
+    @push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Character counter for meta description
+            const descriptionField = document.getElementById('seo_description');
+            if (descriptionField) {
+                const maxLength = 160;
+                const counter = document.createElement('div');
+                counter.className = 'text-xs text-gray-500 dark:text-gray-400 mt-1';
+                counter.textContent = `${descriptionField.value.length}/${maxLength} characters`;
+                descriptionField.parentNode.appendChild(counter);
+
+                descriptionField.addEventListener('input', function() {
+                    const length = this.value.length;
+                    counter.textContent = `${length}/${maxLength} characters`;
+                    
+                    if (length > maxLength) {
+                        counter.className = 'text-xs text-red-600 mt-1';
+                    } else if (length > maxLength * 0.9) {
+                        counter.className = 'text-xs text-yellow-600 mt-1';
+                    } else {
+                        counter.className = 'text-xs text-gray-500 dark:text-gray-400 mt-1';
+                    }
+                });
+            }
+        });
+    </script>
+    @endpush
 </x-layouts.admin>

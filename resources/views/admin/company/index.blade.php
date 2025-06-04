@@ -1,36 +1,11 @@
 <x-layouts.admin title="Company Profile">
     <!-- Header with Actions -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
         <div>
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Company Profile</h1>
             <p class="text-gray-600 dark:text-gray-400 mt-1">
                 Manage your company's identity, brand, and digital presence
             </p>
-        </div>
-        
-        <div class="flex items-center gap-3">
-            <x-admin.button 
-                href="{{ route('admin.company.seo') }}" 
-                color="secondary"
-                size="sm"
-                icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />'>
-                SEO Settings
-            </x-admin.button>
-            
-            <x-admin.button 
-                href="{{ route('admin.company.certificates') }}" 
-                color="secondary"
-                size="sm"
-                icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />'>
-                Certificates
-            </x-admin.button>
-            
-            <x-admin.button 
-                href="{{ route('admin.company.edit') }}" 
-                color="primary"
-                icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />'>
-                Edit Profile
-            </x-admin.button>
         </div>
     </div>
 
@@ -65,18 +40,10 @@
 
         <x-admin.stat-card 
             title="Certificates" 
-            :value="$companyProfile->certificates->count()"
+            :value="$companyProfile->certificates_count"
             icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />'
             iconColor="text-purple-500" 
             iconBg="bg-purple-100 dark:bg-purple-800/30" 
-        />
-
-        <x-admin.stat-card 
-            title="Established" 
-            :value="$companyProfile->established ?: 'Not Set'"
-            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />'
-            iconColor="text-amber-500" 
-            iconBg="bg-amber-100 dark:bg-amber-800/30" 
         />
     </div>
 
@@ -268,7 +235,7 @@
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Quick Actions</h3>
                 </x-slot>
 
-                <div class="space-y-3">
+                <div class="space-y-3 items-center">
                     <x-admin.button 
                         href="{{ route('admin.company.edit') }}" 
                         color="primary" 
@@ -298,14 +265,67 @@
 
                     <hr class="border-gray-200 dark:border-gray-700">
                     
-                    <x-admin.button 
-                        href="{{ route('admin.company.export') }}" 
-                        color="gray" 
-                        size="sm" 
-                        class="w-full justify-center"
-                        icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />'>
-                        Export Data
-                    </x-admin.button>
+                    <div class="relative inline-block text-left" x-data="{ open: false }">
+                        <button @click="open = !open" 
+                                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Export
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                
+                        <div x-show="open" 
+                             @click.away="open = false"
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="transform opacity-0 scale-95"
+                             x-transition:enter-end="transform opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-75"
+                             x-transition:leave-start="transform opacity-100 scale-100"
+                             x-transition:leave-end="transform opacity-0 scale-95"
+                             class="absolute right-0 z-10 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                            
+                            <div class="py-1">
+                                <a href="{{ route('admin.company.export.pdf') }}" 
+                                   class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    Download PDF
+                                </a>
+                                
+                                <a href="{{ route('admin.company.export.pdf.stream') }}" 
+                                   target="_blank"
+                                   class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                    <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                    View PDF
+                                </a>
+                                
+                                <a href="{{ route('admin.company.export.certificates.pdf') }}" 
+                                   class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                    <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Certificates PDF
+                                </a>
+                                
+                                <div class="border-t border-gray-200 dark:border-gray-600 my-1"></div>
+                                
+                                <a href="{{ route('admin.company.export') }}" 
+                                   class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                    <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                    </svg>
+                                    Export JSON
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </x-admin.card>
 
@@ -398,16 +418,6 @@
                             <p class="text-gray-500 dark:text-gray-400 text-xs">{{ $companyProfile->updated_at->diffForHumans() }}</p>
                         </div>
                     </div>
-
-                    @if($companyProfile->certificates->count() > 0)
-                        <div class="flex items-center gap-3 text-sm">
-                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <div>
-                                <p class="text-gray-900 dark:text-white font-medium">Certificate Added</p>
-                                <p class="text-gray-500 dark:text-gray-400 text-xs">{{ $companyProfile->certificates->latest()->first()->created_at->diffForHumans() }}</p>
-                            </div>
-                        </div>
-                    @endif
                 </div>
             </x-admin.card>
         </div>

@@ -1,4 +1,4 @@
-{{-- resources/views/components/admin/admin-header.blade.php - FIXED --}}
+{{-- resources/views/components/admin/admin-header.blade.php - FIXED with Dark Mode --}}
 @props([
     'unreadMessagesCount' => 0, 
     'pendingQuotationsCount' => 0,
@@ -47,8 +47,8 @@
             </a>
             @endif
 
-            <!-- Theme Toggle -->
-            <button id="theme-toggle"
+            <!-- Theme Toggle - FIXED -->
+            <button id="admin-theme-toggle"
                 class="size-8 flex justify-center items-center text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-neutral-700 rounded-full">
                 <!-- Dark mode: Sun icon -->
                 <svg class="hidden dark:block size-4" xmlns="http://www.w3.org/2000/svg" fill="none"
@@ -307,6 +307,22 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // FIXED: Admin Dark Mode Toggle Implementation
+    const adminThemeToggle = document.getElementById('admin-theme-toggle');
+    if (adminThemeToggle) {
+        adminThemeToggle.addEventListener('click', function() {
+            const html = document.documentElement;
+            
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.setItem('hs_theme', 'light');
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('hs_theme', 'dark');
+            }
+        });
+    }
+
     // Load admin notifications when page loads
     loadAdminNotifications();
     

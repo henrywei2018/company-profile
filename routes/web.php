@@ -19,6 +19,7 @@ use App\Http\Controllers\Client\{
     ProfileController as ClientProfileController,
     NotificationPreferencesController
 };
+use App\Http\Controllers\RobotsController;
 
 require __DIR__ . '/auth.php';
 
@@ -49,7 +50,25 @@ Route::prefix('team')->group(function () {
     Route::get('/{slug}', [TeamController::class, 'show'])->name('team.show');
 });
 
-Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
+Route::prefix('blog')->name('blog.')->group(function () {
+    // Main blog page
+    Route::get('/', [App\Http\Controllers\BlogController::class, 'index'])->name('index');
+    
+    // Category pages
+    Route::get('/category/{category:slug}', [App\Http\Controllers\BlogController::class, 'category'])->name('category');
+    
+    // Archive pages
+    Route::get('/archive/{year}/{month?}', [App\Http\Controllers\BlogController::class, 'archive'])->name('archive');
+    
+    // Search
+    Route::get('/search', [App\Http\Controllers\BlogController::class, 'search'])->name('search');
+    
+    // RSS Feed
+    Route::get('/feed', [App\Http\Controllers\BlogController::class, 'feed'])->name('feed');
+    
+    // Individual post (should be last to avoid conflicts)
+    Route::get('/{post:slug}', [App\Http\Controllers\BlogController::class, 'show'])->name('show');
+});
 
 Route::prefix('contact')->group(function () {
     Route::get('/', [ContactController::class, 'index'])->name('contact.index');
@@ -159,6 +178,7 @@ Route::middleware('auth')->group(function () {
     });
 });
 
+Route::get('/robots.txt', [RobotsController::class, 'robots'])->name('robots');
 
 /*
 |--------------------------------------------------------------------------

@@ -6,57 +6,106 @@ use App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Config;
 
 class SettingsService
 {
+    protected const CACHE_PREFIX = 'setting_';
+    protected const CACHE_TTL = 3600; // 1 hour
+    protected const ALL_SETTINGS_CACHE_KEY = 'all_settings';
+
     public function get(string $key, $default = null)
     {
-        return Cache::remember("setting_{$key}", 3600, function() use ($key, $default) {
+        return Cache::remember(self::CACHE_PREFIX . $key, self::CACHE_TTL, function() use ($key, $default) {
             $setting = Setting::where('key', $key)->first();
-            return $setting ? $setting->value : $default;
+            
+            if (!$setting) {
+                return $default;
+            }
+            
+            return $setting->is_json ? json_decode($setting->value, true) : $setting->value;
         });
     }
 
-    public function set(string $key, $value): bool
+    public function set(string $key, $value, string $group = 'general'): bool
     {
         try {
+            $isJson = is_array($value) || is_object($value);
+            $valueToStore = $isJson ? json_encode($value) : $value;
+            
             Setting::updateOrCreate(
                 ['key' => $key],
-                ['value' => $value]
+                [
+                    'value' => $valueToStore,
+                    'group' => $group,
+                    'is_json' => $isJson,
+                ]
             );
 
-            Cache::forget("setting_{$key}");
-            Cache::forget('all_settings');
+            // Clear caches
+            Cache::forget(self::CACHE_PREFIX . $key);
+            Cache::forget(self::ALL_SETTINGS_CACHE_KEY);
 
             return true;
         } catch (\Exception $e) {
+            \Log::error("Failed to set setting '{$key}': " . $e->getMessage());
             return false;
         }
     }
 
-    public function setMany(array $settings): bool
+    public function setMany(array $settings, string $group = 'general'): bool
     {
         try {
             foreach ($settings as $key => $value) {
+                $isJson = is_array($value) || is_object($value);
+                $valueToStore = $isJson ? json_encode($value) : $value;
+                
                 Setting::updateOrCreate(
                     ['key' => $key],
-                    ['value' => $value]
+                    [
+                        'value' => $valueToStore,
+                        'group' => $group,
+                        'is_json' => $isJson,
+                    ]
                 );
-                Cache::forget("setting_{$key}");
+                
+                Cache::forget(self::CACHE_PREFIX . $key);
             }
 
-            Cache::forget('all_settings');
+            Cache::forget(self::ALL_SETTINGS_CACHE_KEY);
             return true;
         } catch (\Exception $e) {
+            \Log::error('Failed to set multiple settings: ' . $e->getMessage());
             return false;
         }
     }
 
     public function getAll(): array
     {
-        return Cache::remember('all_settings', 3600, function() {
-            return Setting::pluck('value', 'key')->toArray();
+        return Cache::remember(self::ALL_SETTINGS_CACHE_KEY, self::CACHE_TTL, function() {
+            $settings = Setting::all();
+            $result = [];
+            
+            foreach ($settings as $setting) {
+                $value = $setting->is_json ? json_decode($setting->value, true) : $setting->value;
+                $result[$setting->key] = $value;
+            }
+            
+            return $result;
+        });
+    }
+
+    public function getGroup(string $group): array
+    {
+        return Cache::remember("settings_group_{$group}", self::CACHE_TTL, function() use ($group) {
+            $settings = Setting::where('group', $group)->get();
+            $result = [];
+            
+            foreach ($settings as $setting) {
+                $value = $setting->is_json ? json_decode($setting->value, true) : $setting->value;
+                $result[$setting->key] = $value;
+            }
+            
+            return $result;
         });
     }
 
@@ -64,79 +113,83 @@ class SettingsService
     {
         try {
             Setting::where('key', $key)->delete();
-            Cache::forget("setting_{$key}");
-            Cache::forget('all_settings');
+            Cache::forget(self::CACHE_PREFIX . $key);
+            Cache::forget(self::ALL_SETTINGS_CACHE_KEY);
             return true;
         } catch (\Exception $e) {
+            \Log::error("Failed to delete setting '{$key}': " . $e->getMessage());
             return false;
         }
     }
 
-    public function handleFileUpload(string $settingKey, UploadedFile $file, string $directory = 'settings'): string
+    public function handleFileUpload(string $settingKey, UploadedFile $file, string $directory = 'settings'): ?string
     {
-        // Delete old file if exists
-        $oldFile = $this->get($settingKey);
-        if ($oldFile && Storage::disk('public')->exists($oldFile)) {
-            Storage::disk('public')->delete($oldFile);
+        try {
+            // Delete old file if exists
+            $oldFile = $this->get($settingKey);
+            if ($oldFile && Storage::disk('public')->exists($oldFile)) {
+                Storage::disk('public')->delete($oldFile);
+            }
+
+            // Store new file
+            $path = $file->store($directory, 'public');
+            $this->set($settingKey, $path);
+
+            return $path;
+        } catch (\Exception $e) {
+            \Log::error("Failed to upload file for setting '{$settingKey}': " . $e->getMessage());
+            return null;
         }
-
-        // Store new file
-        $path = $file->store($directory, 'public');
-        $this->set($settingKey, $path);
-
-        return $path;
-    }
-
-    public function updateEmailSettings(array $data): bool
-    {
-        $emailSettings = [
-            'mail_from_address' => $data['mail_from_address'],
-            'mail_from_name' => $data['mail_from_name'],
-            'admin_email' => $data['admin_email'],
-            'support_email' => $data['support_email'] ?? '',
-            'message_email_enabled' => $data['message_email_enabled'] ?? false ? '1' : '0',
-            'quotation_email_enabled' => $data['quotation_email_enabled'] ?? false ? '1' : '0',
-        ];
-
-        return $this->setMany($emailSettings);
-    }
-
-    public function updateCompanySettings(array $data): bool
-    {
-        $companySettings = [
-            'company_name' => $data['company_name'],
-            'company_tagline' => $data['company_tagline'] ?? '',
-            'company_email' => $data['company_email'],
-            'company_phone' => $data['company_phone'],
-            'company_address' => $data['company_address'],
-            'company_description' => $data['company_description'] ?? '',
-        ];
-
-        return $this->setMany($companySettings);
     }
 
     public function clearCache(): void
     {
-        Cache::forget('all_settings');
+        Cache::forget(self::ALL_SETTINGS_CACHE_KEY);
         
         // Clear individual setting caches
         $keys = Setting::pluck('key');
         foreach ($keys as $key) {
-            Cache::forget("setting_{$key}");
+            Cache::forget(self::CACHE_PREFIX . $key);
         }
+        
+        // Clear group caches
+        $groups = Setting::select('group')->distinct()->pluck('group');
+        foreach ($groups as $group) {
+            Cache::forget("settings_group_{$group}");
+        }
+    }
+
+    // Quick access methods for common settings
+    public function getSiteSettings(): array
+    {
+        return [
+            'site_name' => $this->get('site_name', config('app.name')),
+            'site_description' => $this->get('site_description', ''),
+            'site_logo' => $this->get('site_logo'),
+            'site_favicon' => $this->get('site_favicon'),
+            'contact_email' => $this->get('contact_email', config('mail.from.address')),
+            'contact_phone' => $this->get('contact_phone'),
+            'footer_text' => $this->get('footer_text'),
+        ];
+    }
+
+    public function getSeoSettings(): array
+    {
+        return [
+            'meta_keywords' => $this->get('meta_keywords'),
+            'google_analytics_id' => $this->get('google_analytics_id'),
+            'google_site_verification' => $this->get('google_site_verification'),
+        ];
     }
 
     public function getEmailSettings(): array
     {
         return [
-            'mail_from_address' => $this->get('mail_from_address', config('mail.from.address')),
-            'mail_from_name' => $this->get('mail_from_name', config('mail.from.name')),
-            'admin_email' => $this->get('admin_email'),
-            'support_email' => $this->get('support_email'),
-            'message_email_enabled' => $this->get('message_email_enabled', true),
-            'quotation_email_enabled' => $this->get('quotation_email_enabled', true),
-            'message_auto_reply_enabled' => $this->get('message_auto_reply_enabled', true),
-            'quotation_client_confirmation_enabled' => $this->get('quotation_client_confirmation_enabled', true),
+            'admin_notification_email' => $this->get('admin_notification_email'),
+            'email_from_name' => $this->get('email_from_name', config('app.name')),
+            'notify_new_message' => $this->get('notify_new_message', true),
+            'notify_new_quotation' => $this->get('notify_new_quotation', true),
+            'notify_client_registration' => $this->get('notify_client_registration', true),
         ];
     }
 }

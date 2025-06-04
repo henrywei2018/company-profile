@@ -237,31 +237,49 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/certifications/update-order', [CertificationController::class, 'updateOrder'])->name('certifications.update-order');
 
     // Posts
-    Route::resource('posts', PostController::class);
-    Route::post('/posts/{post}/toggle-featured', [PostController::class, 'toggleFeatured'])->name('posts.toggle-featured');
-    Route::post('/posts/{post}/change-status', [PostController::class, 'changeStatus'])->name('posts.change-status');
+    Route::resource('posts', PostController::class)->names('posts');
+
+    // Additional custom post routes
+    Route::prefix('posts')->name('posts.')->group(function () {
+        // Custom toggles
+        Route::post('/{post}/toggle-featured', [PostController::class, 'toggleFeatured'])->name('toggle-featured');
+        Route::post('/{post}/change-status', [PostController::class, 'changeStatus'])->name('change-status');
+        Route::delete('/{post}/remove-image', [PostController::class, 'removeFeaturedImage'])->name('remove-image');
+
+        // Management tools
+        Route::post('/bulk-action', [PostController::class, 'bulkAction'])->name('bulk-action');
+        Route::post('/{post}/duplicate', [PostController::class, 'duplicate'])->name('duplicate');
+
+        // Export & stats
+        Route::get('/export', [PostController::class, 'export'])->name('export');
+        Route::get('/statistics', [PostController::class, 'statistics'])->name('statistics');
+    });
+
 
     // Post Categories
     Route::resource('post-categories', PostCategoryController::class);
+    Route::prefix('post-categories')->name('post-categories.')->group(function () {
+        Route::post('/{postCategory}/toggle-active', [PostCategoryController::class, 'toggleActive'])->name('toggle-active');
+        Route::get('/export', [PostCategoryController::class, 'export'])->name('export');
+        Route::get('/statistics', [PostCategoryController::class, 'statistics'])->name('statistics');
+    });
 
     // Company Profile
     Route::prefix('company')->name('company.')->group(function () {
-        // Main company profile routes
+        // Existing routes...
         Route::get('/', [App\Http\Controllers\Admin\CompanyProfileController::class, 'index'])->name('index');
         Route::get('/edit', [App\Http\Controllers\Admin\CompanyProfileController::class, 'edit'])->name('edit');
         Route::put('/update', [App\Http\Controllers\Admin\CompanyProfileController::class, 'update'])->name('update');
-        Route::get('/show', [App\Http\Controllers\Admin\CompanyProfileController::class, 'show'])->name('show');
-        
-        // SEO management
         Route::get('/seo', [App\Http\Controllers\Admin\CompanyProfileController::class, 'seo'])->name('seo');
         Route::put('/seo', [App\Http\Controllers\Admin\CompanyProfileController::class, 'updateSeo'])->name('seo.update');
-        
-        // Certificates management
         Route::get('/certificates', [App\Http\Controllers\Admin\CompanyProfileController::class, 'certificates'])->name('certificates');
         
-        // Additional actions
-        Route::post('/reset', [App\Http\Controllers\Admin\CompanyProfileController::class, 'reset'])->name('reset');
+        // Export Routes - NEW
         Route::get('/export', [App\Http\Controllers\Admin\CompanyProfileController::class, 'export'])->name('export');
+        Route::get('/export/pdf', [App\Http\Controllers\Admin\CompanyProfileController::class, 'exportPdf'])->name('export.pdf');
+        Route::get('/export/pdf/stream', [App\Http\Controllers\Admin\CompanyProfileController::class, 'streamPdf'])->name('export.pdf.stream');
+        Route::get('/export/certificates/pdf', [App\Http\Controllers\Admin\CompanyProfileController::class, 'exportCertificatesPdf'])->name('export.certificates.pdf');
+        Route::post('/export/bulk', [App\Http\Controllers\Admin\CompanyProfileController::class, 'bulkExport'])->name('export.bulk');
     });
 
     // Notifications (global)
@@ -296,13 +314,25 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
 
     // Settings
-    Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
-    Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
-    Route::get('/settings/email', [EmailSettingsController::class, 'index'])->name('settings.email');
-    Route::post('/settings/email', [EmailSettingsController::class, 'update'])->name('settings.email.update');
-    Route::post('/settings/email/test-connection', [EmailSettingsController::class, 'testConnection'])->name('settings.email.test-connection');
-    Route::post('/settings/email/test', [EmailSettingsController::class, 'sendTestEmail'])->name('settings.email.test');
-    Route::get('/settings/email/statistics', [EmailSettingsController::class, 'statistics'])->name('settings.email.statistics');
-    Route::get('/settings/seo', [SettingController::class, 'seo'])->name('settings.seo');
-    Route::post('/settings/seo', [SettingController::class, 'updateSeo'])->name('settings.seo.update');
+    Route::prefix('settings')->name('settings.')->group(function () {
+        Route::get('/', [SettingController::class, 'index'])->name('index');
+        Route::put('/', [SettingController::class, 'update'])->name('update');
+        
+        // SEO Settings
+        Route::get('/seo', [SettingController::class, 'seo'])->name('seo');
+        Route::put('/seo', [SettingController::class, 'updateSeo'])->name('seo.update');
+        
+        // Email Settings  
+        Route::get('/email', [EmailSettingsController::class, 'index'])->name('email');
+        Route::put('/email', [EmailSettingsController::class, 'update'])->name('email.update');
+        Route::post('/email/test-connection', [EmailSettingsController::class, 'testConnection'])->name('email.test-connection');
+        Route::post('/email/test', [EmailSettingsController::class, 'sendTestEmail'])->name('email.test');
+        
+        // Company Profile Settings
+        Route::get('/company-profile', [SettingController::class, 'companyProfile'])->name('company-profile');
+        Route::put('/company-profile', [SettingController::class, 'updateCompanyProfile'])->name('company-profile.update');
+        
+        // Cache Management
+        Route::post('/clear-cache', [SettingController::class, 'clearCache'])->name('clear-cache');
+    });
 });

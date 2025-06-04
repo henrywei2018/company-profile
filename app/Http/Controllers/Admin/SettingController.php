@@ -19,7 +19,7 @@ class SettingController extends Controller
     {
         // Get all settings
         $settings = Setting::pluck('value', 'key')->toArray();
-        
+
         return view('admin.settings.index', compact('settings'));
     }
 
@@ -44,29 +44,29 @@ class SettingController extends Controller
             'site_favicon' => 'nullable|image|max:512',
             'footer_text' => 'nullable|string',
         ]);
-        
+
         // Handle logo upload
         if ($request->hasFile('site_logo')) {
             $logoPath = $request->file('site_logo')->store('settings', 'public');
             $validated['site_logo'] = $logoPath;
-            
+
             // Delete old logo if exists
             if ($request->has('old_site_logo') && $request->old_site_logo) {
                 Storage::disk('public')->delete($request->old_site_logo);
             }
         }
-        
+
         // Handle favicon upload
         if ($request->hasFile('site_favicon')) {
             $faviconPath = $request->file('site_favicon')->store('settings', 'public');
             $validated['site_favicon'] = $faviconPath;
-            
+
             // Delete old favicon if exists
             if ($request->has('old_site_favicon') && $request->old_site_favicon) {
                 Storage::disk('public')->delete($request->old_site_favicon);
             }
         }
-        
+
         // Update settings
         foreach ($validated as $key => $value) {
             Setting::updateOrCreate(
@@ -74,14 +74,14 @@ class SettingController extends Controller
                 ['value' => $value]
             );
         }
-        
+
         // Clear cache
         Cache::forget('settings');
-        
+
         return redirect()->route('admin.settings.index')
             ->with('success', 'Settings updated successfully!');
     }
-    
+
     /**
      * Display SEO settings form.
      */
@@ -91,10 +91,10 @@ class SettingController extends Controller
         $seoSettings = Setting::where('key', 'LIKE', 'seo_%')
             ->pluck('value', 'key')
             ->toArray();
-        
+
         return view('admin.settings.seo', compact('seoSettings'));
     }
-    
+
     /**
      * Update SEO settings.
      */
@@ -109,7 +109,7 @@ class SettingController extends Controller
             'seo_bing_verification' => 'nullable|string',
             'seo_robots_txt' => 'nullable|string',
         ]);
-        
+
         // Update settings
         foreach ($validated as $key => $value) {
             Setting::updateOrCreate(
@@ -117,14 +117,14 @@ class SettingController extends Controller
                 ['value' => $value]
             );
         }
-        
+
         // Clear cache
         Cache::forget('settings');
-        
+
         return redirect()->route('admin.settings.seo')
             ->with('success', 'SEO settings updated successfully!');
     }
-    
+
     /**
      * Display company profile settings form.
      */
@@ -132,10 +132,46 @@ class SettingController extends Controller
     {
         // Get company profile
         $companyProfile = CompanyProfile::getInstance();
-        
+
         return view('admin.settings.company-profile', compact('companyProfile'));
     }
-    
+
+    public function clearCache(Request $request)
+    {
+        try {
+            app(\App\Services\SettingsService::class)->clearCache();
+
+            // Also clear Laravel's config cache
+            \Artisan::call('config:clear');
+
+            \Log::info('Settings cache cleared by user', [
+                'user_id' => auth()->id(),
+                'ip' => $request->ip()
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Cache cleared successfully!'
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Cache cleared successfully!');
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to clear settings cache: ' . $e->getMessage());
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to clear cache: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Failed to clear cache.');
+        }
+    }
+
     /**
      * Update company profile settings.
      */
@@ -159,26 +195,26 @@ class SettingController extends Controller
             'map_coordinates' => 'nullable|string',
             'logo' => 'nullable|image|max:1024',
         ]);
-        
+
         // Handle logo upload
         if ($request->hasFile('logo')) {
             $logoPath = $request->file('logo')->store('company', 'public');
             $validated['logo'] = $logoPath;
-            
+
             // Delete old logo if exists
             $companyProfile = CompanyProfile::getInstance();
             if ($companyProfile->logo) {
                 Storage::disk('public')->delete($companyProfile->logo);
             }
         }
-        
+
         // Update company profile
         CompanyProfile::updateProfile($validated);
-        
+
         return redirect()->route('admin.settings.company-profile')
             ->with('success', 'Company profile updated successfully!');
     }
-    
+
     /**
      * Display email settings form.
      */
@@ -188,10 +224,10 @@ class SettingController extends Controller
         $emailSettings = Setting::where('key', 'LIKE', 'email_%')
             ->pluck('value', 'key')
             ->toArray();
-        
+
         return view('admin.settings.email', compact('emailSettings'));
     }
-    
+
     /**
      * Update email settings.
      */
@@ -203,7 +239,7 @@ class SettingController extends Controller
             'email_from_name' => 'required|string|max:255',
             'email_notification_recipients' => 'nullable|string',
         ]);
-        
+
         // Update settings
         foreach ($validated as $key => $value) {
             Setting::updateOrCreate(
@@ -211,14 +247,14 @@ class SettingController extends Controller
                 ['value' => $value]
             );
         }
-        
+
         // Clear cache
         Cache::forget('settings');
-        
+
         return redirect()->route('admin.settings.email')
             ->with('success', 'Email settings updated successfully!');
     }
-    
+
     /**
      * Send test email.
      */
@@ -227,10 +263,10 @@ class SettingController extends Controller
         $request->validate([
             'test_email' => 'required|email',
         ]);
-        
+
         // Send test email logic here
         // Mail::to($request->test_email)->send(new TestEmail());
-        
+
         return redirect()->back()
             ->with('success', 'Test email sent successfully!');
     }

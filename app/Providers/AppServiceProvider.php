@@ -37,6 +37,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(DashboardService::class);
+        $this->app->singleton(\App\Services\SettingsService::class);
 
 
     }
@@ -50,7 +51,12 @@ class AppServiceProvider extends ServiceProvider
         $this->registerBladeDirectives();
         $this->registerViewComposers();
         $this->registerCustomGates();
-        $this->registerEventListeners();
+        if (file_exists($helpers = app_path('helpers.php'))) {
+            require_once $helpers;
+        }
+        if (class_exists('\App\Helpers\SeoHelper')) {
+            $this->app->singleton(\App\Helpers\SeoHelper::class);
+        }
     }
 
     /**
@@ -77,10 +83,6 @@ class AppServiceProvider extends ServiceProvider
         Blade::if('canAccess', function ($resourceType, $resourceId = null) {
             if (!Auth::check()) return false;
             
-            $clientService = app(ClientAccessService::class);
-            return $resourceId ? 
-                $clientService->canAccessResource(Auth::user(), $resourceType, $resourceId) : 
-                $clientService->hasClientAccess(Auth::user());
         });
 
         Blade::if('adminViewing', function () {
@@ -157,21 +159,7 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function registerCustomGates(): void
     {
-        Gate::define('access-client-area', function ($user) {
-            return app(ClientAccessService::class)->hasClientAccess($user);
-        });
-
-        Gate::define('access-client-project', function ($user, $projectId) {
-            return app(ClientAccessService::class)->canAccessResource($user, 'project', $projectId);
-        });
-
-        Gate::define('access-client-quotation', function ($user, $quotationId) {
-            return app(ClientAccessService::class)->canAccessResource($user, 'quotation', $quotationId);
-        });
-
-        Gate::define('access-client-message', function ($user, $messageId) {
-            return app(ClientAccessService::class)->canAccessResource($user, 'message', $messageId);
-        });
+        
 
         Gate::define('admin-support-access', function ($user) {
             return $user->hasAnyRole(['super-admin', 'admin']) && 
@@ -184,13 +172,6 @@ class AppServiceProvider extends ServiceProvider
         });
     }
 
-    /**
-     * Register event listeners.
-     */
-    protected function registerEventListeners(): void
-    {
-        
-    }
 
     /**
      * Get admin view data.

@@ -3,6 +3,148 @@
 use App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
 
+
+if (!function_exists('settings')) {
+    /**
+     * Get setting value by key
+     */
+    function settings(string $key, $default = null)
+    {
+        try {
+            return app(App\Services\SettingsService::class)->get($key, $default);
+        } catch (\Exception $e) {
+            \Log::warning("Settings helper error for key '{$key}': " . $e->getMessage());
+            return $default;
+        }
+    }
+}
+
+if (!function_exists('update_setting')) {
+    /**
+     * Update setting value
+     */
+    function update_setting(string $key, $value): bool
+    {
+        try {
+            return app(App\Services\SettingsService::class)->set($key, $value);
+        } catch (\Exception $e) {
+            \Log::error("Failed to update setting '{$key}': " . $e->getMessage());
+            return false;
+        }
+    }
+}
+
+if (!function_exists('site_name')) {
+    /**
+     * Get site name
+     */
+    function site_name(): string
+    {
+        return settings('site_name', config('app.name'));
+    }
+}
+
+if (!function_exists('site_description')) {
+    /**
+     * Get site description
+     */
+    function site_description(): string
+    {
+        return settings('site_description', 'Professional Construction & General Supplier');
+    }
+}
+
+if (!function_exists('contact_email')) {
+    /**
+     * Get contact email
+     */
+    function contact_email(): string
+    {
+        return settings('contact_email', config('mail.from.address'));
+    }
+}
+
+if (!function_exists('contact_phone')) {
+    /**
+     * Get contact phone
+     */
+    function contact_phone(): string
+    {
+        return settings('contact_phone', '');
+    }
+}
+
+// SEO Helper Functions
+if (!function_exists('seo_title')) {
+    /**
+     * Generate SEO title
+     */
+    function seo_title(?string $title = null): string
+    {
+        return \App\Helpers\SeoHelper::generateTitle($title);
+    }
+}
+
+if (!function_exists('seo_description')) {
+    /**
+     * Generate SEO description
+     */
+    function seo_description(?string $content = null): string
+    {
+        return \App\Helpers\SeoHelper::generateDescription($content);
+    }
+}
+
+if (!function_exists('seo_keywords')) {
+    /**
+     * Generate SEO keywords
+     */
+    function seo_keywords(?string $additional = null): string
+    {
+        return \App\Helpers\SeoHelper::generateKeywords($additional);
+    }
+}
+
+if (!function_exists('og_image')) {
+    /**
+     * Generate Open Graph image URL
+     */
+    function og_image($model = null): string
+    {
+        return \App\Helpers\SeoHelper::generateOgImage($model);
+    }
+}
+
+if (!function_exists('canonical_url')) {
+    /**
+     * Generate canonical URL
+     */
+    function canonical_url(?string $path = null): string
+    {
+        return \App\Helpers\SeoHelper::generateCanonicalUrl($path);
+    }
+}
+
+if (!function_exists('company_schema')) {
+    /**
+     * Generate company schema
+     */
+    function company_schema(): array
+    {
+        return \App\Helpers\SeoHelper::generateCompanySchema();
+    }
+}
+
+if (!function_exists('breadcrumb_schema')) {
+    /**
+     * Generate breadcrumb schema
+     */
+    function breadcrumb_schema(array $breadcrumbs): array
+    {
+        return \App\Helpers\SeoHelper::generateBreadcrumbSchema($breadcrumbs);
+    }
+}
+
 if (!function_exists('human_filesize')) {
     /**
      * Convert bytes to human readable format

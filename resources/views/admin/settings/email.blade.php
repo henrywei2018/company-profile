@@ -1,482 +1,312 @@
-{{-- resources/views/admin/settings/email.blade.php --}}
-<x-layouts.admin title="Email Settings" >
-    <!-- Breadcrumb -->
-    <x-admin.breadcrumb :items="['Settings' => route('admin.settings.index'), 'Email Settings' => '']" />
-
+{{-- resources/views/admin/settings/email.blade.php - Simplified Version --}}
+<x-layouts.admin title="Email Settings">
     <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Email Settings</h1>
-            <p class="text-sm text-gray-600 dark:text-neutral-400">Configure email settings for messages, quotations, and notifications</p>
-        </div>
-        <div class="flex items-center gap-3">
-            <x-admin.button type="button" color="info" onclick="testEmailConnection()" id="test-connection-btn"
-                icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />'>
-                Test Connection
-            </x-admin.button>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Email Settings</h2>
+            <p class="text-sm text-gray-600 dark:text-neutral-400">Configure email settings and notifications</p>
         </div>
     </div>
 
-    <form action="{{ route('admin.settings.email.update') }}" method="POST" id="email-settings-form">
-        @csrf
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            <!-- SMTP Configuration -->
-            <x-admin.form-section title="SMTP Configuration" description="Configure your email server settings">
-    <div class="space-y-4">
-        <x-admin.input 
-            label="SMTP Host" 
-            name="mail_host" 
-            :value="old('mail_host', config('mail.mailers.smtp.host'))" 
-            placeholder="smtp.gmail.com"
-            required 
-            helper="Your SMTP server hostname"
-        />
-
-        <div class="grid grid-cols-2 gap-4">
-            <x-admin.input 
-                label="SMTP Port" 
-                name="mail_port" 
-                type="number"
-                :value="old('mail_port', config('mail.mailers.smtp.port'))" 
-                placeholder="587"
-                required 
-            />
-
-            <x-admin.select 
-                label="Encryption" 
-                name="mail_encryption" 
-                :value="old('mail_encryption', config('mail.mailers.smtp.encryption'))"
-                :options="[
-                    'tls' => 'TLS (Recommended)',
-                    'ssl' => 'SSL',
-                    'null' => 'None'
-                ]"
-                required
-            />
+    <!-- Settings Tabs -->
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+        <div class="border-b border-gray-200 dark:border-gray-700">
+            <nav class="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+                <a href="{{ route('admin.settings.index') }}" 
+                   class="border-transparent border-b-2 py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300">
+                    General
+                </a>
+                <a href="{{ route('admin.settings.seo') }}" 
+                   class="border-transparent border-b-2 py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300">
+                    SEO
+                </a>
+                <a href="{{ route('admin.settings.email') }}" 
+                   class="border-b-2 border-indigo-500 py-4 px-1 text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                    Email
+                </a>
+            </nav>
         </div>
 
-        <x-admin.input 
-            label="SMTP Username" 
-            name="mail_username" 
-            :value="old('mail_username', config('mail.mailers.smtp.username'))" 
-            placeholder="your-email@gmail.com"
-            required 
-            helper="Usually your email address"
-        />
+        <form action="{{ route('admin.settings.email.update') }}" method="POST" class="p-6 space-y-8">
+            @csrf
+            @method('PUT')
 
-        <x-admin.input 
-            label="SMTP Password" 
-            name="mail_password" 
-            type="password"
-            :value="old('mail_password', config('mail.mailers.smtp.password'))" 
-            placeholder="Your app password or SMTP password"
-            required 
-            helper="For Gmail, use App Password, not your regular password"
-        />
-    </div>
-</x-admin.form-section>
+            <!-- Basic Email Settings -->
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Basic Email Configuration</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Configure basic email settings for your application.</p>
+                </div>
 
-            <!-- Email Addresses -->
-            <x-admin.form-section title="Email Addresses" description="Configure sender and recipient email addresses">
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div>
+                        <label for="mail_from_address" class="block text-sm font-medium text-gray-700 dark:text-gray-200">From Email Address</label>
+                        <input type="email" 
+                               name="mail_from_address" 
+                               id="mail_from_address" 
+                               value="{{ old('mail_from_address', settings('mail_from_address', config('mail.from.address'))) }}" 
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                               required>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Email address that will appear as sender</p>
+                        @error('mail_from_address')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label for="mail_from_name" class="block text-sm font-medium text-gray-700 dark:text-gray-200">From Name</label>
+                        <input type="text" 
+                               name="mail_from_name" 
+                               id="mail_from_name" 
+                               value="{{ old('mail_from_name', settings('mail_from_name', config('mail.from.name'))) }}" 
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                               required>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Name that will appear as sender</p>
+                        @error('mail_from_name')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div>
+                        <label for="admin_email" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Admin Email</label>
+                        <input type="email" 
+                               name="admin_email" 
+                               id="admin_email" 
+                               value="{{ old('admin_email', settings('admin_email', config('mail.from.address'))) }}" 
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                               required>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Email to receive admin notifications</p>
+                        @error('admin_email')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label for="support_email" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Support Email</label>
+                        <input type="email" 
+                               name="support_email" 
+                               id="support_email" 
+                               value="{{ old('support_email', settings('support_email')) }}" 
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Email for customer support inquiries</p>
+                        @error('support_email')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message Email Settings -->
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Message Email Settings</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Configure how message emails are handled.</p>
+                </div>
+
                 <div class="space-y-4">
-                    <x-admin.input 
-                        label="From Email Address" 
-                        name="mail_from_address" 
-                        type="email"
-                        :value="old('mail_from_address', config('mail.from.address'))" 
-                        placeholder="noreply@company.com"
-                        required 
-                        helper="Email address that will appear as sender"
-                    />
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input id="message_email_enabled" 
+                                   name="message_email_enabled" 
+                                   type="checkbox" 
+                                   value="1"
+                                   {{ old('message_email_enabled', settings('message_email_enabled', true)) ? 'checked' : '' }}
+                                   class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="message_email_enabled" class="font-medium text-gray-700 dark:text-gray-200">Enable Message Email Notifications</label>
+                            <p class="text-gray-500 dark:text-gray-400">Send email notifications when new messages are received</p>
+                        </div>
+                    </div>
 
-                    <x-admin.input 
-                        label="From Name" 
-                        name="mail_from_name" 
-                        :value="old('mail_from_name', config('mail.from.name'))" 
-                        placeholder="CV Usaha Prima Lestari"
-                        required 
-                        helper="Name that will appear as sender"
-                    />
-
-                    <x-admin.input 
-                        label="Admin Email" 
-                        name="admin_email" 
-                        type="email"
-                        :value="old('admin_email', settings('admin_email', 'admin@company.com'))" 
-                        placeholder="admin@company.com"
-                        required 
-                        helper="Email to receive new message and quotation notifications"
-                    />
-
-                    <x-admin.input 
-                        label="Support Email" 
-                        name="support_email" 
-                        type="email"
-                        :value="old('support_email', settings('support_email', 'support@company.com'))" 
-                        placeholder="support@company.com"
-                        helper="Email for customer support inquiries"
-                    />
-                </div>
-            </x-admin.form-section>
-        </div>
-
-        <!-- Message Settings -->
-        <x-admin.form-section title="Message Email Settings" description="Configure how message emails are handled" class="mt-6">
-            <div class="space-y-4">
-                <x-admin.toggle 
-                    label="Enable Message Email Notifications" 
-                    name="message_email_enabled" 
-                    :checked="old('message_email_enabled', settings('message_email_enabled', true))"
-                    helper="Send email notifications when new messages are received"
-                />
-
-                <x-admin.toggle 
-                    label="Auto-Reply to Messages" 
-                    name="message_auto_reply_enabled" 
-                    :checked="old('message_auto_reply_enabled', settings('message_auto_reply_enabled', true))"
-                    helper="Automatically send confirmation emails to message senders"
-                />
-
-                <x-admin.rich-editor 
-                    label="Auto-Reply Message Template" 
-                    name="message_auto_reply_template" 
-                    :value="old('message_auto_reply_template', settings('message_auto_reply_template', $defaultMessageReply))"
-                    helper="Use {name}, {email}, {subject} as placeholders"
-                    minHeight="150px"
-                />
-
-                <x-admin.input 
-                    label="Message Reply-To Email" 
-                    name="message_reply_to" 
-                    type="email"
-                    :value="old('message_reply_to', settings('message_reply_to', settings('admin_email')))" 
-                    placeholder="admin@company.com"
-                    helper="Email address for replies to message notifications"
-                />
-            </div>
-        </x-admin.form-section>
-
-        <!-- Quotation Settings -->
-        <x-admin.form-section title="Quotation Email Settings" description="Configure how quotation emails are handled" class="mt-6">
-            <div class="space-y-4">
-                <x-admin.toggle 
-                    label="Enable Quotation Email Notifications" 
-                    name="quotation_email_enabled" 
-                    :checked="old('quotation_email_enabled', settings('quotation_email_enabled', true))"
-                    helper="Send email notifications when new quotation requests are received"
-                />
-
-                <x-admin.toggle 
-                    label="Send Quotation Confirmation to Client" 
-                    name="quotation_client_confirmation_enabled" 
-                    :checked="old('quotation_client_confirmation_enabled', settings('quotation_client_confirmation_enabled', true))"
-                    helper="Automatically send confirmation emails to quotation requesters"
-                />
-
-                <x-admin.rich-editor 
-                    label="Quotation Confirmation Template" 
-                    name="quotation_confirmation_template" 
-                    :value="old('quotation_confirmation_template', settings('quotation_confirmation_template', $defaultQuotationConfirmation))"
-                    helper="Use {name}, {email}, {service}, {company} as placeholders"
-                    minHeight="200px"
-                />
-
-                <div class="grid grid-cols-2 gap-4">
-                    <x-admin.input 
-                        label="Quotation Reply-To Email" 
-                        name="quotation_reply_to" 
-                        type="email"
-                        :value="old('quotation_reply_to', settings('quotation_reply_to', settings('admin_email')))" 
-                        placeholder="quotations@company.com"
-                        helper="Email address for quotation-related replies"
-                    />
-
-                    <x-admin.input 
-                        label="CC Email for Quotations" 
-                        name="quotation_cc_email" 
-                        type="email"
-                        :value="old('quotation_cc_email', settings('quotation_cc_email'))" 
-                        placeholder="sales@company.com"
-                        helper="Optional: CC email for all quotation notifications"
-                    />
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input id="message_auto_reply_enabled" 
+                                   name="message_auto_reply_enabled" 
+                                   type="checkbox" 
+                                   value="1"
+                                   {{ old('message_auto_reply_enabled', settings('message_auto_reply_enabled', true)) ? 'checked' : '' }}
+                                   class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="message_auto_reply_enabled" class="font-medium text-gray-700 dark:text-gray-200">Auto-Reply to Messages</label>
+                            <p class="text-gray-500 dark:text-gray-400">Automatically send confirmation emails to message senders</p>
+                        </div>
+                    </div>
                 </div>
 
-                <x-admin.toggle 
-                    label="Send Status Update Emails" 
-                    name="quotation_status_updates_enabled" 
-                    :checked="old('quotation_status_updates_enabled', settings('quotation_status_updates_enabled', true))"
-                    helper="Send emails when quotation status changes (approved, rejected, etc.)"
-                />
-            </div>
-        </x-admin.form-section>
-
-        <!-- Email Queue Settings -->
-        <x-admin.form-section title="Email Queue & Delivery Settings" description="Configure email delivery and queue settings" class="mt-6">
-            <div class="space-y-4">
-                <x-admin.select 
-                    label="Email Queue Driver" 
-                    name="queue_driver" 
-                    :value="old('queue_driver', config('queue.default'))"
-                    :options="[
-                        'sync' => 'Sync (Send immediately)',
-                        'database' => 'Database Queue',
-                        'redis' => 'Redis Queue',
-                    ]"
-                    helper="How emails should be processed"
-                />
-
-                <x-admin.toggle 
-                    label="Email Logging" 
-                    name="mail_logging_enabled" 
-                    :checked="old('mail_logging_enabled', settings('mail_logging_enabled', true))"
-                    helper="Log all outgoing emails for debugging"
-                />
-
-                <div class="grid grid-cols-2 gap-4">
-                    <x-admin.input 
-                        label="Daily Email Limit" 
-                        name="daily_email_limit" 
-                        type="number"
-                        :value="old('daily_email_limit', settings('daily_email_limit', 500))" 
-                        placeholder="500"
-                        helper="Maximum emails to send per day (0 = unlimited)"
-                    />
-
-                    <x-admin.input 
-                        label="Retry Failed Emails (times)" 
-                        name="email_retry_attempts" 
-                        type="number"
-                        :value="old('email_retry_attempts', settings('email_retry_attempts', 3))" 
-                        placeholder="3"
-                        helper="How many times to retry failed emails"
-                    />
+                <div>
+                    <label for="message_reply_to" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Message Reply-To Email</label>
+                    <input type="email" 
+                           name="message_reply_to" 
+                           id="message_reply_to" 
+                           value="{{ old('message_reply_to', settings('message_reply_to', settings('admin_email'))) }}" 
+                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Email address for replies to message notifications</p>
+                    @error('message_reply_to')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
-        </x-admin.form-section>
 
-        <!-- Test Email Section -->
-        <x-admin.form-section title="Test Email Configuration" description="Send a test email to verify your settings" class="mt-6">
-            <div class="space-y-4">
-                <x-admin.input 
-                    label="Test Email Address" 
-                    name="test_email" 
-                    type="email"
-                    :value="old('test_email', auth()->user()->email)" 
-                    placeholder="test@example.com"
-                    helper="Email address to send test email to"
-                />
+            <!-- Quotation Email Settings -->
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Quotation Email Settings</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Configure how quotation emails are handled.</p>
+                </div>
 
-                <x-admin.alert type="info" class="mb-4">
-                    <strong>Note:</strong> Test emails will be sent using the current settings. Make sure to save your changes first if you want to test new configuration.
-                </x-admin.alert>
+                <div class="space-y-4">
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input id="quotation_email_enabled" 
+                                   name="quotation_email_enabled" 
+                                   type="checkbox" 
+                                   value="1"
+                                   {{ old('quotation_email_enabled', settings('quotation_email_enabled', true)) ? 'checked' : '' }}
+                                   class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="quotation_email_enabled" class="font-medium text-gray-700 dark:text-gray-200">Enable Quotation Email Notifications</label>
+                            <p class="text-gray-500 dark:text-gray-400">Send email notifications when new quotation requests are received</p>
+                        </div>
+                    </div>
 
-                <div class="flex gap-3">
-                    <x-admin.button type="button" color="info" onclick="sendTestEmail()"
-                        icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />'>
-                        Send Test Email
-                    </x-admin.button>
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input id="quotation_client_confirmation_enabled" 
+                                   name="quotation_client_confirmation_enabled" 
+                                   type="checkbox" 
+                                   value="1"
+                                   {{ old('quotation_client_confirmation_enabled', settings('quotation_client_confirmation_enabled', true)) ? 'checked' : '' }}
+                                   class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="quotation_client_confirmation_enabled" class="font-medium text-gray-700 dark:text-gray-200">Send Quotation Confirmation to Client</label>
+                            <p class="text-gray-500 dark:text-gray-400">Automatically send confirmation emails to quotation requesters</p>
+                        </div>
+                    </div>
+                </div>
 
-                    <x-admin.button type="button" color="warning" onclick="testQuotationEmail()"
-                        icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />'>
-                        Test Quotation Email
-                    </x-admin.button>
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div>
+                        <label for="quotation_reply_to" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Quotation Reply-To Email</label>
+                        <input type="email" 
+                               name="quotation_reply_to" 
+                               id="quotation_reply_to" 
+                               value="{{ old('quotation_reply_to', settings('quotation_reply_to', settings('admin_email'))) }}" 
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Email address for quotation-related replies</p>
+                        @error('quotation_reply_to')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
 
-                    <x-admin.button type="button" color="success" onclick="testMessageEmail()"
-                        icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />'>
-                        Test Message Email
-                    </x-admin.button>
+                    <div>
+                        <label for="quotation_cc_email" class="block text-sm font-medium text-gray-700 dark:text-gray-200">CC Email for Quotations</label>
+                        <input type="email" 
+                               name="quotation_cc_email" 
+                               id="quotation_cc_email" 
+                               value="{{ old('quotation_cc_email', settings('quotation_cc_email')) }}" 
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Optional: CC email for all quotation notifications</p>
+                        @error('quotation_cc_email')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
             </div>
-        </x-admin.form-section>
 
-        <!-- Submit Buttons -->
-        <x-admin.form-section class="mt-6">
-            <x-slot name="footer">
-                <div class="flex justify-end space-x-3">
-                    <x-admin.button type="button" color="light" href="{{ route('admin.settings.index') }}">
-                        Cancel
-                    </x-admin.button>
-                    <x-admin.button type="submit" color="primary"
-                        icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />'>
-                        Save Email Settings
-                    </x-admin.button>
+            <!-- Test Email Section -->
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Test Email Configuration</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Send a test email to verify your settings.</p>
                 </div>
-            </x-slot>
-        </x-admin.form-section>
-    </form>
+
+                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h4 class="text-sm font-medium text-blue-800 dark:text-blue-200">Test Email</h4>
+                            <div class="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                                <div class="flex items-center gap-3">
+                                    <input type="email" 
+                                           name="test_email" 
+                                           id="test_email" 
+                                           value="{{ auth()->user()->email }}" 
+                                           placeholder="test@example.com"
+                                           class="block w-full border-blue-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    <button type="button" 
+                                            onclick="sendTestEmail()" 
+                                            class="inline-flex items-center px-3 py-2 border border-blue-600 rounded-md text-sm font-medium text-blue-600 bg-white hover:bg-blue-50">
+                                        Send Test
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
+                <button type="submit" 
+                        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Save Email Settings
+                </button>
+            </div>
+        </form>
+    </div>
 
     @push('scripts')
     <script>
-        // Test email connection
-        async function testEmailConnection() {
-            const btn = document.getElementById('test-connection-btn');
-            const originalText = btn.innerHTML;
-            
-            btn.disabled = true;
-            btn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Testing...';
-            
-            try {
-                const response = await fetch('{{ route("admin.settings.email.test-connection") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    }
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showNotification('Connection successful!', 'success');
-                } else {
-                    showNotification('Connection failed: ' + result.message, 'error');
-                }
-            } catch (error) {
-                showNotification('Connection test failed: ' + error.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-            }
-        }
-
-        // Send test email
-        async function sendTestEmail() {
-            const testEmail = document.querySelector('input[name="test_email"]').value;
+        function sendTestEmail() {
+            const testEmail = document.getElementById('test_email').value;
             if (!testEmail) {
-                showNotification('Please enter a test email address', 'warning');
+                alert('Please enter a test email address');
                 return;
             }
 
-            try {
-                const response = await fetch('{{ route("admin.settings.email.test") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({ email: testEmail, type: 'general' })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showNotification('Test email sent successfully!', 'success');
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = 'Sending...';
+            button.disabled = true;
+
+            fetch('{{ route("admin.settings.email.test") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ 
+                    email: testEmail, 
+                    type: 'general' 
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Test email sent successfully!');
                 } else {
-                    showNotification('Failed to send test email: ' + result.message, 'error');
+                    alert('Failed to send test email: ' + data.message);
                 }
-            } catch (error) {
-                showNotification('Error sending test email: ' + error.message, 'error');
-            }
-        }
-
-        // Test quotation email
-        async function testQuotationEmail() {
-            const testEmail = document.querySelector('input[name="test_email"]').value;
-            if (!testEmail) {
-                showNotification('Please enter a test email address', 'warning');
-                return;
-            }
-
-            try {
-                const response = await fetch('{{ route("admin.settings.email.test") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({ email: testEmail, type: 'quotation' })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showNotification('Test quotation email sent successfully!', 'success');
-                } else {
-                    showNotification('Failed to send test quotation email: ' + result.message, 'error');
-                }
-            } catch (error) {
-                showNotification('Error sending test quotation email: ' + error.message, 'error');
-            }
-        }
-
-        // Test message email
-        async function testMessageEmail() {
-            const testEmail = document.querySelector('input[name="test_email"]').value;
-            if (!testEmail) {
-                showNotification('Please enter a test email address', 'warning');
-                return;
-            }
-
-            try {
-                const response = await fetch('{{ route("admin.settings.email.test") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({ email: testEmail, type: 'message' })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showNotification('Test message email sent successfully!', 'success');
-                } else {
-                    showNotification('Failed to send test message email: ' + result.message, 'error');
-                }
-            } catch (error) {
-                showNotification('Error sending test message email: ' + error.message, 'error');
-            }
-        }
-
-        // Show notification
-        function showNotification(message, type) {
-            // Create notification element
-            const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 z-50 max-w-sm p-4 rounded-lg shadow-lg ${
-                type === 'success' ? 'bg-green-100 text-green-800 border-green-200' :
-                type === 'error' ? 'bg-red-100 text-red-800 border-red-200' :
-                'bg-yellow-100 text-yellow-800 border-yellow-200'
-            } border`;
-            
-            notification.innerHTML = `
-                <div class="flex items-center">
-                    <span>${message}</span>
-                    <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-sm font-bold">×</button>
-                </div>
-            `;
-            
-            document.body.appendChild(notification);
-            
-            // Auto remove after 5 seconds
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.remove();
-                }
-            }, 5000);
-        }
-
-        // Form submission with validation
-        document.getElementById('email-settings-form').addEventListener('submit', function(e) {
-            const requiredFields = ['mail_host', 'mail_port', 'mail_username', 'mail_password', 'mail_from_address', 'mail_from_name'];
-            let isValid = true;
-            
-            requiredFields.forEach(field => {
-                const input = document.querySelector(`input[name="${field}"]`);
-                if (!input.value.trim()) {
-                    isValid = false;
-                    input.classList.add('border-red-500');
-                } else {
-                    input.classList.remove('border-red-500');
-                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error sending test email');
+            })
+            .finally(() => {
+                button.textContent = originalText;
+                button.disabled = false;
             });
-            
-            if (!isValid) {
-                e.preventDefault();
-                showNotification('Please fill in all required SMTP configuration fields', 'error');
-            }
-        });
+        }
     </script>
     @endpush
 </x-layouts.admin>

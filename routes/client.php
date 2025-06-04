@@ -13,7 +13,7 @@ use App\Http\Controllers\Client\{
 };
 use App\Http\Controllers\ChatController;
 
-Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(function () {
+Route::prefix('client')->name('client.')->middleware(['auth', 'role:client'])->group(function () {
     Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/realtime-stats', [ClientDashboardController::class, 'getRealtimeStats'])->name('dashboard.realtime-stats');
     Route::get('/dashboard/chart-data', [ClientDashboardController::class, 'getChartData'])->name('dashboard.chart-data');

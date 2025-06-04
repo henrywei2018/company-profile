@@ -89,12 +89,7 @@
                     </div>
 
                     <!-- Quick Stats -->
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                            <div class="text-2xl font-bold text-gray-900 dark:text-white">
-                                {{ $companyProfile->established ?? '—' }}</div>
-                            <div class="text-xs text-gray-500 dark:text-gray-400">Established</div>
-                        </div>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">                        
                         <div class="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                             <div class="text-2xl font-bold text-gray-900 dark:text-white">
                                 {{ $companyProfile->certificates_count }}</div>

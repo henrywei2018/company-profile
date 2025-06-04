@@ -59,19 +59,30 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->where('created_at', '<', now()->subDays(90))
                 ->delete();
         })->daily()->at('02:00')->name('cleanup-old-notifications');
+        $schedule->call(function () {
+            app(\App\Services\SettingsService::class)->clearCache();
+        })->daily()->at('01:00')->name('clear-settings-cache');
     })
     ->withProviders([
         App\Providers\RepositoryServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
         App\Providers\NotificationServiceProvider::class,
+        App\Providers\SeoServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->web(append: [
+            \App\Http\Middleware\SeoMiddleware::class,
+
+        ]);
         $middleware->alias([
             'auth' => \Illuminate\Auth\Middleware\Authenticate::class,
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
             'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
-            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'role' => \App\Http\Middleware\RequireRole::class,
+            'permission.all' => \App\Http\Middleware\RequireAllPermissions::class,
+            'permission.any' => \App\Http\Middleware\RequireAnyPermission::class,
+            'rbac' => \App\Http\Middleware\RoleBasedAccessControl::class,
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'client' => \App\Http\Middleware\ClientMiddleware::class,
         ]);
