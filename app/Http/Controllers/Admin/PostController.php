@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 class PostController extends Controller
 {
@@ -171,69 +172,137 @@ class PostController extends Controller
      * Update the specified post.
      */
     public function update(Request $request, Post $post)
-{
-    $validated = $request->validate([
-        'title' => 'required|string|max:255',
-        'slug' => 'nullable|string|max:255|unique:posts,slug,' . $post->id,
-        'excerpt' => 'nullable|string',
-        'content' => 'required|string',
-        'categories' => 'nullable|array',
-        'categories.*' => 'exists:post_categories,id',
-        'status' => 'required|in:draft,published,archived',
-        'featured' => 'boolean',
-        'featured_image' => 'nullable|image|max:2048',
-        'published_at' => 'nullable|date',
-    ]);
+    {
+        // FIXED: Add SEO fields and proper categories validation
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255|unique:posts,slug,' . $post->id,
+            'excerpt' => 'nullable|string',
+            'content' => 'required|string',
+            'status' => 'required|in:draft,published,archived',
+            'featured' => 'boolean',
+            'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'categories' => 'nullable|array',
+            'categories.*' => 'exists:post_categories,id',
+            'published_at' => 'nullable|date',
+            // FIXED: Add SEO validation
+            'seo_title' => 'nullable|string|max:60',
+            'seo_description' => 'nullable|string|max:160', 
+            'seo_keywords' => 'nullable|string|max:255',
+        ]);
 
-    try {
-        // Generate slug if not provided
-        if (empty($validated['slug'])) {
-            $validated['slug'] = Str::slug($validated['title']);
-        }
+        try {
+            // Start database transaction for data integrity
+            DB::beginTransaction();
 
-        // Handle featured checkbox
-        $validated['featured'] = $request->has('featured') ? true : false;
-        
-        // Set published_at date if status changed to published and date not provided
-        if ($validated['status'] === 'published' && $post->status !== 'published' && empty($validated['published_at'])) {
-            $validated['published_at'] = now();
-        }
-
-        // Update post (remove categories and image from main data)
-        $postData = collect($validated)->except(['categories', 'featured_image'])->toArray();
-        $post->update($postData);
-
-        // Handle featured image upload
-        if ($request->hasFile('featured_image')) {
-            // Delete old image
-            if ($post->featured_image) {
-                \Storage::disk('public')->delete($post->featured_image);
+            // Generate slug if not provided
+            if (empty($validated['slug'])) {
+                $validated['slug'] = Str::slug($validated['title']);
             }
-            
-            $image = $request->file('featured_image');
-            $filename = time() . '_' . $image->getClientOriginalName();
-            $path = $image->storeAs('posts', $filename, 'public');
-            $post->update(['featured_image' => $path]);
-        }
 
-        // Sync categories
-        if (isset($validated['categories'])) {
-            $post->categories()->sync($validated['categories']);
-        } else {
-            $post->categories()->detach();
-        }
+            // Ensure slug is unique (excluding current post)
+            $originalSlug = $validated['slug'];
+            $counter = 1;
+            while (Post::where('slug', $validated['slug'])->where('id', '!=', $post->id)->exists()) {
+                $validated['slug'] = $originalSlug . '-' . $counter;
+                $counter++;
+            }
 
-        return redirect()->route('admin.posts.index')
-            ->with('success', 'Post updated successfully!');
+            // FIXED: Handle featured image upload properly
+            if ($request->hasFile('featured_image')) {
+                // Delete old image if exists
+                if ($post->featured_image && Storage::disk('public')->exists($post->featured_image)) {
+                    Storage::disk('public')->delete($post->featured_image);
+                }
+
+                // Upload new image using FileUploadService
+                $validated['featured_image'] = $this->fileUploadService->uploadImage(
+                    $request->file('featured_image'),
+                    'posts/images',
+                    null,
+                    1200,
+                    630
+                );
+            }
+
+            // FIXED: Handle published_at logic properly
+            if ($validated['status'] === 'published') {
+                if (empty($validated['published_at']) && empty($post->published_at)) {
+                    $validated['published_at'] = now();
+                } elseif (!empty($validated['published_at'])) {
+                    $validated['published_at'] = \Carbon\Carbon::parse($validated['published_at']);
+                }
+                // If post was already published and no new date provided, keep existing date
+            } else {
+                // If changing from published to draft/archived, you might want to keep or clear the date
+                // Keeping it allows re-publishing with same date
+                // $validated['published_at'] = null; // Uncomment to clear publish date
+            }
+
+            // FIXED: Handle featured checkbox properly (it won't be in $validated if unchecked)
+            $validated['featured'] = $request->has('featured') ? true : false;
+
+            // Update the post (exclude SEO and categories from main update)
+            $postData = collect($validated)->except(['categories', 'seo_title', 'seo_description', 'seo_keywords'])->toArray();
+            $post->update($postData);
+
+            // FIXED: Handle SEO data properly
+            if ($request->filled(['seo_title', 'seo_description', 'seo_keywords'])) {
+                $seoData = array_filter([
+                    'title' => $request->seo_title,
+                    'description' => $request->seo_description,
+                    'keywords' => $request->seo_keywords,
+                ]);
+
+                if (!empty($seoData)) {
+                    $post->updateSeo($seoData);
+                }
+            }
+
+            // FIXED: Sync categories using the pivot table
+            if (isset($validated['categories']) && is_array($validated['categories'])) {
+                // Sync will add new relationships and remove old ones not in the array
+                $post->categories()->sync($validated['categories']);
+                Log::info('Categories synced', [
+                    'post_id' => $post->id,
+                    'categories' => $validated['categories']
+                ]);
+            } else {
+                // If no categories selected, detach all
+                $post->categories()->detach();
+                Log::info('All categories detached', ['post_id' => $post->id]);
+            }
+
+            // Commit the transaction
+            DB::commit();
+
+            Log::info('Post updated successfully', [
+                'post_id' => $post->id,
+                'title' => $post->title,
+                'updated_by' => auth()->id(),
+                'categories_count' => isset($validated['categories']) ? count($validated['categories']) : 0,
+                'status' => $validated['status'],
+                'featured' => $validated['featured']
+            ]);
+
+            return redirect()->route('admin.posts.index')
+                ->with('success', 'Post updated successfully.');
+
+        } catch (\Exception $e) {
+            // Rollback transaction on error
+            DB::rollBack();
             
-    } catch (\Exception $e) {
-        \Log::error('Failed to update post: ' . $e->getMessage());
-        
-        return redirect()->back()
-            ->withInput()
-            ->with('error', 'Failed to update post. Please try again.');
+            Log::error('Failed to update post: ' . $e->getMessage(), [
+                'post_id' => $post->id,
+                'request_data' => $request->except(['featured_image']),
+                'error_trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to update post: ' . $e->getMessage());
+        }
     }
-}
 
     /**
      * Remove the specified post.

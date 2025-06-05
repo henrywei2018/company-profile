@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\PostCategory;
+use App\Services\PostCategoryService;
 use App\Facades\Notifications;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,22 +14,57 @@ use Illuminate\Validation\Rule;
 
 class PostCategoryController extends Controller
 {
+    protected PostCategoryService $postCategoryService;
+
+    public function __construct(PostCategoryService $postCategoryService)
+    {
+        $this->postCategoryService = $postCategoryService;
+    }
+
     /**
      * Display a listing of the categories.
      */
     public function index(Request $request)
     {
         try {
-            $categories = PostCategory::withCount(['posts', 'publishedPosts'])
-                ->when($request->filled('search'), function ($query) use ($request) {
-                    return $query->search($request->search);
-                })
-                ->orderBy('name')
-                ->paginate(15);
+            $query = PostCategory::withCount(['posts', 'publishedPosts']);
+
+            // Handle search
+            if ($request->filled('search')) {
+                $searchTerm = $request->search;
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('name', 'like', "%{$searchTerm}%")
+                      ->orWhere('description', 'like', "%{$searchTerm}%")
+                      ->orWhere('slug', 'like', "%{$searchTerm}%");
+                });
+            }
+
+            // Handle sorting
+            $sortField = $request->get('sort', 'name');
+            $sortDirection = $request->get('direction', 'asc');
+            
+            // Validate sort field
+            $allowedSortFields = ['name', 'slug', 'posts_count', 'published_posts_count', 'created_at', 'updated_at'];
+            if (!in_array($sortField, $allowedSortFields)) {
+                $sortField = 'name';
+            }
+            
+            // Validate sort direction
+            if (!in_array($sortDirection, ['asc', 'desc'])) {
+                $sortDirection = 'asc';
+            }
+
+            $query->orderBy($sortField, $sortDirection);
+
+            $categories = $query->paginate(15)->withQueryString();
 
             return view('admin.post-categories.index', compact('categories'));
         } catch (\Exception $e) {
-            Log::error('Failed to load post categories: ' . $e->getMessage());
+            Log::error('Failed to load post categories: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request_data' => $request->all()
+            ]);
+            
             return redirect()->back()->with('error', 'Failed to load post categories.');
         }
     }
@@ -38,12 +74,7 @@ class PostCategoryController extends Controller
      */
     public function create()
     {
-        try {
-            return view('admin.post-categories.create');
-        } catch (\Exception $e) {
-            Log::error('Failed to load post category create form: ' . $e->getMessage());
-            return redirect()->route('admin.post-categories.index')->with('error', 'Failed to load create form.');
-        }
+        return view('admin.post-categories.create');
     }
 
     /**
@@ -55,49 +86,16 @@ class PostCategoryController extends Controller
             'name' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255|unique:post_categories,slug',
             'description' => 'nullable|string|max:500',
-            'seo_title' => 'nullable|string|max:60',
-            'seo_description' => 'nullable|string|max:160',
-            'seo_keywords' => 'nullable|string|max:255',
         ]);
 
         try {
-            // Generate slug if not provided
-            if (empty($validated['slug'])) {
-                $validated['slug'] = $this->generateUniqueSlug($validated['name']);
-            }
-
-            // Create category
-            $category = PostCategory::create([
-                'name' => $validated['name'],
-                'slug' => $validated['slug'],
-                'description' => $validated['description'],
-            ]);
-
-            // Handle SEO data
-            if ($request->filled(['seo_title', 'seo_description', 'seo_keywords'])) {
-                $seoData = array_filter([
-                    'title' => $request->seo_title,
-                    'description' => $request->seo_description,
-                    'keywords' => $request->seo_keywords,
-                ]);
-
-                if (!empty($seoData)) {
-                    $category->updateSeo($seoData);
-                }
-            }
+            $category = $this->postCategoryService->createCategory($validated);
 
             Log::info('Post category created successfully', [
                 'category_id' => $category->id,
                 'name' => $category->name,
                 'created_by' => Auth::id()
             ]);
-
-            // Send notification
-            try {
-                Notifications::send('post_category.created', $category);
-            } catch (\Exception $e) {
-                Log::warning('Failed to send post category notification: ' . $e->getMessage());
-            }
 
             return redirect()->route('admin.post-categories.index')
                 ->with('success', 'Post category created successfully!');
@@ -116,14 +114,26 @@ class PostCategoryController extends Controller
     public function show(PostCategory $postCategory)
     {
         try {
-            $postCategory->loadCount(['posts', 'publishedPosts']);
+            $postCategory->loadCount(['posts']);
+            
+            // Get recent posts in this category
             $recentPosts = $postCategory->posts()
                                        ->with('author')
                                        ->latest()
                                        ->limit(10)
                                        ->get();
 
-            return view('admin.post-categories.show', compact('postCategory', 'recentPosts'));
+            // Get category statistics
+            $statistics = [
+                'total_posts' => $postCategory->posts()->count(),
+                'published_posts' => $postCategory->posts()->where('status', 'published')->count(),
+                'draft_posts' => $postCategory->posts()->where('status', 'draft')->count(),
+                'archived_posts' => $postCategory->posts()->where('status', 'archived')->count(),
+                'featured_posts' => $postCategory->posts()->where('featured', true)->count(),
+                'latest_post' => $postCategory->posts()->where('status', 'published')->latest('published_at')->first(),
+            ];
+
+            return view('admin.post-categories.show', compact('postCategory', 'recentPosts', 'statistics'));
         } catch (\Exception $e) {
             Log::error('Failed to show post category: ' . $e->getMessage());
             return redirect()->route('admin.post-categories.index')->with('error', 'Failed to load post category.');
@@ -135,13 +145,7 @@ class PostCategoryController extends Controller
      */
     public function edit(PostCategory $postCategory)
     {
-        try {
-            $postCategory->load('seo');
-            return view('admin.post-categories.edit', compact('postCategory'));
-        } catch (\Exception $e) {
-            Log::error('Failed to load post category edit form: ' . $e->getMessage());
-            return redirect()->route('admin.post-categories.index')->with('error', 'Failed to load edit form.');
-        }
+        return view('admin.post-categories.edit', compact('postCategory'));
     }
 
     /**
@@ -158,47 +162,16 @@ class PostCategoryController extends Controller
                 Rule::unique('post_categories', 'slug')->ignore($postCategory->id)
             ],
             'description' => 'nullable|string|max:500',
-            'seo_title' => 'nullable|string|max:60',
-            'seo_description' => 'nullable|string|max:160',
-            'seo_keywords' => 'nullable|string|max:255',
         ]);
 
         try {
-            // Generate slug if not provided
-            if (empty($validated['slug'])) {
-                $validated['slug'] = $this->generateUniqueSlug($validated['name'], $postCategory->id);
-            }
-
-            // Update category
-            $postCategory->update([
-                'name' => $validated['name'],
-                'slug' => $validated['slug'],
-                'description' => $validated['description'],
-            ]);
-
-            // Handle SEO data
-            $seoData = array_filter([
-                'title' => $request->seo_title,
-                'description' => $request->seo_description,
-                'keywords' => $request->seo_keywords,
-            ]);
-
-            if (!empty($seoData)) {
-                $postCategory->updateSeo($seoData);
-            }
+            $category = $this->postCategoryService->updateCategory($postCategory, $validated);
 
             Log::info('Post category updated successfully', [
-                'category_id' => $postCategory->id,
-                'name' => $postCategory->name,
+                'category_id' => $category->id,
+                'name' => $category->name,
                 'updated_by' => Auth::id()
             ]);
-
-            // Send notification
-            try {
-                Notifications::send('post_category.updated', $postCategory);
-            } catch (\Exception $e) {
-                Log::warning('Failed to send post category update notification: ' . $e->getMessage());
-            }
 
             return redirect()->route('admin.post-categories.index')
                 ->with('success', 'Post category updated successfully!');
@@ -217,14 +190,8 @@ class PostCategoryController extends Controller
     public function destroy(PostCategory $postCategory)
     {
         try {
-            // Check if category has posts
-            if ($postCategory->posts()->count() > 0) {
-                return redirect()->route('admin.post-categories.index')
-                    ->with('error', 'Cannot delete category that has posts associated with it!');
-            }
-
             $categoryName = $postCategory->name;
-            $postCategory->delete();
+            $this->postCategoryService->deleteCategory($postCategory);
 
             Log::info('Post category deleted successfully', [
                 'category_name' => $categoryName,
@@ -236,68 +203,78 @@ class PostCategoryController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Failed to delete post category: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to delete post category.');
+            return redirect()->back()->with('error', $e->getMessage());
         }
     }
 
     /**
-     * Bulk delete categories
+     * Bulk actions for categories
      */
-    public function bulkDelete(Request $request)
+    public function bulkAction(Request $request)
     {
         $request->validate([
-            'categories' => 'required|array',
-            'categories.*' => 'exists:post_categories,id'
+            'action' => 'required|in:delete,publish,unpublish,archive,feature,unfeature',
+            'posts' => 'required|array',
+            'posts.*' => 'exists:posts,id'
         ]);
 
         try {
-            $categories = PostCategory::whereIn('id', $request->categories)
-                                    ->withCount('posts')
-                                    ->get();
+            $posts = PostCategory::whereIn('id', $request->posts)->get();
+            $action = $request->action;
+            $count = $posts->count();
 
-            $deletedCount = 0;
-            $skippedCount = 0;
-
-            foreach ($categories as $category) {
-                if ($category->posts_count > 0) {
-                    $skippedCount++;
-                } else {
-                    $category->delete();
-                    $deletedCount++;
+            foreach ($posts as $post) {
+                switch ($action) {
+                    case 'delete':
+                        $post->delete();
+                        break;
+                    case 'publish':
+                        $post->publish();
+                        break;
+                    case 'unpublish':
+                        $post->unpublish();
+                        break;
+                    case 'archive':
+                        $post->archive();
+                        break;
+                    case 'feature':
+                        $post->update(['featured' => true]);
+                        break;
+                    case 'unfeature':
+                        $post->update(['featured' => false]);
+                        break;
                 }
             }
 
-            $message = "Deleted {$deletedCount} categories.";
-            if ($skippedCount > 0) {
-                $message .= " Skipped {$skippedCount} categories that have associated posts.";
-            }
-
-            Log::info('Bulk delete post categories', [
-                'deleted_count' => $deletedCount,
-                'skipped_count' => $skippedCount,
+            Log::info("Bulk action performed on posts", [
+                'action' => $action,
+                'post_count' => $count,
                 'performed_by' => Auth::id()
             ]);
 
-            return redirect()->back()->with('success', $message);
+            return redirect()->back()
+                ->with('success', "Successfully {$action}d {$count} post(s).");
 
         } catch (\Exception $e) {
-            Log::error('Failed to bulk delete post categories: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to delete categories.');
+            Log::error('Failed to perform bulk action: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to perform bulk action.');
         }
     }
 
     /**
      * Export categories
      */
-    public function export()
+    public function export(Request $request)
     {
         try {
-            $categories = PostCategory::withCount(['posts', 'publishedPosts'])->get();
+            $format = $request->get('format', 'json');
+            $categories = PostCategory::withCount(['posts'])->get();
 
             $exportData = [
                 'exported_at' => now()->toISOString(),
                 'exported_by' => Auth::user()->name,
                 'total_categories' => $categories->count(),
+                'export_format' => $format,
                 'categories' => $categories->map(function ($category) {
                     return [
                         'id' => $category->id,
@@ -305,22 +282,23 @@ class PostCategoryController extends Controller
                         'slug' => $category->slug,
                         'description' => $category->description,
                         'posts_count' => $category->posts_count,
-                        'published_posts_count' => $category->published_posts_count,
+                        'published_posts_count' => $category->posts()->where('status', 'published')->count(),
                         'created_at' => $category->created_at->toISOString(),
                         'updated_at' => $category->updated_at->toISOString(),
-                        'seo' => $category->seo ? [
-                            'title' => $category->seo->title,
-                            'description' => $category->seo->description,
-                            'keywords' => $category->seo->keywords,
-                        ] : null,
                     ];
                 })
             ];
 
-            $filename = 'post-categories-export-' . now()->format('Y-m-d-H-i-s') . '.json';
+            $filename = 'post-categories-export-' . now()->format('Y-m-d-H-i-s');
 
-            return response()->json($exportData)
-                ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+            switch ($format) {
+                case 'csv':
+                    return $this->exportToCsv($exportData, $filename);
+                case 'json':
+                default:
+                    return response()->json($exportData)
+                        ->header('Content-Disposition', "attachment; filename=\"{$filename}.json\"");
+            }
 
         } catch (\Exception $e) {
             Log::error('Failed to export post categories: ' . $e->getMessage());
@@ -334,32 +312,22 @@ class PostCategoryController extends Controller
     public function statistics()
     {
         try {
-            $stats = [
-                'total_categories' => PostCategory::count(),
-                'categories_with_posts' => PostCategory::has('posts')->count(),
-                'empty_categories' => PostCategory::doesntHave('posts')->count(),
-                'average_posts_per_category' => round(PostCategory::withCount('posts')->avg('posts_count'), 2),
-                'most_popular_categories' => PostCategory::withCount('publishedPosts')
-                                                        ->having('published_posts_count', '>', 0)
-                                                        ->orderByDesc('published_posts_count')
-                                                        ->limit(5)
-                                                        ->get()
-                                                        ->map(function ($category) {
-                                                            return [
-                                                                'name' => $category->name,
-                                                                'posts_count' => $category->published_posts_count,
-                                                            ];
-                                                        }),
-                'recent_categories' => PostCategory::latest()
-                                                  ->limit(5)
-                                                  ->get()
-                                                  ->map(function ($category) {
-                                                      return [
-                                                          'name' => $category->name,
-                                                          'created_at' => $category->created_at->diffForHumans(),
-                                                      ];
-                                                  }),
-            ];
+            $stats = $this->postCategoryService->getStatistics();
+            
+            // Add recent activity
+            $recentActivity = PostCategory::latest('updated_at')
+                                         ->limit(5)
+                                         ->get()
+                                         ->map(function ($category) {
+                                             return [
+                                                 'id' => $category->id,
+                                                 'name' => $category->name,
+                                                 'posts_count' => $category->posts()->count(),
+                                                 'updated_at' => $category->updated_at->diffForHumans(),
+                                             ];
+                                         });
+
+            $stats['recent_activity'] = $recentActivity;
 
             return response()->json(['success' => true, 'data' => $stats]);
 
@@ -370,29 +338,66 @@ class PostCategoryController extends Controller
     }
 
     /**
-     * Generate unique slug
+     * Get popular categories for dashboard widgets
      */
-    private function generateUniqueSlug(string $name, ?int $excludeId = null): string
+    public function getPopularCategories(Request $request)
     {
-        $slug = Str::slug($name);
-        $originalSlug = $slug;
-        $counter = 1;
+        try {
+            $limit = $request->get('limit', 5);
+            $categories = $this->postCategoryService->getPopularCategories($limit);
 
-        while (true) {
-            $query = PostCategory::where('slug', $slug);
-            
-            if ($excludeId) {
-                $query->where('id', '!=', $excludeId);
-            }
-            
-            if (!$query->exists()) {
-                break;
-            }
-            
-            $slug = $originalSlug . '-' . $counter;
-            $counter++;
+            return response()->json([
+                'success' => true,
+                'data' => $categories->map(function ($category) {
+                    return [
+                        'id' => $category->id,
+                        'name' => $category->name,
+                        'posts_count' => $category->posts_count,
+                        'url' => route('admin.post-categories.show', $category),
+                    ];
+                })
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get popular categories: ' . $e->getMessage());
+            return response()->json(['success' => false, 'error' => 'Failed to get categories.'], 500);
         }
+    }
 
-        return $slug;
+    /**
+     * Export to CSV format
+     */
+    private function exportToCsv(array $data, string $filename): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}.csv\"",
+        ];
+
+        return response()->stream(function () use ($data) {
+            $file = fopen('php://output', 'w');
+            
+            // Write CSV headers
+            fputcsv($file, [
+                'ID', 'Name', 'Slug', 'Description', 'Posts Count', 
+                'Published Posts Count', 'Created At', 'Updated At'
+            ]);
+            
+            // Write data rows
+            foreach ($data['categories'] as $category) {
+                fputcsv($file, [
+                    $category['id'],
+                    $category['name'],
+                    $category['slug'],
+                    $category['description'],
+                    $category['posts_count'],
+                    $category['published_posts_count'],
+                    $category['created_at'],
+                    $category['updated_at'],
+                ]);
+            }
+            
+            fclose($file);
+        }, 200, $headers);
     }
 }

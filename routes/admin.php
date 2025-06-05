@@ -259,9 +259,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // Post Categories
     Route::resource('post-categories', PostCategoryController::class);
     Route::prefix('post-categories')->name('post-categories.')->group(function () {
-        Route::post('/{postCategory}/toggle-active', [PostCategoryController::class, 'toggleActive'])->name('toggle-active');
+        // Bulk operations
+        Route::post('/bulk-action', [PostCategoryController::class, 'bulkAction'])->name('bulk-action');
+       
         Route::get('/export', [PostCategoryController::class, 'export'])->name('export');
+        
         Route::get('/statistics', [PostCategoryController::class, 'statistics'])->name('statistics');
+        
+        Route::get('/popular', [PostCategoryController::class, 'getPopularCategories'])->name('popular');
+        
+        Route::get('/search', [PostCategoryController::class, 'search'])->name('search');
     });
 
     // Company Profile
