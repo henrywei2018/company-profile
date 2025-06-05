@@ -6,17 +6,16 @@ use App\Models\Project;
 use App\Models\ProjectCategory;
 use Illuminate\Http\Request;
 
-class PortfolioController extends Controller
+class ProjectController extends Controller
 {
     /**
-     * Display a listing of portfolio projects.
+     * Display a listing of projects.
      */
     public function index(Request $request)
     {
         $query = Project::query()
             ->with(['category', 'images', 'client'])
-            ->where('is_active', true)
-            ->where('status', 'completed'); // Only show completed projects in portfolio
+            ->where('is_active', true);
 
         // Apply filters
         if ($request->filled('category')) {
@@ -30,27 +29,19 @@ class PortfolioController extends Controller
             });
         }
 
-        if ($request->filled('year')) {
-            $query->where('year', $request->year);
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
         }
 
-        // Order by featured first, then by created date
         $projects = $query->orderByDesc('featured')
                          ->orderByDesc('created_at')
                          ->paginate(12);
 
         $categories = ProjectCategory::whereHas('projects', function ($query) {
-            $query->where('is_active', true)->where('status', 'completed');
+            $query->where('is_active', true);
         })->get();
 
-        $years = Project::where('is_active', true)
-                       ->where('status', 'completed')
-                       ->selectRaw('YEAR(created_at) as year')
-                       ->distinct()
-                       ->orderByDesc('year')
-                       ->pluck('year');
-
-        return view('portfolio.index', compact('projects', 'categories', 'years'));
+        return view('projects.index', compact('projects', 'categories'));
     }
 
     /**
@@ -58,8 +49,8 @@ class PortfolioController extends Controller
      */
     public function show(Project $project)
     {
-        // Check if project is active and accessible to public
-        if (!$project->is_active || $project->status !== 'completed') {
+        // Check if project is active
+        if (!$project->is_active) {
             abort(404);
         }
 
@@ -70,23 +61,20 @@ class PortfolioController extends Controller
                 $query->orderBy('sort_order')->orderBy('created_at');
             },
             'testimonials' => function ($query) {
-                $query->where('is_active', true)->where('featured', true);
+                $query->where('is_active', true);
             }
         ]);
 
         // Get related projects
         $relatedProjects = Project::where('is_active', true)
-            ->where('status', 'completed')
             ->where('id', '!=', $project->id)
             ->when($project->project_category_id, function ($query) use ($project) {
                 $query->where('project_category_id', $project->project_category_id);
             })
             ->with(['category', 'images'])
-            ->orderByDesc('featured')
-            ->orderByDesc('created_at')
             ->limit(3)
             ->get();
 
-        return view('portfolio.show', compact('project', 'relatedProjects'));
+        return view('projects.show', compact('project', 'relatedProjects'));
     }
 }

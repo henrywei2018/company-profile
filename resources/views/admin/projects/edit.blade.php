@@ -33,7 +33,7 @@
             
             @if($project->slug)
                 <x-admin.button 
-                    href="{{ route('projects.show', $project->slug) }}" 
+                    href="{{ route('portfolio.projects.show', $project->slug) }}" 
                     color="info"
                     size="sm"
                     target="_blank"

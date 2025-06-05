@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\{
     ServiceController,
     ServiceCategoryController,
     ProjectController,
+    ProjectFileController, 
     ProjectMilestoneController,
     ProjectCategoryController,
     QuotationController,
@@ -105,7 +106,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::resource('projects', ProjectController::class);
     Route::patch('/projects/{project}/toggle-featured', [ProjectController::class, 'toggleFeatured'])->name('projects.toggle-featured');
     Route::post('/projects/update-order', [ProjectController::class, 'updateOrder'])->name('projects.update-order');
-    // Project Milestones - Nested resource routes
+    
+    // NEW: Quick update route for project settings
+    Route::patch('/projects/{project}/quick-update', [ProjectController::class, 'quickUpdate'])->name('projects.quick-update');
+    
+    // NEW: Convert project back to quotation
+    Route::post('/projects/{project}/convert-to-quotation', [ProjectController::class, 'convertToQuotation'])->name('projects.convert-to-quotation');
+
+    // Project Milestones - Enhanced Routes
     Route::prefix('projects/{project}')->name('projects.')->group(function () {
         // Milestone CRUD
         Route::resource('milestones', ProjectMilestoneController::class)->except(['index']);
@@ -119,6 +127,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
             Route::patch('/{milestone}/complete', [ProjectMilestoneController::class, 'complete'])->name('complete');
             Route::patch('/{milestone}/reopen', [ProjectMilestoneController::class, 'reopen'])->name('reopen');
             
+            // NEW: Update milestone status via AJAX (for kanban)
+            Route::patch('/{milestone}/update-status', [ProjectMilestoneController::class, 'updateStatus'])->name('update-status');
+            
             // Bulk operations
             Route::post('/bulk-update', [ProjectMilestoneController::class, 'bulkUpdate'])->name('bulk-update');
             Route::post('/update-order', [ProjectMilestoneController::class, 'updateOrder'])->name('update-order');
@@ -127,11 +138,24 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
             Route::get('/calendar', [ProjectMilestoneController::class, 'calendar'])->name('calendar');
             Route::get('/statistics', [ProjectMilestoneController::class, 'statistics'])->name('statistics');
         });
+
+        // NEW: Project Files Management
+        Route::prefix('files')->name('files.')->group(function () {
+            Route::get('/', [ProjectFileController::class, 'index'])->name('index');
+            Route::get('/create', [ProjectFileController::class, 'create'])->name('create');
+            Route::post('/', [ProjectFileController::class, 'store'])->name('store');
+            Route::get('/{file}/download', [ProjectFileController::class, 'download'])->name('download');
+            Route::delete('/{file}', [ProjectFileController::class, 'destroy'])->name('destroy');
+            
+            // Bulk operations
+            Route::post('/bulk-upload', [ProjectFileController::class, 'bulkUpload'])->name('bulk-upload');
+            Route::post('/bulk-delete', [ProjectFileController::class, 'bulkDelete'])->name('bulk-delete');
+        });
     });
+
     // Project Categories
     Route::resource('project-categories', ProjectCategoryController::class);
     Route::patch('/project-categories/{projectCategory}/toggle-active', [ProjectCategoryController::class, 'toggleActive'])->name('project-categories.toggle-active');
-
     // Chat
     Route::prefix('chat')->name('chat.')->group(function () {
         // Main chat management

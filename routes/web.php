@@ -6,6 +6,7 @@ use App\Http\Controllers\{
     PortfolioController,
     QuotationController,
     MessageController,
+    ProjectController,
     BlogController,
     ContactController,
     AboutController,
@@ -43,7 +44,11 @@ Route::prefix('services')->group(function () {
 Route::prefix('portfolio')->group(function () {
     Route::get('/', [PortfolioController::class, 'index'])->name('portfolio.index');
     Route::get('/{slug}', [PortfolioController::class, 'show'])->name('portfolio.show');
+    Route::prefix('projects')->group(function () {
+        Route::get('/{slug}', [ProjectController::class, 'show'])->name('portfolio.projects.show');
+    });
 });
+
 
 Route::prefix('team')->group(function () {
     Route::get('/', [TeamController::class, 'index'])->name('team.index');

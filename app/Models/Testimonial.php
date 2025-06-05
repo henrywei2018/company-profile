@@ -4,62 +4,55 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\HasActiveTrait;
-use App\Traits\ImageableTrait;
 
 class Testimonial extends Model
 {
-    use HasFactory, HasActiveTrait, ImageableTrait;
+    use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'project_id',
-        'client_name',
-        'client_position',
-        'client_company',
+        'client_id',
+        'name',
+        'email',
+        'company',
+        'position',
         'content',
-        'image',
         'rating',
-        'is_active',
         'featured',
+        'is_active',
+        'approved_at',
+        'photo',
     ];
-    
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array
-     */
+
     protected $casts = [
-        'rating' => 'integer',
-        'is_active' => 'boolean',
         'featured' => 'boolean',
+        'is_active' => 'boolean',
+        'rating' => 'integer',
+        'approved_at' => 'datetime',
     ];
-    
-    /**
-     * Get the project that owns the testimonial.
-     */
+
     public function project()
     {
         return $this->belongsTo(Project::class);
     }
-    
-    /**
-     * Scope a query to only include featured testimonials.
-     */
+
+    public function client()
+    {
+        return $this->belongsTo(User::class, 'client_id');
+    }
+
     public function scopeFeatured($query)
     {
         return $query->where('featured', true);
     }
-    
-    /**
-     * Scope a query to only exclude featured testimonials.
-     */
-    public function scopeNotFeatured($query)
+
+    public function scopeActive($query)
     {
-        return $query->where('featured', false);
+        return $query->where('is_active', true);
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->whereNotNull('approved_at');
     }
 }

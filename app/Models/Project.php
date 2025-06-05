@@ -24,20 +24,36 @@ class Project extends Model
         'title',
         'slug',
         'description',
+        'short_description',
         'client_id',
         'quotation_id',
         'project_category_id',
-        'service_used',
+        'service_id',
         'status',
+        'priority',
         'year',
         'start_date',
         'end_date',
+        'estimated_completion_date',
         'actual_completion_date',
+        'budget',
+        'actual_cost',
+        'progress_percentage',
         'featured',
+        'is_active',
         'location',
         'challenge',
         'solution',
         'results',
+        'technologies_used',
+        'team_members',
+        'client_feedback',
+        'lessons_learned',
+        'meta_title',
+        'meta_description',
+        'meta_keywords',
+        'service_used',
+        'services_used',
     ];
 
     /**
@@ -48,10 +64,19 @@ class Project extends Model
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'estimated_completion_date' => 'date',
+        'actual_completion_date' => 'date',
         'featured' => 'boolean',
+        'is_active' => 'boolean',
+        'budget' => 'decimal:2',
+        'actual_cost' => 'decimal:2',
+        'progress_percentage' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'service_used' => 'array',
+        'services_used' => 'array',
+        'technologies_used' => 'array',
+        'team_members' => 'array',
     ];
 
     /**
@@ -153,6 +178,10 @@ class Project extends Model
             }
         });
     }
+
+    /**
+     * Get the messages for this project.
+     */
     public function messages()
     {
         return $this->hasMany(Message::class);
@@ -239,6 +268,15 @@ class Project extends Model
     }
 
     /**
+     * Alias for files() - for backward compatibility
+     * This fixes the "attachments" relationship error
+     */
+    public function attachments()
+    {
+        return $this->files();
+    }
+
+    /**
      * Get the project milestones.
      */
     public function milestones()
@@ -246,12 +284,35 @@ class Project extends Model
         return $this->hasMany(ProjectMilestone::class);
     }
 
+    public function testimonials()
+{
+    return $this->hasMany(\App\Models\Testimonial::class);
+}
+
+/**
+ * Get active testimonials for this project.
+ */
+public function activeTestimonials()
+{
+    return $this->hasMany(\App\Models\Testimonial::class)->where('is_active', true);
+}
+
+/**
+ * Get featured testimonials for this project.
+ */
+public function featuredTestimonials()
+{
+    return $this->hasMany(\App\Models\Testimonial::class)
+        ->where('featured', true)
+        ->where('is_active', true);
+}
+
     /**
-     * Get the project testimonial (one-to-one relationship).
+     * Get project updates/logs (if you have this feature)
      */
-    public function testimonial(): HasOne
+    public function updates()
     {
-        return $this->hasOne(Testimonial::class);
+        return $this->hasMany(ProjectUpdate::class)->latest();
     }
 
     /**
@@ -307,10 +368,11 @@ class Project extends Model
      */
     public function getFeaturedImageUrlAttribute(): ?string
     {
-        $image = $this->images()->orderByDesc('is_featured')->orderBy('id')->first();
+        $image = $this->images()->where('is_featured', true)->first() ?:
+            $this->images()->orderBy('sort_order')->first();
 
-        if ($image && $image->file_path && Storage::disk('public')->exists($image->file_path)) {
-            return Storage::url($image->file_path);
+        if ($image && $image->image_path && Storage::disk('public')->exists($image->image_path)) {
+            return Storage::url($image->image_path);
         }
 
         return null;
@@ -376,7 +438,8 @@ class Project extends Model
      */
     public function getMainImageAttribute()
     {
-        return $this->images()->orderByDesc('is_featured')->first();
+        return $this->images()->where('is_featured', true)->first() ?:
+            $this->images()->orderBy('sort_order')->first();
     }
 
     /**
