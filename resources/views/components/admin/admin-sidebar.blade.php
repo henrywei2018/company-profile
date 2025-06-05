@@ -256,17 +256,22 @@
                                 </a>
                             </li>
                             <li>
-                                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.service-categories.index') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
-                                    href="{{ route('admin.service-categories.index') }}">
-                                    Service Categories
-                                </a>
-                            </li>
-                            <li>
                                 <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.services.create') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
                                     href="{{ route('admin.services.create') }}">
                                     Add New Service
                                 </a>
                             </li>
+                            
+                            <li class="my-2">
+                                <div class="border-t border-gray-200 dark:border-gray-700"></div>
+                            </li>
+                            <li>
+                                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.service-categories.index') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
+                                    href="{{ route('admin.service-categories.index') }}">
+                                    Service Categories
+                                </a>
+                            </li>
+                            
                         </ul>
                     </div>
                 </li>

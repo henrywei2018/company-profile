@@ -43,7 +43,7 @@
 
     <!-- Filters -->
     <x-admin.card class="mb-6">
-        <form method="GET" action="{{ route('admin.posts.index') }}" class="space-y-4 sm:space-y-0 sm:flex sm:items-end sm:gap-4">
+        <form method="GET" action="{{ route('admin.posts.index') }}"  class="space-y-4 sm:space-y-0 sm:flex sm:items-end sm:gap-4">
             <!-- Search -->
             <div class="flex-1">
                 <label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">

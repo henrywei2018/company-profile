@@ -1,512 +1,968 @@
-<!-- resources/views/admin/projects/show.blade.php -->
-<x-layouts.admin>
-    <x-slot name="title">Project Details</x-slot>
-    
-    <x-slot name="breadcrumbs">
-        <li class="inline-flex items-center">
-            <svg class="w-5 h-5 text-gray-400 mx-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
-            <a href="{{ route('admin.projects.index') }}" class="text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-500">Projects</a>
-        </li>
-        <li class="inline-flex items-center">
-            <svg class="w-5 h-5 text-gray-400 mx-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
-            <span class="text-gray-700 dark:text-gray-300">{{ $project->title }}</span>
-        </li>
-    </x-slot>
-    
-    <div class="max-w-5xl mx-auto">
-        <!-- Header with Actions -->
-        <div class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ $project->title }}</h1>
-                <p class="text-gray-500 dark:text-gray-400">{{ $project->excerpt }}</p>
+{{-- resources/views/admin/projects/show.blade.php --}}
+<x-layouts.admin title="Project Details">
+    <!-- Page Header -->
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
+        <div class="min-w-0 flex-1">
+            <div class="flex items-center">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white truncate">
+                    {{ $project->title }}
+                </h1>
+                @if($project->featured)
+                    <x-admin.badge type="warning" class="ml-3">
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                        </svg>
+                        Featured
+                    </x-admin.badge>
+                @endif
             </div>
-            <div class="flex items-center space-x-3">
-                <a href="{{ route('admin.projects.edit', $project) }}" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600">
-                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Edit
-                </a>
-                <a href="{{ route('projects.show', $project->slug) }}" target="_blank" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600">
-                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    View on Website
-                </a>
-                <button type="button" 
-                    onclick="if(confirm('Are you sure you want to delete this project? This action cannot be undone.')) { document.getElementById('delete-project-form').submit(); }" 
-                    class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600">
-                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Delete
-                </button>
-                
-                <form id="delete-project-form" action="{{ route('admin.projects.destroy', $project) }}" method="POST" class="hidden">
-                    @csrf
-                    @method('DELETE')
-                </form>
+            <div class="mt-2 flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                @if($project->client)
+                    <span>Client: {{ $project->client->name }}</span>
+                @endif
+                @if($project->category)
+                    <span>{{ $project->category->name }}</span>
+                @endif
+                @if($project->location)
+                    <span>{{ $project->location }}</span>
+                @endif
+                <span>Created {{ $project->created_at->format('M j, Y') }}</span>
             </div>
         </div>
         
-        <!-- Project Tabs -->
-        <x-tabs>
-            <x-slot name="tabs">
-                <x-tab id="details" label="Details" :active="true" />
-                <x-tab id="images" label="Images" />
-                <x-tab id="content" label="Content" />
-                <x-tab id="client" label="Client" />
-                <x-tab id="seo" label="SEO" />
-            </x-slot>
+        <div class="mt-4 lg:mt-0 flex items-center space-x-3">
+            <!-- Status Badge -->
+            <x-admin.badge 
+                type="{{ $project->status === 'completed' ? 'success' : ($project->status === 'in_progress' ? 'warning' : 'info') }}"
+                size="lg"
+            >
+                {{ ucfirst(str_replace('_', ' ', $project->status)) }}
+            </x-admin.badge>
             
-            <x-slot name="content">
-                <!-- Details Tab -->
-                <x-tab-panel id="details" :active="true">
-                    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                        <!-- Featured Image -->
-                        <div class="lg:col-span-2">
-                            @if($project->featured_image)
-                                <div class="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                    <img src="{{ $project->featuredImageUrl }}" alt="{{ $project->title }}" class="w-full h-auto object-cover">
-                                </div>
-                            @else
-                                <div class="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 h-64 flex items-center justify-center">
-                                    <svg class="w-16 h-16 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                </div>
-                            @endif
-                        </div>
-                        
-                        <!-- Project Details -->
-                        <div class="lg:col-span-3">
-                            <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-                                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Project Information</h3>
-                                </div>
-                                <div class="p-6">
-                                    <dl class="divide-y divide-gray-200 dark:divide-gray-700">
-                                        <div class="py-3 grid grid-cols-3 gap-4">
-                                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
-                                            <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                                <x-status-badge status="{{ $project->status }}" />
-                                            </dd>
-                                        </div>
-                                        
-                                        <div class="py-3 grid grid-cols-3 gap-4">
-                                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Category</dt>
-                                            <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                                {{ $project->category ? $project->category->name : 'N/A' }}
-                                            </dd>
-                                        </div>
-                                        
-                                        <div class="py-3 grid grid-cols-3 gap-4">
-                                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Client</dt>
-                                            <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                                @if($project->client)
-                                                    <a href="{{ route('admin.clients.show', $project->client) }}" class="text-blue-600 hover:underline dark:text-blue-400">
-                                                        {{ $project->client->name }}
-                                                    </a>
-                                                @else
-                                                    N/A
-                                                @endif
-                                            </dd>
-                                        </div>
-                                        
-                                        <div class="py-3 grid grid-cols-3 gap-4">
-                                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Start Date</dt>
-                                            <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                                {{ $project->start_date ? $project->start_date->format('F j, Y') : 'Not set' }}
-                                            </dd>
-                                        </div>
-                                        
-                                        <div class="py-3 grid grid-cols-3 gap-4">
-                                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">End Date</dt>
-                                            <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                                {{ $project->end_date ? $project->end_date->format('F j, Y') : 'Not set' }}
-                                            </dd>
-                                        </div>
-                                        
-                                        <div class="py-3 grid grid-cols-3 gap-4">
-                                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Featured</dt>
-                                            <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                                <span class="inline-flex items-center">
-                                                    @if($project->is_featured)
-                                                        <svg class="w-4 h-4 text-green-500 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                        Featured
-                                                    @else
-                                                        <svg class="w-4 h-4 text-red-500 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                        </svg>
-                                                        Not Featured
-                                                    @endif
-                                                </span>
-                                            </dd>
-                                        </div>
-                                        
-                                        <div class="py-3 grid grid-cols-3 gap-4">
-                                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Created</dt>
-                                            <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                                {{ $project->created_at->format('F j, Y \a\t g:i a') }}
-                                            </dd>
-                                        </div>
-                                        
-                                        <div class="py-3 grid grid-cols-3 gap-4">
-                                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</dt>
-                                            <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                                {{ $project->updated_at->format('F j, Y \a\t g:i a') }}
-                                            </dd>
-                                        </div>
-                                    </dl>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </x-tab-panel>
-                
-                <!-- Images Tab -->
-                <x-tab-panel id="images">
-                    <div class="space-y-6">
-                        <!-- Featured Image -->
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Featured Image</h3>
-                            @if($project->featured_image)
-                                <div class="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                    <img src="{{ $project->featuredImageUrl }}" alt="{{ $project->title }}" class="w-full h-auto max-h-96 object-cover">
-                                </div>
-                            @else
-                                <div class="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 h-64 flex items-center justify-center">
-                                    <p class="text-gray-500 dark:text-gray-400">No featured image</p>
-                                </div>
-                            @endif
-                        </div>
-                        
-                        <!-- Image Gallery -->
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Image Gallery</h3>
-                            @if($project->images && $project->images->count() > 0)
-                                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                    @foreach($project->images as $image)
-                                        <div class="relative group border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                            <div class="aspect-w-1 aspect-h-1">
-                                                <img src="{{ $image->url }}" alt="{{ $image->filename }}" class="w-full h-full object-cover">
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @else
-                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center">
-                                    <p class="text-gray-500 dark:text-gray-400">No gallery images</p>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </x-tab-panel>
-                
-                <!-- Content Tab -->
-                <x-tab-panel id="content">
-                    <div class="space-y-8">
-                        <!-- Description -->
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Description</h3>
-                            <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-                                <div class="p-6 prose dark:prose-invert max-w-none">
+            <!-- Priority Badge -->
+            <x-admin.badge 
+                type="{{ $project->priority === 'urgent' ? 'danger' : ($project->priority === 'high' ? 'warning' : 'light') }}"
+            >
+                {{ ucfirst($project->priority) }} Priority
+            </x-admin.badge>
+            
+            <!-- Action Buttons -->
+            <x-admin.button 
+                href="{{ route('admin.projects.edit', $project) }}" 
+                color="primary"
+                size="sm"
+            >
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                Edit
+            </x-admin.button>
+            
+            @if($project->slug)
+                <x-admin.button 
+                    href="{{ route('projects.show', $project->slug) }}" 
+                    color="light"
+                    size="sm"
+                    target="_blank"
+                >
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                    View Live
+                </x-admin.button>
+            @endif
+        </div>
+    </div>
+
+    <!-- Breadcrumb -->
+    <x-admin.breadcrumb :items="[
+        'Projects' => route('admin.projects.index'),
+        $project->title => '#'
+    ]" class="mb-6" />
+
+    <!-- Project Status Alerts -->
+    @if($project->isOverdue())
+        <x-admin.alert type="danger" class="mb-6">
+            <x-slot name="title">Project Overdue</x-slot>
+            This project is {{ now()->diffInDays($project->end_date) }} days overdue. 
+            <a href="{{ route('admin.projects.edit', $project) }}" class="font-medium underline">Update timeline</a>
+        </x-admin.alert>
+    @elseif($project->end_date && $project->end_date->diffInDays(now()) <= 7 && $project->status === 'in_progress')
+        <x-admin.alert type="warning" class="mb-6">
+            <x-slot name="title">Deadline Approaching</x-slot>
+            This project is due in {{ now()->diffInDays($project->end_date) }} days.
+        </x-admin.alert>
+    @endif
+
+    <!-- Project Overview Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <x-admin.stat-card
+            title="Progress"
+            :value="($project->progress_percentage ?? 0) . '%'"
+            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>'
+            iconColor="text-blue-500"
+            iconBg="bg-blue-100 dark:bg-blue-800/30"
+        >
+            <x-slot name="footer">
+                <x-admin.progress 
+                    :value="$project->progress_percentage ?? 0" 
+                    height="xs"
+                    color="blue"
+                />
+            </x-slot>
+        </x-admin.stat-card>
+        
+        <x-admin.stat-card
+            title="Images"
+            :value="$project->images->count()"
+            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>'
+            iconColor="text-green-500"
+            iconBg="bg-green-100 dark:bg-green-800/30"
+            :href="'#images-section'"
+        />
+        
+        <x-admin.stat-card
+            title="Files"
+            :value="$project->files->count()"
+            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>'
+            iconColor="text-purple-500"
+            iconBg="bg-purple-100 dark:bg-purple-800/30"
+            :href="'#files-section'"
+        />
+        
+        <x-admin.stat-card
+            title="Milestones"
+            :value="$project->milestones->count()"
+            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0h6a2 2 0 002-2V7a2 2 0 00-2-2h-2m0 0V3a1 1 0 00-1-1H8a1 1 0 00-1 1v2z"/>'
+            iconColor="text-amber-500"
+            iconBg="bg-amber-100 dark:bg-amber-800/30"
+            :href="'#milestones-section'"
+        />
+        
+        <x-admin.stat-card
+            title="Messages"
+            :value="$project->messages->count()"
+            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>'
+            iconColor="text-indigo-500"
+            iconBg="bg-indigo-100 dark:bg-indigo-800/30"
+            :href="route('admin.messages.index', ['project' => $project->id])"
+        />
+    </div>
+
+    <!-- Main Content Tabs -->
+    <x-admin.tabs activeTab="overview">
+        <x-slot name="tabs">
+            <x-admin.tab id="overview" label="Overview" :active="true" />
+            <x-admin.tab id="milestones" label="Milestones ({{ $project->milestones->count() }})" />
+            <x-admin.tab id="files" label="Files ({{ $project->files->count() }})" />
+            <x-admin.tab id="images" label="Images ({{ $project->images->count() }})" />
+            <x-admin.tab id="timeline" label="Timeline" />
+            <x-admin.tab id="settings" label="Settings" />
+        </x-slot>
+        
+        <x-slot name="content">
+            <!-- Overview Tab -->
+            <x-admin.tab-panel id="overview" :active="true">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Main Content -->
+                    <div class="lg:col-span-2 space-y-8">
+                        <!-- Project Description -->
+                        @if($project->description)
+                            <x-admin.card title="Project Description">
+                                <div class="prose dark:prose-invert max-w-none">
                                     {!! $project->description !!}
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Challenge -->
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Challenge</h3>
-                            <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-                                <div class="p-6 prose dark:prose-invert max-w-none">
-                                    {!! $project->challenge ?: '<p class="text-gray-500 dark:text-gray-400">No challenge description available</p>' !!}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Solution -->
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Solution</h3>
-                            <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-                                <div class="p-6 prose dark:prose-invert max-w-none">
-                                    {!! $project->solution ?: '<p class="text-gray-500 dark:text-gray-400">No solution description available</p>' !!}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Results -->
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Results</h3>
-                            <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-                                <div class="p-6 prose dark:prose-invert max-w-none">
-                                    {!! $project->results ?: '<p class="text-gray-500 dark:text-gray-400">No results description available</p>' !!}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </x-tab-panel>
-                
-                <!-- Client Tab -->
-                <x-tab-panel id="client">
-                    @if($project->client)
-                        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-                            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Client Information</h3>
-                            </div>
-                            <div class="p-6">
-                                <dl class="divide-y divide-gray-200 dark:divide-gray-700">
-                                    <div class="py-3 grid grid-cols-3 gap-4">
-                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Name</dt>
-                                        <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                            {{ $project->client->name }}
-                                        </dd>
-                                    </div>
-                                    
-                                    <div class="py-3 grid grid-cols-3 gap-4">
-                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Company</dt>
-                                        <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                            {{ $project->client->company ?: 'N/A' }}
-                                        </dd>
-                                    </div>
-                                    
-                                    <div class="py-3 grid grid-cols-3 gap-4">
-                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Email</dt>
-                                        <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                            <a href="mailto:{{ $project->client->email }}" class="text-blue-600 hover:underline dark:text-blue-400">
-                                                {{ $project->client->email }}
-                                            </a>
-                                        </dd>
-                                    </div>
-                                    
-                                    <div class="py-3 grid grid-cols-3 gap-4">
-                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</dt>
-                                        <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                            <a href="tel:{{ $project->client->phone }}" class="text-blue-600 hover:underline dark:text-blue-400">
-                                                {{ $project->client->phone ?: 'N/A' }}
-                                            </a>
-                                        </dd>
-                                    </div>
-                                    
-                                    <div class="py-3 grid grid-cols-3 gap-4">
-                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Address</dt>
-                                        <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                            {{ $project->client->address ?: 'N/A' }}
-                                        </dd>
-                                    </div>
-                                    
-                                    <div class="py-3 grid grid-cols-3 gap-4">
-                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
-                                        <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                            <x-status-badge status="{{ $project->client->status }}" />
-                                        </dd>
-                                    </div>
-                                </dl>
-                                
-                                <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                    <a href="{{ route('admin.clients.show', $project->client) }}" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600">
-                                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                        View Client Profile
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Client Projects -->
-                        @if($project->client->projects && $project->client->projects->count() > 1)
-                            <div class="mt-6">
-                                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Other Projects for this Client</h3>
-                                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-                                    <ul class="divide-y divide-gray-200 dark:divide-gray-700">
-                                        @foreach($project->client->projects->where('id', '!=', $project->id) as $otherProject)
-                                            <li class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700">
-                                                <a href="{{ route('admin.projects.show', $otherProject) }}" class="flex items-center">
-                                                    <div class="flex-shrink-0 h-10 w-10">
-                                                        @if($otherProject->featured_image)
-                                                            <img class="h-10 w-10 rounded-md object-cover" src="{{ $otherProject->featuredImageUrl }}" alt="{{ $otherProject->title }}">
-                                                        @else
-                                                            <div class="h-10 w-10 rounded-md bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
-                                                                <svg class="h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                                </svg>
-                                                            </div>
-                                                        @endif
-                                                    </div>
-                                                    <div class="ml-4">
-                                                        <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $otherProject->title }}</div>
-                                                        <div class="text-sm text-gray-500 dark:text-gray-400">
-                                                            <x-status-badge status="{{ $otherProject->status }}" /> · 
-                                                            {{ $otherProject->start_date ? $otherProject->start_date->format('M Y') : 'No date' }}
-                                                        </div>
-                                                    </div>
-                                                </a>
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                            </div>
+                            </x-admin.card>
                         @endif
-                    @else
-                        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6 text-center">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No Client Associated</h3>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                This project does not have a client associated with it.
-                            </p>
-                            <div class="mt-6">
-                                <a href="{{ route('admin.projects.edit', $project) }}" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600">
-                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    Edit Project to Add Client
-                                </a>
-                            </div>
-                        </div>
-                    @endif
-                </x-tab-panel>
-                
-                <!-- SEO Tab -->
-                <x-tab-panel id="seo">
-                    <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-                        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">SEO Information</h3>
-                        </div>
-                        <div class="p-6">
-                            <dl class="divide-y divide-gray-200 dark:divide-gray-700">
-                                <div class="py-3 grid grid-cols-3 gap-4">
-                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">URL Slug</dt>
-                                    <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                        <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{{ $project->slug }}</code>
-                                    </dd>
-                                </div>
+                        
+                        <!-- Challenge, Solution, Results -->
+                        @if($project->challenge || $project->solution || $project->results)
+                            <div class="grid grid-cols-1 gap-6">
+                                @if($project->challenge)
+                                    <x-admin.card title="Challenge">
+                                        <div class="prose dark:prose-invert max-w-none">
+                                            {!! $project->challenge !!}
+                                        </div>
+                                    </x-admin.card>
+                                @endif
                                 
-                                <div class="py-3 grid grid-cols-3 gap-4">
-                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Meta Title</dt>
-                                    <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                        {{ $project->meta_title ?: $project->title }}
-                                    </dd>
-                                </div>
+                                @if($project->solution)
+                                    <x-admin.card title="Solution">
+                                        <div class="prose dark:prose-invert max-w-none">
+                                            {!! $project->solution !!}
+                                        </div>
+                                    </x-admin.card>
+                                @endif
                                 
-                                <div class="py-3 grid grid-cols-3 gap-4">
-                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Meta Description</dt>
-                                    <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                        {{ $project->meta_description ?: ($project->excerpt ?: 'No meta description') }}
-                                    </dd>
-                                </div>
-                                
-                                <div class="py-3 grid grid-cols-3 gap-4">
-                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Meta Keywords</dt>
-                                    <dd class="text-sm text-gray-900 dark:text-white col-span-2">
-                                        @if($project->meta_keywords)
-                                            <div class="flex flex-wrap gap-2">
-                                                @foreach(explode(',', $project->meta_keywords) as $keyword)
-                                                    <span class="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs">
-                                                        {{ trim($keyword) }}
-                                                    </span>
-                                                @endforeach
-                                            </div>
-                                        @else
-                                            <span class="text-gray-500 dark:text-gray-400">No keywords specified</span>
-                                        @endif
-                                    </dd>
-                                </div>
-                            </dl>
-                            
-                            <div class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
-                                <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Search Engine Preview</h4>
-                                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                                    <div class="text-xl text-blue-600 dark:text-blue-400 font-medium truncate">
-                                        {{ $project->meta_title ?: $project->title }}
-                                    </div>
-                                    <div class="text-sm text-green-700 dark:text-green-400 truncate mt-1">
-                                        {{ route('projects.show', $project->slug) }}
-                                    </div>
-                                    <div class="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                                        {{ Str::limit($project->meta_description ?: ($project->excerpt ?: 'No description available'), 160) }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </x-tab-panel>
-            </x-slot>
-        </x-tabs>
-        
-        @if(isset($project->testimonial) && $project->testimonial)
-            <div class="mt-8">
-                <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Client Testimonial</h2>
-                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden p-6">
-                    <div class="flex items-start">
-                        @if($project->testimonial->photo)
-                            <div class="flex-shrink-0 mr-4">
-                                <img class="h-16 w-16 rounded-full object-cover" src="{{ $project->testimonial->photoUrl }}" alt="{{ $project->testimonial->name }}">
-                            </div>
-                        @endif
-                        <div>
-                            <div class="flex items-center mb-2">
-                                <div class="flex items-center mr-2">
-                                    @for($i = 1; $i <= 5; $i++)
-                                        <svg class="w-5 h-5 {{ $i <= $project->testimonial->rating ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600' }}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                        </svg>
-                                    @endfor
-                                </div>
-                                <span class="text-gray-500 dark:text-gray-400 text-sm">{{ $project->testimonial->rating }}/5</span>
-                            </div>
-                            <blockquote class="italic text-gray-700 dark:text-gray-300 mb-3">
-                                "{{ $project->testimonial->content }}"
-                            </blockquote>
-                            <div class="font-medium text-gray-900 dark:text-white">
-                                {{ $project->testimonial->name }}
-                                @if($project->testimonial->position || $project->testimonial->company)
-                                    <span class="font-normal text-gray-500 dark:text-gray-400">
-                                        @if($project->testimonial->position)
-                                            - {{ $project->testimonial->position }}
-                                        @endif
-                                        @if($project->testimonial->company)
-                                            {{ $project->testimonial->position ? ',' : '-' }} {{ $project->testimonial->company }}
-                                        @endif
-                                    </span>
+                                @if($project->results)
+                                    <x-admin.card title="Results">
+                                        <div class="prose dark:prose-invert max-w-none">
+                                            {!! $project->results !!}
+                                        </div>
+                                    </x-admin.card>
                                 @endif
                             </div>
-                            <div class="mt-2">
-                                <a href="{{ route('admin.testimonials.edit', $project->testimonial) }}" class="text-sm text-blue-600 hover:underline dark:text-blue-400">
-                                    Edit Testimonial
-                                </a>
+                        @endif
+                        
+                        <!-- Services & Technologies -->
+                        @if($project->services_used || $project->technologies_used)
+                            <x-admin.card title="Services & Technologies">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    @if($project->services_used)
+                                        <div>
+                                            <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Services Used</h4>
+                                            <div class="flex flex-wrap gap-2">
+                                                @foreach($project->services_used as $service)
+                                                    <x-admin.badge type="info">{{ $service }}</x-admin.badge>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
+                                    
+                                    @if($project->technologies_used)
+                                        <div>
+                                            <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Technologies</h4>
+                                            <div class="flex flex-wrap gap-2">
+                                                @foreach($project->technologies_used as $tech)
+                                                    <x-admin.badge type="light">{{ $tech }}</x-admin.badge>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+                            </x-admin.card>
+                        @endif
+                    </div>
+                    
+                    <!-- Sidebar -->
+                    <div class="space-y-6">
+                        <!-- Project Details -->
+                        <x-admin.card title="Project Details">
+                            <dl class="space-y-4">
+                                @if($project->client)
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Client</dt>
+                                        <dd class="text-sm text-gray-900 dark:text-white">
+                                            <a href="{{ route('admin.users.show', $project->client) }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400">
+                                                {{ $project->client->name }}
+                                            </a>
+                                        </dd>
+                                    </div>
+                                @endif
+                                
+                                @if($project->category)
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Category</dt>
+                                        <dd class="text-sm text-gray-900 dark:text-white">{{ $project->category->name }}</dd>
+                                    </div>
+                                @endif
+                                
+                                @if($project->budget)
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Budget</dt>
+                                        <dd class="text-sm text-gray-900 dark:text-white">${{ number_format($project->budget, 2) }}</dd>
+                                    </div>
+                                @endif
+                                
+                                @if($project->start_date)
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Start Date</dt>
+                                        <dd class="text-sm text-gray-900 dark:text-white">{{ $project->start_date->format('M j, Y') }}</dd>
+                                    </div>
+                                @endif
+                                
+                                @if($project->end_date)
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Deadline</dt>
+                                        <dd class="text-sm text-gray-900 dark:text-white">
+                                            {{ $project->end_date->format('M j, Y') }}
+                                            @if($project->isOverdue())
+                                                <span class="text-red-600 font-medium">(Overdue)</span>
+                                            @elseif($project->end_date->diffInDays(now()) <= 7)
+                                                <span class="text-amber-600 font-medium">(Due Soon)</span>
+                                            @endif
+                                        </dd>
+                                    </div>
+                                @endif
+                                
+                                @if($project->actual_completion_date)
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Completed</dt>
+                                        <dd class="text-sm text-gray-900 dark:text-white">{{ $project->actual_completion_date->format('M j, Y') }}</dd>
+                                    </div>
+                                @endif
+                                
+                                @if($project->year)
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Year</dt>
+                                        <dd class="text-sm text-gray-900 dark:text-white">{{ $project->year }}</dd>
+                                    </div>
+                                @endif
+                            </dl>
+                        </x-admin.card>
+                        
+                        <!-- Quotation Info -->
+                        @if($project->quotation)
+                            <x-admin.card title="Related Quotation">
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-500 dark:text-gray-400">Quotation ID</span>
+                                        <span class="text-sm font-medium">#{{ $project->quotation->id }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-500 dark:text-gray-400">Status</span>
+                                        <x-admin.badge type="success">{{ ucfirst($project->quotation->status) }}</x-admin.badge>
+                                    </div>
+                                    <div class="pt-3">
+                                        <x-admin.button 
+                                            href="{{ route('admin.quotations.show', $project->quotation) }}" 
+                                            color="light" 
+                                            size="sm"
+                                            class="w-full"
+                                        >
+                                            View Quotation
+                                        </x-admin.button>
+                                    </div>
+                                </div>
+                            </x-admin.card>
+                        @endif
+                        
+                        <!-- Quick Actions -->
+                        <x-admin.card title="Quick Actions">
+                            <div class="space-y-2">
+                                <x-admin.button 
+                                    href="{{ route('admin.projects.milestones.create', $project) }}" 
+                                    color="light" 
+                                    size="sm"
+                                    class="w-full"
+                                >
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                    </svg>
+                                    Add Milestone
+                                </x-admin.button>
+                                
+                                <x-admin.button 
+                                    href="{{ route('admin.projects.files.create', $project) }}" 
+                                    color="light" 
+                                    size="sm"
+                                    class="w-full"
+                                >
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                    </svg>
+                                    Upload Files
+                                </x-admin.button>
+                                
+                                <x-admin.button 
+                                    href="{{ route('admin.messages.create', ['project_id' => $project->id]) }}" 
+                                    color="light" 
+                                    size="sm"
+                                    class="w-full"
+                                >
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                    </svg>
+                                    Send Message
+                                </x-admin.button>
                             </div>
+                        </x-admin.card>
+                    </div>
+                </div>
+            </x-admin.tab-panel>
+            
+            <!-- Milestones Tab -->
+            <x-admin.tab-panel id="milestones">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Project Milestones</h3>
+                    <x-admin.button 
+                        href="{{ route('admin.projects.milestones.create', $project) }}" 
+                        color="primary"
+                        size="sm"
+                    >
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                        Add Milestone
+                    </x-admin.button>
+                </div>
+                
+                @if($project->milestones->count() > 0)
+                    <div class="space-y-4">
+                        @foreach($project->milestones->sortBy('due_date') as $milestone)
+                            <x-admin.card>
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <div class="flex items-center">
+                                            <h4 class="text-base font-medium text-gray-900 dark:text-white">
+                                                {{ $milestone->title }}
+                                            </h4>
+                                            <x-admin.badge 
+                                                type="{{ $milestone->status === 'completed' ? 'success' : ($milestone->isOverdue() ? 'danger' : 'warning') }}"
+                                                class="ml-3"
+                                            >
+                                                {{ ucfirst($milestone->status) }}
+                                            </x-admin.badge>
+                                        </div>
+                                        
+                                        @if($milestone->description)
+                                            <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">{{ $milestone->description }}</p>
+                                        @endif
+                                        
+                                        <div class="flex items-center space-x-4 mt-3 text-sm text-gray-500 dark:text-gray-400">
+                                            @if($milestone->due_date)
+                                                <span>Due: {{ $milestone->due_date->format('M j, Y') }}</span>
+                                            @endif
+                                            @if($milestone->completion_date)
+                                                <span>Completed: {{ $milestone->completion_date->format('M j, Y') }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center space-x-2 ml-4">
+                                        <x-admin.icon-button
+                                            href="{{ route('admin.projects.milestones.edit', [$project, $milestone]) }}"
+                                            color="primary"
+                                            size="sm"
+                                            tooltip="Edit milestone"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                        </x-admin.icon-button>
+                                        
+                                        @if($milestone->status !== 'completed')
+                                            <form method="POST" action="{{ route('admin.projects.milestones.complete', [$project, $milestone]) }}" class="inline">
+                                                @csrf
+                                                @method('PATCH')
+                                                <x-admin.icon-button
+                                                    type="submit"
+                                                    color="success"
+                                                    size="sm"
+                                                    tooltip="Mark as completed"
+                                                >
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                                    </svg>
+                                                </x-admin.icon-button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </div>
+                            </x-admin.card>
+                        @endforeach
+                    </div>
+                @else
+                    <x-admin.empty-state
+                        title="No Milestones Yet"
+                        description="Add milestones to track project progress and important deadlines."
+                        actionText="Add First Milestone"
+                        :actionUrl="route('admin.projects.milestones.create', $project)"
+                        icon='<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0h6a2 2 0 002-2V7a2 2 0 00-2-2h-2m0 0V3a1 1 0 00-1-1H8a1 1 0 00-1 1v2z"/></svg>'
+                    />
+                @endif
+            </x-admin.tab-panel>
+            
+            <!-- Files Tab -->
+            <x-admin.tab-panel id="files">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Project Files</h3>
+                    <x-admin.button 
+                        href="{{ route('admin.projects.files.create', $project) }}" 
+                        color="primary"
+                        size="sm"
+                    >
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        Upload Files
+                    </x-admin.button>
+                </div>
+                
+                @if($project->files->count() > 0)
+                    <x-admin.data-table>
+                        <x-slot name="columns">
+                            <x-admin.table-column>File</x-admin.table-column>
+                            <x-admin.table-column>Type</x-admin.table-column>
+                            <x-admin.table-column>Size</x-admin.table-column>
+                            <x-admin.table-column>Downloads</x-admin.table-column>
+                            <x-admin.table-column>Uploaded</x-admin.table-column>
+                            <x-admin.table-column>Actions</x-admin.table-column>
+                        </x-slot>
+                        
+                        @foreach($project->files as $file)
+                            <x-admin.table-row>
+                                <x-admin.table-cell highlight>
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 flex-shrink-0 mr-3">
+                                            <div class="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center">
+                                                <svg class="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $file->file_name }}</p>
+                                            @if($file->description)
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ Str::limit($file->description, 50) }}</p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </x-admin.table-cell>
+                                
+                                <x-admin.table-cell>
+                                    <x-admin.badge type="light">{{ $file->file_icon }}</x-admin.badge>
+                                </x-admin.table-cell>
+                                
+                                <x-admin.table-cell>{{ $file->formatted_file_size }}</x-admin.table-cell>
+                                
+                                <x-admin.table-cell>{{ $file->download_count }}</x-admin.table-cell>
+                                
+                                <x-admin.table-cell>{{ $file->created_at->format('M j, Y') }}</x-admin.table-cell>
+                                
+                                <x-admin.table-cell>
+                                    <div class="flex items-center space-x-2">
+                                        <x-admin.icon-button
+                                            href="{{ route('admin.projects.files.download', [$project, $file]) }}"
+                                            color="primary"
+                                            size="sm"
+                                            tooltip="Download file"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-4-4m4 4l4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                        </x-admin.icon-button>
+                                        
+                                        <form method="POST" action="{{ route('admin.projects.files.destroy', [$project, $file]) }}" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <x-admin.icon-button
+                                                type="submit"
+                                                color="danger"
+                                                size="sm"
+                                                tooltip="Delete file"
+                                                onclick="return confirm('Are you sure you want to delete this file?')"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                            </x-admin.icon-button>
+                                        </form>
+                                    </div>
+                                </x-admin.table-cell>
+                            </x-admin.table-row>
+                        @endforeach
+                    </x-admin.data-table>
+                @else
+                    <x-admin.empty-state
+                        title="No Files Uploaded"
+                        description="Upload project files, documents, and resources for easy access."
+                        actionText="Upload First File"
+                        :actionUrl="route('admin.projects.files.create', $project)"
+                        icon='<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>'
+                    />
+                @endif
+            </x-admin.tab-panel>
+            
+            <!-- Images Tab -->
+            <x-admin.tab-panel id="images">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Project Images</h3>
+                    <x-admin.button 
+                        href="{{ route('admin.projects.edit', $project) }}#images-section" 
+                        color="primary"
+                        size="sm"
+                    >
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        Manage Images
+                    </x-admin.button>
+                </div>
+                
+                @if($project->images->count() > 0)
+                    <x-admin.image-gallery
+                        :images="$project->images->map(fn($img) => [
+                            'path' => $img->image_path,
+                            'alt' => $img->alt_text,
+                            'caption' => $img->alt_text,
+                            'id' => $img->id,
+                            'is_featured' => $img->is_featured
+                        ])"
+                        :columns="3"
+                        :lightbox="true"
+                        aspectRatio="4:3"
+                    />
+                @else
+                    <x-admin.empty-state
+                        title="No Images Uploaded"
+                        description="Add images to showcase this project in your portfolio."
+                        actionText="Add Images"
+                        :actionUrl="route('admin.projects.edit', $project) . '#images-section'"
+                        icon='<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>'
+                    />
+                @endif
+            </x-admin.tab-panel>
+            
+            <!-- Timeline Tab -->
+            <x-admin.tab-panel id="timeline">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-6">Project Timeline</h3>
+                
+                <div class="flow-root">
+                    <ul role="list" class="-mb-8">
+                        <!-- Project Created -->
+                        <li>
+                            <div class="relative pb-8">
+                                <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
+                                <div class="relative flex space-x-3">
+                                    <div>
+                                        <span class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center ring-8 ring-white dark:ring-gray-800">
+                                            <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </span>
+                                    </div>
+                                    <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                        <div>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400">Project created</p>
+                                        </div>
+                                        <div class="text-right text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                                            {{ $project->created_at->format('M j, Y g:i A') }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                        
+                        <!-- Milestones -->
+                        @foreach($project->milestones->sortBy('due_date') as $milestone)
+                            <li>
+                                <div class="relative pb-8">
+                                    @if(!$loop->last)
+                                        <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
+                                    @endif
+                                    <div class="relative flex space-x-3">
+                                        <div>
+                                            <span class="h-8 w-8 rounded-full {{ $milestone->status === 'completed' ? 'bg-green-500' : ($milestone->isOverdue() ? 'bg-red-500' : 'bg-blue-500') }} flex items-center justify-center ring-8 ring-white dark:ring-gray-800">
+                                                @if($milestone->status === 'completed')
+                                                    <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                @else
+                                                    <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                @endif
+                                            </span>
+                                        </div>
+                                        <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $milestone->title }}</p>
+                                                @if($milestone->description)
+                                                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ $milestone->description }}</p>
+                                                @endif
+                                            </div>
+                                            <div class="text-right text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                                                @if($milestone->completion_date)
+                                                    {{ $milestone->completion_date->format('M j, Y') }}
+                                                @elseif($milestone->due_date)
+                                                    Due {{ $milestone->due_date->format('M j, Y') }}
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            </x-admin.tab-panel>
+            
+            <!-- Settings Tab -->
+            <x-admin.tab-panel id="settings">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-6">Project Settings</h3>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Status & Visibility -->
+                    <x-admin.card title="Status & Visibility">
+                        <form method="POST" action="{{ route('admin.projects.quick-update', $project) }}">
+                            @csrf
+                            @method('PATCH')
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
+                                    <select name="status" class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700">
+                                        <option value="planning" {{ $project->status === 'planning' ? 'selected' : '' }}>Planning</option>
+                                        <option value="in_progress" {{ $project->status === 'in_progress' ? 'selected' : '' }}>In Progress</option>
+                                        <option value="on_hold" {{ $project->status === 'on_hold' ? 'selected' : '' }}>On Hold</option>
+                                        <option value="completed" {{ $project->status === 'completed' ? 'selected' : '' }}>Completed</option>
+                                        <option value="cancelled" {{ $project->status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Priority</label>
+                                    <select name="priority" class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700">
+                                        <option value="low" {{ $project->priority === 'low' ? 'selected' : '' }}>Low</option>
+                                        <option value="normal" {{ $project->priority === 'normal' ? 'selected' : '' }}>Normal</option>
+                                        <option value="high" {{ $project->priority === 'high' ? 'selected' : '' }}>High</option>
+                                        <option value="urgent" {{ $project->priority === 'urgent' ? 'selected' : '' }}>Urgent</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Progress (%)</label>
+                                    <input type="number" name="progress_percentage" min="0" max="100" 
+                                           value="{{ $project->progress_percentage ?? 0 }}" 
+                                           class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700">
+                                </div>
+                                
+                                <div class="flex items-center">
+                                    <input type="checkbox" name="featured" value="1" {{ $project->featured ? 'checked' : '' }}
+                                           class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring-blue-500">
+                                    <label class="ml-2 text-sm text-gray-700 dark:text-gray-300">Featured Project</label>
+                                </div>
+                                
+                                <div class="flex items-center">
+                                    <input type="checkbox" name="is_active" value="1" {{ $project->is_active ? 'checked' : '' }}
+                                           class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring-blue-500">
+                                    <label class="ml-2 text-sm text-gray-700 dark:text-gray-300">Active Project</label>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-6">
+                                <x-admin.button type="submit" color="primary" size="sm">
+                                    Update Settings
+                                </x-admin.button>
+                            </div>
+                        </form>
+                    </x-admin.card>
+                    
+                    <!-- Danger Zone -->
+                    <x-admin.card title="Danger Zone">
+                        <div class="space-y-4">
+                            <div class="p-4 bg-red-50 border border-red-200 rounded-md dark:bg-red-900/20 dark:border-red-800">
+                                <h4 class="text-sm font-medium text-red-800 dark:text-red-400 mb-2">Delete Project</h4>
+                                <p class="text-sm text-red-700 dark:text-red-300 mb-4">
+                                    Once you delete a project, there is no going back. Please be certain.
+                                </p>
+                                <x-admin.button 
+                                    type="button" 
+                                    color="danger" 
+                                    size="sm"
+                                    onclick="confirmDelete()"
+                                >
+                                    Delete Project
+                                </x-admin.button>
+                            </div>
+                            
+                            @if($project->quotation)
+                                <div class="p-4 bg-amber-50 border border-amber-200 rounded-md dark:bg-amber-900/20 dark:border-amber-800">
+                                    <h4 class="text-sm font-medium text-amber-800 dark:text-amber-400 mb-2">Convert Back to Quotation</h4>
+                                    <p class="text-sm text-amber-700 dark:text-amber-300 mb-4">
+                                        Convert this project back to quotation status if needed.
+                                    </p>
+                                    <x-admin.button 
+                                        href="{{ route('admin.projects.convert-to-quotation', $project) }}" 
+                                        color="warning" 
+                                        size="sm"
+                                        onclick="return confirm('Are you sure you want to convert this project back to a quotation?')"
+                                    >
+                                        Convert to Quotation
+                                    </x-admin.button>
+                                </div>
+                            @endif
                         </div>
-                    </div>
+                    </x-admin.card>
                 </div>
+            </x-admin.tab-panel>
+        </x-slot>
+    </x-admin.tabs>
+
+    <!-- Delete Confirmation Modal -->
+    <x-admin.modal id="delete-project-modal" title="Delete Project" size="lg">
+        <div class="text-sm text-gray-600 dark:text-gray-400">
+            <div class="mb-4">
+                <p class="font-medium text-red-600 dark:text-red-400 mb-2">
+                    Are you sure you want to delete "{{ $project->title }}"?
+                </p>
+                <p class="mb-4">This action cannot be undone and will permanently delete:</p>
             </div>
-        @else
-            <div class="mt-8">
-                <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Client Testimonial</h2>
-                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6 text-center">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            
+            <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+                <ul class="list-disc list-inside space-y-1">
+                    <li>{{ $project->images->count() }} project images</li>
+                    <li>{{ $project->files->count() }} project files</li>
+                    <li>{{ $project->milestones->count() }} project milestones</li>
+                    <li>{{ $project->messages->count() }} related messages</li>
+                    <li>All project history and analytics data</li>
+                </ul>
+            </div>
+        </div>
+        
+        <x-slot name="footer">
+            <x-admin.button 
+                color="light" 
+                onclick="document.getElementById('delete-project-modal').classList.add('hidden')"
+            >
+                Cancel
+            </x-admin.button>
+            <form action="{{ route('admin.projects.destroy', $project) }}" method="POST" class="inline">
+                @csrf
+                @method('DELETE')
+                <x-admin.button type="submit" color="danger">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No Testimonial Available</h3>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        This project does not have any testimonials from the client.
-                    </p>
-                    <div class="mt-6">
-                        <a href="{{ route('admin.testimonials.create', ['project_id' => $project->id]) }}" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600">
-                            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                            Add Testimonial
-                        </a>
-                    </div>
-                </div>
-            </div>
-        @endif
+                    Delete Project Permanently
+                </x-admin.button>
+            </form>
+        </x-slot>
+    </x-admin.modal>
+    
+    <!-- Quick Actions FAB -->
+    <div class="fixed bottom-4 right-4 z-50">
+        <x-admin.floating-action-button :actions="[
+            [
+                'title' => 'Edit Project', 
+                'href' => route('admin.projects.edit', $project),
+                'icon' => '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z\"/>',
+                'color_classes' => 'bg-blue-600 hover:bg-blue-700'
+            ],
+            [
+                'title' => 'Add Milestone', 
+                'href' => route('admin.projects.milestones.create', $project),
+                'icon' => '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 6v6m0 0v6m0-6h6m-6 0H6\"/>',
+                'color_classes' => 'bg-green-600 hover:bg-green-700'
+            ],
+            [
+                'title' => 'Upload Files', 
+                'href' => route('admin.projects.files.create', $project),
+                'icon' => '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12\"/>',
+                'color_classes' => 'bg-purple-600 hover:bg-purple-700'
+            ],
+            [
+                'title' => 'Send Message', 
+                'href' => route('admin.messages.create', ['project_id' => $project->id]),
+                'icon' => '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z\"/>',
+                'color_classes' => 'bg-indigo-600 hover:bg-indigo-700'
+            ],
+            [
+                'title' => 'All Projects', 
+                'href' => route('admin.projects.index'),
+                'icon' => '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10\"/>',
+                'color_classes' => 'bg-gray-600 hover:bg-gray-700'
+            ]
+        ]" />
     </div>
 </x-layouts.admin>
+
+@push('scripts')
+<script>
+function confirmDelete() {
+    document.getElementById('delete-project-modal').classList.remove('hidden');
+}
+
+// Auto-update project progress when milestones are completed
+document.addEventListener('DOMContentLoaded', function() {
+    // Smooth scrolling for stat card links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+    
+    // Auto-save settings form
+    const settingsForm = document.querySelector('form[action*="quick-update"]');
+    if (settingsForm) {
+        const inputs = settingsForm.querySelectorAll('select, input[type="number"]');
+        let saveTimeout;
+        
+        inputs.forEach(input => {
+            input.addEventListener('change', function() {
+                clearTimeout(saveTimeout);
+                showSaveIndicator('saving');
+                
+                saveTimeout = setTimeout(() => {
+                    const formData = new FormData(settingsForm);
+                    fetch(settingsForm.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showSaveIndicator('saved');
+                            // Update any UI elements that need refreshing
+                            updateProjectStatus(data.project);
+                        } else {
+                            showSaveIndicator('error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Save error:', error);
+                        showSaveIndicator('error');
+                    });
+                }, 1000);
+            });
+        });
+    }
+});
+
+function showSaveIndicator(status) {
+    // Remove existing indicators
+    const existing = document.querySelector('.save-indicator');
+    if (existing) existing.remove();
+    
+    const indicator = document.createElement('div');
+    indicator.className = 'save-indicator fixed top-4 right-4 px-3 py-2 rounded-md text-sm z-50';
+    
+    if (status === 'saving') {
+        indicator.className += ' bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+        indicator.innerHTML = '<div class="flex items-center"><svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Saving...</div>';
+    } else if (status === 'saved') {
+        indicator.className += ' bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+        indicator.innerHTML = '<div class="flex items-center"><svg class="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Saved</div>';
+    } else if (status === 'error') {
+        indicator.className += ' bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+        indicator.innerHTML = '<div class="flex items-center"><svg class="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>Error saving</div>';
+    }
+    
+    document.body.appendChild(indicator);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (indicator.parentNode) {
+            indicator.remove();
+        }
+    }, 3000);
+}
+
+function updateProjectStatus(project) {
+    // Update status badges and other UI elements
+    const statusBadges = document.querySelectorAll('.project-status-badge');
+    statusBadges.forEach(badge => {
+        badge.textContent = project.formatted_status;
+        badge.className = `project-status-badge ${project.status_color}`;
+    });
+    
+    // Update progress bars
+    const progressBars = document.querySelectorAll('.project-progress');
+    progressBars.forEach(bar => {
+        bar.style.width = project.progress_percentage + '%';
+        bar.setAttribute('aria-valuenow', project.progress_percentage);
+    });
+}
+</script>
+@endpush
