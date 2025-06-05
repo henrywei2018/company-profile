@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\{
     ServiceController,
     ServiceCategoryController,
     ProjectController,
+    ProjectMilestoneController,
     ProjectCategoryController,
     QuotationController,
     MessageController,
@@ -104,7 +105,29 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::resource('projects', ProjectController::class);
     Route::patch('/projects/{project}/toggle-featured', [ProjectController::class, 'toggleFeatured'])->name('projects.toggle-featured');
     Route::post('/projects/update-order', [ProjectController::class, 'updateOrder'])->name('projects.update-order');
-
+    // Project Milestones - Nested resource routes
+    Route::prefix('projects/{project}')->name('projects.')->group(function () {
+        // Milestone CRUD
+        Route::resource('milestones', ProjectMilestoneController::class)->except(['index']);
+        
+        // Milestone specific actions
+        Route::prefix('milestones')->name('milestones.')->group(function () {
+            // List all milestones for a project
+            Route::get('/', [ProjectMilestoneController::class, 'index'])->name('index');
+            
+            // Quick actions
+            Route::patch('/{milestone}/complete', [ProjectMilestoneController::class, 'complete'])->name('complete');
+            Route::patch('/{milestone}/reopen', [ProjectMilestoneController::class, 'reopen'])->name('reopen');
+            
+            // Bulk operations
+            Route::post('/bulk-update', [ProjectMilestoneController::class, 'bulkUpdate'])->name('bulk-update');
+            Route::post('/update-order', [ProjectMilestoneController::class, 'updateOrder'])->name('update-order');
+            
+            // Data endpoints
+            Route::get('/calendar', [ProjectMilestoneController::class, 'calendar'])->name('calendar');
+            Route::get('/statistics', [ProjectMilestoneController::class, 'statistics'])->name('statistics');
+        });
+    });
     // Project Categories
     Route::resource('project-categories', ProjectCategoryController::class);
     Route::patch('/project-categories/{projectCategory}/toggle-active', [ProjectCategoryController::class, 'toggleActive'])->name('project-categories.toggle-active');
