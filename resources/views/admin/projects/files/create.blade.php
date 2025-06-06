@@ -45,10 +45,10 @@
     <x-admin.help-text type="info" class="mb-6" dismissible>
         <x-slot name="title">Panduan Pengunggahan File</x-slot>
         <div class="space-y-2">
-            <p>• Maximum file size: <strong>10MB per file</strong></p>
-            <p>• Supported formats: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG, GIF, ZIP, RAR</p>
-            <p>• You can upload multiple files at once</p>
-            <p>• Use meaningful file names and add descriptions for better organization</p>
+            <p>• Ukuran file maksimum: <strong>10MB per file</strong></p>
+            <p>• Format yang didukung: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG, GIF, ZIP, RAR</p>
+            <p>• Anda dapat mengunggah beberapa file sekaligus</p>
+            <p>• Gunakan nama file yang bermakna dan tambahkan deskripsi untuk pengelolaan yang lebih baik</p>
         </div>
     </x-admin.help-text>
 
