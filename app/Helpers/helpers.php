@@ -167,37 +167,29 @@ if (!function_exists('human_filesize')) {
 
 if (!function_exists('format_file_size')) {
     /**
-     * Alias for human_filesize function
+     * Format file size in human readable format.
      *
-     * @param integer $bytes Size in bytes to convert
-     * @param integer $precision Number of decimal places to show
+     * @param int $size
+     * @param int $precision
      * @return string
      */
-    function format_file_size($bytes, $precision = 2)
+    function format_file_size(int $size, int $precision = 2): string
     {
-        return human_filesize($bytes, $precision);
+        return \App\Helpers\FileHelper::formatFileSize($size, $precision);
     }
 }
 
-if (!function_exists('get_file_icon_class')) {
+if (!function_exists('get_file_icon')) {
     /**
-     * Get CSS class for file type icon
+     * Get file icon based on MIME type.
      *
-     * @param string $filename
+     * @param string $mimeType
+     * @param string|null $extension
      * @return string
      */
-    function get_file_icon_class($filename)
+    function get_file_icon(string $mimeType, ?string $extension = null): string
     {
-        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        
-        return match($extension) {
-            'pdf' => 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30',
-            'doc', 'docx' => 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30',
-            'xls', 'xlsx' => 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30',
-            'jpg', 'jpeg', 'png', 'gif', 'webp' => 'text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30',
-            'zip', 'rar', '7z' => 'text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30',
-            default => 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700'
-        };
+        return \App\Helpers\FileHelper::getFileIcon($mimeType, $extension);
     }
 }
 
@@ -392,6 +384,57 @@ if (!function_exists('bulk_update_settings')) {
         } catch (\Exception $e) {
             return false;
         }
+    }
+}
+if (!function_exists('is_allowed_file_type')) {
+    /**
+     * Check if file type is allowed for upload.
+     *
+     * @param string $mimeType
+     * @return bool
+     */
+    function is_allowed_file_type(string $mimeType): bool
+    {
+        return \App\Helpers\FileHelper::isAllowedFileType($mimeType);
+    }
+}
+
+if (!function_exists('validate_uploaded_file')) {
+    /**
+     * Validate uploaded file.
+     *
+     * @param \Illuminate\Http\UploadedFile $file
+     * @return array
+     */
+    function validate_uploaded_file(\Illuminate\Http\UploadedFile $file): array
+    {
+        return \App\Helpers\FileHelper::validateFile($file);
+    }
+}
+
+if (!function_exists('sanitize_filename')) {
+    /**
+     * Sanitize filename for safe storage.
+     *
+     * @param string $filename
+     * @return string
+     */
+    function sanitize_filename(string $filename): string
+    {
+        return \App\Helpers\FileHelper::sanitizeFilename($filename);
+    }
+}
+
+if (!function_exists('get_file_type_name')) {
+    /**
+     * Get human readable file type name.
+     *
+     * @param string $mimeType
+     * @return string
+     */
+    function get_file_type_name(string $mimeType): string
+    {
+        return \App\Helpers\FileHelper::getFileTypeName($mimeType);
     }
 }
 }
