@@ -112,7 +112,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     
     // NEW: Convert project back to quotation
     Route::post('/projects/{project}/convert-to-quotation', [ProjectController::class, 'convertToQuotation'])->name('projects.convert-to-quotation');
-
+    
     // Project Milestones - Enhanced Routes
     Route::prefix('projects/{project}')->name('projects.')->group(function () {
         // Milestone CRUD

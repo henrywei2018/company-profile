@@ -51,6 +51,7 @@
         else if (isDarkOrAuto && !html.classList.contains('dark')) html.classList.add('dark');
         else if (isLightOrAuto && !html.classList.contains('light')) html.classList.add('light');
     </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     @if ($enableCharts)
         <!-- Apexcharts -->
@@ -146,6 +147,7 @@
 
     <!-- Global JavaScript -->
     <script>
+        
         // Hide loading screen when page is ready
         document.addEventListener('DOMContentLoaded', function() {
             const loadingScreen = document.getElementById('loading-screen');
