@@ -145,11 +145,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
             Route::get('/create', [ProjectFileController::class, 'create'])->name('create');
             Route::post('/', [ProjectFileController::class, 'store'])->name('store');
             Route::get('/{file}/download', [ProjectFileController::class, 'download'])->name('download');
+            Route::get('/{file}/preview', [ProjectFileController::class, 'preview'])->name('preview');
+            Route::get('/{file}/thumbnail', [ProjectFileController::class, 'thumbnail'])->name('thumbnail');
+            Route::patch('/{file}', [ProjectFileController::class, 'update'])->name('update');
             Route::delete('/{file}', [ProjectFileController::class, 'destroy'])->name('destroy');
-            
-            // Bulk operations
             Route::post('/bulk-upload', [ProjectFileController::class, 'bulkUpload'])->name('bulk-upload');
             Route::post('/bulk-delete', [ProjectFileController::class, 'bulkDelete'])->name('bulk-delete');
+            Route::get('/search', [ProjectFileController::class, 'search'])->name('search');
+            Route::get('/statistics', [ProjectFileController::class, 'statistics'])->name('statistics');
+            Route::get('/export', [ProjectFileController::class, 'export'])->name('export');
+            Route::post('/organize', [ProjectFileController::class, 'organize'])->name('organize');
+            Route::get('/disk-usage', [ProjectFileController::class, 'diskUsage'])->name('disk-usage');
+            Route::post('/cleanup', [ProjectFileController::class, 'cleanup'])->name('cleanup');
         });
     });
 
@@ -233,6 +240,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     // Quotations
     Route::resource('quotations', QuotationController::class);
+    Route::get('/quotations/{quotation}/create-project', [ProjectController::class, 'createFromQuotation'])->name('quotations.create-project');
     Route::prefix('quotations')->name('quotations.')->group(function () {
         Route::post('/{quotation}/update-status', [QuotationController::class, 'updateStatus'])->name('update-status');
         Route::post('/{quotation}/send-response', [QuotationController::class, 'sendResponse'])->middleware('throttle:10,1')->name('send-response');

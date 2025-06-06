@@ -107,39 +107,60 @@ class ProjectMilestoneController extends Controller
     /**
      * Update the specified milestone.
      */
-    public function update(UpdateProjectMilestoneRequest $request, Project $project, ProjectMilestone $milestone)
+    public function updateStatus(Request $request, Project $project, ProjectMilestone $milestone)
     {
         $this->authorize('update', $project);
         
-        $validated = $request->validated();
+        $request->validate([
+            'status' => 'required|in:pending,in_progress,completed,delayed'
+        ]);
+        
+        if ($milestone->project_id !== $project->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Milestone not found in this project'
+            ], 404);
+        }
+        
         $oldStatus = $milestone->status;
+        $newStatus = $request->status;
+        
+        $updateData = ['status' => $newStatus];
         
         // Auto-set completion date if status changed to completed
-        if ($validated['status'] === 'completed' && $oldStatus !== 'completed' && empty($validated['completion_date'])) {
-            $validated['completion_date'] = now();
+        if ($newStatus === 'completed' && $oldStatus !== 'completed') {
+            $updateData['completion_date'] = now();
+            $updateData['progress_percent'] = 100;
         }
         
         // Clear completion date if status changed from completed
-        if ($validated['status'] !== 'completed' && $oldStatus === 'completed' && empty($validated['completion_date'])) {
-            $validated['completion_date'] = null;
+        if ($newStatus !== 'completed' && $oldStatus === 'completed') {
+            $updateData['completion_date'] = null;
         }
         
-        $milestone->update($validated);
+        $milestone->update($updateData);
         
         // Update project progress if milestone status changed
-        if ($oldStatus !== $milestone->status) {
+        if ($oldStatus !== $newStatus) {
             $this->updateProjectProgress($project);
             
             // Send status change notification
             Notifications::send('project.milestone_status_changed', $milestone);
         }
         
-        $redirectRoute = $request->input('action') === 'save_and_continue' 
-            ? 'admin.projects.milestones.edit'
-            : 'admin.projects.show';
-            
-        return redirect()->route($redirectRoute, [$project, $milestone])
-            ->with('success', 'Milestone updated successfully!');
+        return response()->json([
+            'success' => true,
+            'message' => 'Milestone status updated successfully!',
+            'milestone' => [
+                'id' => $milestone->id,
+                'status' => $milestone->status,
+                'formatted_status' => $milestone->formatted_status,
+                'status_color' => $milestone->status_color,
+                'completion_date' => $milestone->completion_date?->format('M j, Y'),
+                'progress_percent' => $milestone->progress_percent ?? 0
+            ],
+            'project_progress' => $project->fresh()->progress_percentage ?? 0
+        ]);
     }
 
     /**

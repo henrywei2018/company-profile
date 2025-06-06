@@ -1,4 +1,5 @@
 <?php
+// File: app/Http/Requests/UpdateProjectMilestoneRequest.php
 
 namespace App\Http\Requests;
 
@@ -6,144 +7,58 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateProjectMilestoneRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('project'));
+        return true; // Authorization handled in controller
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     */
     public function rules(): array
     {
-        $milestone = $this->route('milestone');
-        
         return [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'due_date' => 'required|date',
-            'status' => 'required|in:pending,in_progress,completed,delayed',
             'completion_date' => 'nullable|date',
+            'status' => 'required|in:pending,in_progress,completed,delayed',
             'progress_percent' => 'nullable|integer|min:0|max:100',
-            'estimated_hours' => 'nullable|numeric|min:0',
-            'actual_hours' => 'nullable|numeric|min:0',
+            'estimated_hours' => 'nullable|numeric|min:0|max:9999.99',
+            'actual_hours' => 'nullable|numeric|min:0|max:9999.99',
             'priority' => 'nullable|in:low,normal,high,critical',
             'dependencies' => 'nullable|array',
-            'dependencies.*' => 'exists:project_milestones,id|not_in:' . $milestone->id,
+            'dependencies.*' => 'exists:project_milestones,id',
             'notes' => 'nullable|string|max:2000',
             'sort_order' => 'nullable|integer|min:0',
         ];
     }
 
-    /**
-     * Get custom messages for validator errors.
-     */
     public function messages(): array
     {
         return [
-            'title.required' => 'The milestone title is required.',
-            'title.max' => 'The milestone title may not be greater than 255 characters.',
-            'due_date.required' => 'The due date is required.',
-            'progress_percent.between' => 'Progress percentage must be between 0 and 100.',
-            'dependencies.*.exists' => 'One or more selected dependencies are invalid.',
-            'dependencies.*.not_in' => 'A milestone cannot depend on itself.',
+            'title.required' => 'Milestone title is required.',
+            'title.max' => 'Milestone title cannot exceed 255 characters.',
+            'due_date.required' => 'Due date is required.',
+            'progress_percent.between' => 'Progress must be between 0 and 100.',
+            'estimated_hours.min' => 'Estimated hours must be positive.',
+            'actual_hours.min' => 'Actual hours must be positive.',
+            'dependencies.*.exists' => 'Selected dependency milestone does not exist.',
         ];
     }
 
-    /**
-     * Configure the validator instance.
-     */
-    public function withValidator($validator)
+    protected function prepareForValidation(): void
     {
-        $validator->after(function ($validator) {
-            $milestone = $this->route('milestone');
-            
-            // Validate status transitions
-            if ($milestone->status === 'completed' && $this->status !== 'completed') {
-                // Reopening a completed milestone
-                if ($this->completion_date) {
-                    $validator->errors()->add(
-                        'completion_date', 
-                        'Completion date should be cleared when reopening a milestone.'
-                    );
-                }
-            }
-
-            // If status is completed, ensure completion date is set
-            if ($this->status === 'completed' && !$this->completion_date) {
-                // Auto-set completion date
-                $this->merge(['completion_date' => now()->format('Y-m-d')]);
-            }
-
-            // If completion date is provided, status should be completed
-            if ($this->completion_date && $this->status !== 'completed') {
-                $validator->errors()->add(
-                    'completion_date', 
-                    'Completion date can only be set when status is completed.'
-                );
-            }
-
-            // Validate circular dependencies
-            if ($this->dependencies) {
-                $this->validateCircularDependencies($validator, $milestone);
-            }
-
-            // Validate due date changes for completed milestones
-            if ($milestone->status === 'completed' && 
-                $milestone->due_date && 
-                $this->due_date !== $milestone->due_date->format('Y-m-d')) {
-                
-                // Allow but warn about changing due date of completed milestone
-            }
-        });
-    }
-
-    /**
-     * Validate that dependencies don't create circular references.
-     */
-    protected function validateCircularDependencies($validator, $milestone)
-    {
-        $dependencies = $this->dependencies ?? [];
-        
-        // Simple circular dependency check
-        foreach ($dependencies as $dependencyId) {
-            if ($this->hasCircularDependency($milestone->id, $dependencyId, $dependencies)) {
-                $validator->errors()->add(
-                    'dependencies', 
-                    'Circular dependency detected. Please check your dependency selections.'
-                );
-                break;
-            }
+        // Auto-set completion date if status is completed and none provided
+        if ($this->status === 'completed' && !$this->completion_date) {
+            $this->merge(['completion_date' => now()->format('Y-m-d')]);
         }
-    }
 
-    /**
-     * Check if adding a dependency would create a circular reference.
-     */
-    protected function hasCircularDependency($milestoneId, $dependencyId, $newDependencies = [])
-    {
-        // Get existing dependencies for the dependency milestone
-        $existingDeps = \App\Models\ProjectMilestone::find($dependencyId)
-            ?->dependencies ?? [];
-            
-        // If the dependency already depends on our milestone, it's circular
-        if (in_array($milestoneId, $existingDeps)) {
-            return true;
+        // Auto-set progress to 100% if completed and no progress provided
+        if ($this->status === 'completed' && !$this->progress_percent) {
+            $this->merge(['progress_percent' => 100]);
         }
-        
-        // Check transitive dependencies (one level deep for performance)
-        foreach ($existingDeps as $transitiveDepId) {
-            $transitiveDeps = \App\Models\ProjectMilestone::find($transitiveDepId)
-                ?->dependencies ?? [];
-                
-            if (in_array($milestoneId, $transitiveDeps)) {
-                return true;
-            }
+
+        // Clear completion date if status is not completed
+        if ($this->status !== 'completed' && $this->completion_date) {
+            $this->merge(['completion_date' => null]);
         }
-        
-        return false;
     }
 }

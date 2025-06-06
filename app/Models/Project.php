@@ -52,7 +52,6 @@ class Project extends Model
         'meta_title',
         'meta_description',
         'meta_keywords',
-        'service_used',
         'services_used',
     ];
 
@@ -73,10 +72,9 @@ class Project extends Model
         'progress_percentage' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-        'service_used' => 'array',
-        'services_used' => 'array',
         'technologies_used' => 'array',
         'team_members' => 'array',
+        'services_used' => 'array',
     ];
 
     /**
@@ -138,6 +136,7 @@ class Project extends Model
             self::STATUS_CANCELLED => 'Cancelled',
         ];
     }
+    
     /**
      * Get all available priorities
      */
@@ -170,13 +169,91 @@ class Project extends Model
             if (empty($project->priority)) {
                 $project->priority = self::PRIORITY_NORMAL;
             }
+
+            // Ensure array fields are properly set
+            $project->technologies_used = $project->technologies_used ?? [];
+            $project->team_members = $project->team_members ?? [];
+            $project->services_used = $project->services_used ?? [];
         });
 
         static::updating(function ($project) {
             if ($project->isDirty('title') && empty($project->slug)) {
                 $project->slug = Str::slug($project->title);
             }
+
+            // Ensure array fields are properly handled
+            if ($project->isDirty('technologies_used') && !is_array($project->technologies_used)) {
+                $project->technologies_used = is_string($project->technologies_used) 
+                    ? json_decode($project->technologies_used, true) ?? []
+                    : [];
+            }
+
+            if ($project->isDirty('team_members') && !is_array($project->team_members)) {
+                $project->team_members = is_string($project->team_members) 
+                    ? json_decode($project->team_members, true) ?? []
+                    : [];
+            }
+
+            if ($project->isDirty('services_used') && !is_array($project->services_used)) {
+                $project->services_used = is_string($project->services_used) 
+                    ? json_decode($project->services_used, true) ?? []
+                    : [];
+            }
         });
+    }
+
+    /**
+     * Set technologies used attribute - ensure it's always an array
+     */
+    public function setTechnologiesUsedAttribute($value)
+    {
+        if (is_string($value)) {
+            $this->attributes['technologies_used'] = json_encode(
+                array_filter(explode(',', $value), function($item) {
+                    return !empty(trim($item));
+                })
+            );
+        } elseif (is_array($value)) {
+            $this->attributes['technologies_used'] = json_encode(array_filter($value));
+        } else {
+            $this->attributes['technologies_used'] = json_encode([]);
+        }
+    }
+
+    /**
+     * Set team members attribute - ensure it's always an array
+     */
+    public function setTeamMembersAttribute($value)
+    {
+        if (is_string($value)) {
+            $this->attributes['team_members'] = json_encode(
+                array_filter(explode(',', $value), function($item) {
+                    return !empty(trim($item));
+                })
+            );
+        } elseif (is_array($value)) {
+            $this->attributes['team_members'] = json_encode(array_filter($value));
+        } else {
+            $this->attributes['team_members'] = json_encode([]);
+        }
+    }
+
+    /**
+     * Set services used attribute - ensure it's always an array
+     */
+    public function setServicesUsedAttribute($value)
+    {
+        if (is_string($value)) {
+            $this->attributes['services_used'] = json_encode(
+                array_filter(explode(',', $value), function($item) {
+                    return !empty(trim($item));
+                })
+            );
+        } elseif (is_array($value)) {
+            $this->attributes['services_used'] = json_encode(array_filter($value));
+        } else {
+            $this->attributes['services_used'] = json_encode([]);
+        }
     }
 
     /**
@@ -285,27 +362,27 @@ class Project extends Model
     }
 
     public function testimonials()
-{
-    return $this->hasMany(\App\Models\Testimonial::class);
-}
+    {
+        return $this->hasMany(\App\Models\Testimonial::class);
+    }
 
-/**
- * Get active testimonials for this project.
- */
-public function activeTestimonials()
-{
-    return $this->hasMany(\App\Models\Testimonial::class)->where('is_active', true);
-}
+    /**
+     * Get active testimonials for this project.
+     */
+    public function activeTestimonials()
+    {
+        return $this->hasMany(\App\Models\Testimonial::class)->where('is_active', true);
+    }
 
-/**
- * Get featured testimonials for this project.
- */
-public function featuredTestimonials()
-{
-    return $this->hasMany(\App\Models\Testimonial::class)
-        ->where('featured', true)
-        ->where('is_active', true);
-}
+    /**
+     * Get featured testimonials for this project.
+     */
+    public function featuredTestimonials()
+    {
+        return $this->hasMany(\App\Models\Testimonial::class)
+            ->where('featured', true)
+            ->where('is_active', true);
+    }
 
     /**
      * Get project updates/logs (if you have this feature)
@@ -398,7 +475,7 @@ public function featuredTestimonials()
      */
     public function getPriorityColorAttribute(): string
     {
-        return match ($this->priority) {
+        return match ($this->priority ?? 'normal') {
             self::PRIORITY_LOW => 'gray',
             self::PRIORITY_NORMAL => 'blue',
             self::PRIORITY_HIGH => 'orange',
@@ -412,7 +489,7 @@ public function featuredTestimonials()
      */
     public function getFormattedStatusAttribute(): string
     {
-        return self::getStatuses()[$this->status] ?? ucfirst($this->status);
+        return self::getStatuses()[$this->status] ?? ucfirst(str_replace('_', ' ', $this->status));
     }
 
     /**
@@ -420,7 +497,7 @@ public function featuredTestimonials()
      */
     public function getFormattedPriorityAttribute(): string
     {
-        return self::getPriorities()[$this->priority] ?? ucfirst($this->priority);
+        return self::getPriorities()[$this->priority ?? 'normal'] ?? ucfirst($this->priority ?? 'normal');
     }
 
     /**
@@ -496,5 +573,47 @@ public function featuredTestimonials()
         }
 
         return ($this->actual_cost / $this->budget) * 100;
+    }
+
+    /**
+     * Get technologies used as formatted string - SAFE GETTER
+     */
+    public function getTechnologiesUsedFormattedAttribute(): string
+    {
+        $technologies = $this->technologies_used;
+        
+        if (!$technologies || !is_array($technologies)) {
+            return 'None specified';
+        }
+        
+        return implode(', ', array_filter($technologies));
+    }
+
+    /**
+     * Get team members as formatted string - SAFE GETTER
+     */
+    public function getTeamMembersFormattedAttribute(): string
+    {
+        $members = $this->team_members;
+        
+        if (!$members || !is_array($members)) {
+            return 'Not assigned';
+        }
+        
+        return implode(', ', array_filter($members));
+    }
+
+    /**
+     * Get services used as formatted string - SAFE GETTER
+     */
+    public function getServicesUsedFormattedAttribute(): string
+    {
+        $services = $this->services_used;
+        
+        if (!$services || !is_array($services)) {
+            return 'None specified';
+        }
+        
+        return implode(', ', array_filter($services));
     }
 }

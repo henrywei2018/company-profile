@@ -126,7 +126,7 @@
     />
 
     <!-- Quick Actions FAB -->
-    <div class="fixed bottom-4 right-4 z-50">
+    {{-- <div class="fixed bottom-4 right-4 z-50">
         <x-admin.floating-action-button :actions="[
             [
                 'title' => 'Add Milestone', 
@@ -153,7 +153,7 @@
                 'color_classes' => 'bg-gray-600 hover:bg-gray-700'
             ]
         ]" />
-    </div>
+    </div> --}}
 
     <!-- Delete Confirmation Modal -->
     <x-admin.modal id="delete-project-modal" title="Delete Project" size="md">
