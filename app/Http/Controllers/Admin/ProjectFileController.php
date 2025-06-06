@@ -67,24 +67,36 @@ class ProjectFileController extends Controller
      * Store newly uploaded files.
      */
     public function store(Request $request, Project $project)
-    {
-        $this->authorize('update', $project);
+{
+    $this->authorize('update', $project);
 
-        $request->validate([
-            'files' => 'required|array|min:1',
-            'files.*' => 'required|file|max:10240', // Max 10MB per file
+    try {
+        $validated = $request->validate([
+            'files' => 'required|array|min:1|max:10',
+            'files.*' => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,svg,zip,rar,7z,txt,csv',
             'category' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:500',
             'is_public' => 'boolean',
+        ], [
+            'files.required' => 'Please select at least one file to upload.',
+            'files.*.max' => 'Each file must not exceed 10MB.',
+            'files.*.mimes' => 'File type not supported. Please use: PDF, DOC, XLS, PPT, images, or archives.',
         ]);
 
         $uploadedFiles = [];
         $totalUploaded = 0;
+        $errors = [];
 
-        DB::transaction(function () use ($request, $project, &$uploadedFiles, &$totalUploaded) {
-            foreach ($request->file('files') as $uploadedFile) {
+        DB::transaction(function () use ($request, $project, &$uploadedFiles, &$totalUploaded, &$errors, $validated) {
+            foreach ($request->file('files') as $index => $uploadedFile) {
                 try {
-                    // Upload file
+                    // Additional server-side validation
+                    if ($uploadedFile->getSize() > 10 * 1024 * 1024) {
+                        $errors[] = "File {$uploadedFile->getClientOriginalName()} exceeds 10MB limit";
+                        continue;
+                    }
+
+                    // Upload file using the service
                     $path = $this->fileUploadService->uploadFile(
                         $uploadedFile,
                         'projects/' . $project->id . '/files'
@@ -96,8 +108,8 @@ class ProjectFileController extends Controller
                         'file_name' => $uploadedFile->getClientOriginalName(),
                         'file_size' => $uploadedFile->getSize(),
                         'file_type' => $uploadedFile->getMimeType(),
-                        'category' => $request->input('category', 'general'),
-                        'description' => $request->input('description'),
+                        'category' => $validated['category'] ?? 'general',
+                        'description' => $validated['description'] ?? null,
                         'is_public' => $request->boolean('is_public', false),
                         'download_count' => 0,
                     ]);
@@ -105,35 +117,117 @@ class ProjectFileController extends Controller
                     $uploadedFiles[] = $projectFile;
                     $totalUploaded++;
 
+                    \Log::info('File uploaded successfully', [
+                        'project_id' => $project->id,
+                        'file_name' => $projectFile->file_name,
+                        'file_size' => $projectFile->file_size,
+                        'user_id' => auth()->id()
+                    ]);
+
                 } catch (\Exception $e) {
                     \Log::error('File upload failed: ' . $e->getMessage(), [
                         'project_id' => $project->id,
                         'file_name' => $uploadedFile->getClientOriginalName(),
+                        'error' => $e->getMessage(),
+                        'user_id' => auth()->id()
                     ]);
-                    // Continue with other files
+                    
+                    $errors[] = "Failed to upload {$uploadedFile->getClientOriginalName()}: " . $e->getMessage();
                 }
             }
         });
 
+        // Prepare response
         if ($totalUploaded > 0) {
             // Send notification
-            Notifications::send('project.files_uploaded', [
-                'project' => $project,
-                'file_count' => $totalUploaded,
-                'files' => $uploadedFiles
-            ]);
+            try {
+                Notifications::send('project.files_uploaded', [
+                    'project' => $project,
+                    'file_count' => $totalUploaded,
+                    'files' => $uploadedFiles
+                ]);
+            } catch (\Exception $e) {
+                \Log::warning('Failed to send file upload notification: ' . $e->getMessage());
+            }
 
             $message = $totalUploaded === 1
                 ? 'File uploaded successfully!'
                 : "{$totalUploaded} files uploaded successfully!";
 
-            return redirect()->route('admin.projects.files.index', $project)
-                ->with('success', $message);
+            if (!empty($errors)) {
+                $message .= ' However, ' . count($errors) . ' files failed to upload.';
+            }
+
+            // Handle AJAX vs regular request
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'uploaded_count' => $totalUploaded,
+                    'errors' => $errors,
+                    'redirect_url' => route('admin.projects.files.index', $project)
+                ]);
+            }
+
+            $redirectUrl = route('admin.projects.files.index', $project);
+            return redirect($redirectUrl)->with('success', $message);
+        }
+
+        // No files uploaded successfully
+        $errorMessage = 'No files were uploaded successfully.';
+        if (!empty($errors)) {
+            $errorMessage .= ' Errors: ' . implode(', ', $errors);
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => false,
+                'message' => $errorMessage,
+                'errors' => $errors
+            ], 422);
         }
 
         return redirect()->back()
-            ->with('error', 'No files were uploaded successfully.');
+            ->withErrors(['files' => $errorMessage])
+            ->withInput();
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        \Log::error('File upload validation failed', [
+            'project_id' => $project->id,
+            'errors' => $e->errors(),
+            'user_id' => auth()->id()
+        ]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        }
+
+        throw $e;
+
+    } catch (\Exception $e) {
+        \Log::error('Unexpected error during file upload', [
+            'project_id' => $project->id,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'user_id' => auth()->id()
+        ]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+
+        return redirect()->back()
+            ->with('error', 'An unexpected error occurred. Please try again.')
+            ->withInput();
     }
+}
 
     /**
      * Download a project file.
