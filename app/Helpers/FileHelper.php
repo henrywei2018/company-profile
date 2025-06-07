@@ -13,22 +13,26 @@ class FileHelper
      * @return string Formatted file size
      */
     public static function formatFileSize(int $size, int $precision = 2): string
-    {
-        if ($size === 0) {
-            return '0 B';
-        }
-
-        $units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
-        $base = log($size, 1024);
-        $index = floor($base);
-
-        // Ensure we don't exceed array bounds
-        $index = min($index, count($units) - 1);
-
-        $formattedSize = round(pow(1024, $base - $index), $precision);
-        
-        return $formattedSize . ' ' . $units[$index];
+{
+    if ($size === 0) {
+        return '0 B';
     }
+
+    $units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    $base = log($size, 1024);
+    $index = floor($base);
+
+    // Ensure we don't exceed array bounds
+    $index = min($index, count($units) - 1);
+    $index = max($index, 0);
+
+    $formattedSize = round(pow(1024, $base - $index), $precision);
+    
+    // Ensure we always return a string
+    $result = $formattedSize . ' ' . $units[$index];
+    
+    return (string) $result;
+}
 
     /**
      * Get file icon class based on file type/extension.

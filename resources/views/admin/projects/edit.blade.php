@@ -968,7 +968,6 @@
 </x-layouts.admin>
 
 @push('scripts')
-// Replace the JavaScript in your @push('scripts') section with this:
 
 <script>
 // Image Gallery Functions
@@ -1073,13 +1072,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('form');
     if (form) {
         form.addEventListener('submit', function(e) {
-            // Remove empty inputs before submission
-            const inputs = form.querySelectorAll('input[name^="services_used"], input[name^="technologies_used"], input[name^="team_members"]');
-            inputs.forEach(input => {
-                if (!input.value.trim()) {
-                    input.remove();
+            // Basic form validation
+            const requiredFields = form.querySelectorAll('[required]');
+            let hasErrors = false;
+            
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    hasErrors = true;
+                    field.classList.add('border-red-500');
+                } else {
+                    field.classList.remove('border-red-500');
                 }
             });
+            
+            if (hasErrors) {
+                e.preventDefault();
+                alert('Please fill in all required fields.');
+                return false;
+            }
         });
     }
     
@@ -1099,9 +1109,19 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Helper function to show delete confirmation
 function confirmDelete() {
     document.getElementById('delete-project-modal').classList.remove('hidden');
 }
+
+let autoSaveTimeout;
+document.querySelectorAll('input, textarea, select').forEach(input => {
+    input.addEventListener('input', function() {
+        clearTimeout(autoSaveTimeout);
+        autoSaveTimeout = setTimeout(() => {
+            // Implement auto-save draft logic here if needed
+            console.log('Auto-saving draft...');
+        }, 5000); // Save after 5 seconds of inactivity
+    });
+});
 </script>
 @endpush

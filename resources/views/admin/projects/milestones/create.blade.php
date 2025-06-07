@@ -121,11 +121,11 @@
                         
                         <div x-show="formData.status === 'completed'" x-transition>
                             <x-admin.input
-                                name="completion_date"
+                                name="completed_date"
                                 label="Completion Date"
                                 type="date"
-                                :value="old('completion_date')"
-                                x-model="formData.completion_date"
+                                :value="old('completed_date')"
+                                x-model="formData.completed_date"
                                 helper="Set completion date if milestone is already completed"
                             />
                         </div>
@@ -288,7 +288,7 @@ function milestoneForm() {
             description: @js(old('description', '')),
             due_date: @js(old('due_date', '')),
             status: @js(old('status', 'pending')),
-            completion_date: @js(old('completion_date', ''))
+            completed_date: @js(old('completed_date', ''))
         },
         
         init() {
@@ -304,13 +304,13 @@ function milestoneForm() {
         
         validateDates() {
             // Auto-set completion date if status is completed and no date is set
-            if (this.formData.status === 'completed' && !this.formData.completion_date) {
-                this.formData.completion_date = new Date().toISOString().split('T')[0];
+            if (this.formData.status === 'completed' && !this.formData.completed_date) {
+                this.formData.completed_date = new Date().toISOString().split('T')[0];
             }
             
             // Clear completion date if status is not completed
             if (this.formData.status !== 'completed') {
-                this.formData.completion_date = '';
+                this.formData.completed_date = '';
             }
         }
     }

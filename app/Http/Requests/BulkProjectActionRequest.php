@@ -62,21 +62,15 @@ class BulkProjectActionRequest extends FormRequest
      * Prepare the data for validation.
      */
     protected function prepareForValidation(): void
-    {
-        $input = $this->all();
+{
+    $input = $this->all();
 
-        // Ensure project_ids is an array
-        if (isset($input['project_ids']) && !is_array($input['project_ids'])) {
-            $input['project_ids'] = [$input['project_ids']];
-        }
+    // Force is_active to boolean (default true if not present)
+    $input['is_active'] = $this->boolean('is_active', true);
 
-        // Clean up empty values
-        if (isset($input['project_ids'])) {
-            $input['project_ids'] = array_filter($input['project_ids'], function($value) {
-                return !empty($value);
-            });
-        }
+    // REMOVED: Filter array fields for services_used, technologies_used, team_members
+    // since these fields are no longer used
 
-        $this->replace($input);
-    }
+    $this->replace($input);
+}
 }

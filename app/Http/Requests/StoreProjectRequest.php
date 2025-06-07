@@ -84,60 +84,60 @@ class StoreProjectRequest extends FormRequest
     }
 
     protected function prepareForValidation(): void
-    {
-        $input = $this->all();
+{
+    $input = $this->all();
 
-        // Handle nullable fields
-        $nullableFields = [
-            'slug',
-            'location',
-            'year',
-            'start_date',
-            'end_date',
-            'challenge',
-            'solution',
-            'result',
-            'value'
-        ];
+    // Handle nullable fields
+    $nullableFields = [
+        'slug',
+        'location',
+        'year',
+        'start_date',
+        'end_date',
+        'challenge',
+        'solution',
+        'result',
+        'value'
+    ];
 
-        // Add conditional fields if they exist
-        $conditionalFields = [
-            'short_description',
-            'client_id',
-            'service_id',
-            'quotation_id',
-            'estimated_completion_date',
-            'actual_completion_date',
-            'budget',
-            'actual_cost',
-            'client_feedback',
-            'lessons_learned',
-            'meta_title',
-            'meta_description',
-            'meta_keywords'
-        ];
+    // Add conditional fields if they exist
+    $conditionalFields = [
+        'short_description',
+        'client_id',
+        'service_id',
+        'quotation_id',
+        'estimated_completion_date',
+        'actual_completion_date',
+        'budget',
+        'actual_cost',
+        'client_feedback',
+        'lessons_learned',
+        'meta_title',
+        'meta_description',
+        'meta_keywords'
+    ];
 
-        foreach ($conditionalFields as $field) {
-            if ($this->hasColumn($field)) {
-                $nullableFields[] = $field;
-            }
+    foreach ($conditionalFields as $field) {
+        if ($this->hasColumn($field)) {
+            $nullableFields[] = $field;
         }
-
-        // Convert empty strings to null
-        foreach ($nullableFields as $field) {
-            if (array_key_exists($field, $input) && $input[$field] === '') {
-                $input[$field] = null;
-            }
-        }
-
-        // Handle boolean fields
-        $input['featured'] = $this->boolean('featured', false);
-        if ($this->hasColumn('is_active')) {
-            $input['is_active'] = $this->boolean('is_active', true);
-        }
-
-        $this->replace($input);
     }
+
+    // Convert empty strings to null
+    foreach ($nullableFields as $field) {
+        if (array_key_exists($field, $input) && $input[$field] === '') {
+            $input[$field] = null;
+        }
+    }
+
+    // Force is_active to boolean (default true if not present)
+    $input['featured'] = $this->boolean('featured', false);
+    if ($this->hasColumn('is_active')) {
+        $input['is_active'] = $this->boolean('is_active', true);
+    }
+
+    $this->replace($input);
+}
 
     public function withValidator($validator): void
     {

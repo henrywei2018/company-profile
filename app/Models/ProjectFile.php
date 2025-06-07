@@ -49,9 +49,35 @@ class ProjectFile extends Model
      * Get formatted file size using FileHelper.
      */
     public function getFormattedFileSizeAttribute()
-    {
-        return FileHelper::formatFileSize($this->file_size);
+{
+    if (!$this->file_size || !is_numeric($this->file_size)) {
+        return 'Unknown size';
     }
+    
+    try {
+        $result = \App\Helpers\FileHelper::formatFileSize($this->file_size);
+        
+        // Ensure we return a string
+        if (is_array($result)) {
+            \Log::warning('FileHelper::formatFileSize returned array', [
+                'file_id' => $this->id,
+                'file_size' => $this->file_size,
+                'result' => $result
+            ]);
+            return 'Unknown size';
+        }
+        
+        return is_string($result) ? $result : (string) $result;
+        
+    } catch (\Exception $e) {
+        \Log::error('Error formatting file size', [
+            'file_id' => $this->id,
+            'file_size' => $this->file_size,
+            'error' => $e->getMessage()
+        ]);
+        return 'Unknown size';
+    }
+}
 
     /**
      * Get file icon based on type using FileHelper.

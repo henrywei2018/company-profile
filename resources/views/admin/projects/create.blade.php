@@ -94,24 +94,10 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-save draft functionality (optional)
-    const formInputs = document.querySelectorAll('input, textarea, select');
-    let autoSaveTimeout;
-    
-    formInputs.forEach(input => {
-        input.addEventListener('input', function() {
-            clearTimeout(autoSaveTimeout);
-            autoSaveTimeout = setTimeout(() => {
-                // Implement auto-save draft logic here if needed
-                console.log('Auto-saving draft...');
-            }, 5000); // Save after 5 seconds of inactivity
-        });
-    });
-    
-    // Form validation enhancement
     const form = document.querySelector('form');
     if (form) {
         form.addEventListener('submit', function(e) {
+            // Basic form validation
             const requiredFields = form.querySelectorAll('[required]');
             let hasErrors = false;
             
@@ -131,6 +117,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+});
+
+let autoSaveTimeout;
+document.querySelectorAll('input, textarea, select').forEach(input => {
+    input.addEventListener('input', function() {
+        clearTimeout(autoSaveTimeout);
+        autoSaveTimeout = setTimeout(() => {
+            console.log('Auto-saving draft...');
+        }, 5000);
+    });
 });
 </script>
 @endpush

@@ -22,7 +22,7 @@ class ProjectMilestone extends Model
         'title',
         'description',
         'due_date',
-        'completion_date',
+        'completed_date',
         'status',
         'progress_percent',
         'estimated_hours',
@@ -40,7 +40,7 @@ class ProjectMilestone extends Model
      */
     protected $casts = [
         'due_date' => 'date',
-        'completion_date' => 'date',
+        'completed_date' => 'date', 
         'progress_percent' => 'integer',
         'estimated_hours' => 'decimal:2',
         'actual_hours' => 'decimal:2',
@@ -63,7 +63,14 @@ class ProjectMilestone extends Model
     const PRIORITY_NORMAL = 'normal';
     const PRIORITY_HIGH = 'high';
     const PRIORITY_CRITICAL = 'critical';
-
+    public function getDependenciesAttribute($value)
+    {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+        return is_array($value) ? $value : [];
+    }
     /**
      * Get all available statuses
      */
@@ -121,8 +128,8 @@ class ProjectMilestone extends Model
             // Auto-set completion date when status changes to completed
             if ($milestone->isDirty('status') && 
                 $milestone->status === self::STATUS_COMPLETED && 
-                !$milestone->completion_date) {
-                $milestone->completion_date = now();
+                !$milestone->completed_date) {
+                $milestone->completed_date = now();
                 $milestone->progress_percent = 100;
             }
 
@@ -130,8 +137,8 @@ class ProjectMilestone extends Model
             if ($milestone->isDirty('status') && 
                 $milestone->getOriginal('status') === self::STATUS_COMPLETED &&
                 $milestone->status !== self::STATUS_COMPLETED &&
-                !$milestone->isDirty('completion_date')) {
-                $milestone->completion_date = null;
+                !$milestone->isDirty('completed_date')) {
+                $milestone->completed_date = null;
             }
         });
     }
@@ -358,11 +365,11 @@ class ProjectMilestone extends Model
      */
     public function getDurationAttribute(): ?int
     {
-        if (!$this->completion_date || !$this->due_date) {
+        if (!$this->completed_date || !$this->due_date) {
             return null;
         }
 
-        return $this->due_date->diffInDays($this->completion_date);
+        return $this->due_date->diffInDays($this->completed_date);
     }
 
     /**
@@ -394,11 +401,11 @@ class ProjectMilestone extends Model
      */
     public function wasCompletedOnTime(): ?bool
     {
-        if (!$this->isCompleted() || !$this->due_date || !$this->completion_date) {
+        if (!$this->isCompleted() || !$this->due_date || !$this->completed_date) {
             return null;
         }
 
-        return $this->completion_date->lessThanOrEqualTo($this->due_date);
+        return $this->completed_date->lessThanOrEqualTo($this->due_date);
     }
 
     /**
@@ -508,7 +515,7 @@ class ProjectMilestone extends Model
         if ($this->progress_percent >= 100) {
             $this->update([
                 'status' => self::STATUS_COMPLETED,
-                'completion_date' => $this->completion_date ?? now()
+                'completed_date' => $this->completed_date ?? now()
             ]);
             return;
         }

@@ -322,76 +322,83 @@ class ProjectController extends Controller
      * Display the specified project.
      */
     public function show(Project $project)
-    {
-        $project->load([
-            'client',
-            'category',
-            'service',
-            'images' => fn($q) => $q->orderBy('sort_order'),
-            'files' => fn($q) => $q->orderBy('created_at', 'desc')->limit(10),
-            'milestones' => fn($q) => $q->orderBy('due_date')->orderBy('sort_order'),
-            'testimonials' => fn($q) => $q->where('is_active', true),
-            'messages' => fn($q) => $q->orderBy('created_at', 'desc')->limit(5)
-        ]);
+{
+    $project->load([
+        'client',
+        'category', 
+        'service',
+        'images' => fn($q) => $q->orderBy('sort_order'),
+        'files' => fn($q) => $q->orderBy('created_at', 'desc')->limit(10),
+        'milestones' => fn($q) => $q->orderBy('due_date')->orderBy('sort_order'),
+        'testimonials' => fn($q) => $q->where('is_active', true),
+        'messages' => fn($q) => $q->orderBy('created_at', 'desc')->limit(5)
+    ]);
 
-        // Load quotation only if column exists
-        if ($this->hasColumn('quotation_id')) {
-            $project->load('quotation');
-        }
-
-        // Calculate milestone statistics if milestones exist
-        $milestoneStats = [
-            'total' => $project->milestones->count(),
-            'completed' => $project->milestones->where('status', 'completed')->count(),
-            'in_progress' => $project->milestones->where('status', 'in_progress')->count(),
-            'pending' => $project->milestones->where('status', 'pending')->count(),
-            'delayed' => $project->milestones->where('status', 'delayed')->count(),
-        ];
-
-        // Add time-based calculations
-        $milestoneStats['overdue'] = $project->milestones->filter(function ($milestone) {
-            return $milestone->due_date && $milestone->due_date < now() && $milestone->status !== 'completed';
-        })->count();
-
-        $milestoneStats['due_soon'] = $project->milestones->filter(function ($milestone) {
-            return $milestone->due_date &&
-                $milestone->due_date >= now() &&
-                $milestone->due_date <= now()->addDays(7) &&
-                $milestone->status !== 'completed';
-        })->count();
-
-        // Calculate completion rate
-        $milestoneStats['completion_rate'] = $milestoneStats['total'] > 0
-            ? round(($milestoneStats['completed'] / $milestoneStats['total']) * 100, 1)
-            : 0;
-
-        // Get file statistics
-        $fileStats = [
-            'total_files' => $project->files->count(),
-            'total_size' => $project->files->sum('file_size'),
-            'public_files' => $project->files->where('is_public', true)->count(),
-            'recent_files' => $project->files->take(5),
-        ];
-
-        // Get project timeline data
-        $timelineData = [
-            'days_since_start' => $project->start_date ? now()->diffInDays($project->start_date) : 0,
-            'days_until_deadline' => $project->end_date ? $project->end_date->diffInDays(now()) : null,
-            'is_overdue' => $project->end_date && $project->end_date < now() && $project->status !== 'completed',
-        ];
-
-        // Add estimated timeline if column exists
-        if ($this->hasColumn('estimated_completion_date') && $project->estimated_completion_date) {
-            $timelineData['estimated_days_remaining'] = $project->estimated_completion_date->diffInDays(now());
-        }
-
-        return view('admin.projects.show', compact(
-            'project',
-            'milestoneStats',
-            'fileStats',
-            'timelineData'
-        ));
+    // Load quotation only if column exists
+    if ($this->hasColumn('quotation_id')) {
+        $project->load('quotation');
     }
+
+    // SAFE milestone handling - prevent trim() errors
+    $project->milestones->each(function ($milestone) {
+        // Ensure dependencies is always an array
+        if (!is_array($milestone->dependencies)) {
+            $milestone->dependencies = [];
+        }
+    });
+
+    // Calculate statistics safely
+    $milestoneStats = [
+        'total' => $project->milestones->count(),
+        'completed' => $project->milestones->where('status', 'completed')->count(),
+        'in_progress' => $project->milestones->where('status', 'in_progress')->count(),
+        'pending' => $project->milestones->where('status', 'pending')->count(),
+        'delayed' => $project->milestones->where('status', 'delayed')->count(),
+    ];
+
+    $milestoneStats['overdue'] = $project->milestones->filter(function ($milestone) {
+        return $milestone->due_date && 
+               $milestone->due_date < now() && 
+               $milestone->status !== 'completed';
+    })->count();
+
+    $milestoneStats['due_soon'] = $project->milestones->filter(function ($milestone) {
+        return $milestone->due_date &&
+               $milestone->due_date >= now() &&
+               $milestone->due_date <= now()->addDays(7) &&
+               $milestone->status !== 'completed';
+    })->count();
+
+    $milestoneStats['completion_rate'] = $milestoneStats['total'] > 0
+        ? round(($milestoneStats['completed'] / $milestoneStats['total']) * 100, 1)
+        : 0;
+
+    // Safe file stats
+    $fileStats = [
+        'total_files' => $project->files->count(),
+        'total_size' => $project->files->sum('file_size'),
+        'public_files' => $project->files->where('is_public', true)->count(),
+        'recent_files' => $project->files->take(5),
+    ];
+
+    // Safe timeline data
+    $timelineData = [
+        'days_since_start' => $project->start_date ? now()->diffInDays($project->start_date) : 0,
+        'days_until_deadline' => $project->end_date ? $project->end_date->diffInDays(now()) : null,
+        'is_overdue' => $project->end_date && $project->end_date < now() && $project->status !== 'completed',
+    ];
+
+    if ($this->hasColumn('estimated_completion_date') && $project->estimated_completion_date) {
+        $timelineData['estimated_days_remaining'] = $project->estimated_completion_date->diffInDays(now());
+    }
+
+    return view('admin.projects.show', compact(
+        'project',
+        'milestoneStats', 
+        'fileStats',
+        'timelineData'
+    ));
+}
 
     /**
      * Show the form for editing the specified project.

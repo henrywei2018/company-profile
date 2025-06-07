@@ -1,14 +1,24 @@
 <!-- resources/views/components/admin/badge.blade.php -->
 @props([
-    'type' => 'default', // Options: default, success, warning, danger, info, primary
-    'size' => 'md', // Options: sm, md, lg
-    'rounded' => true, // Whether to use rounded-full or rounded-md
-    'dot' => false, // Whether to show a status dot
-    'outline' => false, // Whether to use outline style
-    'soft' => false // Whether to use soft style
+    'type' => 'default',
+    'size' => 'md',
+    'rounded' => true,
+    'dot' => false,
+    'outline' => false,
+    'soft' => false
 ])
 
 @php
+    // Safely handle all props to ensure they're strings or appropriate types
+    $type = is_string($type) ? trim($type) : 'default';
+    $size = is_string($size) ? trim($size) : 'md';
+    
+    // Convert boolean values safely
+    $rounded = filter_var($rounded, FILTER_VALIDATE_BOOLEAN);
+    $dot = filter_var($dot, FILTER_VALIDATE_BOOLEAN);
+    $outline = filter_var($outline, FILTER_VALIDATE_BOOLEAN);
+    $soft = filter_var($soft, FILTER_VALIDATE_BOOLEAN);
+    
     // Size classes
     $sizeClasses = [
         'sm' => 'px-1.5 py-0.5 text-xs',
@@ -56,8 +66,9 @@
     // Get the correct variant based on props
     $variant = $outline ? 'outline' : ($soft ? 'soft' : 'default');
     
-    // Get the color classes for the badge
-    $colorClasses = $typeColorClasses[$type][$variant] ?? $typeColorClasses['default'][$variant];
+    // Get the color classes for the badge - ensure we have valid type and variant
+    $selectedType = $typeColorClasses[$type] ?? $typeColorClasses['default'];
+    $colorClasses = $selectedType[$variant] ?? $selectedType['default'];
     
     // Status dot colors
     $dotColors = [
@@ -68,11 +79,19 @@
         'danger' => 'bg-red-500 dark:bg-red-400',
         'info' => 'bg-sky-500 dark:bg-sky-400'
     ][$type] ?? 'bg-gray-400 dark:bg-gray-400';
+    
+    // Combine all classes
+    $classes = implode(' ', [
+        'inline-flex items-center font-medium',
+        $colorClasses,
+        $sizeClasses,
+        $roundedClasses
+    ]);
 @endphp
 
-<span {{ $attributes->merge(['class' => "inline-flex items-center font-medium $colorClasses $sizeClasses $roundedClasses"]) }}>
+<span {{ $attributes->merge(['class' => $classes]) }}>
     @if($dot)
-    <span class="shrink-0 size-1.5 {{ $dotColors }} rounded-full mr-1.5"></span>
+        <span class="shrink-0 size-1.5 {{ $dotColors }} rounded-full mr-1.5"></span>
     @endif
     {{ $slot }}
 </span>

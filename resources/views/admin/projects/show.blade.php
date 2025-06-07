@@ -1,7 +1,202 @@
 {{-- resources/views/admin/projects/show.blade.php - CLEAN VERSION --}}
+<script>
+   
+    window.kanbanBoard = function() {
+        return {
+            draggedItem: null,
+            
+            dragStart(event, milestoneId) {
+                this.draggedItem = milestoneId;
+                event.dataTransfer.effectAllowed = 'move';
+                event.target.style.opacity = '0.5';
+                console.log('Alpine: Drag started for milestone:', milestoneId);
+            },
+            
+            dragEnd(event) {
+                event.target.style.opacity = '1';
+            },
+            
+            dragOver(event) {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+            },
+            
+            dragEnter(event) {
+                event.preventDefault();
+                const column = event.target.closest('.kanban-column');
+                if (column) {
+                    column.classList.add('border-blue-400', 'bg-blue-50', 'dark:bg-blue-900/20');
+                }
+            },
+            
+            dragLeave(event) {
+                const column = event.target.closest('.kanban-column');
+                if (column && !column.contains(event.relatedTarget)) {
+                    column.classList.remove('border-blue-400', 'bg-blue-50', 'dark:bg-blue-900/20');
+                }
+            },
+            
+            drop(event, newStatus) {
+                event.preventDefault();
+                
+                // Remove visual feedback
+                const column = event.target.closest('.kanban-column');
+                if (column) {
+                    column.classList.remove('border-blue-400', 'bg-blue-50', 'dark:bg-blue-900/20');
+                }
+                
+                if (!this.draggedItem) {
+                    console.log('Alpine: No dragged item');
+                    return;
+                }
+                
+                console.log('Alpine: Dropping milestone', this.draggedItem, 'to status', newStatus);
+                
+                // Update milestone status
+                if (typeof updateMilestoneStatus === 'function') {
+                    updateMilestoneStatus(this.draggedItem, newStatus);
+                } else {
+                    console.error('updateMilestoneStatus function not found');
+                }
+                
+                this.draggedItem = null;
+            }
+        }
+    };
+    
+    // Define other global functions that might be needed
+    window.updateMilestoneStatus = function(milestoneId, newStatus) {
+        console.log('Updating milestone', milestoneId, 'to status', newStatus);
+        
+        // Show loading indicator
+        showNotification('Updating milestone...', 'info');
+        
+        const projectId = {{ $project->id }};
+        
+        fetch(`/admin/projects/${projectId}/milestones/${milestoneId}/update-status`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ 
+                status: newStatus 
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Update response:', data);
+            
+            if (data.success) {
+                showNotification('Milestone updated successfully!', 'success');
+                
+                // Refresh the page to show updated data
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                showNotification(data.message || 'Failed to update milestone', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating milestone:', error);
+            showNotification('An error occurred while updating the milestone', 'error');
+        });
+    };
+    
+    window.deleteMilestone = function(milestoneId) {
+        if (!confirm('Are you sure you want to delete this milestone? This action cannot be undone.')) {
+            return;
+        }
+        
+        console.log('Deleting milestone:', milestoneId);
+        
+        const projectId = {{ $project->id }};
+        
+        fetch(`/admin/projects/${projectId}/milestones/${milestoneId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Milestone deleted successfully!', 'success');
+                
+                // Remove the milestone element from DOM
+                const milestoneElements = document.querySelectorAll(`[data-milestone-id="${milestoneId}"]`);
+                milestoneElements.forEach(element => {
+                    element.remove();
+                });
+                
+                // Refresh the page to update statistics
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                showNotification(data.message || 'Failed to delete milestone', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting milestone:', error);
+            showNotification('An error occurred while deleting the milestone', 'error');
+        });
+    };
+    
+    window.showNotification = function(message, type = 'info') {
+        // Remove existing notifications
+        const existing = document.querySelector('.milestone-notification');
+        if (existing) existing.remove();
+        
+        const notification = document.createElement('div');
+        notification.className = `milestone-notification fixed top-4 right-4 px-4 py-2 rounded-md text-sm z-50 transition-all duration-300`;
+        
+        switch (type) {
+            case 'success':
+                notification.className += ' bg-green-100 text-green-800 border border-green-200';
+                break;
+            case 'error':
+                notification.className += ' bg-red-100 text-red-800 border border-red-200';
+                break;
+            case 'info':
+            default:
+                notification.className += ' bg-blue-100 text-blue-800 border border-blue-200';
+                break;
+        }
+        
+        notification.innerHTML = `
+            <div class="flex items-center">
+                <span>${message}</span>
+                <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-current opacity-50 hover:opacity-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    };
+    </script>
+    
 <x-layouts.admin title="Project Management">
     <!-- Fixed Header with Project Title -->
-    <div class="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 -mx-6 px-6 py-4 mb-6">
+    <div class="sticky top-12 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 -mx-6 px-6 py-4 mb-6">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div class="min-w-0 flex-1">
                 <div class="flex items-center space-x-3">
@@ -347,10 +542,10 @@
                 
                 <div class="flex items-center space-x-3">
                     <!-- View Toggle -->
-                    <div class="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
-                        <button class="px-3 py-1 text-sm bg-blue-500 text-white milestone-view-btn" data-view="timeline">
+                    <div class="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden" id="milestone-view-toggle">
+                        <button class="px-3 py-1 text-sm bg-blue-500 text-white milestone-view-btn active" data-view="timeline">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0h6a2 2 0 002-2V7a2 2 0 00-2-2h-2m0 0V3a1 1 0 00-1-1H8a1 1 0 00-1 1v2z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"/>
                             </svg>
                         </button>
                         <button class="px-3 py-1 text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-l border-gray-300 dark:border-gray-600 milestone-view-btn" data-view="kanban">
@@ -366,12 +561,20 @@
                     </div>
                     
                     <!-- Quick Filters -->
-                    <select class="text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700" id="milestone-status-filter">
+                    <select class="text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" id="milestone-status-filter">
                         <option value="">All Statuses</option>
                         <option value="pending">Pending</option>
                         <option value="in_progress">In Progress</option>
                         <option value="completed">Completed</option>
                         <option value="delayed">Delayed</option>
+                    </select>
+                    
+                    <select class="text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" id="milestone-priority-filter">
+                        <option value="">All Priorities</option>
+                        <option value="low">Low</option>
+                        <option value="normal">Normal</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
                     </select>
                     
                     <x-admin.button 
@@ -386,17 +589,54 @@
                     </x-admin.button>
                 </div>
             </div>
-
+        
+            @php
+                $projectMilestones = collect();
+                try {
+                    $projectMilestones = $project->milestones()->orderBy('due_date')->orderBy('sort_order')->get();
+                } catch (\Exception $e) {
+                    \Log::error('Error loading project milestones', ['project_id' => $project->id, 'error' => $e->getMessage()]);
+                }
+            @endphp
+        
             <!-- Milestone Views Container -->
             <div id="milestone-views-container">
                 <!-- Timeline View (Default) -->
                 <div id="timeline-view" class="milestone-view">
-                    @if($project->milestones->count() > 0)
+                    @if($projectMilestones->count() > 0)
                         <x-admin.card>
                             <div class="flow-root">
-                                <ul role="list" class="-mb-8">
-                                    @foreach($project->milestones->sortBy('due_date') as $milestone)
-                                        <li class="milestone-item" data-status="{{ $milestone->status }}" data-priority="{{ $milestone->priority ?? 'normal' }}">
+                                <ul role="list" class="-mb-8" id="milestones-timeline">
+                                    @foreach($projectMilestones as $milestone)
+                                        @php
+                                            $milestoneTitle = \App\Helpers\BladeHelpers::safeAttribute($milestone, 'title', 'Untitled Milestone');
+                                            $milestoneStatus = $milestone->status ?? 'pending';
+                                            $milestonePriority = $milestone->priority ?? 'normal';
+                                            $milestoneDescription = \App\Helpers\BladeHelpers::safeAttribute($milestone, 'description', '');
+                                            $milestoneProgress = $milestone->progress_percent ?? 0;
+                                            
+                                            $statusColor = match($milestoneStatus) {
+                                                'completed' => 'bg-green-500',
+                                                'in_progress' => 'bg-blue-500',
+                                                'delayed' => 'bg-red-500',
+                                                default => 'bg-gray-400'
+                                            };
+                                            
+                                            $priorityColor = match($milestonePriority) {
+                                                'critical' => 'danger',
+                                                'high' => 'warning',
+                                                'normal' => 'primary',
+                                                default => 'light'
+                                            };
+                                            
+                                            $isOverdue = $milestone->due_date && $milestone->due_date < now() && $milestoneStatus !== 'completed';
+                                            $isDueSoon = $milestone->due_date && $milestone->due_date >= now() && $milestone->due_date <= now()->addDays(7) && $milestoneStatus !== 'completed';
+                                        @endphp
+                                        
+                                        <li class="milestone-item" 
+                                            data-status="{{ $milestoneStatus }}" 
+                                            data-priority="{{ $milestonePriority }}"
+                                            data-milestone-id="{{ $milestone->id }}">
                                             <div class="relative pb-8">
                                                 @if(!$loop->last)
                                                     <span class="absolute top-5 left-5 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
@@ -404,14 +644,14 @@
                                                 <div class="relative flex items-start space-x-3">
                                                     <!-- Milestone Status Icon -->
                                                     <div class="flex-shrink-0">
-                                                        <span class="h-10 w-10 rounded-full {{ 
-                                                            $milestone->status === 'completed' ? 'bg-green-500' : 
-                                                            ($milestone->isOverdue() ? 'bg-red-500' : 
-                                                            ($milestone->status === 'in_progress' ? 'bg-blue-500' : 'bg-gray-400'))
-                                                        }} flex items-center justify-center ring-8 ring-white dark:ring-gray-900">
-                                                            @if($milestone->status === 'completed')
+                                                        <span class="h-10 w-10 rounded-full {{ $statusColor }} flex items-center justify-center ring-8 ring-white dark:ring-gray-900">
+                                                            @if($milestoneStatus === 'completed')
                                                                 <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                                                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                                </svg>
+                                                            @elseif($isOverdue)
+                                                                <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                                                 </svg>
                                                             @else
                                                                 <span class="text-white text-sm font-medium">{{ $loop->iteration }}</span>
@@ -425,52 +665,58 @@
                                                             <div class="flex-1">
                                                                 <div class="flex items-center space-x-3 mb-2">
                                                                     <h4 class="text-lg font-medium text-gray-900 dark:text-white">
-                                                                        {{ $milestone->title }}
+                                                                        {{ $milestoneTitle }}
                                                                     </h4>
-                                                                    <x-admin.badge type="{{ $milestone->status_color }}">
-                                                                        {{ $milestone->formatted_status }}
+                                                                    <x-admin.badge type="{{ 
+                                                                        $milestoneStatus === 'completed' ? 'success' : 
+                                                                        ($milestoneStatus === 'delayed' ? 'danger' : 
+                                                                        ($milestoneStatus === 'in_progress' ? 'warning' : 'light'))
+                                                                    }}">
+                                                                        {{ ucfirst(str_replace('_', ' ', $milestoneStatus)) }}
                                                                     </x-admin.badge>
-                                                                    @if(($milestone->priority ?? 'normal') !== 'normal')
-                                                                        <x-admin.badge type="{{ $milestone->priority_color }}" size="sm">
-                                                                            {{ ucfirst($milestone->priority ?? 'normal') }}
+                                                                    @if($milestonePriority !== 'normal')
+                                                                        <x-admin.badge type="{{ $priorityColor }}" size="sm">
+                                                                            {{ ucfirst($milestonePriority) }}
+                                                                        </x-admin.badge>
+                                                                    @endif
+                                                                    @if($isOverdue)
+                                                                        <x-admin.badge type="danger" size="sm">
+                                                                            Overdue
+                                                                        </x-admin.badge>
+                                                                    @elseif($isDueSoon)
+                                                                        <x-admin.badge type="warning" size="sm">
+                                                                            Due Soon
                                                                         </x-admin.badge>
                                                                     @endif
                                                                 </div>
                                                                 
-                                                                @if($milestone->description)
+                                                                @if($milestoneDescription)
                                                                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                                                        {{ $milestone->description }}
+                                                                        {{ $milestoneDescription }}
                                                                     </p>
                                                                 @endif
                                                                 
                                                                 <!-- Progress Bar -->
-                                                                @if(($milestone->progress_percent ?? 0) > 0)
+                                                                @if($milestoneProgress > 0)
                                                                     <div class="mb-3">
                                                                         <div class="flex items-center justify-between text-sm mb-1">
                                                                             <span class="text-gray-600 dark:text-gray-400">Progress</span>
-                                                                            <span class="font-medium">{{ $milestone->progress_percent ?? 0 }}%</span>
+                                                                            <span class="font-medium">{{ $milestoneProgress }}%</span>
                                                                         </div>
-                                                                        <x-admin.progress 
-                                                                            :value="$milestone->progress_percent ?? 0" 
-                                                                            height="sm"
-                                                                            color="{{ $milestone->status === 'completed' ? 'green' : 'blue' }}"
-                                                                        />
+                                                                        <div class="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                                                                            <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: {{ $milestoneProgress }}%"></div>
+                                                                        </div>
                                                                     </div>
                                                                 @endif
                                                                 
                                                                 <!-- Milestone Meta -->
                                                                 <div class="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
                                                                     @if($milestone->due_date)
-                                                                        <span class="flex items-center {{ $milestone->isOverdue() ? 'text-red-600 font-medium' : '' }}">
+                                                                        <span class="flex items-center {{ $isOverdue ? 'text-red-600 font-medium' : '' }}">
                                                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                                                             </svg>
                                                                             Due {{ $milestone->due_date->format('M j, Y') }}
-                                                                            @if($milestone->isOverdue())
-                                                                                <span class="ml-1">({{ $milestone->days_overdue ?? 0 }} days overdue)</span>
-                                                                            @elseif($milestone->isDueSoon())
-                                                                                <span class="ml-1">(Due in {{ $milestone->days_until_due ?? 0 }} days)</span>
-                                                                            @endif
                                                                         </span>
                                                                     @endif
                                                                     
@@ -499,47 +745,43 @@
                                                             
                                                             <!-- Quick Actions -->
                                                             <div class="flex items-center space-x-2 ml-4">
-                                                                @if($milestone->status !== 'completed')
-                                                                    <form method="POST" action="{{ route('admin.projects.milestones.complete', [$project, $milestone]) }}" class="inline">
-                                                                        @csrf
-                                                                        @method('PATCH')
-                                                                        <x-admin.icon-button
-                                                                            type="submit"
-                                                                            color="success"
-                                                                            size="sm"
-                                                                            tooltip="Mark as completed"
-                                                                            onclick="return confirm('Mark this milestone as completed?')"
-                                                                        >
-                                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                                                            </svg>
-                                                                        </x-admin.icon-button>
-                                                                    </form>
+                                                                @if($milestoneStatus !== 'completed')
+                                                                    <button type="button" 
+                                                                            onclick="updateMilestoneStatus({{ $milestone->id }}, 'completed')"
+                                                                            class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                                                            title="Mark as completed">
+                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                @else
+                                                                    <button type="button" 
+                                                                            onclick="updateMilestoneStatus({{ $milestone->id }}, 'in_progress')"
+                                                                            class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                                                            title="Reopen milestone">
+                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                                                        </svg>
+                                                                    </button>
                                                                 @endif
                                                                 
-                                                                <x-admin.icon-button
-                                                                    href="{{ route('admin.projects.milestones.edit', [$project, $milestone]) }}"
-                                                                    color="primary"
-                                                                    size="sm"
-                                                                    tooltip="Edit milestone"
-                                                                >
+                                                                <a href="{{ route('admin.projects.milestones.edit', [$project, $milestone]) }}"
+                                                                   class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                                                   title="Edit milestone">
                                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                                                     </svg>
-                                                                </x-admin.icon-button>
+                                                                </a>
                                                                 
                                                                 <!-- Dropdown for more actions -->
                                                                 <div class="relative" x-data="{ open: false }">
-                                                                    <x-admin.icon-button
-                                                                        type="button"
-                                                                        color="light"
-                                                                        size="sm"
-                                                                        @click="open = !open"
-                                                                    >
+                                                                    <button type="button"
+                                                                            @click="open = !open"
+                                                                            class="inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                                                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
                                                                         </svg>
-                                                                    </x-admin.icon-button>
+                                                                    </button>
                                                                     
                                                                     <div x-show="open" @click.away="open = false" 
                                                                          x-transition:enter="transition ease-out duration-100"
@@ -550,28 +792,27 @@
                                                                          x-transition:leave-end="transform opacity-0 scale-95"
                                                                          class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-50 border border-gray-200 dark:border-gray-700">
                                                                         <div class="py-1">
-                                                                            @if($milestone->status === 'completed')
-                                                                                <form method="POST" action="{{ route('admin.projects.milestones.reopen', [$project, $milestone]) }}" class="block">
-                                                                                    @csrf
-                                                                                    @method('PATCH')
-                                                                                    <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                                                                        Reopen Milestone
-                                                                                    </button>
-                                                                                </form>
-                                                                            @endif
-                                                                            <a href="{{ route('admin.projects.milestones.edit', [$project, $milestone]) }}" 
-                                                                               class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                                                                Edit Details
-                                                                            </a>
-                                                                            <form method="POST" action="{{ route('admin.projects.milestones.destroy', [$project, $milestone]) }}" class="block">
-                                                                                @csrf
-                                                                                @method('DELETE')
-                                                                                <button type="submit" 
-                                                                                        onclick="return confirm('Are you sure you want to delete this milestone?')"
-                                                                                        class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
-                                                                                    Delete Milestone
-                                                                                </button>
-                                                                            </form>
+                                                                            <button type="button" 
+                                                                                    onclick="updateMilestoneStatus({{ $milestone->id }}, 'pending')"
+                                                                                    class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                                                Set as Pending
+                                                                            </button>
+                                                                            <button type="button" 
+                                                                                    onclick="updateMilestoneStatus({{ $milestone->id }}, 'in_progress')"
+                                                                                    class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                                                Set as In Progress
+                                                                            </button>
+                                                                            <button type="button" 
+                                                                                    onclick="updateMilestoneStatus({{ $milestone->id }}, 'delayed')"
+                                                                                    class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                                                Mark as Delayed
+                                                                            </button>
+                                                                            <div class="border-t border-gray-100 dark:border-gray-600"></div>
+                                                                            <button type="button" 
+                                                                                    onclick="deleteMilestone({{ $milestone->id }})"
+                                                                                    class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
+                                                                                Delete Milestone
+                                                                            </button>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -595,7 +836,7 @@
                         />
                     @endif
                 </div>
-
+        
                 <!-- Kanban View -->
                 <div id="kanban-view" class="milestone-view hidden">
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4" x-data="kanbanBoard()">
@@ -609,78 +850,97 @@
                                             ($status === 'delayed' ? 'danger' : 
                                             ($status === 'in_progress' ? 'warning' : 'light'))
                                         }}" size="sm">
-                                            {{ $project->milestones->where('status', $status)->count() }}
+                                            {{ $projectMilestones->where('status', $status)->count() }}
                                         </x-admin.badge>
                                     </div>
                                 </x-slot>
                                 
-                                <div class="space-y-3 min-h-96" 
+                                <div class="space-y-3 min-h-96 kanban-column" 
                                      data-status="{{ $status }}"
                                      @drop="drop($event, '{{ $status }}')"
-                                     @dragover.prevent
-                                     @dragenter.prevent>
-                                    @foreach($project->milestones->where('status', $status) as $milestone)
-                                        <div class="milestone-card p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border-2 border-transparent hover:border-blue-300 cursor-move transition-colors" 
+                                     @dragover="dragOver($event)"
+                                     @dragenter="dragEnter($event)"
+                                     @dragleave="dragLeave($event)">
+                                    @foreach($projectMilestones->where('status', $status) as $milestone)
+                                        @php
+                                            $milestoneTitle = \App\Helpers\BladeHelpers::safeAttribute($milestone, 'title', 'Untitled Milestone');
+                                            $milestoneDescription = \App\Helpers\BladeHelpers::safeAttribute($milestone, 'description', '');
+                                            $milestonePriority = $milestone->priority ?? 'normal';
+                                            $milestoneProgress = $milestone->progress_percent ?? 0;
+                                            
+                                            $priorityColor = match($milestonePriority) {
+                                                'critical' => 'bg-red-500',
+                                                'high' => 'bg-orange-500',
+                                                'normal' => 'bg-blue-500',
+                                                default => 'bg-gray-500'
+                                            };
+                                            
+                                            $isOverdue = $milestone->due_date && $milestone->due_date < now() && $milestone->status !== 'completed';
+                                        @endphp
+                                        
+                                        <div class="milestone-card p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border-2 border-transparent hover:border-blue-300 cursor-move transition-colors milestone-item" 
                                              draggable="true" 
                                              data-milestone-id="{{ $milestone->id }}"
-                                             @dragstart="dragStart($event, {{ $milestone->id }})">
+                                             data-status="{{ $milestone->status }}"
+                                             data-priority="{{ $milestonePriority }}"
+                                             @dragstart="dragStart($event, {{ $milestone->id }})"
+                                             @dragend="dragEnd($event)">
                                             <div class="flex items-start justify-between mb-2">
                                                 <h4 class="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
-                                                    {{ $milestone->title }}
+                                                    {{ $milestoneTitle }}
                                                 </h4>
                                                 <div class="flex items-center space-x-1 ml-2">
-                                                    @if(($milestone->priority ?? 'normal') !== 'normal')
-                                                        <div class="w-2 h-2 rounded-full {{ 
-                                                            ($milestone->priority ?? 'normal') === 'critical' ? 'bg-red-500' : 
-                                                            (($milestone->priority ?? 'normal') === 'high' ? 'bg-orange-500' : 'bg-yellow-500')
-                                                        }}"></div>
+                                                    @if($milestonePriority !== 'normal')
+                                                        <div class="w-2 h-2 rounded-full {{ $priorityColor }}" 
+                                                             title="{{ ucfirst($milestonePriority) }} priority"></div>
                                                     @endif
                                                     
-                                                    <x-admin.icon-button
-                                                        href="{{ route('admin.projects.milestones.edit', [$project, $milestone]) }}"
-                                                        color="light"
-                                                        size="sm"
-                                                        tooltip="Edit"
-                                                    >
+                                                    @if($isOverdue)
+                                                        <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse" 
+                                                             title="Overdue"></div>
+                                                    @endif
+                                                    
+                                                    <a href="{{ route('admin.projects.milestones.edit', [$project, $milestone]) }}"
+                                                       class="inline-flex items-center px-1 py-1 text-xs text-gray-500 hover:text-gray-700"
+                                                       title="Edit"
+                                                       @click.stop>
                                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                                         </svg>
-                                                    </x-admin.icon-button>
+                                                    </a>
                                                 </div>
                                             </div>
                                             
-                                            @if($milestone->description)
+                                            @if($milestoneDescription)
                                                 <p class="text-xs text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                                                    {{ $milestone->description }}
+                                                    {{ Str::limit($milestoneDescription, 60) }}
                                                 </p>
                                             @endif
                                             
                                             <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
                                                 @if($milestone->due_date)
-                                                    <span class="{{ $milestone->isOverdue() ? 'text-red-500 font-medium' : '' }}">
+                                                    <span class="{{ $isOverdue ? 'text-red-500 font-medium' : '' }}">
                                                         {{ $milestone->due_date->format('M j') }}
                                                     </span>
                                                 @else
                                                     <span>No due date</span>
                                                 @endif
                                                 
-                                                @if(($milestone->progress_percent ?? 0) > 0)
-                                                    <span class="font-medium">{{ $milestone->progress_percent ?? 0 }}%</span>
+                                                @if($milestoneProgress > 0)
+                                                    <span class="font-medium">{{ $milestoneProgress }}%</span>
                                                 @endif
                                             </div>
                                             
-                                            @if(($milestone->progress_percent ?? 0) > 0)
-                                                <x-admin.progress 
-                                                    :value="$milestone->progress_percent ?? 0" 
-                                                    height="xs"
-                                                    showLabel="false"
-                                                    color="{{ $milestone->status === 'completed' ? 'green' : 'blue' }}"
-                                                />
+                                            @if($milestoneProgress > 0)
+                                                <div class="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-600">
+                                                    <div class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" 
+                                                         style="width: {{ $milestoneProgress }}%"></div>
+                                                </div>
                                             @endif
                                         </div>
                                     @endforeach
                                     
-                                    @if($project->milestones->where('status', $status)->isEmpty())
+                                    @if($projectMilestones->where('status', $status)->isEmpty())
                                         <div class="flex items-center justify-center h-32 text-gray-400 dark:text-gray-500 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
                                             <span class="text-sm">Drop milestones here</span>
                                         </div>
@@ -690,131 +950,150 @@
                         @endforeach
                     </div>
                 </div>
-
+        
                 <!-- List View -->
                 <div id="list-view" class="milestone-view hidden">
-                    @if($project->milestones->count() > 0)
+                    @if($projectMilestones->count() > 0)
                         <x-admin.card>
-                            <x-admin.data-table>
-                                <x-slot name="columns">
-                                    <x-admin.table-column width="w-8">#</x-admin.table-column>
-                                    <x-admin.table-column>Milestone</x-admin.table-column>
-                                    <x-admin.table-column>Status</x-admin.table-column>
-                                    <x-admin.table-column>Progress</x-admin.table-column>
-                                    <x-admin.table-column>Due Date</x-admin.table-column>
-                                    <x-admin.table-column>Actions</x-admin.table-column>
-                                </x-slot>
-                                
-                                @foreach($project->milestones->sortBy('sort_order') as $milestone)
-                                    <x-admin.table-row class="milestone-item" data-status="{{ $milestone->status }}" data-priority="{{ $milestone->priority ?? 'normal' }}">
-                                        <x-admin.table-cell>
-                                            <div class="flex items-center justify-center w-6 h-6 rounded-full {{ 
-                                                $milestone->status === 'completed' ? 'bg-green-100 text-green-600' : 
-                                                ($milestone->isOverdue() ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600')
-                                            }}">
-                                                @if($milestone->status === 'completed')
-                                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                                    </svg>
-                                                @else
-                                                    <span class="text-xs font-medium">{{ $loop->iteration }}</span>
-                                                @endif
-                                            </div>
-                                        </x-admin.table-cell>
-                                        
-                                        <x-admin.table-cell highlight>
-                                            <div>
-                                                <div class="flex items-center space-x-2">
-                                                    <span class="font-medium text-gray-900 dark:text-white">{{ $milestone->title }}</span>
-                                                    @if(($milestone->priority ?? 'normal') !== 'normal')
-                                                        <x-admin.badge type="{{ $milestone->priority_color }}" size="sm">
-                                                            {{ ucfirst($milestone->priority ?? 'normal') }}
-                                                        </x-admin.badge>
-                                                    @endif
-                                                </div>
-                                                @if($milestone->description)
-                                                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ Str::limit($milestone->description, 80) }}</p>
-                                                @endif
-                                            </div>
-                                        </x-admin.table-cell>
-                                        
-                                        <x-admin.table-cell>
-                                            <x-admin.badge type="{{ $milestone->status_color }}">
-                                                {{ $milestone->formatted_status }}
-                                            </x-admin.badge>
-                                            @if($milestone->isOverdue() && $milestone->status !== 'completed')
-                                                <div class="mt-1">
-                                                    <x-admin.badge type="danger" size="sm">
-                                                        {{ $milestone->days_overdue ?? 0 }}d overdue
-                                                    </x-admin.badge>
-                                                </div>
-                                            @endif
-                                        </x-admin.table-cell>
-                                        
-                                        <x-admin.table-cell>
-                                            <div class="flex items-center space-x-2">
-                                                <div class="flex-1">
-                                                    <x-admin.progress 
-                                                        :value="$milestone->progress_percent ?? 0" 
-                                                        height="xs"
-                                                        showLabel="false"
-                                                        color="{{ $milestone->status === 'completed' ? 'green' : 'blue' }}"
-                                                    />
-                                                </div>
-                                                <span class="text-xs text-gray-500 dark:text-gray-400 w-8 text-right">
-                                                    {{ $milestone->progress_percent ?? 0 }}%
-                                                </span>
-                                            </div>
-                                        </x-admin.table-cell>
-                                        
-                                        <x-admin.table-cell>
-                                            @if($milestone->due_date)
-                                                <div class="text-sm {{ $milestone->isOverdue() ? 'text-red-600 font-medium' : 'text-gray-900 dark:text-white' }}">
-                                                    {{ $milestone->due_date->format('M j, Y') }}
-                                                </div>
-                                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                                    {{ $milestone->due_date->diffForHumans() }}
-                                                </div>
-                                            @else
-                                                <span class="text-sm text-gray-400 dark:text-gray-500">No due date</span>
-                                            @endif
-                                        </x-admin.table-cell>
-                                        
-                                        <x-admin.table-cell>
-                                            <div class="flex items-center space-x-1">
-                                                @if($milestone->status !== 'completed')
-                                                    <form method="POST" action="{{ route('admin.projects.milestones.complete', [$project, $milestone]) }}" class="inline">
-                                                        @csrf
-                                                        @method('PATCH')
-                                                        <x-admin.icon-button
-                                                            type="submit"
-                                                            color="success"
-                                                            size="sm"
-                                                            tooltip="Complete"
-                                                            onclick="return confirm('Mark as completed?')"
-                                                        >
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                                            </svg>
-                                                        </x-admin.icon-button>
-                                                    </form>
-                                                @endif
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" id="milestones-table">
+                                    <thead class="bg-gray-50 dark:bg-gray-800">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">#</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Milestone</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Progress</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Due Date</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                                        @foreach($projectMilestones as $milestone)
+                                            @php
+                                                $milestoneTitle = \App\Helpers\BladeHelpers::safeAttribute($milestone, 'title', 'Untitled Milestone');
+                                                $milestoneDescription = \App\Helpers\BladeHelpers::safeAttribute($milestone, 'description', '');
+                                                $milestoneStatus = $milestone->status ?? 'pending';
+                                                $milestonePriority = $milestone->priority ?? 'normal';
+                                                $milestoneProgress = $milestone->progress_percent ?? 0;
                                                 
-                                                <x-admin.icon-button
-                                                    href="{{ route('admin.projects.milestones.edit', [$project, $milestone]) }}"
-                                                    color="primary"
-                                                    size="sm"
-                                                    tooltip="Edit"
-                                                >
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                                    </svg>
-                                                </x-admin.icon-button>
-                                            </div>
-                                        </x-admin.table-cell>
-                                    </x-admin.table-row>
-                                @endforeach
-                            </x-admin.data-table>
+                                                $statusColor = match($milestoneStatus) {
+                                                    'completed' => 'success',
+                                                    'in_progress' => 'warning',
+                                                    'delayed' => 'danger',
+                                                    default => 'light'
+                                                };
+                                                
+                                                $priorityColor = match($milestonePriority) {
+                                                    'critical' => 'danger',
+                                                    'high' => 'warning',
+                                                    'normal' => 'primary',
+                                                    default => 'light'
+                                                };
+                                                
+                                                $isOverdue = $milestone->due_date && $milestone->due_date < now() && $milestoneStatus !== 'completed';
+                                            @endphp
+                                            
+                                            <tr class="milestone-item hover:bg-gray-50 dark:hover:bg-gray-800" 
+                                                data-status="{{ $milestoneStatus }}" 
+                                                data-priority="{{ $milestonePriority }}"
+                                                data-milestone-id="{{ $milestone->id }}">
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="flex items-center justify-center w-6 h-6 rounded-full {{ 
+                                                        $milestoneStatus === 'completed' ? 'bg-green-100 text-green-600' : 
+                                                        ($isOverdue ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600')
+                                                    }}">
+                                                        @if($milestoneStatus === 'completed')
+                                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                            </svg>
+                                                        @else
+                                                            <span class="text-xs font-medium">{{ $loop->iteration }}</span>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                                
+                                                <td class="px-6 py-4">
+                                                    <div>
+                                                        <div class="flex items-center space-x-2">
+                                                            <span class="font-medium text-gray-900 dark:text-white">{{ $milestoneTitle }}</span>
+                                                            @if($milestonePriority !== 'normal')
+                                                                <x-admin.badge type="{{ $priorityColor }}" size="sm">
+                                                                    {{ ucfirst($milestonePriority) }}
+                                                                </x-admin.badge>
+                                                            @endif
+                                                        </div>
+                                                        @if($milestoneDescription)
+                                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ Str::limit($milestoneDescription, 80) }}</p>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                                
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <x-admin.badge type="{{ $statusColor }}">
+                                                        {{ ucfirst(str_replace('_', ' ', $milestoneStatus)) }}
+                                                    </x-admin.badge>
+                                                    @if($isOverdue)
+                                                        <div class="mt-1">
+                                                            <x-admin.badge type="danger" size="sm">
+                                                                {{ abs($milestone->due_date->diffInDays(now())) }}d overdue
+                                                            </x-admin.badge>
+                                                        </div>
+                                                    @endif
+                                                </td>
+                                                
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="flex items-center space-x-2">
+                                                        <div class="flex-1 w-16">
+                                                            <div class="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                                                                <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: {{ $milestoneProgress }}%"></div>
+                                                            </div>
+                                                        </div>
+                                                        <span class="text-xs text-gray-500 dark:text-gray-400 w-8 text-right">
+                                                            {{ $milestoneProgress }}%
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    @if($milestone->due_date)
+                                                        <div class="text-sm {{ $isOverdue ? 'text-red-600 font-medium' : 'text-gray-900 dark:text-white' }}">
+                                                            {{ $milestone->due_date->format('M j, Y') }}
+                                                        </div>
+                                                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                            {{ $milestone->due_date->diffForHumans() }}
+                                                        </div>
+                                                    @else
+                                                        <span class="text-sm text-gray-400 dark:text-gray-500">No due date</span>
+                                                    @endif
+                                                </td>
+                                                
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="flex items-center space-x-1">
+                                                        @if($milestoneStatus !== 'completed')
+                                                            <button type="button" 
+                                                                    onclick="updateMilestoneStatus({{ $milestone->id }}, 'completed')"
+                                                                    class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                                                    title="Complete">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                                                </svg>
+                                                            </button>
+                                                        @endif
+                                                        
+                                                        <a href="{{ route('admin.projects.milestones.edit', [$project, $milestone]) }}"
+                                                           class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                                           title="Edit">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                            </svg>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                         </x-admin.card>
                     @else
                         <x-admin.empty-state
@@ -832,20 +1111,76 @@
 
     <!-- Secondary Content Tabs (Files, Images, etc.) -->
     <div class="mt-8">
+        @php
+            // Safely prepare tab data to avoid any array/string issues
+            $tabsData = [];
+            
+            try {
+                $filesCount = $project->files()->count();
+                $imagesCount = $project->images()->count();
+                
+                $tabsData = [
+                    'files' => 'Files (' . $filesCount . ')',
+                    'images' => 'Images (' . $imagesCount . ')',
+                    'timeline' => 'Activity Timeline',
+                    'settings' => 'Project Settings'
+                ];
+            } catch (\Exception $e) {
+                \Log::error('Error preparing tabs data', ['error' => $e->getMessage()]);
+                $tabsData = [
+                    'files' => 'Files',
+                    'images' => 'Images', 
+                    'timeline' => 'Activity Timeline',
+                    'settings' => 'Project Settings'
+                ];
+            }
+        @endphp
+        
         <x-admin.tabs 
-            :tabs="[
-                'files' => 'Files (' . $project->files->count() . ')',
-                'images' => 'Images (' . $project->images->count() . ')',
-                'timeline' => 'Activity Timeline',
-                'settings' => 'Project Settings'
-            ]"
+            :tabs="$tabsData"
             activeTab="files"
         >
             <!-- Files Tab -->
             <x-admin.tab-panel id="files">
-                @if($project->files->count() > 0)
+                @php
+                    $projectFiles = collect();
+                    try {
+                        $projectFiles = $project->files()->get();
+                    } catch (\Exception $e) {
+                        \Log::error('Error loading project files', ['project_id' => $project->id, 'error' => $e->getMessage()]);
+                    }
+                @endphp
+                
+                @if($projectFiles->count() > 0)
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        @foreach($project->files as $file)
+                        @foreach($projectFiles as $file)
+                            @php
+                                // Safely get file properties with fallbacks
+                                $fileName = 'Unknown File';
+                                $fileSize = 'Unknown size';
+                                $createdDate = 'Unknown date';
+                                
+                                try {
+                                    $fileName = is_string($file->file_name) ? trim($file->file_name) : 'Unknown File';
+                                    if (empty($fileName)) $fileName = 'Unknown File';
+                                    
+                                    $fileSize = $file->formatted_file_size ?? 'Unknown size';
+                                    if (is_array($fileSize)) {
+                                        \Log::warning('File size is array', ['file_id' => $file->id]);
+                                        $fileSize = 'Unknown size';
+                                    }
+                                    
+                                    if ($file->created_at) {
+                                        $createdDate = $file->created_at->format('M j, Y');
+                                    }
+                                } catch (\Exception $e) {
+                                    \Log::error('Error processing file data', [
+                                        'file_id' => $file->id ?? 'unknown',
+                                        'error' => $e->getMessage()
+                                    ]);
+                                }
+                            @endphp
+                            
                             <x-admin.card>
                                 <div class="flex items-start space-x-3">
                                     <div class="flex-shrink-0">
@@ -857,19 +1192,20 @@
                                     </div>
                                     <div class="flex-1 min-w-0">
                                         <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                            {{ $file->file_name }}
+                                            {{ $fileName }}
                                         </p>
                                         <p class="text-xs text-gray-500 dark:text-gray-400">
-                                            {{ $file->formatted_file_size }} • {{ $file->created_at->format('M j, Y') }}
+                                            {{ $fileSize }} • {{ $createdDate }}
                                         </p>
                                         <div class="mt-2">
-                                            <x-admin.button 
-                                                href="{{ route('admin.projects.files.download', [$project, $file]) }}" 
-                                                color="light" 
-                                                size="sm"
-                                            >
-                                                Download
-                                            </x-admin.button>
+                                                <x-admin.button 
+                                                    href="{{ route('admin.projects.files.download', [$project, $file]) }}" 
+                                                    color="light" 
+                                                    size="sm"
+                                                >
+                                                    Download
+                                                </x-admin.button>
+                                        
                                         </div>
                                     </div>
                                 </div>
@@ -888,14 +1224,55 @@
             
             <!-- Images Tab -->
             <x-admin.tab-panel id="images">
-                @if($project->images->count() > 0)
+                @php
+                    $projectImages = collect();
+                    try {
+                        $projectImages = $project->images()->get();
+                    } catch (\Exception $e) {
+                        \Log::error('Error loading project images', ['project_id' => $project->id, 'error' => $e->getMessage()]);
+                    }
+                @endphp
+                
+                @if($projectImages->count() > 0)
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        @foreach($project->images as $image)
+                        @foreach($projectImages as $image)
+                            @php
+                                // Safely get image properties with fallbacks
+                                $imagePath = '';
+                                $altText = 'Project image';
+                                $isFeatured = false;
+                                
+                                try {
+                                    $imagePath = $image->image_path ?? '';
+                                    $altText = is_string($image->alt_text) ? trim($image->alt_text) : 'Project image';
+                                    if (empty($altText)) $altText = 'Project image';
+                                    if (is_array($altText)) {
+                                        \Log::warning('Alt text is array', ['image_id' => $image->id]);
+                                        $altText = 'Project image';
+                                    }
+                                    $isFeatured = (bool) ($image->is_featured ?? false);
+                                } catch (\Exception $e) {
+                                    \Log::error('Error processing image data', [
+                                        'image_id' => $image->id ?? 'unknown',
+                                        'error' => $e->getMessage()
+                                    ]);
+                                }
+                            @endphp
+                            
                             <div class="relative group">
-                                <img src="{{ Storage::url($image->image_path) }}" 
-                                     alt="{{ $image->alt_text }}" 
-                                     class="w-full h-48 object-cover rounded-lg">
-                                @if($image->is_featured)
+                                @if($imagePath && Storage::disk('public')->exists($imagePath))
+                                    <img src="{{ Storage::url($imagePath) }}" 
+                                        alt="{{ $altText }}" 
+                                        class="w-full h-48 object-cover rounded-lg">
+                                @else
+                                    <div class="w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                                        <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        </svg>
+                                    </div>
+                                @endif
+                                
+                                @if($isFeatured)
                                     <div class="absolute top-2 right-2">
                                         <x-admin.badge type="warning" size="sm">
                                             Featured
@@ -939,7 +1316,9 @@
                                     <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
                                         <div>
                                             <p class="text-sm font-medium text-gray-900 dark:text-white">Project created</p>
-                                            <p class="text-sm text-gray-500 dark:text-gray-400">{{ $project->title }}</p>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400">
+                                                {{ is_string($project->title) ? $project->title : 'Untitled Project' }}
+                                            </p>
                                         </div>
                                         <div class="text-right text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
                                             {{ $project->created_at->format('M j, Y g:i A') }}
@@ -950,7 +1329,37 @@
                         </li>
                         
                         <!-- Milestone Events -->
-                        @foreach($project->milestones->sortBy('created_at') as $milestone)
+                        @php
+                            $projectMilestones = collect();
+                            try {
+                                $projectMilestones = $project->milestones()->orderBy('created_at')->get();
+                            } catch (\Exception $e) {
+                                \Log::error('Error loading project milestones', ['project_id' => $project->id, 'error' => $e->getMessage()]);
+                            }
+                        @endphp
+                        
+                        @foreach($projectMilestones as $milestone)
+                            @php
+                                $milestoneTitle = 'Untitled Milestone';
+                                $milestoneStatus = 'pending';
+                                $milestoneCreated = null;
+                                $milestoneCompleted = null;
+                                
+                                try {
+                                    $milestoneTitle = is_string($milestone->title) ? trim($milestone->title) : 'Untitled Milestone';
+                                    if (empty($milestoneTitle)) $milestoneTitle = 'Untitled Milestone';
+                                    
+                                    $milestoneStatus = is_string($milestone->status) ? $milestone->status : 'pending';
+                                    $milestoneCreated = $milestone->created_at;
+                                    $milestoneCompleted = $milestone->completion_date;
+                                } catch (\Exception $e) {
+                                    \Log::error('Error processing milestone data', [
+                                        'milestone_id' => $milestone->id ?? 'unknown',
+                                        'error' => $e->getMessage()
+                                    ]);
+                                }
+                            @endphp
+                            
                             <li>
                                 <div class="relative pb-8">
                                     @if(!$loop->last)
@@ -958,8 +1367,8 @@
                                     @endif
                                     <div class="relative flex space-x-3">
                                         <div>
-                                            <span class="h-8 w-8 rounded-full {{ $milestone->status === 'completed' ? 'bg-green-500' : 'bg-blue-500' }} flex items-center justify-center ring-8 ring-white dark:ring-gray-900">
-                                                @if($milestone->status === 'completed')
+                                            <span class="h-8 w-8 rounded-full {{ $milestoneStatus === 'completed' ? 'bg-green-500' : 'bg-blue-500' }} flex items-center justify-center ring-8 ring-white dark:ring-gray-900">
+                                                @if($milestoneStatus === 'completed')
                                                     <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                                     </svg>
@@ -973,12 +1382,18 @@
                                         <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
                                             <div>
                                                 <p class="text-sm font-medium text-gray-900 dark:text-white">
-                                                    {{ $milestone->status === 'completed' ? 'Milestone completed' : 'Milestone created' }}
+                                                    {{ $milestoneStatus === 'completed' ? 'Milestone completed' : 'Milestone created' }}
                                                 </p>
-                                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ $milestone->title }}</p>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ $milestoneTitle }}</p>
                                             </div>
                                             <div class="text-right text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                                                {{ ($milestone->status === 'completed' && $milestone->completion_date) ? $milestone->completion_date->format('M j, Y g:i A') : $milestone->created_at->format('M j, Y g:i A') }}
+                                                @if($milestoneStatus === 'completed' && $milestoneCompleted)
+                                                    {{ $milestoneCompleted->format('M j, Y g:i A') }}
+                                                @elseif($milestoneCreated)
+                                                    {{ $milestoneCreated->format('M j, Y g:i A') }}
+                                                @else
+                                                    Unknown date
+                                                @endif
                                             </div>
                                         </div>
                                     </div>
@@ -1010,7 +1425,7 @@
                                     </select>
                                 </div>
                                 
-                                @if($project->priority ?? false)
+                                @if(isset($project->priority) && !is_null($project->priority))
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Priority</label>
                                         <select name="priority" class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700">
@@ -1025,20 +1440,20 @@
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Progress (%)</label>
                                     <input type="number" name="progress_percentage" min="0" max="100" 
-                                           value="{{ $project->progress_percentage ?? 0 }}" 
-                                           class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700">
+                                        value="{{ $project->progress_percentage ?? 0 }}" 
+                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700">
                                 </div>
                                 
                                 <div class="flex items-center">
                                     <input type="checkbox" name="featured" value="1" {{ $project->featured ? 'checked' : '' }}
-                                           class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring-blue-500">
+                                        class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring-blue-500">
                                     <label class="ml-2 text-sm text-gray-700 dark:text-gray-300">Featured Project</label>
                                 </div>
                                 
-                                @if($project->is_active ?? false)
+                                @if(isset($project->is_active))
                                     <div class="flex items-center">
                                         <input type="checkbox" name="is_active" value="1" {{ ($project->is_active ?? true) ? 'checked' : '' }}
-                                               class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring-blue-500">
+                                            class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring-blue-500">
                                         <label class="ml-2 text-sm text-gray-700 dark:text-gray-300">Active Project</label>
                                     </div>
                                 @endif
@@ -1067,7 +1482,7 @@
                                 Edit Full Details
                             </x-admin.button>
                             
-                            @if($project->quotation ?? false)
+                            @if(isset($project->quotation) && $project->quotation)
                                 <x-admin.button 
                                     href="{{ route('admin.quotations.show', $project->quotation) }}" 
                                     color="light" 
@@ -1081,7 +1496,7 @@
                                 </x-admin.button>
                             @endif
                             
-                            @if($project->slug ?? false)
+                            @if(isset($project->slug) && !empty($project->slug))
                                 <x-admin.button 
                                     href="{{ route('portfolio.show', $project->slug) }}" 
                                     color="info" 
@@ -1159,75 +1574,39 @@
         </x-slot>
     </x-admin.modal>
 
-    <!-- Floating Action Button -->
-    <div class="fixed bottom-6 right-6 z-50">
-        <div class="flex flex-col space-y-3" x-data="{ open: false }">
-            <!-- Sub Actions (when expanded) -->
-            <div x-show="open" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" class="flex flex-col space-y-2">
-                <x-admin.button 
-                    href="{{ route('admin.projects.milestones.create', $project) }}" 
-                    color="success"
-                    size="sm"
-                    class="shadow-lg"
-                >
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                    </svg>
-                    Add Milestone
-                </x-admin.button>
-                
-                <x-admin.button 
-                    href="{{ route('admin.projects.files.create', $project) }}" 
-                    color="info"
-                    size="sm"
-                    class="shadow-lg"
-                >
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                    </svg>
-                    Upload Files
-                </x-admin.button>
-                
-                <x-admin.button 
-                    href="{{ route('admin.projects.edit', $project) }}" 
-                    color="warning"
-                    size="sm"
-                    class="shadow-lg"
-                >
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
-                    Edit Project
-                </x-admin.button>
-            </div>
-            
-            <!-- Main FAB -->
-            <button @click="open = !open" 
-                    class="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-200 transform hover:scale-105">
-                <svg class="w-6 h-6 transition-transform duration-200" :class="{ 'rotate-45': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
-            </button>
-        </div>
-    </div>
 </x-layouts.admin>
 
 @push('scripts')
 <script>
-// Milestone View Switching
+// Enhanced Milestone Management JavaScript
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Milestone management script loaded');
+    
+    // Initialize milestone management
+    initializeMilestoneViews();
+    initializeMilestoneFilters();
+});
+
+// Initialize view switching
+function initializeMilestoneViews() {
     const viewButtons = document.querySelectorAll('.milestone-view-btn');
     const views = document.querySelectorAll('.milestone-view');
     
+    console.log('Found view buttons:', viewButtons.length);
+    console.log('Found views:', views.length);
+    
     viewButtons.forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
             const targetView = this.dataset.view;
+            console.log('Switching to view:', targetView);
             
             // Update button states
             viewButtons.forEach(btn => {
                 btn.classList.remove('bg-blue-500', 'text-white');
                 btn.classList.add('bg-white', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
             });
+            
             this.classList.remove('bg-white', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
             this.classList.add('bg-blue-500', 'text-white');
             
@@ -1235,32 +1614,224 @@ document.addEventListener('DOMContentLoaded', function() {
             views.forEach(view => {
                 if (view.id === targetView + '-view') {
                     view.classList.remove('hidden');
+                    console.log('Showing view:', view.id);
                 } else {
                     view.classList.add('hidden');
+                    console.log('Hiding view:', view.id);
                 }
             });
+            
+            // Apply current filters to new view
+            applyCurrentFilters();
         });
     });
-    
-    // Milestone Filtering
+}
+
+// Initialize filtering
+function initializeMilestoneFilters() {
     const statusFilter = document.getElementById('milestone-status-filter');
+    const priorityFilter = document.getElementById('milestone-priority-filter');
+    
     if (statusFilter) {
         statusFilter.addEventListener('change', function() {
-            const selectedStatus = this.value;
-            const milestoneItems = document.querySelectorAll('.milestone-item');
-            
-            milestoneItems.forEach(item => {
-                if (!selectedStatus || item.dataset.status === selectedStatus) {
-                    item.style.display = '';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
+            console.log('Status filter changed to:', this.value);
+            applyFilters();
         });
     }
-});
+    
+    if (priorityFilter) {
+        priorityFilter.addEventListener('change', function() {
+            console.log('Priority filter changed to:', this.value);
+            applyFilters();
+        });
+    }
+}
 
-// Kanban Board Functionality
+// Apply filters to current view
+function applyFilters() {
+    const statusFilter = document.getElementById('milestone-status-filter');
+    const priorityFilter = document.getElementById('milestone-priority-filter');
+    
+    const selectedStatus = statusFilter ? statusFilter.value : '';
+    const selectedPriority = priorityFilter ? priorityFilter.value : '';
+    
+    console.log('Applying filters - Status:', selectedStatus, 'Priority:', selectedPriority);
+    
+    const milestoneItems = document.querySelectorAll('.milestone-item');
+    let visibleCount = 0;
+    
+    milestoneItems.forEach(item => {
+        const itemStatus = item.dataset.status || '';
+        const itemPriority = item.dataset.priority || '';
+        
+        const statusMatch = !selectedStatus || itemStatus === selectedStatus;
+        const priorityMatch = !selectedPriority || itemPriority === selectedPriority;
+        
+        if (statusMatch && priorityMatch) {
+            item.style.display = '';
+            // For table rows, show the parent tr
+            if (item.tagName === 'TR') {
+                item.style.display = 'table-row';
+            }
+            visibleCount++;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+    
+    console.log('Visible milestones after filtering:', visibleCount);
+    
+    // Update empty states
+    updateEmptyStates(visibleCount);
+}
+
+// Apply current filters (used when switching views)
+function applyCurrentFilters() {
+    applyFilters();
+}
+
+// Update empty states based on filter results
+function updateEmptyStates(visibleCount) {
+    // Show/hide empty state messages based on filter results
+    const emptyStates = document.querySelectorAll('.kanban-column');
+    emptyStates.forEach(column => {
+        const items = column.querySelectorAll('.milestone-item:not([style*="display: none"])');
+        const emptyMessage = column.querySelector('.border-dashed');
+        
+        if (emptyMessage) {
+            emptyMessage.style.display = items.length === 0 ? 'flex' : 'none';
+        }
+    });
+}
+
+// Update milestone status via AJAX
+function updateMilestoneStatus(milestoneId, newStatus) {
+    console.log('Updating milestone', milestoneId, 'to status', newStatus);
+    
+    // Show loading indicator
+    showNotification('Updating milestone...', 'info');
+    
+    fetch(`/admin/projects/{{ $project->id }}/milestones/${milestoneId}/update-status`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ 
+            status: newStatus 
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Update response:', data);
+        
+        if (data.success) {
+            showNotification('Milestone updated successfully!', 'success');
+            
+            // Refresh the page to show updated data
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showNotification(data.message || 'Failed to update milestone', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating milestone:', error);
+        showNotification('An error occurred while updating the milestone', 'error');
+    });
+}
+
+// Delete milestone
+function deleteMilestone(milestoneId) {
+    if (!confirm('Are you sure you want to delete this milestone? This action cannot be undone.')) {
+        return;
+    }
+    
+    console.log('Deleting milestone:', milestoneId);
+    
+    fetch(`/admin/projects/{{ $project->id }}/milestones/${milestoneId}`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Milestone deleted successfully!', 'success');
+            
+            // Remove the milestone element from DOM
+            const milestoneElements = document.querySelectorAll(`[data-milestone-id="${milestoneId}"]`);
+            milestoneElements.forEach(element => {
+                element.remove();
+            });
+            
+            // Refresh the page to update statistics
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showNotification(data.message || 'Failed to delete milestone', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting milestone:', error);
+        showNotification('An error occurred while deleting the milestone', 'error');
+    });
+}
+
+// Show notification
+function showNotification(message, type = 'info') {
+    // Remove existing notifications
+    const existing = document.querySelector('.milestone-notification');
+    if (existing) existing.remove();
+    
+    const notification = document.createElement('div');
+    notification.className = `milestone-notification fixed top-4 right-4 px-4 py-2 rounded-md text-sm z-50 transition-all duration-300`;
+    
+    switch (type) {
+        case 'success':
+            notification.className += ' bg-green-100 text-green-800 border border-green-200';
+            break;
+        case 'error':
+            notification.className += ' bg-red-100 text-red-800 border border-red-200';
+            break;
+        case 'info':
+        default:
+            notification.className += ' bg-blue-100 text-blue-800 border border-blue-200';
+            break;
+    }
+    
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <span>${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-current opacity-50 hover:opacity-100">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Kanban Board Alpine.js component
 function kanbanBoard() {
     return {
         draggedItem: null,
@@ -1268,128 +1839,24 @@ function kanbanBoard() {
         dragStart(event, milestoneId) {
             this.draggedItem = milestoneId;
             event.dataTransfer.effectAllowed = 'move';
+            console.log('Alpine: Drag started for milestone:', milestoneId);
         },
         
         drop(event, newStatus) {
             event.preventDefault();
             
-            if (!this.draggedItem) return;
+            if (!this.draggedItem) {
+                console.log('Alpine: No dragged item');
+                return;
+            }
             
-            // Update milestone status via AJAX
-            fetch(`{{ route('admin.projects.milestones.index', $project) }}/${this.draggedItem}/update-status`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({ status: newStatus })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload(); // Refresh to show updated status
-                } else {
-                    alert('Failed to update milestone status');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while updating the milestone');
-            });
+            console.log('Alpine: Dropping milestone', this.draggedItem, 'to status', newStatus);
+            
+            // Update milestone status
+            updateMilestoneStatus(this.draggedItem, newStatus);
             
             this.draggedItem = null;
         }
-    }
-}
-
-// Delete confirmation
-function confirmDelete() {
-    document.getElementById('delete-project-modal').classList.remove('hidden');
-}
-
-// Auto-save for quick settings
-let autoSaveTimeout;
-document.querySelectorAll('#settings select, #settings input').forEach(input => {
-    input.addEventListener('change', function() {
-        clearTimeout(autoSaveTimeout);
-        showSaveIndicator('saving');
-        
-        autoSaveTimeout = setTimeout(() => {
-            const form = this.closest('form');
-            const formData = new FormData(form);
-            
-            fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showSaveIndicator('saved');
-                    // Update header status badge
-                    updateProjectHeader(data.project);
-                } else {
-                    showSaveIndicator('error');
-                }
-            })
-            .catch(error => {
-                console.error('Save error:', error);
-                showSaveIndicator('error');
-            });
-        }, 1000);
-    });
-});
-
-function showSaveIndicator(status) {
-    // Remove existing indicators
-    const existing = document.querySelector('.save-indicator');
-    if (existing) existing.remove();
-    
-    const indicator = document.createElement('div');
-    indicator.className = 'save-indicator fixed top-4 right-4 px-3 py-2 rounded-md text-sm z-50';
-    
-    if (status === 'saving') {
-        indicator.className += ' bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-        indicator.innerHTML = '<div class="flex items-center"><svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Auto-saving...</div>';
-    } else if (status === 'saved') {
-        indicator.className += ' bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-        indicator.innerHTML = '<div class="flex items-center"><svg class="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Saved</div>';
-    } else if (status === 'error') {
-        indicator.className += ' bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-        indicator.innerHTML = '<div class="flex items-center"><svg class="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>Error saving</div>';
-    }
-    
-    document.body.appendChild(indicator);
-    
-    // Auto-remove after 3 seconds
-    setTimeout(() => {
-        if (indicator.parentNode) {
-            indicator.remove();
-        }
-    }, 3000);
-}
-
-function updateProjectHeader(project) {
-    // Update progress ring
-    const progressPath = document.querySelector('.text-blue-500');
-    if (progressPath) {
-        progressPath.setAttribute('stroke-dasharray', `${project.progress_percentage}, 100`);
-    }
-    
-    // Update progress text
-    const progressTexts = document.querySelectorAll('.progress-text');
-    progressTexts.forEach(text => {
-        text.textContent = `${project.progress_percentage}%`;
-    });
-    
-    // Update status badge
-    const statusBadge = document.querySelector('.status-badge');
-    if (statusBadge) {
-        statusBadge.textContent = project.formatted_status;
-        statusBadge.className = `status-badge ${project.status_color}`;
     }
 }
 </script>

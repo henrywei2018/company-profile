@@ -170,6 +170,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
             Route::post('/cleanup', [ProjectFileController::class, 'cleanup'])->name('cleanup');
         });
     });
+    // Additional project routes
+    Route::patch('projects/{project}/toggle-featured', [ProjectController::class, 'toggleFeatured'])->name('projects.toggle-featured');
+    Route::patch('projects/{project}/quick-update', [ProjectController::class, 'quickUpdate'])->name('projects.quick-update');
+    Route::post('projects/update-order', [ProjectController::class, 'updateOrder'])->name('projects.update-order');
+    Route::post('projects/bulk-action', [ProjectController::class, 'bulkAction'])->name('projects.bulk-action');
+    Route::get('projects/search', [ProjectController::class, 'search'])->name('projects.search');
+    Route::get('projects/{project}/timeline-data', [ProjectController::class, 'getTimelineData'])->name('projects.timeline-data');
+    Route::patch('projects/{project}/set-featured-image/{image}', [ProjectController::class, 'setFeaturedImage'])->name('projects.set-featured-image');
+    Route::delete('projects/{project}/delete-image/{image}', [ProjectController::class, 'deleteImage'])->name('projects.delete-image');
+    Route::get('projects/statistics', [ProjectController::class, 'getStatistics'])->name('projects.statistics');
+    Route::get('projects/export', [ProjectController::class, 'export'])->name('projects.export');
+    
+    // Convert project to/from quotation
+    Route::post('projects/{project}/convert-to-quotation', [ProjectController::class, 'convertToQuotation'])->name('projects.convert-to-quotation');
+    Route::get('quotations/{quotation}/create-project', [ProjectController::class, 'createFromQuotation'])->name('quotations.create-project');
 
     // Project Categories
     Route::resource('project-categories', ProjectCategoryController::class);

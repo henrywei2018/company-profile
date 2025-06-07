@@ -15,6 +15,23 @@
 ])
 
 @php
+    // Safely handle all props to ensure they're strings
+    $type = is_string($type) ? trim($type) : 'button';
+    $color = is_string($color) ? trim($color) : 'primary';
+    $size = is_string($size) ? trim($size) : 'md';
+    $iconPosition = is_string($iconPosition) ? trim($iconPosition) : 'left';
+    
+    // Convert boolean values safely
+    $disabled = filter_var($disabled, FILTER_VALIDATE_BOOLEAN);
+    $loading = filter_var($loading, FILTER_VALIDATE_BOOLEAN);
+    $pill = filter_var($pill, FILTER_VALIDATE_BOOLEAN);
+    $outline = filter_var($outline, FILTER_VALIDATE_BOOLEAN);
+    $soft = filter_var($soft, FILTER_VALIDATE_BOOLEAN);
+    
+    // Safely handle href and target
+    $href = is_string($href) ? trim($href) : null;
+    $target = is_string($target) ? trim($target) : null;
+    
     // Base classes
     $baseClasses = 'inline-flex items-center justify-center gap-2 font-semibold transition-all';
 
@@ -25,7 +42,7 @@
         'md' => 'py-2 px-4 text-sm',
         'lg' => 'py-3 px-5 text-base',
         'xl' => 'py-3.5 px-6 text-base'
-    ][$size ?? 'md'];
+    ][$size] ?? 'py-2 px-4 text-sm';
 
     // Rounded classes
     $roundedClasses = $pill ? 'rounded-full' : 'rounded-md';
@@ -72,8 +89,16 @@
     // Get the correct variant based on props
     $variant = $outline ? 'outline' : ($soft ? 'soft' : 'default');
     
-    // Combine all classes
-    $classes = $baseClasses . ' ' . $sizeClasses . ' ' . $roundedClasses . ' ' . ($colorClasses[$color][$variant] ?? $colorClasses['primary']['default']);
+    // Combine all classes - ensure we have valid color and variant
+    $selectedColor = $colorClasses[$color] ?? $colorClasses['primary'];
+    $selectedVariant = $selectedColor[$variant] ?? $selectedColor['default'];
+    
+    $classes = implode(' ', [
+        $baseClasses,
+        $sizeClasses,
+        $roundedClasses,
+        $selectedVariant
+    ]);
     
     // Add disabled and loading states
     if ($disabled) {
@@ -86,7 +111,9 @@
 @endphp
 
 @if($href)
-    <a href="{{ $href }}" {{ $target ? "target={$target}" : '' }} {{ $attributes->merge(['class' => $classes]) }}>
+    <a href="{{ $href }}" 
+       @if($target) target="{{ $target }}" @endif 
+       {{ $attributes->merge(['class' => $classes]) }}>
         @if($loading)
             <span class="absolute inset-0 flex items-center justify-center">
                 <svg class="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

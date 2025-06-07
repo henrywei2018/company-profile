@@ -185,6 +185,7 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/robots.txt', [RobotsController::class, 'robots'])->name('robots');
 
+
 /*
 |--------------------------------------------------------------------------
 | Role-Based Area Routes
