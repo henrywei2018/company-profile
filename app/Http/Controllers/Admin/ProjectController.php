@@ -8,6 +8,10 @@ use App\Models\ProjectCategory;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\Quotation;
+use App\Http\Requests\StoreProjectRequest;
+use App\Http\Requests\UpdateProjectRequest;
+use App\Http\Requests\QuickUpdateProjectRequest;
+use App\Http\Requests\BulkProjectActionRequest;
 use App\Services\FileUploadService;
 use App\Services\ProjectService;
 use App\Facades\Notifications;
@@ -15,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ProjectController extends Controller
 {
@@ -35,19 +40,62 @@ class ProjectController extends Controller
         $query = Project::with(['client', 'category', 'service'])
             ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
             ->when($request->filled('category'), fn($q) => $q->where('category_id', $request->category))
+            ->when($request->filled('service'), fn($q) => $q->where('service_id', $request->service))
             ->when($request->filled('client'), fn($q) => $q->where('client_id', $request->client))
+            ->when($request->filled('priority'), fn($q) => $q->where('priority', $request->priority))
+            ->when($request->filled('year'), fn($q) => $q->whereYear('created_at', $request->year))
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->search;
                 return $q->where(function ($query) use ($search) {
                     $query->where('title', 'like', "%{$search}%")
                           ->orWhere('description', 'like', "%{$search}%")
                           ->orWhere('location', 'like', "%{$search}%");
+                    
+                    // Only search additional fields if they exist
+                    if (Schema::hasColumn('projects', 'short_description')) {
+                        $query->orWhere('short_description', 'like', "%{$search}%");
+                    }
+                    if (Schema::hasColumn('projects', 'client_name')) {
+                        $query->orWhere('client_name', 'like', "%{$search}%");
+                    }
                 });
-            });
+            })
+            ->when($request->filled('active_only'), fn($q) => $q->where('is_active', true))
+            ->when($request->filled('featured_only'), fn($q) => $q->where('featured', true));
 
-        $projects = $query->orderBy('created_at', 'desc')->paginate(15);
+        // Add sorting
+        $sortField = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
+        
+        $allowedSortFields = [
+            'title', 'status', 'start_date', 'end_date', 'created_at', 'updated_at'
+        ];
+        
+        // Add additional sort fields if columns exist
+        if (Schema::hasColumn('projects', 'priority')) {
+            $allowedSortFields[] = 'priority';
+        }
+        if (Schema::hasColumn('projects', 'progress_percentage')) {
+            $allowedSortFields[] = 'progress_percentage';
+        }
+        if (Schema::hasColumn('projects', 'display_order')) {
+            $allowedSortFields[] = 'display_order';
+        }
+        if (Schema::hasColumn('projects', 'budget')) {
+            $allowedSortFields[] = 'budget';
+        }
+        
+        if (in_array($sortField, $allowedSortFields)) {
+            $query->orderBy($sortField, $sortDirection);
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
 
-        $categories = ProjectCategory::all();
+        $projects = $query->paginate(15)->withQueryString();
+
+        // Get filter options
+        $categories = ProjectCategory::where('is_active', true)->get();
+        $services = Service::where('is_active', true)->get();
         $clients = User::role('client')->get();
         $years = Project::selectRaw('YEAR(created_at) as year')
                     ->distinct()
@@ -55,7 +103,26 @@ class ProjectController extends Controller
                     ->pluck('year', 'year')
                     ->toArray();
 
-        return view('admin.projects.index', compact('projects', 'categories', 'clients', 'years'));
+        // Get summary statistics
+        $stats = [
+            'total' => Project::count(),
+            'completed' => Project::where('status', 'completed')->count(),
+            'in_progress' => Project::where('status', 'in_progress')->count(),
+            'planning' => Project::where('status', 'planning')->count(),
+            'featured' => Project::where('featured', true)->count(),
+        ];
+        
+        // Add additional stats if columns exist
+        if (Schema::hasColumn('projects', 'is_active')) {
+            $stats['active'] = Project::where('is_active', true)->count();
+        }
+        if (Schema::hasColumn('projects', 'priority')) {
+            $stats['high_priority'] = Project::whereIn('priority', ['high', 'urgent'])->count();
+        }
+
+        return view('admin.projects.index', compact(
+            'projects', 'categories', 'services', 'clients', 'years', 'stats'
+        ));
     }
 
     /**
@@ -63,9 +130,9 @@ class ProjectController extends Controller
      */
     public function create(Request $request)
     {
-        $categories = ProjectCategory::active()->get();
-        $services = Service::active()->get();
-        $clients = User::role('client')->get();
+        $categories = ProjectCategory::where('is_active', true)->orderBy('sort_order')->get();
+        $services = Service::where('is_active', true)->orderBy('sort_order')->get();
+        $clients = User::role('client')->where('is_active', true)->orderBy('name')->get();
         
         // Check if creating from quotation
         $quotation = null;
@@ -79,9 +146,12 @@ class ProjectController extends Controller
             }
             
             // Check if project already exists for this quotation
-            if ($quotation->hasProject()) {
-                return redirect()->route('admin.projects.show', $quotation->project)
-                    ->with('info', 'A project already exists for this quotation.');
+            if (Schema::hasColumn('quotations', 'project_created') && $quotation->project_created) {
+                $existingProject = Project::where('quotation_id', $quotation->id)->first();
+                if ($existingProject) {
+                    return redirect()->route('admin.projects.show', $existingProject)
+                        ->with('info', 'A project already exists for this quotation.');
+                }
             }
         }
         
@@ -96,40 +166,9 @@ class ProjectController extends Controller
     /**
      * Store a newly created project.
      */
-    public function store(Request $request)
+    public function store(StoreProjectRequest $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:projects,slug',
-            'description' => 'nullable|string',
-            'short_description' => 'nullable|string|max:500',
-            'client_id' => 'nullable|exists:users,id',
-            'quotation_id' => 'nullable|exists:quotations,id',
-            'category_id' => 'nullable|exists:project_categories,id',
-            'service_id' => 'nullable|exists:services,id',
-            'status' => 'required|in:planning,in_progress,on_hold,completed,cancelled',
-            'priority' => 'required|in:low,normal,high,urgent',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'estimated_completion_date' => 'nullable|date',
-            'budget' => 'nullable|numeric|min:0',
-            'progress_percentage' => 'nullable|integer|min:0|max:100',
-            'featured' => 'boolean',
-            'is_active' => 'boolean',
-            'location' => 'nullable|string|max:255',
-            'challenge' => 'nullable|string',
-            'solution' => 'nullable|string',
-            'results' => 'nullable|string',
-            'technologies_used' => 'nullable|array',
-            'team_members' => 'nullable|array',
-            'client_feedback' => 'nullable|string',
-            'lessons_learned' => 'nullable|string',
-            'meta_title' => 'nullable|string|max:255',
-            'meta_description' => 'nullable|string|max:500',
-            'meta_keywords' => 'nullable|string',
-            'images.*' => 'nullable|image|max:2048',
-            'services_used' => 'nullable|array',
-        ]);
+        $validated = $request->validated();
 
         // Generate slug if not provided
         if (empty($validated['slug'])) {
@@ -144,35 +183,72 @@ class ProjectController extends Controller
             }
         }
 
-        // Set defaults and ensure proper data types
-        $validated['featured'] = $request->boolean('featured');
-        $validated['is_active'] = $request->boolean('is_active', true);
-        $validated['progress_percentage'] = $validated['progress_percentage'] ?? 0;
+        // Set defaults for existing columns
+        $validated['featured'] = $request->boolean('featured', false);
+        $validated['year'] = $validated['year'] ?? date('Y');
         
-        // Handle array fields properly
-        $validated['technologies_used'] = $validated['technologies_used'] ?? [];
-        $validated['team_members'] = $validated['team_members'] ?? [];
-        $validated['services_used'] = $validated['services_used'] ?? [];
+        // Handle optional new columns
+        if (Schema::hasColumn('projects', 'is_active')) {
+            $validated['is_active'] = $request->boolean('is_active', true);
+        }
+        if (Schema::hasColumn('projects', 'progress_percentage')) {
+            $validated['progress_percentage'] = $validated['progress_percentage'] ?? 0;
+        }
+        if (Schema::hasColumn('projects', 'display_order')) {
+            $validated['display_order'] = $validated['display_order'] ?? (Project::max('display_order') + 1);
+        }
+        if (Schema::hasColumn('projects', 'priority')) {
+            $validated['priority'] = $validated['priority'] ?? 'normal';
+        }
+        
+        // Handle JSON fields properly if columns exist
+        $jsonFields = ['technologies_used', 'team_members', 'services_used'];
+        foreach ($jsonFields as $field) {
+            if (Schema::hasColumn('projects', $field) && isset($validated[$field])) {
+                $validated[$field] = !empty($validated[$field]) 
+                    ? json_encode(array_filter($validated[$field])) 
+                    : null;
+            }
+        }
+
+        // Auto-set completion date if status is completed
+        if ($validated['status'] === 'completed') {
+            if (Schema::hasColumn('projects', 'actual_completion_date') && empty($validated['actual_completion_date'])) {
+                $validated['actual_completion_date'] = now();
+            }
+            if (Schema::hasColumn('projects', 'progress_percentage')) {
+                $validated['progress_percentage'] = 100;
+            }
+        }
+
+        // Remove fields that don't exist in current schema
+        $existingColumns = Schema::getColumnListing('projects');
+        $validated = array_intersect_key($validated, array_flip($existingColumns));
 
         $project = Project::create($validated);
 
         // Handle image uploads
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $index => $image) {
-                $path = $this->fileUploadService->uploadImage(
-                    $image, 
-                    'projects/' . $project->id,
-                    null,
-                    1200, // max width
-                    800   // max height
-                );
-                
-                $project->images()->create([
-                    'image_path' => $path,
-                    'alt_text' => $request->input("alt_texts.{$index}", $project->title),
-                    'is_featured' => $index === 0,
-                    'sort_order' => $index + 1,
-                ]);
+                try {
+                    $path = $this->fileUploadService->uploadImage(
+                        $image, 
+                        'projects/' . $project->id,
+                        null,
+                        1200, // max width
+                        800   // max height
+                    );
+                    
+                    $project->images()->create([
+                        'image_path' => $path,
+                        'alt_text' => $request->input("image_alt_texts.{$index}") 
+                            ?? $project->title . ' - Image ' . ($index + 1),
+                        'is_featured' => $index === 0,
+                        'sort_order' => $index + 1,
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::error('Image upload failed: ' . $e->getMessage());
+                }
             }
         }
 
@@ -180,18 +256,36 @@ class ProjectController extends Controller
         if ($project->quotation_id) {
             $quotation = Quotation::find($project->quotation_id);
             if ($quotation) {
-                $quotation->update([
-                    'status' => 'approved', // Ensure it stays approved
-                    'admin_notes' => ($quotation->admin_notes ? $quotation->admin_notes . "\n\n" : '') 
-                        . "Project created: " . $project->title . " on " . now()->format('Y-m-d H:i:s')
-                ]);
+                $updateData = [];
+                if (Schema::hasColumn('quotations', 'project_created')) {
+                    $updateData['project_created'] = true;
+                }
+                if (Schema::hasColumn('quotations', 'project_created_at')) {
+                    $updateData['project_created_at'] = now();
+                }
+                if (Schema::hasColumn('quotations', 'admin_notes')) {
+                    $updateData['admin_notes'] = ($quotation->admin_notes ? $quotation->admin_notes . "\n\n" : '') 
+                        . "Project created: " . $project->title . " on " . now()->format('Y-m-d H:i:s');
+                }
+                
+                if (!empty($updateData)) {
+                    $quotation->update($updateData);
+                }
             }
         }
 
         // Send notification
-        Notifications::send('project.created', $project);
+        if (class_exists('App\Facades\Notifications')) {
+            Notifications::send('project.created', $project);
+        }
 
-        return redirect()->route('admin.projects.show', $project)
+        $redirectRoute = match($request->input('action')) {
+            'save_and_add_another' => 'admin.projects.create',
+            'save_and_add_milestone' => 'admin.projects.milestones.create',
+            default => 'admin.projects.show'
+        };
+
+        return redirect()->route($redirectRoute, $project)
             ->with('success', 'Project created successfully!');
     }
 
@@ -205,31 +299,65 @@ class ProjectController extends Controller
             'category', 
             'service', 
             'quotation',
-            'images', 
-            'files', 
-            'milestones' => function($query) {
-                $query->orderBy('due_date')->orderBy('sort_order');
-            },
-            'testimonials',
-            'messages'
+            'images' => fn($q) => $q->orderBy('sort_order'), 
+            'files' => fn($q) => $q->orderBy('created_at', 'desc')->limit(10), 
+            'milestones' => fn($q) => $q->orderBy('due_date')->orderBy('sort_order'),
+            'testimonials' => fn($q) => $q->where('is_active', true),
+            'messages' => fn($q) => $q->orderBy('created_at', 'desc')->limit(5)
         ]);
 
-        // Calculate milestone statistics
+        // Calculate milestone statistics if milestones exist
         $milestoneStats = [
             'total' => $project->milestones->count(),
             'completed' => $project->milestones->where('status', 'completed')->count(),
             'in_progress' => $project->milestones->where('status', 'in_progress')->count(),
             'pending' => $project->milestones->where('status', 'pending')->count(),
             'delayed' => $project->milestones->where('status', 'delayed')->count(),
-            'overdue' => $project->milestones->filter(function($milestone) {
-                return $milestone->isOverdue();
-            })->count(),
-            'due_soon' => $project->milestones->filter(function($milestone) {
-                return $milestone->isDueSoon();
-            })->count(),
+        ];
+
+        // Add time-based calculations
+        $milestoneStats['overdue'] = $project->milestones->filter(function($milestone) {
+            return $milestone->due_date && $milestone->due_date < now() && $milestone->status !== 'completed';
+        })->count();
+
+        $milestoneStats['due_soon'] = $project->milestones->filter(function($milestone) {
+            return $milestone->due_date && 
+                   $milestone->due_date >= now() && 
+                   $milestone->due_date <= now()->addDays(7) &&
+                   $milestone->status !== 'completed';
+        })->count();
+
+        // Calculate completion rate
+        $milestoneStats['completion_rate'] = $milestoneStats['total'] > 0 
+            ? round(($milestoneStats['completed'] / $milestoneStats['total']) * 100, 1)
+            : 0;
+
+        // Get file statistics
+        $fileStats = [
+            'total_files' => $project->files->count(),
+            'total_size' => $project->files->sum('file_size'),
+            'public_files' => $project->files->where('is_public', true)->count(),
+            'recent_files' => $project->files->take(5),
+        ];
+
+        // Get project timeline data
+        $timelineData = [
+            'days_since_start' => $project->start_date ? now()->diffInDays($project->start_date) : 0,
+            'days_until_deadline' => $project->end_date ? $project->end_date->diffInDays(now()) : null,
+            'is_overdue' => $project->end_date && $project->end_date < now() && $project->status !== 'completed',
         ];
         
-        return view('admin.projects.show', compact('project', 'milestoneStats'));
+        // Add estimated timeline if column exists
+        if (Schema::hasColumn('projects', 'estimated_completion_date') && $project->estimated_completion_date) {
+            $timelineData['estimated_days_remaining'] = $project->estimated_completion_date->diffInDays(now());
+        }
+        
+        return view('admin.projects.show', compact(
+            'project', 
+            'milestoneStats', 
+            'fileStats', 
+            'timelineData'
+        ));
     }
 
     /**
@@ -237,9 +365,9 @@ class ProjectController extends Controller
      */
     public function edit(Project $project)
     {
-        $categories = ProjectCategory::active()->get();
-        $services = Service::active()->get();
-        $clients = User::role('client')->get();
+        $categories = ProjectCategory::where('is_active', true)->orderBy('sort_order')->get();
+        $services = Service::where('is_active', true)->orderBy('sort_order')->get();
+        $clients = User::role('client')->where('is_active', true)->orderBy('name')->get();
         
         $project->load(['images', 'files']);
         
@@ -254,41 +382,12 @@ class ProjectController extends Controller
     /**
      * Update the specified project.
      */
-    public function update(Request $request, Project $project)
+    public function update(UpdateProjectRequest $request, Project $project)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:projects,slug,' . $project->id,
-            'description' => 'nullable|string',
-            'short_description' => 'nullable|string|max:500',
-            'client_id' => 'nullable|exists:users,id',
-            'category_id' => 'nullable|exists:project_categories,id',
-            'service_id' => 'nullable|exists:services,id',
-            'status' => 'required|in:planning,in_progress,on_hold,completed,cancelled',
-            'priority' => 'required|in:low,normal,high,urgent',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'estimated_completion_date' => 'nullable|date',
-            'actual_completion_date' => 'nullable|date',
-            'budget' => 'nullable|numeric|min:0',
-            'actual_cost' => 'nullable|numeric|min:0',
-            'progress_percentage' => 'nullable|integer|min:0|max:100',
-            'featured' => 'boolean',
-            'is_active' => 'boolean',
-            'location' => 'nullable|string|max:255',
-            'challenge' => 'nullable|string',
-            'solution' => 'nullable|string',
-            'results' => 'nullable|string',
-            'technologies_used' => 'nullable|array',
-            'team_members' => 'nullable|array',
-            'client_feedback' => 'nullable|string',
-            'lessons_learned' => 'nullable|string',
-            'meta_title' => 'nullable|string|max:255',
-            'meta_description' => 'nullable|string|max:500',
-            'meta_keywords' => 'nullable|string',
-            'images.*' => 'nullable|image|max:2048',
-            'services_used' => 'nullable|array',
-        ]);
+        $validated = $request->validated();
+
+        // Store old status for comparison
+        $oldStatus = $project->status;
 
         // Generate slug if not provided
         if (empty($validated['slug'])) {
@@ -296,47 +395,90 @@ class ProjectController extends Controller
         }
 
         // Set boolean values
-        $validated['featured'] = $request->boolean('featured');
-        $validated['is_active'] = $request->boolean('is_active');
+        $validated['featured'] = $request->boolean('featured', false);
+        if (Schema::hasColumn('projects', 'is_active')) {
+            $validated['is_active'] = $request->boolean('is_active', true);
+        }
 
-        // Handle array fields properly
-        $validated['technologies_used'] = $validated['technologies_used'] ?? [];
-        $validated['team_members'] = $validated['team_members'] ?? [];
-        $validated['services_used'] = $validated['services_used'] ?? [];
+        // Handle JSON fields properly if columns exist
+        $jsonFields = ['technologies_used', 'team_members', 'services_used'];
+        foreach ($jsonFields as $field) {
+            if (Schema::hasColumn('projects', $field) && isset($validated[$field])) {
+                $validated[$field] = !empty($validated[$field]) 
+                    ? json_encode(array_filter($validated[$field])) 
+                    : null;
+            }
+        }
 
         // Auto-set completion date if status changed to completed
-        if ($validated['status'] === 'completed' && $project->status !== 'completed') {
-            $validated['actual_completion_date'] = now();
-            $validated['progress_percentage'] = 100;
+        if ($validated['status'] === 'completed' && $oldStatus !== 'completed') {
+            if (Schema::hasColumn('projects', 'actual_completion_date') && empty($validated['actual_completion_date'])) {
+                $validated['actual_completion_date'] = now();
+            }
+            if (Schema::hasColumn('projects', 'progress_percentage')) {
+                $validated['progress_percentage'] = 100;
+            }
+            
+            // Set completion notification timestamp if column exists
+            if (Schema::hasColumn('projects', 'completion_notification_sent_at')) {
+                $validated['completion_notification_sent_at'] = now();
+            }
         }
+
+        // Clear completion date if status changed from completed
+        if ($validated['status'] !== 'completed' && $oldStatus === 'completed') {
+            if (Schema::hasColumn('projects', 'actual_completion_date')) {
+                $validated['actual_completion_date'] = null;
+            }
+        }
+
+        // Remove fields that don't exist in current schema
+        $existingColumns = Schema::getColumnListing('projects');
+        $validated = array_intersect_key($validated, array_flip($existingColumns));
 
         $project->update($validated);
 
         // Handle new image uploads
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $index => $image) {
-                $path = $this->fileUploadService->uploadImage(
-                    $image, 
-                    'projects/' . $project->id,
-                    null,
-                    1200,
-                    800
-                );
-                
-                $project->images()->create([
-                    'image_path' => $path,
-                    'alt_text' => $request->input("alt_texts.{$index}", $project->title),
-                    'is_featured' => $project->images()->count() === 0,
-                    'sort_order' => $project->images()->max('sort_order') + 1,
-                ]);
+                try {
+                    $path = $this->fileUploadService->uploadImage(
+                        $image, 
+                        'projects/' . $project->id,
+                        null,
+                        1200,
+                        800
+                    );
+                    
+                    $project->images()->create([
+                        'image_path' => $path,
+                        'alt_text' => $request->input("image_alt_texts.{$index}") 
+                            ?? $project->title . ' - Image ' . ($project->images()->count() + 1),
+                        'is_featured' => $project->images()->count() === 0,
+                        'sort_order' => $project->images()->max('sort_order') + 1,
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::error('Image upload failed: ' . $e->getMessage());
+                }
             }
         }
 
-        // Send notification
-        Notifications::send('project.updated', $project);
+        // Send notification if status changed
+        if (class_exists('App\Facades\Notifications')) {
+            if ($oldStatus !== $validated['status']) {
+                Notifications::send('project.status_changed', [
+                    'project' => $project,
+                    'old_status' => $oldStatus,
+                    'new_status' => $validated['status']
+                ]);
+            } else {
+                Notifications::send('project.updated', $project);
+            }
+        }
 
         $redirectRoute = match($request->input('action')) {
             'save_and_continue' => 'admin.projects.edit',
+            'save_and_add_milestone' => 'admin.projects.milestones.create',
             default => 'admin.projects.show'
         };
 
@@ -349,6 +491,16 @@ class ProjectController extends Controller
      */
     public function destroy(Project $project)
     {
+        // Check if project has related data
+        $hasRelatedData = $project->milestones()->count() > 0 || 
+                         $project->files()->count() > 0 || 
+                         $project->testimonials()->count() > 0;
+
+        if ($hasRelatedData) {
+            return redirect()->back()
+                ->with('error', 'Cannot delete project with related milestones, files, or testimonials. Please remove them first.');
+        }
+
         // Delete associated images
         foreach ($project->images as $image) {
             if (Storage::disk('public')->exists($image->image_path)) {
@@ -366,12 +518,74 @@ class ProjectController extends Controller
         }
 
         // Send notification before deletion
-        Notifications::send('project.deleted', $project);
+        if (class_exists('App\Facades\Notifications')) {
+            Notifications::send('project.deleted', $project);
+        }
+
+        // If project was created from quotation, update quotation
+        if ($project->quotation_id) {
+            $quotation = Quotation::find($project->quotation_id);
+            if ($quotation) {
+                $updateData = [];
+                if (Schema::hasColumn('quotations', 'project_created')) {
+                    $updateData['project_created'] = false;
+                }
+                if (Schema::hasColumn('quotations', 'project_created_at')) {
+                    $updateData['project_created_at'] = null;
+                }
+                
+                if (!empty($updateData)) {
+                    $quotation->update($updateData);
+                }
+            }
+        }
 
         $project->delete();
 
         return redirect()->route('admin.projects.index')
             ->with('success', 'Project deleted successfully!');
+    }
+
+    /**
+     * Soft delete project (if soft deletes are enabled).
+     */
+    public function softDelete(Project $project)
+    {
+        if (Schema::hasColumn('projects', 'is_active')) {
+            $project->update(['is_active' => false]);
+        }
+        
+        // If using soft deletes trait
+        if (method_exists($project, 'delete')) {
+            $project->delete();
+        }
+
+        if (class_exists('App\Facades\Notifications')) {
+            Notifications::send('project.archived', $project);
+        }
+
+        return redirect()->back()
+            ->with('success', 'Project archived successfully!');
+    }
+
+    /**
+     * Restore soft deleted project.
+     */
+    public function restore($id)
+    {
+        $project = Project::withTrashed()->findOrFail($id);
+        $project->restore();
+        
+        if (Schema::hasColumn('projects', 'is_active')) {
+            $project->update(['is_active' => true]);
+        }
+
+        if (class_exists('App\Facades\Notifications')) {
+            Notifications::send('project.restored', $project);
+        }
+
+        return redirect()->route('admin.projects.show', $project)
+            ->with('success', 'Project restored successfully!');
     }
 
     /**
@@ -396,26 +610,29 @@ class ProjectController extends Controller
             'items.*.order' => 'required|integer|min:0',
         ]);
 
-        foreach ($request->items as $item) {
-            Project::where('id', $item['id'])
-                ->update(['display_order' => $item['order']]);
+        if (Schema::hasColumn('projects', 'display_order')) {
+            DB::transaction(function () use ($request) {
+                foreach ($request->items as $item) {
+                    Project::where('id', $item['id'])
+                        ->update(['display_order' => $item['order']]);
+                }
+            });
+
+            return response()->json(['success' => true]);
         }
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => false, 'message' => 'Display order not supported']);
     }
 
     /**
      * Quick update project settings (AJAX).
      */
-    public function quickUpdate(Request $request, Project $project)
+    public function quickUpdate(QuickUpdateProjectRequest $request, Project $project)
     {
-        $validated = $request->validate([
-            'status' => 'nullable|in:planning,in_progress,on_hold,completed,cancelled',
-            'priority' => 'nullable|in:low,normal,high,urgent',
-            'progress_percentage' => 'nullable|integer|min:0|max:100',
-            'featured' => 'boolean',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $request->validated();
+
+        // Store old values for comparison
+        $oldStatus = $project->status;
 
         // Remove empty values
         $validated = array_filter($validated, function($value) {
@@ -426,32 +643,54 @@ class ProjectController extends Controller
         if ($request->has('featured')) {
             $validated['featured'] = $request->boolean('featured');
         }
-        if ($request->has('is_active')) {
+        if ($request->has('is_active') && Schema::hasColumn('projects', 'is_active')) {
             $validated['is_active'] = $request->boolean('is_active');
         }
 
         // Auto-set completion date if status changed to completed
-        if (isset($validated['status']) && $validated['status'] === 'completed' && $project->status !== 'completed') {
-            $validated['actual_completion_date'] = now();
-            if (!isset($validated['progress_percentage'])) {
+        if (isset($validated['status']) && $validated['status'] === 'completed' && $oldStatus !== 'completed') {
+            if (Schema::hasColumn('projects', 'actual_completion_date')) {
+                $validated['actual_completion_date'] = now();
+            }
+            if (Schema::hasColumn('projects', 'progress_percentage') && !isset($validated['progress_percentage'])) {
                 $validated['progress_percentage'] = 100;
+            }
+            if (Schema::hasColumn('projects', 'completion_notification_sent_at')) {
+                $validated['completion_notification_sent_at'] = now();
             }
         }
 
+        // Remove fields that don't exist in current schema
+        $existingColumns = Schema::getColumnListing('projects');
+        $validated = array_intersect_key($validated, array_flip($existingColumns));
+
         $project->update($validated);
+
+        // Send notification if status changed
+        if (class_exists('App\Facades\Notifications')) {
+            if (isset($validated['status']) && $oldStatus !== $validated['status']) {
+                Notifications::send('project.status_changed', [
+                    'project' => $project,
+                    'old_status' => $oldStatus,
+                    'new_status' => $validated['status']
+                ]);
+            }
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Project updated successfully!',
                 'project' => [
+                    'id' => $project->id,
                     'status' => $project->status,
-                    'formatted_status' => $project->formatted_status,
-                    'status_color' => $project->status_color,
-                    'progress_percentage' => $project->progress_percentage,
-                    'priority' => $project->priority,
+                    'formatted_status' => ucfirst(str_replace('_', ' ', $project->status)),
+                    'status_color' => $this->getStatusColor($project->status),
+                    'progress_percentage' => $project->progress_percentage ?? 0,
+                    'priority' => $project->priority ?? 'normal',
+                    'priority_color' => $this->getPriorityColor($project->priority ?? 'normal'),
                     'featured' => $project->featured,
-                    'is_active' => $project->is_active,
+                    'is_active' => $project->is_active ?? true,
                 ]
             ]);
         }
@@ -473,19 +712,29 @@ class ProjectController extends Controller
             // Update the original quotation
             $quotation = $project->quotation;
             if ($quotation) {
-                $quotation->update([
-                    'status' => 'pending',
-                    'admin_notes' => ($quotation->admin_notes ? $quotation->admin_notes . "\n\n" : '') 
-                        . "Project converted back to quotation on " . now()->format('Y-m-d H:i:s')
-                ]);
+                $updateData = ['status' => 'pending'];
+                
+                if (Schema::hasColumn('quotations', 'project_created')) {
+                    $updateData['project_created'] = false;
+                }
+                if (Schema::hasColumn('quotations', 'project_created_at')) {
+                    $updateData['project_created_at'] = null;
+                }
+                if (Schema::hasColumn('quotations', 'admin_notes')) {
+                    $updateData['admin_notes'] = ($quotation->admin_notes ? $quotation->admin_notes . "\n\n" : '') 
+                        . "Project converted back to quotation on " . now()->format('Y-m-d H:i:s');
+                }
+                
+                $quotation->update($updateData);
             }
 
-            // Optionally keep project data or delete it
-            // For now, we'll just update its status
-            $project->update([
-                'status' => 'cancelled',
-                'is_active' => false
-            ]);
+            // Update project status
+            $projectUpdateData = ['status' => 'cancelled'];
+            if (Schema::hasColumn('projects', 'is_active')) {
+                $projectUpdateData['is_active'] = false;
+            }
+            
+            $project->update($projectUpdateData);
         });
 
         return redirect()->route('admin.quotations.show', $project->quotation)
@@ -504,11 +753,412 @@ class ProjectController extends Controller
         }
 
         // Check if project already exists
-        if ($quotation->hasProject()) {
-            return redirect()->route('admin.projects.show', $quotation->project)
-                ->with('info', 'A project already exists for this quotation.');
+        if (Schema::hasColumn('quotations', 'project_created') && $quotation->project_created) {
+            $existingProject = Project::where('quotation_id', $quotation->id)->first();
+            if ($existingProject) {
+                return redirect()->route('admin.projects.show', $existingProject)
+                    ->with('info', 'A project already exists for this quotation.');
+            }
         }
 
         return redirect()->route('admin.projects.create', ['from_quotation' => $quotation->id]);
+    }
+
+    /**
+     * Get projects statistics for dashboard.
+     */
+    public function getStatistics()
+    {
+        $stats = [
+            'total_projects' => Project::count(),
+            'completed_projects' => Project::where('status', 'completed')->count(),
+            'in_progress_projects' => Project::where('status', 'in_progress')->count(),
+            'planning_projects' => Project::where('status', 'planning')->count(),
+            'featured_projects' => Project::where('featured', true)->count(),
+            'projects_by_status' => Project::select('status', DB::raw('count(*) as count'))
+                ->groupBy('status')
+                ->pluck('count', 'status')
+                ->toArray(),
+        ];
+
+        // Add optional stats if columns exist
+        if (Schema::hasColumn('projects', 'is_active')) {
+            $stats['active_projects'] = Project::where('is_active', true)->count();
+        }
+        if (Schema::hasColumn('projects', 'priority')) {
+            $stats['high_priority_projects'] = Project::whereIn('priority', ['high', 'urgent'])->count();
+            $stats['projects_by_priority'] = Project::select('priority', DB::raw('count(*) as count'))
+                ->groupBy('priority')
+                ->pluck('count', 'priority')
+                ->toArray();
+        }
+        if (Schema::hasColumn('projects', 'budget')) {
+            $stats['total_budget'] = Project::whereNotNull('budget')->sum('budget');
+        }
+        if (Schema::hasColumn('projects', 'actual_cost')) {
+            $stats['total_actual_cost'] = Project::whereNotNull('actual_cost')->sum('actual_cost');
+        }
+        if (Schema::hasColumn('projects', 'progress_percentage')) {
+            $stats['average_progress'] = Project::where('is_active', true)->avg('progress_percentage');
+        }
+
+        // Overdue projects calculation
+        $stats['overdue_projects'] = Project::where('end_date', '<', now())
+            ->where('status', '!=', 'completed')
+            ->count();
+
+        $stats['due_soon_projects'] = Project::whereBetween('end_date', [now(), now()->addDays(7)])
+            ->where('status', '!=', 'completed')
+            ->count();
+
+        // Category breakdown
+        $stats['projects_by_category'] = Project::with('category')
+            ->select('category_id', DB::raw('count(*) as count'))
+            ->groupBy('category_id')
+            ->get()
+            ->mapWithKeys(function ($item) {
+                return [$item->category->name ?? 'Uncategorized' => $item->count];
+            })
+            ->toArray();
+
+        // Recent projects
+        $stats['recent_projects'] = Project::with(['client', 'category'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function ($project) {
+                return [
+                    'id' => $project->id,
+                    'title' => $project->title,
+                    'status' => $project->status,
+                    'client_name' => $project->client?->name ?? $project->client_name ?? 'Unknown',
+                    'category' => $project->category?->name,
+                    'progress' => $project->progress_percentage ?? 0,
+                    'created_at' => $project->created_at->format('M j, Y'),
+                ];
+            });
+
+        return response()->json($stats);
+    }
+
+    /**
+     * Export projects to CSV.
+     */
+    public function export(Request $request)
+    {
+        $query = Project::with(['client', 'category', 'service']);
+
+        // Apply same filters as index
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('category')) {
+            $query->where('category_id', $request->category);
+        }
+        if ($request->filled('client')) {
+            $query->where('client_id', $request->client);
+        }
+        if ($request->filled('priority') && Schema::hasColumn('projects', 'priority')) {
+            $query->where('priority', $request->priority);
+        }
+
+        $projects = $query->orderBy('created_at', 'desc')->get();
+
+        $csvData = [];
+        $headers = [
+            'ID', 'Title', 'Client', 'Category', 'Service', 'Status', 'Start Date', 'End Date', 'Location', 'Featured', 'Created At'
+        ];
+
+        // Add optional headers if columns exist
+        if (Schema::hasColumn('projects', 'priority')) {
+            $headers[] = 'Priority';
+        }
+        if (Schema::hasColumn('projects', 'progress_percentage')) {
+            $headers[] = 'Progress %';
+        }
+        if (Schema::hasColumn('projects', 'budget')) {
+            $headers[] = 'Budget';
+        }
+        if (Schema::hasColumn('projects', 'actual_cost')) {
+            $headers[] = 'Actual Cost';
+        }
+        if (Schema::hasColumn('projects', 'is_active')) {
+            $headers[] = 'Active';
+        }
+
+        $csvData[] = $headers;
+
+        foreach ($projects as $project) {
+            $row = [
+                $project->id,
+                $project->title,
+                $project->client?->name ?? $project->client_name ?? '',
+                $project->category?->name ?? '',
+                $project->service?->title ?? '',
+                ucfirst(str_replace('_', ' ', $project->status)),
+                $project->start_date?->format('Y-m-d') ?? '',
+                $project->end_date?->format('Y-m-d') ?? '',
+                $project->location ?? '',
+                $project->featured ? 'Yes' : 'No',
+                $project->created_at->format('Y-m-d H:i:s'),
+            ];
+
+            // Add optional data if columns exist
+            if (Schema::hasColumn('projects', 'priority')) {
+                $row[] = ucfirst($project->priority ?? 'normal');
+            }
+            if (Schema::hasColumn('projects', 'progress_percentage')) {
+                $row[] = ($project->progress_percentage ?? 0) . '%';
+            }
+            if (Schema::hasColumn('projects', 'budget')) {
+                $row[] = $project->budget ? 'Rp ' . number_format($project->budget, 0, ',', '.') : '';
+            }
+            if (Schema::hasColumn('projects', 'actual_cost')) {
+                $row[] = $project->actual_cost ? 'Rp ' . number_format($project->actual_cost, 0, ',', '.') : '';
+            }
+            if (Schema::hasColumn('projects', 'is_active')) {
+                $row[] = ($project->is_active ?? true) ? 'Yes' : 'No';
+            }
+
+            $csvData[] = $row;
+        }
+
+        $filename = 'projects-export-' . now()->format('Y-m-d-H-i-s') . '.csv';
+
+        $handle = fopen('php://temp', 'r+');
+        foreach ($csvData as $row) {
+            fputcsv($handle, $row);
+        }
+        rewind($handle);
+        $csv = stream_get_contents($handle);
+        fclose($handle);
+
+        return response($csv)
+            ->header('Content-Type', 'text/csv')
+            ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+    }
+
+    /**
+     * Bulk operations on projects.
+     */
+    public function bulkAction(BulkProjectActionRequest $request)
+    {
+        $validated = $request->validated();
+        $projects = Project::whereIn('id', $validated['project_ids'])->get();
+        $affectedCount = 0;
+
+        DB::transaction(function () use ($validated, $projects, &$affectedCount) {
+            foreach ($projects as $project) {
+                switch ($validated['action']) {
+                    case 'activate':
+                        if (Schema::hasColumn('projects', 'is_active')) {
+                            $project->update(['is_active' => true]);
+                            $affectedCount++;
+                        }
+                        break;
+                    case 'deactivate':
+                        if (Schema::hasColumn('projects', 'is_active')) {
+                            $project->update(['is_active' => false]);
+                            $affectedCount++;
+                        }
+                        break;
+                    case 'feature':
+                        $project->update(['featured' => true]);
+                        $affectedCount++;
+                        break;
+                    case 'unfeature':
+                        $project->update(['featured' => false]);
+                        $affectedCount++;
+                        break;
+                    case 'change_status':
+                        $oldStatus = $project->status;
+                        $updateData = ['status' => $validated['status']];
+                        
+                        if ($validated['status'] === 'completed' && $oldStatus !== 'completed') {
+                            if (Schema::hasColumn('projects', 'actual_completion_date')) {
+                                $updateData['actual_completion_date'] = now();
+                            }
+                            if (Schema::hasColumn('projects', 'progress_percentage')) {
+                                $updateData['progress_percentage'] = 100;
+                            }
+                        }
+                        
+                        $project->update($updateData);
+                        $affectedCount++;
+                        break;
+                    case 'change_priority':
+                        if (Schema::hasColumn('projects', 'priority')) {
+                            $project->update(['priority' => $validated['priority']]);
+                            $affectedCount++;
+                        }
+                        break;
+                    case 'delete':
+                        $project->delete();
+                        $affectedCount++;
+                        break;
+                }
+            }
+        });
+
+        $actionLabels = [
+            'activate' => 'activated',
+            'deactivate' => 'deactivated',
+            'feature' => 'featured',
+            'unfeature' => 'unfeatured',
+            'change_status' => 'status updated',
+            'change_priority' => 'priority updated',
+            'delete' => 'deleted',
+        ];
+
+        $message = "{$affectedCount} project(s) " . $actionLabels[$validated['action']] . " successfully!";
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'affected_count' => $affectedCount
+            ]);
+        }
+
+        return redirect()->back()->with('success', $message);
+    }
+
+    /**
+     * Search projects (AJAX).
+     */
+    public function search(Request $request)
+    {
+        $request->validate([
+            'query' => 'required|string|min:2|max:255',
+            'limit' => 'nullable|integer|min:1|max:50',
+        ]);
+
+        $limit = $request->get('limit', 10);
+        $searchQuery = $request->get('query');
+
+        $projects = Project::with(['client', 'category'])
+            ->where(function ($q) use ($searchQuery) {
+                $q->where('title', 'like', "%{$searchQuery}%")
+                  ->orWhere('description', 'like', "%{$searchQuery}%")
+                  ->orWhere('location', 'like', "%{$searchQuery}%");
+                  
+                // Add additional search fields if they exist
+                if (Schema::hasColumn('projects', 'short_description')) {
+                    $q->orWhere('short_description', 'like', "%{$searchQuery}%");
+                }
+                if (Schema::hasColumn('projects', 'client_name')) {
+                    $q->orWhere('client_name', 'like', "%{$searchQuery}%");
+                }
+            });
+
+        // Only search active projects if column exists
+        if (Schema::hasColumn('projects', 'is_active')) {
+            $projects->where('is_active', true);
+        }
+
+        $projects = $projects->orderBy('title')
+            ->limit($limit)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'projects' => $projects->map(function ($project) {
+                return [
+                    'id' => $project->id,
+                    'title' => $project->title,
+                    'client_name' => $project->client?->name ?? $project->client_name ?? 'Unknown',
+                    'category' => $project->category?->name,
+                    'status' => $project->status,
+                    'progress' => $project->progress_percentage ?? 0,
+                    'url' => route('admin.projects.show', $project),
+                ];
+            }),
+            'total' => $projects->count(),
+        ]);
+    }
+
+    /**
+     * Get project timeline data for charts.
+     */
+    public function getTimelineData(Project $project)
+    {
+        $milestones = $project->milestones()
+            ->orderBy('due_date')
+            ->orderBy('sort_order')
+            ->get();
+
+        $timelineData = [
+            'project' => [
+                'title' => $project->title,
+                'start_date' => $project->start_date?->format('Y-m-d'),
+                'end_date' => $project->end_date?->format('Y-m-d'),
+                'progress' => $project->progress_percentage ?? 0,
+                'status' => $project->status,
+            ],
+            'milestones' => $milestones->map(function ($milestone) {
+                return [
+                    'id' => $milestone->id,
+                    'title' => $milestone->title,
+                    'due_date' => $milestone->due_date?->format('Y-m-d'),
+                    'completed_date' => $milestone->completed_date?->format('Y-m-d'),
+                    'status' => $milestone->status,
+                    'progress' => $milestone->progress_percent ?? 0,
+                    'color' => $this->getMilestoneColor($milestone->status),
+                ];
+            }),
+        ];
+
+        // Add estimated completion if column exists
+        if (Schema::hasColumn('projects', 'estimated_completion_date') && $project->estimated_completion_date) {
+            $timelineData['project']['estimated_completion'] = $project->estimated_completion_date->format('Y-m-d');
+        }
+        if (Schema::hasColumn('projects', 'actual_completion_date') && $project->actual_completion_date) {
+            $timelineData['project']['actual_completion'] = $project->actual_completion_date->format('Y-m-d');
+        }
+
+        return response()->json($timelineData);
+    }
+
+    /**
+     * Get status color for UI.
+     */
+    private function getStatusColor(string $status): string
+    {
+        return match($status) {
+            'planning' => '#6b7280',
+            'in_progress' => '#3b82f6',
+            'on_hold' => '#f59e0b',
+            'completed' => '#10b981',
+            'cancelled' => '#ef4444',
+            default => '#6b7280'
+        };
+    }
+
+    /**
+     * Get priority color for UI.
+     */
+    private function getPriorityColor(string $priority): string
+    {
+        return match($priority) {
+            'low' => '#10b981',
+            'normal' => '#6b7280',
+            'high' => '#f59e0b',
+            'urgent' => '#ef4444',
+            default => '#6b7280'
+        };
+    }
+
+    /**
+     * Get milestone color for UI.
+     */
+    private function getMilestoneColor(string $status): string
+    {
+        return match($status) {
+            'pending' => '#6b7280',
+            'in_progress' => '#3b82f6',
+            'completed' => '#10b981',
+            'delayed' => '#ef4444',
+            default => '#6b7280'
+        };
     }
 }

@@ -75,7 +75,7 @@
 
     <!-- Upload Modal -->
     <div x-data="{ showUploadModal: false }" x-init="$watch('showUploadModal', value => { if (!value) $nextTick(() => { if (window.location.search.includes('uploaded=1')) window.location.reload(); }) })">
-        <x-admin.modal x-show="showUploadModal" @click.away="showUploadModal = false" title="Upload Files" size="xl">
+        <x-admin.modal id="upload-files-modal" x-show="showUploadModal" @click.away="showUploadModal = false" title="Upload Files" size="xl">
             <div class="p-6">
                 <x-admin.filepond-uploader 
                     :project="$project"
