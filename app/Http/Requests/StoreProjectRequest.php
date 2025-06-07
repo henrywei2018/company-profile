@@ -46,8 +46,6 @@ class StoreProjectRequest extends FormRequest
             'challenge' => 'nullable|string',
             'solution' => 'nullable|string',
             'result' => 'nullable|string',
-            'services_used' => 'nullable|array',
-            'services_used.*' => 'string|max:255',
             'images' => 'nullable|array|max:10',
             'images.*' => 'image|mimes:jpeg,jpg,png,webp|max:2048',
             'image_alt_texts' => 'nullable|array',
@@ -72,10 +70,6 @@ class StoreProjectRequest extends FormRequest
             'actual_cost' => 'nullable|numeric|min:0|max:999999999999.99',
             'client_feedback' => 'nullable|string',
             'lessons_learned' => 'nullable|string',
-            'technologies_used' => 'nullable|array',
-            'technologies_used.*' => 'string|max:255',
-            'team_members' => 'nullable|array',
-            'team_members.*' => 'string|max:255',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'meta_keywords' => 'nullable|string|max:1000',
@@ -141,21 +135,6 @@ class StoreProjectRequest extends FormRequest
         $input['featured'] = $this->boolean('featured', false);
         if ($this->hasColumn('is_active')) {
             $input['is_active'] = $this->boolean('is_active', true);
-        }
-
-        // Clean array fields properly - let each field handle its own data
-        $arrayFields = ['services_used'];
-        if ($this->hasColumn('technologies_used')) {
-            $arrayFields[] = 'technologies_used';
-        }
-        if ($this->hasColumn('team_members')) {
-            $arrayFields[] = 'team_members';
-        }
-
-        foreach ($arrayFields as $field) {
-            if (isset($input[$field])) {
-                $input[$field] = $this->cleanArrayField($input[$field]);
-            }
         }
 
         $this->replace($input);

@@ -60,8 +60,6 @@ class UpdateProjectRequest extends FormRequest
             'challenge' => 'nullable|string',
             'solution' => 'nullable|string',
             'result' => 'nullable|string',
-            'services_used' => 'nullable|array',
-            'services_used.*' => 'string|max:255',
             'images' => 'nullable|array|max:10',
             'images.*' => 'image|mimes:jpeg,jpg,png,webp|max:2048',
             'image_alt_texts' => 'nullable|array',
@@ -135,16 +133,6 @@ class UpdateProjectRequest extends FormRequest
 
         if ($this->hasColumn('lessons_learned')) {
             $rules['lessons_learned'] = 'nullable|string';
-        }
-
-        if ($this->hasColumn('technologies_used')) {
-            $rules['technologies_used'] = 'nullable|array';
-            $rules['technologies_used.*'] = 'string|max:255';
-        }
-
-        if ($this->hasColumn('team_members')) {
-            $rules['team_members'] = 'nullable|array';
-            $rules['team_members.*'] = 'string|max:255';
         }
 
         if ($this->hasColumn('meta_title')) {
@@ -300,14 +288,6 @@ class UpdateProjectRequest extends FormRequest
             $attributes['lessons_learned'] = 'lessons learned';
         }
 
-        if ($this->hasColumn('technologies_used')) {
-            $attributes['technologies_used'] = 'technologies used';
-        }
-
-        if ($this->hasColumn('team_members')) {
-            $attributes['team_members'] = 'team members';
-        }
-
         if ($this->hasColumn('meta_title')) {
             $attributes['meta_title'] = 'meta title';
         }
@@ -377,21 +357,6 @@ class UpdateProjectRequest extends FormRequest
         $input['featured'] = $this->boolean('featured', false);
         if ($this->hasColumn('is_active')) {
             $input['is_active'] = $this->boolean('is_active', true);
-        }
-
-        // Clean array fields properly - let each field handle its own data
-        $arrayFields = ['services_used'];
-        if ($this->hasColumn('technologies_used')) {
-            $arrayFields[] = 'technologies_used';
-        }
-        if ($this->hasColumn('team_members')) {
-            $arrayFields[] = 'team_members';
-        }
-
-        foreach ($arrayFields as $field) {
-            if (isset($input[$field])) {
-                $input[$field] = $this->cleanArrayField($input[$field]);
-            }
         }
 
         $this->replace($input);
