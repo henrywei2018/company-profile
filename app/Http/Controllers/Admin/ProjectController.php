@@ -406,14 +406,17 @@ class ProjectController extends Controller
         $categories = ProjectCategory::where('is_active', true)->orderBy('sort_order')->get();
         $services = Service::where('is_active', true)->orderBy('sort_order')->get();
         $clients = User::role('client')->where('is_active', true)->orderBy('name')->get();
-        
+        $project->services_used = is_array($project->services_used) ? $project->services_used : json_decode($project->services_used ?? '[]', true);
+        $project->technologies_used = is_array($project->technologies_used) ? $project->technologies_used : json_decode($project->technologies_used ?? '[]', true);
+        $project->team_members = is_array($project->team_members) ? $project->team_members : json_decode($project->team_members ?? '[]', true);
+
         $project->load(['images', 'files']);
         
         return view('admin.projects.edit', compact(
             'project', 
             'categories', 
             'services', 
-            'clients'
+            'clients',
         ));
     }
 
@@ -581,6 +584,22 @@ class ProjectController extends Controller
 
         return redirect()->route('admin.projects.index')
             ->with('success', 'Project deleted successfully!');
+    }
+    function decodeJsonArray($input)
+    {
+        $decoded = is_string($input) ? json_decode($input, true) : $input;
+
+        if (is_array($decoded)) {
+            // Decode each item if it's also a JSON string
+            return array_map(function ($item) {
+                if (is_string($item) && json_decode($item) !== null) {
+                    return json_decode($item);
+                }
+                return $item;
+            }, $decoded);
+        }
+
+        return [];
     }
 
     /**
