@@ -1,4 +1,4 @@
-{{-- resources/views/admin/projects/show.blade.php --}}
+{{-- resources/views/admin/projects/show.blade.php - CLEAN VERSION --}}
 <x-layouts.admin title="Project Management">
     <!-- Fixed Header with Project Title -->
     <div class="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 -mx-6 px-6 py-4 mb-6">
@@ -26,7 +26,15 @@
                                     </svg>
                                     {{ $project->client->name }}
                                 </span>
+                            @elseif(!empty($project->client_name))
+                                <span class="flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                    </svg>
+                                    {{ $project->client_name }}
+                                </span>
                             @endif
+                            
                             @if($project->category)
                                 <span class="flex items-center">
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,6 +43,7 @@
                                     {{ $project->category->name }}
                                 </span>
                             @endif
+                            
                             @if($project->end_date)
                                 <span class="flex items-center {{ $project->isOverdue() ? 'text-red-600 font-medium' : '' }}">
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,9 +104,9 @@
                         Edit
                     </x-admin.button>
                     
-                    @if($project->url)
+                    @if($project->slug)
                         <x-admin.button 
-                            href="{{ $project->url }}" 
+                            href="{{ route('portfolio.show', $project->slug) }}" 
                             color="info"
                             size="sm"
                             target="_blank"
@@ -202,6 +211,32 @@
                                 </a>
                             </dd>
                         </div>
+                    @elseif(!empty($project->client_name))
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Client</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{ $project->client_name }}</dd>
+                        </div>
+                    @endif
+                    
+                    @if($project->category)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Category</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{ $project->category->name }}</dd>
+                        </div>
+                    @endif
+                    
+                    @if($project->service)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Service</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{ $project->service->title }}</dd>
+                        </div>
+                    @endif
+                    
+                    @if($project->location)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Location</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{ $project->location }}</dd>
+                        </div>
                     @endif
                     
                     @if($project->start_date)
@@ -226,7 +261,32 @@
                     @if($project->budget)
                         <div>
                             <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Budget</dt>
-                            <dd class="text-sm text-gray-900 dark:text-white">${{ number_format($project->budget, 2) }}</dd>
+                            <dd class="text-sm text-gray-900 dark:text-white">Rp {{ number_format($project->budget, 0, ',', '.') }}</dd>
+                        </div>
+                    @endif
+                    
+                    @if($project->actual_cost)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Actual Cost</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">Rp {{ number_format($project->actual_cost, 0, ',', '.') }}</dd>
+                        </div>
+                    @endif
+                    
+                    @if($project->value)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Project Value</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{ $project->value }}</dd>
+                        </div>
+                    @endif
+                    
+                    @if($project->priority)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Priority</dt>
+                            <dd class="text-sm">
+                                <x-admin.badge type="{{ $project->priority_color }}" size="sm">
+                                    {{ $project->formatted_priority }}
+                                </x-admin.badge>
+                            </dd>
                         </div>
                     @endif
                 </dl>
@@ -950,15 +1010,17 @@
                                     </select>
                                 </div>
                                 
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Priority</label>
-                                    <select name="priority" class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700">
-                                        <option value="low" {{ ($project->priority ?? 'normal') === 'low' ? 'selected' : '' }}>Low</option>
-                                        <option value="normal" {{ ($project->priority ?? 'normal') === 'normal' ? 'selected' : '' }}>Normal</option>
-                                        <option value="high" {{ ($project->priority ?? 'normal') === 'high' ? 'selected' : '' }}>High</option>
-                                        <option value="urgent" {{ ($project->priority ?? 'normal') === 'urgent' ? 'selected' : '' }}>Urgent</option>
-                                    </select>
-                                </div>
+                                @if($project->priority ?? false)
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Priority</label>
+                                        <select name="priority" class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700">
+                                            <option value="low" {{ ($project->priority ?? 'normal') === 'low' ? 'selected' : '' }}>Low</option>
+                                            <option value="normal" {{ ($project->priority ?? 'normal') === 'normal' ? 'selected' : '' }}>Normal</option>
+                                            <option value="high" {{ ($project->priority ?? 'normal') === 'high' ? 'selected' : '' }}>High</option>
+                                            <option value="urgent" {{ ($project->priority ?? 'normal') === 'urgent' ? 'selected' : '' }}>Urgent</option>
+                                        </select>
+                                    </div>
+                                @endif
                                 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Progress (%)</label>
@@ -973,11 +1035,13 @@
                                     <label class="ml-2 text-sm text-gray-700 dark:text-gray-300">Featured Project</label>
                                 </div>
                                 
-                                <div class="flex items-center">
-                                    <input type="checkbox" name="is_active" value="1" {{ ($project->is_active ?? true) ? 'checked' : '' }}
-                                           class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring-blue-500">
-                                    <label class="ml-2 text-sm text-gray-700 dark:text-gray-300">Active Project</label>
-                                </div>
+                                @if($project->is_active ?? false)
+                                    <div class="flex items-center">
+                                        <input type="checkbox" name="is_active" value="1" {{ ($project->is_active ?? true) ? 'checked' : '' }}
+                                               class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring-blue-500">
+                                        <label class="ml-2 text-sm text-gray-700 dark:text-gray-300">Active Project</label>
+                                    </div>
+                                @endif
                             </div>
                             
                             <div class="mt-6">
@@ -1017,9 +1081,9 @@
                                 </x-admin.button>
                             @endif
                             
-                            @if($project->url ?? false)
+                            @if($project->slug ?? false)
                                 <x-admin.button 
-                                    href="{{ $project->url }}" 
+                                    href="{{ route('portfolio.show', $project->slug) }}" 
                                     color="info" 
                                     size="sm"
                                     class="w-full"
