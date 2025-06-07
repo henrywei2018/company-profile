@@ -415,11 +415,9 @@ class ProjectController extends Controller
     $services = Service::where('is_active', true)->orderBy('sort_order')->get();
     $clients = User::role('client')->where('is_active', true)->orderBy('name')->get();
     
-    // Properly decode JSON fields for editing
-    $project->services_used = $this->decodeProjectJsonField($project->services_used);
-    $project->technologies_used = $this->decodeProjectJsonField($project->technologies_used);
-    $project->team_members = $this->decodeProjectJsonField($project->team_members);
-
+    // No need to manually decode - the model accessors will handle this automatically
+    // The accessors will convert JSON strings to arrays for the view
+    
     $project->load(['images' => function($query) {
         $query->orderBy('sort_order')->orderBy('created_at');
     }, 'files']);
@@ -438,8 +436,6 @@ class ProjectController extends Controller
     public function update(UpdateProjectRequest $request, Project $project)
 {
     $validated = $request->validated();
-
-    // Store old status for comparison
     $oldStatus = $project->status;
 
     // Generate slug if not provided
@@ -453,20 +449,23 @@ class ProjectController extends Controller
         $validated['is_active'] = $request->boolean('is_active', true);
     }
 
-    // Handle JSON fields properly - each field handles its own data
-    if ($this->hasColumn('services_used') && array_key_exists('services_used', $validated)) {
-        $validated['services_used'] = $this->processJsonField($validated['services_used']);
-    }
-    
-    if ($this->hasColumn('technologies_used') && array_key_exists('technologies_used', $validated)) {
-        $validated['technologies_used'] = $this->processJsonField($validated['technologies_used']);
-    }
-    
-    if ($this->hasColumn('team_members') && array_key_exists('team_members', $validated)) {
-        $validated['team_members'] = $this->processJsonField($validated['team_members']);
+    // Handle JSON fields - convert arrays to JSON strings for database storage
+    $jsonFields = ['services_used', 'technologies_used', 'team_members'];
+    foreach ($jsonFields as $field) {
+        if ($this->hasColumn($field) && isset($validated[$field])) {
+            if (is_array($validated[$field])) {
+                // Filter out empty values and encode as JSON
+                $cleanArray = array_values(array_filter($validated[$field], function($item) {
+                    return !empty(trim($item));
+                }));
+                $validated[$field] = !empty($cleanArray) ? json_encode($cleanArray) : null;
+            } elseif (empty($validated[$field])) {
+                $validated[$field] = null;
+            }
+        }
     }
 
-    // Auto-set completion date if status changed to completed
+    // Handle completion status
     if ($validated['status'] === 'completed' && $oldStatus !== 'completed') {
         if ($this->hasColumn('actual_completion_date') && empty($validated['actual_completion_date'])) {
             $validated['actual_completion_date'] = now();
@@ -479,7 +478,6 @@ class ProjectController extends Controller
         }
     }
 
-    // Clear completion date if status changed from completed
     if ($validated['status'] !== 'completed' && $oldStatus === 'completed') {
         if ($this->hasColumn('actual_completion_date')) {
             $validated['actual_completion_date'] = null;
@@ -489,18 +487,17 @@ class ProjectController extends Controller
     // Filter to only existing columns
     $validated = $this->filterToExistingColumns($validated);
 
+    // Update project - store JSON strings in database
     $project->update($validated);
 
-    // Handle new image uploads
+    // Handle image uploads
     if ($request->hasFile('images')) {
         foreach ($request->file('images') as $index => $image) {
             try {
                 $path = $this->fileUploadService->uploadImage(
                     $image, 
                     'projects/' . $project->id,
-                    null,
-                    1200,
-                    800
+                    null, 1200, 800
                 );
                 
                 $project->images()->create([
@@ -516,7 +513,7 @@ class ProjectController extends Controller
         }
     }
 
-    // Send notification if status changed
+    // Send notifications
     if (class_exists('App\Facades\Notifications')) {
         if ($oldStatus !== $validated['status']) {
             Notifications::send('project.status_changed', [

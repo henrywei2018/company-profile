@@ -72,9 +72,6 @@ class Project extends Model
         'progress_percentage' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-        'technologies_used' => 'array',
-        'team_members' => 'array',
-        'services_used' => 'array',
     ];
 
     /**
@@ -85,7 +82,7 @@ class Project extends Model
     protected $filterable = [
         'status',
         'priority',
-        'project_category_id',
+        'category_id',
         'client_id',
         'featured',
         'search',
@@ -123,6 +120,63 @@ class Project extends Model
     const PRIORITY_HIGH = 'high';
     const PRIORITY_URGENT = 'urgent';
 
+    public function getServicesUsedAttribute($value)
+{
+    if (empty($value)) {
+        return [];
+    }
+    
+    if (is_string($value)) {
+        $decoded = json_decode($value, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return $decoded;
+        }
+        // If not valid JSON, return as single item array
+        return [$value];
+    }
+    
+    return is_array($value) ? $value : [];
+}
+
+/**
+ * Get technologies used as array for views
+ */
+public function getTechnologiesUsedAttribute($value)
+{
+    if (empty($value)) {
+        return [];
+    }
+    
+    if (is_string($value)) {
+        $decoded = json_decode($value, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return $decoded;
+        }
+        return [$value];
+    }
+    
+    return is_array($value) ? $value : [];
+}
+
+/**
+ * Get team members as array for views
+ */
+public function getTeamMembersAttribute($value)
+{
+    if (empty($value)) {
+        return [];
+    }
+    
+    if (is_string($value)) {
+        $decoded = json_decode($value, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return $decoded;
+        }
+        return [$value];
+    }
+    
+    return is_array($value) ? $value : [];
+}
     /**
      * Get all available statuses
      */
