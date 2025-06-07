@@ -640,14 +640,7 @@
         </div>
 
         <!-- Services & Technologies Section -->
-        <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-6" 
-     x-data="projectServicesData()" 
-     x-init="initializeData(
-         @json(old('services_used', $project->services_used ?? [])),
-         @json(old('technologies_used', $project->technologies_used ?? [])),
-         @json(old('team_members', $project->team_members ?? []))
-     )"
-     x-cloak>
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-6" x-data="projectServicesData()" x-cloak>
     <div class="px-4 py-5 sm:p-6">
         <div class="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
             <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Services & Technologies</h3>
@@ -656,7 +649,7 @@
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 
-            {{-- Services Used --}}
+            <!-- Services Used -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Services Used
@@ -698,7 +691,7 @@
                     </template>
                 </div>
 
-                {{-- Add Service Button --}}
+                <!-- Add Service Button -->
                 <button 
                     type="button" 
                     @click="addService()"
@@ -709,20 +702,75 @@
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
+                    Add Service
+                </button>
+
+                <!-- Global Services Error -->
+                <div x-show="servicesError" class="mt-2 text-sm text-red-600" x-text="servicesError"></div>
+            </div>
+
+            <!-- Technologies Used -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Technologies Used
+                    <span class="text-xs text-gray-500">(<span x-text="technologiesUsed.length"></span> technologies)</span>
+                </label>
+                
+                <div class="space-y-3">
+                    <template x-for="(tech, index) in technologiesUsed" :key="'tech-' + index">
+                        <div class="flex items-center space-x-2 group">
+                            <div class="relative flex-1">
+                                <input 
+                                    type="text" 
+                                    :name="'technologies_used[' + index + ']'" 
+                                    x-model="tech.value"
+                                    placeholder="Enter technology name"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm 
+                                           focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
+                                           dark:bg-gray-700 dark:text-white text-sm
+                                           transition-colors duration-200"
+                                    @input="validateTechnology(index)"
+                                    :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': tech.error }"
+                                >
+                                <div x-show="tech.error" class="absolute -bottom-5 left-0 text-xs text-red-600" x-text="tech.error"></div>
+                            </div>
+                            
+                            <button 
+                                type="button" 
+                                @click="removeTechnology(index)"
+                                class="p-2 text-gray-400 hover:text-red-600 rounded-md transition-colors duration-200
+                                       hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100"
+                                :disabled="technologiesUsed.length <= 1"
+                                title="Remove technology"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Add Technology Button -->
+                <button 
+                    type="button" 
+                    @click="addTechnology()"
+                    class="mt-4 inline-flex items-center px-3 py-2 text-sm font-medium text-indigo-600 
+                           hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 
+                           rounded-md transition-colors duration-200"
+                >
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
                     Add Technology
                 </button>
 
-                {{-- Technologies Error --}}
+                <!-- Global Technologies Error -->
                 <div x-show="technologiesError" class="mt-2 text-sm text-red-600" x-text="technologiesError"></div>
-                @error('technologies_used')
-                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                @enderror
             </div>
-            @endif
         </div>
 
-        {{-- Team Members --}}
-        @if(Schema::hasColumn('projects', 'team_members'))
+        <!-- Team Members -->
         <div class="mt-8">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Team Members
@@ -764,7 +812,7 @@
                 </template>
             </div>
 
-            {{-- Add Team Member Button --}}
+            <!-- Add Team Member Button -->
             <button 
                 type="button" 
                 @click="addTeamMember()"
@@ -778,15 +826,11 @@
                 Add Team Member
             </button>
 
-            {{-- Team Members Error --}}
+            <!-- Global Team Members Error -->
             <div x-show="teamMembersError" class="mt-2 text-sm text-red-600" x-text="teamMembersError"></div>
-            @error('team_members')
-                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-            @enderror
         </div>
-        @endif
 
-        {{-- Summary --}}
+        <!-- Summary -->
         <div class="mt-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
             <div class="text-sm text-gray-600 dark:text-gray-300">
                 <strong>Summary:</strong>
@@ -1021,7 +1065,19 @@
 
 @push('scripts')
 <script>
-    function projectServicesData() {
+// Project Form Data Handler
+function projectFormData() {
+    return {
+        // Form validation and interaction logic can go here
+        validateForm() {
+            // Add any additional form validation
+            return true;
+        }
+    }
+}
+
+// Project Services Data Handler (Alpine.js component)
+function projectServicesData() {
     return {
         servicesUsed: [{ value: '', error: null }],
         technologiesUsed: [{ value: '', error: null }],
@@ -1035,7 +1091,6 @@
             this.servicesUsed.push({ value: '', error: null });
             this.servicesError = null;
             
-            // Focus on the new input after DOM update
             this.$nextTick(() => {
                 const inputs = this.$el.querySelectorAll('input[name^="services_used"]');
                 if (inputs.length > 0) {
@@ -1070,7 +1125,6 @@
                 return;
             }
 
-            // Check for duplicates
             const duplicateIndex = this.servicesUsed.findIndex((s, i) => 
                 i !== index && s.value.trim().toLowerCase() === service.value.trim().toLowerCase()
             );
@@ -1126,7 +1180,6 @@
                 return;
             }
 
-            // Check for duplicates
             const duplicateIndex = this.technologiesUsed.findIndex((t, i) => 
                 i !== index && t.value.trim().toLowerCase() === tech.value.trim().toLowerCase()
             );
@@ -1182,7 +1235,6 @@
                 return;
             }
 
-            // Check for duplicates
             const duplicateIndex = this.teamMembers.findIndex((m, i) => 
                 i !== index && m.value.trim().toLowerCase() === member.value.trim().toLowerCase()
             );
@@ -1231,22 +1283,79 @@
     }
 }
 
-// Form submission validation
+// Auto-save functionality
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
+    let autoSaveTimeout;
+    const form = document.querySelector('form[method="POST"]');
+    
     if (form) {
-        form.addEventListener('submit', function(e) {
-            const alpineComponent = Alpine.findClosest(this, '[x-data]');
-            if (alpineComponent && alpineComponent._x_dataStack && alpineComponent._x_dataStack[0]) {
-                const data = alpineComponent._x_dataStack[0];
-                if (data.validateAll && !data.validateAll()) {
-                    e.preventDefault();
-                    alert('Please fix the validation errors before submitting.');
-                    return false;
+        const inputs = form.querySelectorAll('input, textarea, select');
+        
+        inputs.forEach(input => {
+            input.addEventListener('input', function() {
+                clearTimeout(autoSaveTimeout);
+                showAutoSaveIndicator('saving');
+                
+                autoSaveTimeout = setTimeout(() => {
+                    showAutoSaveIndicator('saved');
+                }, 3000);
+            });
+        });
+    }
+    
+    function showAutoSaveIndicator(status) {
+        const existing = document.querySelector('.auto-save-indicator');
+        if (existing) existing.remove();
+        
+        const indicator = document.createElement('div');
+        indicator.className = 'auto-save-indicator fixed top-4 right-4 px-3 py-2 rounded-md text-sm z-50';
+        
+        if (status === 'saving') {
+            indicator.className += ' bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+            indicator.innerHTML = '<div class="flex items-center"><svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Auto-saving...</div>';
+        } else if (status === 'saved') {
+            indicator.className += ' bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+            indicator.innerHTML = '<div class="flex items-center"><svg class="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Auto-saved</div>';
+        }
+        
+        document.body.appendChild(indicator);
+        
+        setTimeout(() => {
+            if (indicator.parentNode) {
+                indicator.remove();
+            }
+        }, 3000);
+    }
+    
+    // Form validation before submit
+    const submitButton = form?.querySelector('button[type="submit"]');
+    if (submitButton) {
+        submitButton.addEventListener('click', function(e) {
+            const requiredFields = form.querySelectorAll('[required]');
+            let hasErrors = false;
+            
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    hasErrors = true;
+                    field.classList.add('border-red-500');
+                    field.focus();
+                } else {
+                    field.classList.remove('border-red-500');
                 }
+            });
+            
+            if (hasErrors) {
+                e.preventDefault();
+                alert('Please fill in all required fields before saving.');
+                return false;
             }
         });
     }
 });
-    </script>
+
+// Helper function to show delete confirmation
+function confirmDelete() {
+    document.getElementById('delete-project-modal').classList.remove('hidden');
+}
+</script>
 @endpush
