@@ -10,8 +10,6 @@ use App\Models\User;
 use App\Models\Quotation;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
-use App\Http\Requests\QuickUpdateProjectRequest;
-use App\Http\Requests\BulkProjectActionRequest;
 use App\Services\FileUploadService;
 use App\Services\ProjectService;
 use App\Facades\Notifications;
@@ -33,6 +31,37 @@ class ProjectController extends Controller
     }
 
     /**
+     * Get actual database columns for projects table
+     */
+    private function getProjectColumns(): array
+    {
+        static $columns = null;
+        
+        if ($columns === null) {
+            $columns = Schema::getColumnListing('projects');
+        }
+        
+        return $columns;
+    }
+
+    /**
+     * Check if a column exists in projects table
+     */
+    private function hasColumn(string $column): bool
+    {
+        return in_array($column, $this->getProjectColumns());
+    }
+
+    /**
+     * Filter data to only include existing columns
+     */
+    private function filterToExistingColumns(array $data): array
+    {
+        $existingColumns = $this->getProjectColumns();
+        return array_intersect_key($data, array_flip($existingColumns));
+    }
+
+    /**
      * Display a listing of projects.
      */
     public function index(Request $request)
@@ -42,7 +71,6 @@ class ProjectController extends Controller
             ->when($request->filled('category'), fn($q) => $q->where('category_id', $request->category))
             ->when($request->filled('service'), fn($q) => $q->where('service_id', $request->service))
             ->when($request->filled('client'), fn($q) => $q->where('client_id', $request->client))
-            ->when($request->filled('priority'), fn($q) => $q->where('priority', $request->priority))
             ->when($request->filled('year'), fn($q) => $q->whereYear('created_at', $request->year))
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->search;
@@ -52,36 +80,43 @@ class ProjectController extends Controller
                           ->orWhere('location', 'like', "%{$search}%");
                     
                     // Only search additional fields if they exist
-                    if (Schema::hasColumn('projects', 'short_description')) {
+                    if ($this->hasColumn('short_description')) {
                         $query->orWhere('short_description', 'like', "%{$search}%");
                     }
-                    if (Schema::hasColumn('projects', 'client_name')) {
+                    if ($this->hasColumn('client_name')) {
                         $query->orWhere('client_name', 'like', "%{$search}%");
                     }
                 });
-            })
-            ->when($request->filled('active_only'), fn($q) => $q->where('is_active', true))
-            ->when($request->filled('featured_only'), fn($q) => $q->where('featured', true));
+            });
+
+        // Apply additional filters only if columns exist
+        if ($request->filled('priority') && $this->hasColumn('priority')) {
+            $query->where('priority', $request->priority);
+        }
+        if ($request->filled('active_only') && $this->hasColumn('is_active')) {
+            $query->where('is_active', true);
+        }
+        if ($request->filled('featured_only')) {
+            $query->where('featured', true);
+        }
 
         // Add sorting
         $sortField = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
         
-        $allowedSortFields = [
-            'title', 'status', 'start_date', 'end_date', 'created_at', 'updated_at'
-        ];
+        $allowedSortFields = ['title', 'status', 'start_date', 'end_date', 'created_at', 'updated_at', 'year'];
         
         // Add additional sort fields if columns exist
-        if (Schema::hasColumn('projects', 'priority')) {
+        if ($this->hasColumn('priority')) {
             $allowedSortFields[] = 'priority';
         }
-        if (Schema::hasColumn('projects', 'progress_percentage')) {
+        if ($this->hasColumn('progress_percentage')) {
             $allowedSortFields[] = 'progress_percentage';
         }
-        if (Schema::hasColumn('projects', 'display_order')) {
+        if ($this->hasColumn('display_order')) {
             $allowedSortFields[] = 'display_order';
         }
-        if (Schema::hasColumn('projects', 'budget')) {
+        if ($this->hasColumn('budget')) {
             $allowedSortFields[] = 'budget';
         }
         
@@ -103,7 +138,7 @@ class ProjectController extends Controller
                     ->pluck('year', 'year')
                     ->toArray();
 
-        // Get summary statistics
+        // Get summary statistics - only count fields that exist
         $stats = [
             'total' => Project::count(),
             'completed' => Project::where('status', 'completed')->count(),
@@ -113,10 +148,10 @@ class ProjectController extends Controller
         ];
         
         // Add additional stats if columns exist
-        if (Schema::hasColumn('projects', 'is_active')) {
+        if ($this->hasColumn('is_active')) {
             $stats['active'] = Project::where('is_active', true)->count();
         }
-        if (Schema::hasColumn('projects', 'priority')) {
+        if ($this->hasColumn('priority')) {
             $stats['high_priority'] = Project::whereIn('priority', ['high', 'urgent'])->count();
         }
 
@@ -145,8 +180,8 @@ class ProjectController extends Controller
                     ->with('error', 'Only approved quotations can be converted to projects.');
             }
             
-            // Check if project already exists for this quotation
-            if (Schema::hasColumn('quotations', 'project_created') && $quotation->project_created) {
+            // Check if project already exists for this quotation (only if column exists)
+            if ($this->hasColumn('quotation_id') && $quotation->project_created ?? false) {
                 $existingProject = Project::where('quotation_id', $quotation->id)->first();
                 if ($existingProject) {
                     return redirect()->route('admin.projects.show', $existingProject)
@@ -183,47 +218,46 @@ class ProjectController extends Controller
             }
         }
 
-        // Set defaults for existing columns
+        // Set basic defaults for core columns
         $validated['featured'] = $request->boolean('featured', false);
         $validated['year'] = $validated['year'] ?? date('Y');
         
-        // Handle optional new columns
-        if (Schema::hasColumn('projects', 'is_active')) {
+        // Handle optional columns only if they exist
+        if ($this->hasColumn('is_active')) {
             $validated['is_active'] = $request->boolean('is_active', true);
         }
-        if (Schema::hasColumn('projects', 'progress_percentage')) {
+        if ($this->hasColumn('progress_percentage')) {
             $validated['progress_percentage'] = $validated['progress_percentage'] ?? 0;
         }
-        if (Schema::hasColumn('projects', 'display_order')) {
+        if ($this->hasColumn('display_order')) {
             $validated['display_order'] = $validated['display_order'] ?? (Project::max('display_order') + 1);
         }
-        if (Schema::hasColumn('projects', 'priority')) {
+        if ($this->hasColumn('priority')) {
             $validated['priority'] = $validated['priority'] ?? 'normal';
         }
         
         // Handle JSON fields properly if columns exist
         $jsonFields = ['technologies_used', 'team_members', 'services_used'];
         foreach ($jsonFields as $field) {
-            if (Schema::hasColumn('projects', $field) && isset($validated[$field])) {
+            if ($this->hasColumn($field) && isset($validated[$field])) {
                 $validated[$field] = !empty($validated[$field]) 
                     ? json_encode(array_filter($validated[$field])) 
                     : null;
             }
         }
 
-        // Auto-set completion date if status is completed
+        // Auto-set completion date if status is completed and column exists
         if ($validated['status'] === 'completed') {
-            if (Schema::hasColumn('projects', 'actual_completion_date') && empty($validated['actual_completion_date'])) {
+            if ($this->hasColumn('actual_completion_date') && empty($validated['actual_completion_date'])) {
                 $validated['actual_completion_date'] = now();
             }
-            if (Schema::hasColumn('projects', 'progress_percentage')) {
+            if ($this->hasColumn('progress_percentage')) {
                 $validated['progress_percentage'] = 100;
             }
         }
 
-        // Remove fields that don't exist in current schema
-        $existingColumns = Schema::getColumnListing('projects');
-        $validated = array_intersect_key($validated, array_flip($existingColumns));
+        // Filter to only existing columns
+        $validated = $this->filterToExistingColumns($validated);
 
         $project = Project::create($validated);
 
@@ -252,8 +286,8 @@ class ProjectController extends Controller
             }
         }
 
-        // If created from quotation, update quotation status
-        if ($project->quotation_id) {
+        // If created from quotation, update quotation status (only if columns exist)
+        if ($this->hasColumn('quotation_id') && $project->quotation_id) {
             $quotation = Quotation::find($project->quotation_id);
             if ($quotation) {
                 $updateData = [];
@@ -298,13 +332,17 @@ class ProjectController extends Controller
             'client', 
             'category', 
             'service', 
-            'quotation',
             'images' => fn($q) => $q->orderBy('sort_order'), 
             'files' => fn($q) => $q->orderBy('created_at', 'desc')->limit(10), 
             'milestones' => fn($q) => $q->orderBy('due_date')->orderBy('sort_order'),
             'testimonials' => fn($q) => $q->where('is_active', true),
             'messages' => fn($q) => $q->orderBy('created_at', 'desc')->limit(5)
         ]);
+
+        // Load quotation only if column exists
+        if ($this->hasColumn('quotation_id')) {
+            $project->load('quotation');
+        }
 
         // Calculate milestone statistics if milestones exist
         $milestoneStats = [
@@ -348,7 +386,7 @@ class ProjectController extends Controller
         ];
         
         // Add estimated timeline if column exists
-        if (Schema::hasColumn('projects', 'estimated_completion_date') && $project->estimated_completion_date) {
+        if ($this->hasColumn('estimated_completion_date') && $project->estimated_completion_date) {
             $timelineData['estimated_days_remaining'] = $project->estimated_completion_date->diffInDays(now());
         }
         
@@ -396,45 +434,44 @@ class ProjectController extends Controller
 
         // Set boolean values
         $validated['featured'] = $request->boolean('featured', false);
-        if (Schema::hasColumn('projects', 'is_active')) {
+        if ($this->hasColumn('is_active')) {
             $validated['is_active'] = $request->boolean('is_active', true);
         }
 
         // Handle JSON fields properly if columns exist
         $jsonFields = ['technologies_used', 'team_members', 'services_used'];
         foreach ($jsonFields as $field) {
-            if (Schema::hasColumn('projects', $field) && isset($validated[$field])) {
+            if ($this->hasColumn($field) && isset($validated[$field])) {
                 $validated[$field] = !empty($validated[$field]) 
                     ? json_encode(array_filter($validated[$field])) 
                     : null;
             }
         }
 
-        // Auto-set completion date if status changed to completed
+        // Auto-set completion date if status changed to completed (only if columns exist)
         if ($validated['status'] === 'completed' && $oldStatus !== 'completed') {
-            if (Schema::hasColumn('projects', 'actual_completion_date') && empty($validated['actual_completion_date'])) {
+            if ($this->hasColumn('actual_completion_date') && empty($validated['actual_completion_date'])) {
                 $validated['actual_completion_date'] = now();
             }
-            if (Schema::hasColumn('projects', 'progress_percentage')) {
+            if ($this->hasColumn('progress_percentage')) {
                 $validated['progress_percentage'] = 100;
             }
             
             // Set completion notification timestamp if column exists
-            if (Schema::hasColumn('projects', 'completion_notification_sent_at')) {
+            if ($this->hasColumn('completion_notification_sent_at')) {
                 $validated['completion_notification_sent_at'] = now();
             }
         }
 
-        // Clear completion date if status changed from completed
+        // Clear completion date if status changed from completed (only if column exists)
         if ($validated['status'] !== 'completed' && $oldStatus === 'completed') {
-            if (Schema::hasColumn('projects', 'actual_completion_date')) {
+            if ($this->hasColumn('actual_completion_date')) {
                 $validated['actual_completion_date'] = null;
             }
         }
 
-        // Remove fields that don't exist in current schema
-        $existingColumns = Schema::getColumnListing('projects');
-        $validated = array_intersect_key($validated, array_flip($existingColumns));
+        // Filter to only existing columns
+        $validated = $this->filterToExistingColumns($validated);
 
         $project->update($validated);
 
@@ -522,8 +559,8 @@ class ProjectController extends Controller
             Notifications::send('project.deleted', $project);
         }
 
-        // If project was created from quotation, update quotation
-        if ($project->quotation_id) {
+        // If project was created from quotation, update quotation (only if columns exist)
+        if ($this->hasColumn('quotation_id') && $project->quotation_id) {
             $quotation = Quotation::find($project->quotation_id);
             if ($quotation) {
                 $updateData = [];
@@ -551,7 +588,7 @@ class ProjectController extends Controller
      */
     public function softDelete(Project $project)
     {
-        if (Schema::hasColumn('projects', 'is_active')) {
+        if ($this->hasColumn('is_active')) {
             $project->update(['is_active' => false]);
         }
         
@@ -576,7 +613,7 @@ class ProjectController extends Controller
         $project = Project::withTrashed()->findOrFail($id);
         $project->restore();
         
-        if (Schema::hasColumn('projects', 'is_active')) {
+        if ($this->hasColumn('is_active')) {
             $project->update(['is_active' => true]);
         }
 
@@ -610,7 +647,7 @@ class ProjectController extends Controller
             'items.*.order' => 'required|integer|min:0',
         ]);
 
-        if (Schema::hasColumn('projects', 'display_order')) {
+        if ($this->hasColumn('display_order')) {
             DB::transaction(function () use ($request) {
                 foreach ($request->items as $item) {
                     Project::where('id', $item['id'])
@@ -627,9 +664,25 @@ class ProjectController extends Controller
     /**
      * Quick update project settings (AJAX).
      */
-    public function quickUpdate(QuickUpdateProjectRequest $request, Project $project)
+    public function quickUpdate(Request $request, Project $project)
     {
-        $validated = $request->validated();
+        // Basic validation for fields that might be updated
+        $rules = [];
+        if ($this->hasColumn('status')) {
+            $rules['status'] = 'nullable|in:planning,in_progress,on_hold,completed,cancelled';
+        }
+        if ($this->hasColumn('priority')) {
+            $rules['priority'] = 'nullable|in:low,normal,high,urgent';
+        }
+        if ($this->hasColumn('progress_percentage')) {
+            $rules['progress_percentage'] = 'nullable|integer|min:0|max:100';
+        }
+        if ($this->hasColumn('is_active')) {
+            $rules['is_active'] = 'boolean';
+        }
+        $rules['featured'] = 'boolean';
+
+        $validated = $request->validate($rules);
 
         // Store old values for comparison
         $oldStatus = $project->status;
@@ -643,26 +696,25 @@ class ProjectController extends Controller
         if ($request->has('featured')) {
             $validated['featured'] = $request->boolean('featured');
         }
-        if ($request->has('is_active') && Schema::hasColumn('projects', 'is_active')) {
+        if ($request->has('is_active') && $this->hasColumn('is_active')) {
             $validated['is_active'] = $request->boolean('is_active');
         }
 
-        // Auto-set completion date if status changed to completed
+        // Auto-set completion date if status changed to completed (only if columns exist)
         if (isset($validated['status']) && $validated['status'] === 'completed' && $oldStatus !== 'completed') {
-            if (Schema::hasColumn('projects', 'actual_completion_date')) {
+            if ($this->hasColumn('actual_completion_date')) {
                 $validated['actual_completion_date'] = now();
             }
-            if (Schema::hasColumn('projects', 'progress_percentage') && !isset($validated['progress_percentage'])) {
+            if ($this->hasColumn('progress_percentage') && !isset($validated['progress_percentage'])) {
                 $validated['progress_percentage'] = 100;
             }
-            if (Schema::hasColumn('projects', 'completion_notification_sent_at')) {
+            if ($this->hasColumn('completion_notification_sent_at')) {
                 $validated['completion_notification_sent_at'] = now();
             }
         }
 
-        // Remove fields that don't exist in current schema
-        $existingColumns = Schema::getColumnListing('projects');
-        $validated = array_intersect_key($validated, array_flip($existingColumns));
+        // Filter to only existing columns
+        $validated = $this->filterToExistingColumns($validated);
 
         $project->update($validated);
 
@@ -703,7 +755,7 @@ class ProjectController extends Controller
      */
     public function convertToQuotation(Project $project)
     {
-        if (!$project->quotation_id) {
+        if (!$this->hasColumn('quotation_id') || !$project->quotation_id) {
             return redirect()->back()
                 ->with('error', 'This project was not created from a quotation.');
         }
@@ -730,7 +782,7 @@ class ProjectController extends Controller
 
             // Update project status
             $projectUpdateData = ['status' => 'cancelled'];
-            if (Schema::hasColumn('projects', 'is_active')) {
+            if ($this->hasColumn('is_active')) {
                 $projectUpdateData['is_active'] = false;
             }
             
@@ -752,8 +804,8 @@ class ProjectController extends Controller
                 ->with('error', 'Only approved quotations can be converted to projects.');
         }
 
-        // Check if project already exists
-        if (Schema::hasColumn('quotations', 'project_created') && $quotation->project_created) {
+        // Check if project already exists (only if quotation_id column exists)
+        if ($this->hasColumn('quotation_id') && Schema::hasColumn('quotations', 'project_created') && $quotation->project_created) {
             $existingProject = Project::where('quotation_id', $quotation->id)->first();
             if ($existingProject) {
                 return redirect()->route('admin.projects.show', $existingProject)
@@ -782,23 +834,23 @@ class ProjectController extends Controller
         ];
 
         // Add optional stats if columns exist
-        if (Schema::hasColumn('projects', 'is_active')) {
+        if ($this->hasColumn('is_active')) {
             $stats['active_projects'] = Project::where('is_active', true)->count();
         }
-        if (Schema::hasColumn('projects', 'priority')) {
+        if ($this->hasColumn('priority')) {
             $stats['high_priority_projects'] = Project::whereIn('priority', ['high', 'urgent'])->count();
             $stats['projects_by_priority'] = Project::select('priority', DB::raw('count(*) as count'))
                 ->groupBy('priority')
                 ->pluck('count', 'priority')
                 ->toArray();
         }
-        if (Schema::hasColumn('projects', 'budget')) {
+        if ($this->hasColumn('budget')) {
             $stats['total_budget'] = Project::whereNotNull('budget')->sum('budget');
         }
-        if (Schema::hasColumn('projects', 'actual_cost')) {
+        if ($this->hasColumn('actual_cost')) {
             $stats['total_actual_cost'] = Project::whereNotNull('actual_cost')->sum('actual_cost');
         }
-        if (Schema::hasColumn('projects', 'progress_percentage')) {
+        if ($this->hasColumn('progress_percentage')) {
             $stats['average_progress'] = Project::where('is_active', true)->avg('progress_percentage');
         }
 
@@ -831,9 +883,9 @@ class ProjectController extends Controller
                     'id' => $project->id,
                     'title' => $project->title,
                     'status' => $project->status,
-                    'client_name' => $project->client?->name ?? $project->client_name ?? 'Unknown',
+                    'client_name' => $project->client?->name ?? ($this->hasColumn('client_name') ? $project->client_name : 'Unknown'),
                     'category' => $project->category?->name,
-                    'progress' => $project->progress_percentage ?? 0,
+                    'progress' => $this->hasColumn('progress_percentage') ? ($project->progress_percentage ?? 0) : 0,
                     'created_at' => $project->created_at->format('M j, Y'),
                 ];
             });
@@ -858,7 +910,7 @@ class ProjectController extends Controller
         if ($request->filled('client')) {
             $query->where('client_id', $request->client);
         }
-        if ($request->filled('priority') && Schema::hasColumn('projects', 'priority')) {
+        if ($request->filled('priority') && $this->hasColumn('priority')) {
             $query->where('priority', $request->priority);
         }
 
@@ -870,20 +922,23 @@ class ProjectController extends Controller
         ];
 
         // Add optional headers if columns exist
-        if (Schema::hasColumn('projects', 'priority')) {
+        if ($this->hasColumn('priority')) {
             $headers[] = 'Priority';
         }
-        if (Schema::hasColumn('projects', 'progress_percentage')) {
+        if ($this->hasColumn('progress_percentage')) {
             $headers[] = 'Progress %';
         }
-        if (Schema::hasColumn('projects', 'budget')) {
+        if ($this->hasColumn('budget')) {
             $headers[] = 'Budget';
         }
-        if (Schema::hasColumn('projects', 'actual_cost')) {
+        if ($this->hasColumn('actual_cost')) {
             $headers[] = 'Actual Cost';
         }
-        if (Schema::hasColumn('projects', 'is_active')) {
+        if ($this->hasColumn('is_active')) {
             $headers[] = 'Active';
+        }
+        if ($this->hasColumn('client_name')) {
+            $headers[] = 'Client Name';
         }
 
         $csvData[] = $headers;
@@ -892,7 +947,7 @@ class ProjectController extends Controller
             $row = [
                 $project->id,
                 $project->title,
-                $project->client?->name ?? $project->client_name ?? '',
+                $project->client?->name ?? '',
                 $project->category?->name ?? '',
                 $project->service?->title ?? '',
                 ucfirst(str_replace('_', ' ', $project->status)),
@@ -904,20 +959,23 @@ class ProjectController extends Controller
             ];
 
             // Add optional data if columns exist
-            if (Schema::hasColumn('projects', 'priority')) {
+            if ($this->hasColumn('priority')) {
                 $row[] = ucfirst($project->priority ?? 'normal');
             }
-            if (Schema::hasColumn('projects', 'progress_percentage')) {
+            if ($this->hasColumn('progress_percentage')) {
                 $row[] = ($project->progress_percentage ?? 0) . '%';
             }
-            if (Schema::hasColumn('projects', 'budget')) {
+            if ($this->hasColumn('budget')) {
                 $row[] = $project->budget ? 'Rp ' . number_format($project->budget, 0, ',', '.') : '';
             }
-            if (Schema::hasColumn('projects', 'actual_cost')) {
+            if ($this->hasColumn('actual_cost')) {
                 $row[] = $project->actual_cost ? 'Rp ' . number_format($project->actual_cost, 0, ',', '.') : '';
             }
-            if (Schema::hasColumn('projects', 'is_active')) {
+            if ($this->hasColumn('is_active')) {
                 $row[] = ($project->is_active ?? true) ? 'Yes' : 'No';
+            }
+            if ($this->hasColumn('client_name')) {
+                $row[] = $project->client_name ?? '';
             }
 
             $csvData[] = $row;
@@ -941,9 +999,23 @@ class ProjectController extends Controller
     /**
      * Bulk operations on projects.
      */
-    public function bulkAction(BulkProjectActionRequest $request)
+    public function bulkAction(Request $request)
     {
-        $validated = $request->validated();
+        $rules = [
+            'action' => 'required|in:activate,deactivate,feature,unfeature,delete,change_status,change_priority',
+            'project_ids' => 'required|array|min:1',
+            'project_ids.*' => 'exists:projects,id',
+        ];
+
+        // Add conditional rules only if columns exist
+        if ($this->hasColumn('status')) {
+            $rules['status'] = 'required_if:action,change_status|in:planning,in_progress,on_hold,completed,cancelled';
+        }
+        if ($this->hasColumn('priority')) {
+            $rules['priority'] = 'required_if:action,change_priority|in:low,normal,high,urgent';
+        }
+
+        $validated = $request->validate($rules);
         $projects = Project::whereIn('id', $validated['project_ids'])->get();
         $affectedCount = 0;
 
@@ -951,13 +1023,13 @@ class ProjectController extends Controller
             foreach ($projects as $project) {
                 switch ($validated['action']) {
                     case 'activate':
-                        if (Schema::hasColumn('projects', 'is_active')) {
+                        if ($this->hasColumn('is_active')) {
                             $project->update(['is_active' => true]);
                             $affectedCount++;
                         }
                         break;
                     case 'deactivate':
-                        if (Schema::hasColumn('projects', 'is_active')) {
+                        if ($this->hasColumn('is_active')) {
                             $project->update(['is_active' => false]);
                             $affectedCount++;
                         }
@@ -971,23 +1043,25 @@ class ProjectController extends Controller
                         $affectedCount++;
                         break;
                     case 'change_status':
-                        $oldStatus = $project->status;
-                        $updateData = ['status' => $validated['status']];
-                        
-                        if ($validated['status'] === 'completed' && $oldStatus !== 'completed') {
-                            if (Schema::hasColumn('projects', 'actual_completion_date')) {
-                                $updateData['actual_completion_date'] = now();
+                        if ($this->hasColumn('status') && isset($validated['status'])) {
+                            $oldStatus = $project->status;
+                            $updateData = ['status' => $validated['status']];
+                            
+                            if ($validated['status'] === 'completed' && $oldStatus !== 'completed') {
+                                if ($this->hasColumn('actual_completion_date')) {
+                                    $updateData['actual_completion_date'] = now();
+                                }
+                                if ($this->hasColumn('progress_percentage')) {
+                                    $updateData['progress_percentage'] = 100;
+                                }
                             }
-                            if (Schema::hasColumn('projects', 'progress_percentage')) {
-                                $updateData['progress_percentage'] = 100;
-                            }
+                            
+                            $project->update($updateData);
+                            $affectedCount++;
                         }
-                        
-                        $project->update($updateData);
-                        $affectedCount++;
                         break;
                     case 'change_priority':
-                        if (Schema::hasColumn('projects', 'priority')) {
+                        if ($this->hasColumn('priority') && isset($validated['priority'])) {
                             $project->update(['priority' => $validated['priority']]);
                             $affectedCount++;
                         }
@@ -1043,16 +1117,16 @@ class ProjectController extends Controller
                   ->orWhere('location', 'like', "%{$searchQuery}%");
                   
                 // Add additional search fields if they exist
-                if (Schema::hasColumn('projects', 'short_description')) {
+                if ($this->hasColumn('short_description')) {
                     $q->orWhere('short_description', 'like', "%{$searchQuery}%");
                 }
-                if (Schema::hasColumn('projects', 'client_name')) {
+                if ($this->hasColumn('client_name')) {
                     $q->orWhere('client_name', 'like', "%{$searchQuery}%");
                 }
             });
 
         // Only search active projects if column exists
-        if (Schema::hasColumn('projects', 'is_active')) {
+        if ($this->hasColumn('is_active')) {
             $projects->where('is_active', true);
         }
 
@@ -1066,10 +1140,10 @@ class ProjectController extends Controller
                 return [
                     'id' => $project->id,
                     'title' => $project->title,
-                    'client_name' => $project->client?->name ?? $project->client_name ?? 'Unknown',
+                    'client_name' => $project->client?->name ?? ($this->hasColumn('client_name') ? $project->client_name : 'Unknown'),
                     'category' => $project->category?->name,
                     'status' => $project->status,
-                    'progress' => $project->progress_percentage ?? 0,
+                    'progress' => $this->hasColumn('progress_percentage') ? ($project->progress_percentage ?? 0) : 0,
                     'url' => route('admin.projects.show', $project),
                 ];
             }),
@@ -1092,7 +1166,7 @@ class ProjectController extends Controller
                 'title' => $project->title,
                 'start_date' => $project->start_date?->format('Y-m-d'),
                 'end_date' => $project->end_date?->format('Y-m-d'),
-                'progress' => $project->progress_percentage ?? 0,
+                'progress' => $this->hasColumn('progress_percentage') ? ($project->progress_percentage ?? 0) : 0,
                 'status' => $project->status,
             ],
             'milestones' => $milestones->map(function ($milestone) {
@@ -1100,7 +1174,7 @@ class ProjectController extends Controller
                     'id' => $milestone->id,
                     'title' => $milestone->title,
                     'due_date' => $milestone->due_date?->format('Y-m-d'),
-                    'completed_date' => $milestone->completed_date?->format('Y-m-d'),
+                    'completion_date' => $milestone->completion_date?->format('Y-m-d'),
                     'status' => $milestone->status,
                     'progress' => $milestone->progress_percent ?? 0,
                     'color' => $this->getMilestoneColor($milestone->status),
@@ -1109,10 +1183,10 @@ class ProjectController extends Controller
         ];
 
         // Add estimated completion if column exists
-        if (Schema::hasColumn('projects', 'estimated_completion_date') && $project->estimated_completion_date) {
+        if ($this->hasColumn('estimated_completion_date') && $project->estimated_completion_date) {
             $timelineData['project']['estimated_completion'] = $project->estimated_completion_date->format('Y-m-d');
         }
-        if (Schema::hasColumn('projects', 'actual_completion_date') && $project->actual_completion_date) {
+        if ($this->hasColumn('actual_completion_date') && $project->actual_completion_date) {
             $timelineData['project']['actual_completion'] = $project->actual_completion_date->format('Y-m-d');
         }
 
