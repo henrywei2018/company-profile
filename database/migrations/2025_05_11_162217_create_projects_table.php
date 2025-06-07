@@ -27,7 +27,6 @@ return new class extends Migration
             $table->text('challenge')->nullable();
             $table->text('solution')->nullable();
             $table->text('result')->nullable();
-            $table->json('services_used')->nullable();
             $table->timestamps();
             
             $table->index(['status', 'featured']);

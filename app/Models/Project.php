@@ -45,14 +45,11 @@ class Project extends Model
         'challenge',
         'solution',
         'results',
-        'technologies_used',
-        'team_members',
         'client_feedback',
         'lessons_learned',
         'meta_title',
         'meta_description',
         'meta_keywords',
-        'services_used',
     ];
 
     /**
@@ -120,63 +117,6 @@ class Project extends Model
     const PRIORITY_HIGH = 'high';
     const PRIORITY_URGENT = 'urgent';
 
-    public function getServicesUsedAttribute($value)
-{
-    if (empty($value)) {
-        return [];
-    }
-    
-    if (is_string($value)) {
-        $decoded = json_decode($value, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            return $decoded;
-        }
-        // If not valid JSON, return as single item array
-        return [$value];
-    }
-    
-    return is_array($value) ? $value : [];
-}
-
-/**
- * Get technologies used as array for views
- */
-public function getTechnologiesUsedAttribute($value)
-{
-    if (empty($value)) {
-        return [];
-    }
-    
-    if (is_string($value)) {
-        $decoded = json_decode($value, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            return $decoded;
-        }
-        return [$value];
-    }
-    
-    return is_array($value) ? $value : [];
-}
-
-/**
- * Get team members as array for views
- */
-public function getTeamMembersAttribute($value)
-{
-    if (empty($value)) {
-        return [];
-    }
-    
-    if (is_string($value)) {
-        $decoded = json_decode($value, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            return $decoded;
-        }
-        return [$value];
-    }
-    
-    return is_array($value) ? $value : [];
-}
     /**
      * Get all available statuses
      */
@@ -223,93 +163,14 @@ public function getTeamMembersAttribute($value)
             if (empty($project->priority)) {
                 $project->priority = self::PRIORITY_NORMAL;
             }
-
-            // Ensure array fields are properly set
-            $project->technologies_used = $project->technologies_used ?? [];
-            $project->team_members = $project->team_members ?? [];
-            $project->services_used = $project->services_used ?? [];
         });
 
         static::updating(function ($project) {
             if ($project->isDirty('title') && empty($project->slug)) {
                 $project->slug = Str::slug($project->title);
             }
-
-            // Ensure array fields are properly handled
-            if ($project->isDirty('technologies_used') && !is_array($project->technologies_used)) {
-                $project->technologies_used = is_string($project->technologies_used) 
-                    ? json_decode($project->technologies_used, true) ?? []
-                    : [];
-            }
-
-            if ($project->isDirty('team_members') && !is_array($project->team_members)) {
-                $project->team_members = is_string($project->team_members) 
-                    ? json_decode($project->team_members, true) ?? []
-                    : [];
-            }
-
-            if ($project->isDirty('services_used') && !is_array($project->services_used)) {
-                $project->services_used = is_string($project->services_used) 
-                    ? json_decode($project->services_used, true) ?? []
-                    : [];
-            }
         });
     }
-
-    /**
-     * Set technologies used attribute - ensure it's always an array
-     */
-    public function setTechnologiesUsedAttribute($value)
-    {
-        if (is_string($value)) {
-            $this->attributes['technologies_used'] = json_encode(
-                array_filter(explode(',', $value), function($item) {
-                    return !empty(trim($item));
-                })
-            );
-        } elseif (is_array($value)) {
-            $this->attributes['technologies_used'] = json_encode(array_filter($value));
-        } else {
-            $this->attributes['technologies_used'] = json_encode([]);
-        }
-    }
-
-    /**
-     * Set team members attribute - ensure it's always an array
-     */
-    public function setTeamMembersAttribute($value)
-    {
-        if (is_string($value)) {
-            $this->attributes['team_members'] = json_encode(
-                array_filter(explode(',', $value), function($item) {
-                    return !empty(trim($item));
-                })
-            );
-        } elseif (is_array($value)) {
-            $this->attributes['team_members'] = json_encode(array_filter($value));
-        } else {
-            $this->attributes['team_members'] = json_encode([]);
-        }
-    }
-
-    /**
-     * Set services used attribute - ensure it's always an array
-     */
-    public function setServicesUsedAttribute($value)
-    {
-        if (is_string($value)) {
-            $this->attributes['services_used'] = json_encode(
-                array_filter(explode(',', $value), function($item) {
-                    return !empty(trim($item));
-                })
-            );
-        } elseif (is_array($value)) {
-            $this->attributes['services_used'] = json_encode(array_filter($value));
-        } else {
-            $this->attributes['services_used'] = json_encode([]);
-        }
-    }
-
     /**
      * Get the messages for this project.
      */
@@ -627,47 +488,5 @@ public function getTeamMembersAttribute($value)
         }
 
         return ($this->actual_cost / $this->budget) * 100;
-    }
-
-    /**
-     * Get technologies used as formatted string - SAFE GETTER
-     */
-    public function getTechnologiesUsedFormattedAttribute(): string
-    {
-        $technologies = $this->technologies_used;
-        
-        if (!$technologies || !is_array($technologies)) {
-            return 'None specified';
-        }
-        
-        return implode(', ', array_filter($technologies));
-    }
-
-    /**
-     * Get team members as formatted string - SAFE GETTER
-     */
-    public function getTeamMembersFormattedAttribute(): string
-    {
-        $members = $this->team_members;
-        
-        if (!$members || !is_array($members)) {
-            return 'Not assigned';
-        }
-        
-        return implode(', ', array_filter($members));
-    }
-
-    /**
-     * Get services used as formatted string - SAFE GETTER
-     */
-    public function getServicesUsedFormattedAttribute(): string
-    {
-        $services = $this->services_used;
-        
-        if (!$services || !is_array($services)) {
-            return 'None specified';
-        }
-        
-        return implode(', ', array_filter($services));
     }
 }

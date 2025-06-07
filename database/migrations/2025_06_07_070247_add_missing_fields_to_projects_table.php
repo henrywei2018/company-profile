@@ -50,15 +50,6 @@ return new class extends Migration
                 $table->integer('display_order')->default(0)->after('is_active');
             }
             
-            // Project methodology and documentation fields
-            if (!Schema::hasColumn('projects', 'technologies_used')) {
-                $table->json('technologies_used')->nullable()->after('services_used');
-            }
-            
-            if (!Schema::hasColumn('projects', 'team_members')) {
-                $table->json('team_members')->nullable()->after('technologies_used');
-            }
-            
             if (!Schema::hasColumn('projects', 'client_feedback')) {
                 $table->text('client_feedback')->nullable()->after('result');
             }

@@ -240,19 +240,6 @@ class ProjectController extends Controller
     if ($this->hasColumn('priority')) {
         $validated['priority'] = $validated['priority'] ?? 'normal';
     }
-    
-    // Handle JSON fields properly - each field handles its own data
-    if ($this->hasColumn('services_used') && array_key_exists('services_used', $validated)) {
-        $validated['services_used'] = $this->processJsonField($validated['services_used']);
-    }
-    
-    if ($this->hasColumn('technologies_used') && array_key_exists('technologies_used', $validated)) {
-        $validated['technologies_used'] = $this->processJsonField($validated['technologies_used']);
-    }
-    
-    if ($this->hasColumn('team_members') && array_key_exists('team_members', $validated)) {
-        $validated['team_members'] = $this->processJsonField($validated['team_members']);
-    }
 
     // Auto-set completion date if status is completed and column exists
     if ($validated['status'] === 'completed') {
@@ -447,22 +434,6 @@ class ProjectController extends Controller
     $validated['featured'] = $request->boolean('featured', false);
     if ($this->hasColumn('is_active')) {
         $validated['is_active'] = $request->boolean('is_active', true);
-    }
-
-    // Handle JSON fields - convert arrays to JSON strings for database storage
-    $jsonFields = ['services_used', 'technologies_used', 'team_members'];
-    foreach ($jsonFields as $field) {
-        if ($this->hasColumn($field) && isset($validated[$field])) {
-            if (is_array($validated[$field])) {
-                // Filter out empty values and encode as JSON
-                $cleanArray = array_values(array_filter($validated[$field], function($item) {
-                    return !empty(trim($item));
-                }));
-                $validated[$field] = !empty($cleanArray) ? json_encode($cleanArray) : null;
-            } elseif (empty($validated[$field])) {
-                $validated[$field] = null;
-            }
-        }
     }
 
     // Handle completion status
