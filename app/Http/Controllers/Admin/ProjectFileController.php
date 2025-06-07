@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectFile;
 use App\Services\FileUploadService;
+use App\Services\FilePondService;
 use App\Facades\Notifications;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -15,10 +16,19 @@ use Illuminate\Support\Str;
 class ProjectFileController extends Controller
 {
     protected $fileUploadService;
+    protected $filePondService;
 
-    public function __construct(FileUploadService $fileUploadService)
-    {
+    public function __construct(
+        FileUploadService $fileUploadService,
+        FilePondService $filePondService
+    ) {
         $this->fileUploadService = $fileUploadService;
+        $this->filePondService = $filePondService;
+        
+        // Apply FilePond validation middleware to specific routes
+        $this->middleware('validate.filepond')->only([
+            'filepondProcess', 'filepondRevert', 'filepondLoad', 'filepondFetch'
+        ]);
     }
 
     /**
@@ -67,36 +77,24 @@ class ProjectFileController extends Controller
      * Store newly uploaded files.
      */
     public function store(Request $request, Project $project)
-{
-    $this->authorize('update', $project);
+    {
+        $this->authorize('update', $project);
 
-    try {
-        $validated = $request->validate([
-            'files' => 'required|array|min:1|max:10',
-            'files.*' => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,svg,zip,rar,7z,txt,csv',
+        $request->validate([
+            'files' => 'required|array|min:1',
+            'files.*' => 'required|file|max:10240', // Max 10MB per file
             'category' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:500',
             'is_public' => 'boolean',
-        ], [
-            'files.required' => 'Please select at least one file to upload.',
-            'files.*.max' => 'Each file must not exceed 10MB.',
-            'files.*.mimes' => 'File type not supported. Please use: PDF, DOC, XLS, PPT, images, or archives.',
         ]);
 
         $uploadedFiles = [];
         $totalUploaded = 0;
-        $errors = [];
 
-        DB::transaction(function () use ($request, $project, &$uploadedFiles, &$totalUploaded, &$errors, $validated) {
-            foreach ($request->file('files') as $index => $uploadedFile) {
+        DB::transaction(function () use ($request, $project, &$uploadedFiles, &$totalUploaded) {
+            foreach ($request->file('files') as $uploadedFile) {
                 try {
-                    // Additional server-side validation
-                    if ($uploadedFile->getSize() > 10 * 1024 * 1024) {
-                        $errors[] = "File {$uploadedFile->getClientOriginalName()} exceeds 10MB limit";
-                        continue;
-                    }
-
-                    // Upload file using the service
+                    // Upload file
                     $path = $this->fileUploadService->uploadFile(
                         $uploadedFile,
                         'projects/' . $project->id . '/files'
@@ -108,8 +106,8 @@ class ProjectFileController extends Controller
                         'file_name' => $uploadedFile->getClientOriginalName(),
                         'file_size' => $uploadedFile->getSize(),
                         'file_type' => $uploadedFile->getMimeType(),
-                        'category' => $validated['category'] ?? 'general',
-                        'description' => $validated['description'] ?? null,
+                        'category' => $request->input('category', 'general'),
+                        'description' => $request->input('description'),
                         'is_public' => $request->boolean('is_public', false),
                         'download_count' => 0,
                     ]);
@@ -117,117 +115,275 @@ class ProjectFileController extends Controller
                     $uploadedFiles[] = $projectFile;
                     $totalUploaded++;
 
-                    \Log::info('File uploaded successfully', [
-                        'project_id' => $project->id,
-                        'file_name' => $projectFile->file_name,
-                        'file_size' => $projectFile->file_size,
-                        'user_id' => auth()->id()
-                    ]);
-
                 } catch (\Exception $e) {
                     \Log::error('File upload failed: ' . $e->getMessage(), [
                         'project_id' => $project->id,
                         'file_name' => $uploadedFile->getClientOriginalName(),
-                        'error' => $e->getMessage(),
-                        'user_id' => auth()->id()
                     ]);
-                    
-                    $errors[] = "Failed to upload {$uploadedFile->getClientOriginalName()}: " . $e->getMessage();
+                    // Continue with other files
                 }
             }
         });
 
-        // Prepare response
         if ($totalUploaded > 0) {
             // Send notification
-            try {
-                Notifications::send('project.files_uploaded', [
-                    'project' => $project,
-                    'file_count' => $totalUploaded,
-                    'files' => $uploadedFiles
+            Notifications::send('project.files_uploaded', [
+                'project' => $project,
+                'file_count' => $totalUploaded,
+                'files' => $uploadedFiles
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $totalUploaded === 1 
+                        ? 'File uploaded successfully!' 
+                        : "{$totalUploaded} files uploaded successfully!",
+                    'files' => $uploadedFiles->map(function($file) use ($project) {
+                        return [
+                            'id' => $file->id,
+                            'name' => $file->file_name,
+                            'size' => $file->formatted_file_size,
+                            'type' => $file->file_type,
+                            'download_url' => route('admin.projects.files.download', [$project, $file]),
+                            'created_at' => $file->created_at->format('M j, Y H:i')
+                        ];
+                    })
                 ]);
-            } catch (\Exception $e) {
-                \Log::warning('Failed to send file upload notification: ' . $e->getMessage());
             }
 
-            $message = $totalUploaded === 1
-                ? 'File uploaded successfully!'
-                : "{$totalUploaded} files uploaded successfully!";
+            return redirect()->route('admin.projects.files.index', $project)
+                ->with('success', $totalUploaded === 1 
+                    ? 'File uploaded successfully!' 
+                    : "{$totalUploaded} files uploaded successfully!");
+        }
 
-            if (!empty($errors)) {
-                $message .= ' However, ' . count($errors) . ' files failed to upload.';
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No files were uploaded successfully.'
+            ], 422);
+        }
+
+        return redirect()->back()
+            ->with('error', 'No files were uploaded successfully.');
+    }
+
+    /**
+     * FilePond process endpoint - temporary file storage
+     */
+    public function filepondProcess(Request $request, Project $project)
+    {
+        $this->authorize('update', $project);
+
+        try {
+            $file = $request->file('file');
+            
+            if (!$file) {
+                return response()->json(['error' => 'No file provided'], 422);
             }
 
-            // Handle AJAX vs regular request
-            if ($request->expectsJson() || $request->ajax()) {
+            // Use FilePondService to process upload
+            $serverId = $this->filePondService->processUpload($file, $project->id);
+
+            return response($serverId, 200)
+                ->header('Content-Type', 'text/plain');
+
+        } catch (\Exception $e) {
+            \Log::error('FilePond process failed: ' . $e->getMessage(), [
+                'project_id' => $project->id,
+                'file_name' => $request->file('file')?->getClientOriginalName()
+            ]);
+            
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * FilePond revert endpoint - remove temporary file
+     */
+    public function filepondRevert(Request $request, Project $project)
+    {
+        $this->authorize('update', $project);
+
+        try {
+            $serverId = $request->getContent();
+            
+            if (empty($serverId)) {
+                return response('Invalid server ID', 400);
+            }
+
+            $success = $this->filePondService->revertUpload($serverId);
+            
+            return response('', $success ? 200 : 500);
+
+        } catch (\Exception $e) {
+            \Log::error('FilePond revert failed: ' . $e->getMessage());
+            return response('', 500);
+        }
+    }
+    
+
+    /**
+     * FilePond load endpoint - for editing existing files
+     */
+    public function filepondLoad(Request $request, Project $project, ProjectFile $file)
+    {
+        $this->authorize('viewFiles', $project);
+
+        if ($file->project_id !== $project->id) {
+            abort(404);
+        }
+
+        if (!Storage::disk('public')->exists($file->file_path)) {
+            abort(404);
+        }
+
+        return response()->file(
+            Storage::disk('public')->path($file->file_path),
+            [
+                'Content-Type' => $file->file_type,
+                'Content-Disposition' => 'inline; filename="' . $file->file_name . '"'
+            ]
+        );
+    }
+
+    /**
+     * FilePond fetch endpoint - for external URLs
+     */
+    public function filepondFetch(Request $request, Project $project)
+    {
+        $this->authorize('update', $project);
+
+        $url = $request->input('url');
+        
+        // Add URL validation and fetching logic here
+        // This is useful for fetching files from external sources
+        
+        return response()->json(['error' => 'Fetch not implemented'], 501);
+    }
+
+    /**
+     * Process FilePond submitted files into permanent storage
+     */
+    public function processFilePondFiles(Request $request, Project $project)
+    {
+        $this->authorize('update', $project);
+
+        $request->validate([
+            'filepond_files' => 'nullable|array',
+            'filepond_files.*' => 'string', // Server IDs from FilePond
+            'category' => 'nullable|string|max:255',
+            'description' => 'nullable|string|max:500',
+            'is_public' => 'boolean',
+        ]);
+
+        $serverIds = $request->input('filepond_files', []);
+        $processedFiles = [];
+
+        if (empty($serverIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No files to process'
+            ], 422);
+        }
+
+        DB::transaction(function () use ($serverIds, $request, $project, &$processedFiles) {
+            foreach ($serverIds as $serverId) {
+                try {
+                    // Get file info from server ID
+                    $fileInfo = $this->filePondService->getFileInfo($serverId);
+                    
+                    if (!$fileInfo) {
+                        \Log::warning('Invalid server ID in FilePond submission', ['server_id' => $serverId]);
+                        continue;
+                    }
+
+                    // Generate permanent path
+                    $permanentPath = 'projects/' . $project->id . '/files/' . 
+                        uniqid() . '_' . $fileInfo['original_name'];
+                    
+                    // Move from temp to permanent location
+                    $movedFileInfo = $this->filePondService->moveToPermantent($serverId, $permanentPath);
+                    
+                    if (!$movedFileInfo) {
+                        \Log::warning('Failed to move FilePond file to permanent storage', [
+                            'server_id' => $serverId,
+                            'permanent_path' => $permanentPath
+                        ]);
+                        continue;
+                    }
+
+                    // Create database record
+                    $projectFile = $project->files()->create([
+                        'file_path' => $movedFileInfo['permanent_path'],
+                        'file_name' => $movedFileInfo['original_name'],
+                        'file_size' => $movedFileInfo['size'],
+                        'file_type' => $movedFileInfo['mime_type'],
+                        'category' => $request->input('category', 'general'),
+                        'description' => $request->input('description'),
+                        'is_public' => $request->boolean('is_public', false),
+                        'download_count' => 0,
+                    ]);
+
+                    $processedFiles[] = $projectFile;
+
+                } catch (\Exception $e) {
+                    \Log::error('FilePond file processing failed: ' . $e->getMessage(), [
+                        'server_id' => $serverId,
+                        'project_id' => $project->id
+                    ]);
+                }
+            }
+        });
+
+        $processedCount = count($processedFiles);
+
+        if ($processedCount > 0) {
+            // Send notification
+            Notifications::send('project.files_uploaded', [
+                'project' => $project,
+                'file_count' => $processedCount,
+                'files' => $processedFiles
+            ]);
+
+            $message = $processedCount === 1 
+                ? 'File uploaded successfully!' 
+                : "{$processedCount} files uploaded successfully!";
+
+            if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
                     'message' => $message,
-                    'uploaded_count' => $totalUploaded,
-                    'errors' => $errors,
-                    'redirect_url' => route('admin.projects.files.index', $project)
+                    'files' => $processedFiles->map(function($file) use ($project) {
+                        return [
+                            'id' => $file->id,
+                            'name' => $file->file_name,
+                            'size' => $file->formatted_file_size,
+                            'type' => $file->file_type,
+                            'category' => $file->category,
+                            'download_url' => route('admin.projects.files.download', [$project, $file]),
+                            'created_at' => $file->created_at->format('M j, Y H:i')
+                        ];
+                    })
                 ]);
             }
 
-            $redirectUrl = route('admin.projects.files.index', $project);
-            return redirect($redirectUrl)->with('success', $message);
+            return redirect()->route('admin.projects.files.index', $project)
+                ->with('success', $message);
         }
 
-        // No files uploaded successfully
-        $errorMessage = 'No files were uploaded successfully.';
-        if (!empty($errors)) {
-            $errorMessage .= ' Errors: ' . implode(', ', $errors);
-        }
+        $message = 'No files were processed successfully.';
 
-        if ($request->expectsJson() || $request->ajax()) {
+        if ($request->expectsJson()) {
             return response()->json([
                 'success' => false,
-                'message' => $errorMessage,
-                'errors' => $errors
+                'message' => $message
             ], 422);
         }
 
-        return redirect()->back()
-            ->withErrors(['files' => $errorMessage])
-            ->withInput();
-
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        \Log::error('File upload validation failed', [
-            'project_id' => $project->id,
-            'errors' => $e->errors(),
-            'user_id' => auth()->id()
-        ]);
-
-        if ($request->expectsJson() || $request->ajax()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
-        }
-
-        throw $e;
-
-    } catch (\Exception $e) {
-        \Log::error('Unexpected error during file upload', [
-            'project_id' => $project->id,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-            'user_id' => auth()->id()
-        ]);
-
-        if ($request->expectsJson() || $request->ajax()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'An unexpected error occurred: ' . $e->getMessage()
-            ], 500);
-        }
-
-        return redirect()->back()
-            ->with('error', 'An unexpected error occurred. Please try again.')
-            ->withInput();
+        return redirect()->back()->with('error', $message);
     }
-}
 
     /**
      * Download a project file.
@@ -864,6 +1020,26 @@ class ProjectFileController extends Controller
             'usage_percentage' => $this->getStorageUsagePercentage($totalSize)
         ]);
     }
+    public function cleanupFilePondFiles()
+    {
+        try {
+            $deletedCount = $this->filePondService->cleanupOldFiles();
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Cleaned up {$deletedCount} temporary files",
+                'deleted_count' => $deletedCount
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Manual FilePond cleanup failed: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Cleanup failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
     /**
      * Clean up orphaned files.
@@ -915,6 +1091,13 @@ class ProjectFileController extends Controller
     protected function getTotalProjectSize(): int
     {
         return ProjectFile::sum('file_size');
+    }
+    public function getFilePondStats()
+    {
+        return response()->json([
+            'success' => true,
+            'stats' => $this->filePondService->getStorageStats()
+        ]);
     }
 
     /**

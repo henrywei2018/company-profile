@@ -34,7 +34,7 @@ class ProjectController extends Controller
     {
         $query = Project::with(['client', 'category', 'service'])
             ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
-            ->when($request->filled('category'), fn($q) => $q->where('project_category_id', $request->category))
+            ->when($request->filled('category'), fn($q) => $q->where('category_id', $request->category))
             ->when($request->filled('client'), fn($q) => $q->where('client_id', $request->client))
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->search;
@@ -105,7 +105,7 @@ class ProjectController extends Controller
             'short_description' => 'nullable|string|max:500',
             'client_id' => 'nullable|exists:users,id',
             'quotation_id' => 'nullable|exists:quotations,id',
-            'project_category_id' => 'nullable|exists:project_categories,id',
+            'category_id' => 'nullable|exists:project_categories,id',
             'service_id' => 'nullable|exists:services,id',
             'status' => 'required|in:planning,in_progress,on_hold,completed,cancelled',
             'priority' => 'required|in:low,normal,high,urgent',
@@ -262,7 +262,7 @@ class ProjectController extends Controller
             'description' => 'nullable|string',
             'short_description' => 'nullable|string|max:500',
             'client_id' => 'nullable|exists:users,id',
-            'project_category_id' => 'nullable|exists:project_categories,id',
+            'category_id' => 'nullable|exists:project_categories,id',
             'service_id' => 'nullable|exists:services,id',
             'status' => 'required|in:planning,in_progress,on_hold,completed,cancelled',
             'priority' => 'required|in:low,normal,high,urgent',

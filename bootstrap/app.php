@@ -62,6 +62,29 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->call(function () {
             app(\App\Services\SettingsService::class)->clearCache();
         })->daily()->at('01:00')->name('clear-settings-cache');
+        // FilePond cleanup
+        $schedule->command('filepond:cleanup')
+        ->hourly()
+        ->description('Clean up old FilePond temporary files');
+        
+        $schedule->command('filepond:cleanup --hours=6')
+            ->daily()
+            ->at('02:00')
+            ->description('Daily aggressive cleanup');
+            
+        // Storage monitoring
+        $schedule->call(function () {
+            $stats = app(\App\Services\FilePondService::class)->getStorageStats();
+            
+            if ($stats['temp_files_size'] > 100 * 1024 * 1024) {
+                \Log::warning('FilePond temporary storage usage is high', $stats);
+            }
+             })->weekly();   
+
+        $schedule->call(function () {
+            $stats = app(\App\Services\FilePondService::class)->getStorageStats();
+            \Log::info('FilePond storage stats', $stats);
+        })->daily()->at('03:00')->name('log-filepond-storage-stats');
     })
     ->withProviders([
         App\Providers\RepositoryServiceProvider::class,
@@ -85,6 +108,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'rbac' => \App\Http\Middleware\RoleBasedAccessControl::class,
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'client' => \App\Http\Middleware\ClientMiddleware::class,
+            'validate.filepond' => \App\Http\Middleware\ValidateFilePondUpload::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

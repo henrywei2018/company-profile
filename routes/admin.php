@@ -144,11 +144,22 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
             Route::get('/', [ProjectFileController::class, 'index'])->name('index');
             Route::get('/create', [ProjectFileController::class, 'create'])->name('create');
             Route::post('/', [ProjectFileController::class, 'store'])->name('store');
+            
+            // NEW: FilePond specific routes
+            Route::post('/filepond/process', [ProjectFileController::class, 'filepondProcess'])->name('filepond.process');
+            Route::delete('/filepond/revert', [ProjectFileController::class, 'filepondRevert'])->name('filepond.revert');
+            Route::get('/filepond/load/{file}', [ProjectFileController::class, 'filepondLoad'])->name('filepond.load');
+            Route::post('/filepond/fetch', [ProjectFileController::class, 'filepondFetch'])->name('filepond.fetch');
+            Route::post('/filepond/submit', [ProjectFileController::class, 'processFilePondFiles'])->name('filepond.submit');
+            
+            // Existing routes continue...
             Route::get('/{file}/download', [ProjectFileController::class, 'download'])->name('download');
             Route::get('/{file}/preview', [ProjectFileController::class, 'preview'])->name('preview');
             Route::get('/{file}/thumbnail', [ProjectFileController::class, 'thumbnail'])->name('thumbnail');
             Route::patch('/{file}', [ProjectFileController::class, 'update'])->name('update');
             Route::delete('/{file}', [ProjectFileController::class, 'destroy'])->name('destroy');
+            
+            // Other existing routes...
             Route::post('/bulk-upload', [ProjectFileController::class, 'bulkUpload'])->name('bulk-upload');
             Route::post('/bulk-delete', [ProjectFileController::class, 'bulkDelete'])->name('bulk-delete');
             Route::get('/search', [ProjectFileController::class, 'search'])->name('search');
