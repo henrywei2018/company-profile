@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Contracts\Validation\Validator;
 use Carbon\Carbon;
 
-
 class StoreProjectRequest extends FormRequest
 {
     private function getProjectColumns(): array
@@ -140,47 +139,6 @@ class StoreProjectRequest extends FormRequest
         $this->replace($input);
     }
 
-    /**
-     * Clean array field data while preserving individual field values
-     */
-    private function cleanArrayField($fieldData)
-    {
-        if (!is_array($fieldData)) {
-            return [];
-        }
-
-        $cleaned = [];
-
-        foreach ($fieldData as $item) {
-            // Handle string values
-            if (is_string($item)) {
-                $trimmed = trim($item);
-                if ($trimmed !== '') {
-                    $cleaned[] = $trimmed;
-                }
-            }
-            // Handle numeric values
-            elseif (is_numeric($item)) {
-                $cleaned[] = (string) $item;
-            }
-            // Handle nested arrays (shouldn't happen in normal form submission)
-            elseif (is_array($item)) {
-                $nestedCleaned = $this->cleanArrayField($item);
-                $cleaned = array_merge($cleaned, $nestedCleaned);
-            }
-            // Handle other types
-            elseif (!is_null($item)) {
-                $stringValue = trim((string) $item);
-                if ($stringValue !== '') {
-                    $cleaned[] = $stringValue;
-                }
-            }
-        }
-
-        // Return clean array with sequential indexes
-        return array_values($cleaned);
-    }
-
     public function withValidator($validator): void
     {
         $validator->after(function (Validator $validator) {
@@ -250,8 +208,6 @@ class StoreProjectRequest extends FormRequest
             'actual_cost' => 'actual cost',
             'client_feedback' => 'client feedback',
             'lessons_learned' => 'lessons learned',
-            'technologies_used' => 'technologies used',
-            'team_members' => 'team members',
             'meta_title' => 'meta title',
             'meta_description' => 'meta description',
             'meta_keywords' => 'meta keywords',

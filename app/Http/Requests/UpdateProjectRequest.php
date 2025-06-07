@@ -363,47 +363,6 @@ class UpdateProjectRequest extends FormRequest
     }
 
     /**
-     * Clean array field data while preserving individual field values
-     */
-    private function cleanArrayField($fieldData)
-    {
-        if (!is_array($fieldData)) {
-            return [];
-        }
-
-        $cleaned = [];
-
-        foreach ($fieldData as $item) {
-            // Handle string values
-            if (is_string($item)) {
-                $trimmed = trim($item);
-                if ($trimmed !== '') {
-                    $cleaned[] = $trimmed;
-                }
-            }
-            // Handle numeric values
-            elseif (is_numeric($item)) {
-                $cleaned[] = (string) $item;
-            }
-            // Handle nested arrays (shouldn't happen in normal form submission)
-            elseif (is_array($item)) {
-                $nestedCleaned = $this->cleanArrayField($item);
-                $cleaned = array_merge($cleaned, $nestedCleaned);
-            }
-            // Handle other types
-            elseif (!is_null($item)) {
-                $stringValue = trim((string) $item);
-                if ($stringValue !== '') {
-                    $cleaned[] = $stringValue;
-                }
-            }
-        }
-
-        // Return clean array with sequential indexes
-        return array_values($cleaned);
-    }
-
-    /**
      * Handle additional validation for business rules.
      */
     public function withValidator($validator)

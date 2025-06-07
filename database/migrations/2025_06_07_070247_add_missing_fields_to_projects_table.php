@@ -140,8 +140,6 @@ return new class extends Migration
                 'progress_percentage',
                 'is_active',
                 'display_order',
-                'technologies_used',
-                'team_members',
                 'client_feedback',
                 'lessons_learned',
                 'meta_title',
