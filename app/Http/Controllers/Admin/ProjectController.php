@@ -36,11 +36,11 @@ class ProjectController extends Controller
     private function getProjectColumns(): array
     {
         static $columns = null;
-        
+
         if ($columns === null) {
             $columns = Schema::getColumnListing('projects');
         }
-        
+
         return $columns;
     }
 
@@ -76,9 +76,9 @@ class ProjectController extends Controller
                 $search = $request->search;
                 return $q->where(function ($query) use ($search) {
                     $query->where('title', 'like', "%{$search}%")
-                          ->orWhere('description', 'like', "%{$search}%")
-                          ->orWhere('location', 'like', "%{$search}%");
-                    
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('location', 'like', "%{$search}%");
+
                     // Only search additional fields if they exist
                     if ($this->hasColumn('short_description')) {
                         $query->orWhere('short_description', 'like', "%{$search}%");
@@ -103,9 +103,9 @@ class ProjectController extends Controller
         // Add sorting
         $sortField = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
-        
+
         $allowedSortFields = ['title', 'status', 'start_date', 'end_date', 'created_at', 'updated_at', 'year'];
-        
+
         // Add additional sort fields if columns exist
         if ($this->hasColumn('priority')) {
             $allowedSortFields[] = 'priority';
@@ -119,7 +119,7 @@ class ProjectController extends Controller
         if ($this->hasColumn('budget')) {
             $allowedSortFields[] = 'budget';
         }
-        
+
         if (in_array($sortField, $allowedSortFields)) {
             $query->orderBy($sortField, $sortDirection);
         } else {
@@ -133,10 +133,10 @@ class ProjectController extends Controller
         $services = Service::where('is_active', true)->get();
         $clients = User::role('client')->get();
         $years = Project::selectRaw('YEAR(created_at) as year')
-                    ->distinct()
-                    ->orderByDesc('year')
-                    ->pluck('year', 'year')
-                    ->toArray();
+            ->distinct()
+            ->orderByDesc('year')
+            ->pluck('year', 'year')
+            ->toArray();
 
         // Get summary statistics - only count fields that exist
         $stats = [
@@ -146,7 +146,7 @@ class ProjectController extends Controller
             'planning' => Project::where('status', 'planning')->count(),
             'featured' => Project::where('featured', true)->count(),
         ];
-        
+
         // Add additional stats if columns exist
         if ($this->hasColumn('is_active')) {
             $stats['active'] = Project::where('is_active', true)->count();
@@ -156,7 +156,12 @@ class ProjectController extends Controller
         }
 
         return view('admin.projects.index', compact(
-            'projects', 'categories', 'services', 'clients', 'years', 'stats'
+            'projects',
+            'categories',
+            'services',
+            'clients',
+            'years',
+            'stats'
         ));
     }
 
@@ -168,18 +173,18 @@ class ProjectController extends Controller
         $categories = ProjectCategory::where('is_active', true)->orderBy('sort_order')->get();
         $services = Service::where('is_active', true)->orderBy('sort_order')->get();
         $clients = User::role('client')->where('is_active', true)->orderBy('name')->get();
-        
+
         // Check if creating from quotation
         $quotation = null;
         if ($request->has('from_quotation')) {
             $quotation = Quotation::findOrFail($request->from_quotation);
-            
+
             // Verify quotation is approved
             if ($quotation->status !== 'approved') {
                 return redirect()->route('admin.quotations.index')
                     ->with('error', 'Only approved quotations can be converted to projects.');
             }
-            
+
             // Check if project already exists for this quotation (only if column exists)
             if ($this->hasColumn('quotation_id') && $quotation->project_created ?? false) {
                 $existingProject = Project::where('quotation_id', $quotation->id)->first();
@@ -189,11 +194,11 @@ class ProjectController extends Controller
                 }
             }
         }
-        
+
         return view('admin.projects.create', compact(
-            'categories', 
-            'services', 
-            'clients', 
+            'categories',
+            'services',
+            'clients',
             'quotation'
         ));
     }
@@ -202,126 +207,129 @@ class ProjectController extends Controller
      * Store a newly created project.
      */
     public function store(StoreProjectRequest $request)
-    {
-        $validated = $request->validated();
+{
+    $validated = $request->validated();
 
-        // Generate slug if not provided
-        if (empty($validated['slug'])) {
-            $validated['slug'] = Str::slug($validated['title']);
-            
-            // Ensure slug is unique
-            $originalSlug = $validated['slug'];
-            $counter = 1;
-            while (Project::where('slug', $validated['slug'])->exists()) {
-                $validated['slug'] = $originalSlug . '-' . $counter;
-                $counter++;
-            }
-        }
-
-        // Set basic defaults for core columns
-        $validated['featured'] = $request->boolean('featured', false);
-        $validated['year'] = $validated['year'] ?? date('Y');
+    // Generate slug if not provided
+    if (empty($validated['slug'])) {
+        $validated['slug'] = Str::slug($validated['title']);
         
-        // Handle optional columns only if they exist
-        if ($this->hasColumn('is_active')) {
-            $validated['is_active'] = $request->boolean('is_active', true);
+        // Ensure slug is unique
+        $originalSlug = $validated['slug'];
+        $counter = 1;
+        while (Project::where('slug', $validated['slug'])->exists()) {
+            $validated['slug'] = $originalSlug . '-' . $counter;
+            $counter++;
+        }
+    }
+
+    // Set basic defaults for core columns
+    $validated['featured'] = $request->boolean('featured', false);
+    $validated['year'] = $validated['year'] ?? date('Y');
+    
+    // Handle optional columns only if they exist
+    if ($this->hasColumn('is_active')) {
+        $validated['is_active'] = $request->boolean('is_active', true);
+    }
+    if ($this->hasColumn('progress_percentage')) {
+        $validated['progress_percentage'] = $validated['progress_percentage'] ?? 0;
+    }
+    if ($this->hasColumn('display_order')) {
+        $validated['display_order'] = $validated['display_order'] ?? (Project::max('display_order') + 1);
+    }
+    if ($this->hasColumn('priority')) {
+        $validated['priority'] = $validated['priority'] ?? 'normal';
+    }
+    
+    // Handle JSON fields properly - each field handles its own data
+    if ($this->hasColumn('services_used') && array_key_exists('services_used', $validated)) {
+        $validated['services_used'] = $this->processJsonField($validated['services_used']);
+    }
+    
+    if ($this->hasColumn('technologies_used') && array_key_exists('technologies_used', $validated)) {
+        $validated['technologies_used'] = $this->processJsonField($validated['technologies_used']);
+    }
+    
+    if ($this->hasColumn('team_members') && array_key_exists('team_members', $validated)) {
+        $validated['team_members'] = $this->processJsonField($validated['team_members']);
+    }
+
+    // Auto-set completion date if status is completed and column exists
+    if ($validated['status'] === 'completed') {
+        if ($this->hasColumn('actual_completion_date') && empty($validated['actual_completion_date'])) {
+            $validated['actual_completion_date'] = now();
         }
         if ($this->hasColumn('progress_percentage')) {
-            $validated['progress_percentage'] = $validated['progress_percentage'] ?? 0;
+            $validated['progress_percentage'] = 100;
         }
-        if ($this->hasColumn('display_order')) {
-            $validated['display_order'] = $validated['display_order'] ?? (Project::max('display_order') + 1);
-        }
-        if ($this->hasColumn('priority')) {
-            $validated['priority'] = $validated['priority'] ?? 'normal';
-        }
-        
-        // Handle JSON fields properly if columns exist
-        $jsonFields = ['technologies_used', 'team_members', 'services_used'];
-        foreach ($jsonFields as $field) {
-            if ($this->hasColumn($field) && isset($validated[$field])) {
-                $validated[$field] = !empty($validated[$field]) 
-                    ? json_encode(array_filter($validated[$field])) 
-                    : null;
-            }
-        }
-
-        // Auto-set completion date if status is completed and column exists
-        if ($validated['status'] === 'completed') {
-            if ($this->hasColumn('actual_completion_date') && empty($validated['actual_completion_date'])) {
-                $validated['actual_completion_date'] = now();
-            }
-            if ($this->hasColumn('progress_percentage')) {
-                $validated['progress_percentage'] = 100;
-            }
-        }
-
-        // Filter to only existing columns
-        $validated = $this->filterToExistingColumns($validated);
-
-        $project = Project::create($validated);
-
-        // Handle image uploads
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $index => $image) {
-                try {
-                    $path = $this->fileUploadService->uploadImage(
-                        $image, 
-                        'projects/' . $project->id,
-                        null,
-                        1200, // max width
-                        800   // max height
-                    );
-                    
-                    $project->images()->create([
-                        'image_path' => $path,
-                        'alt_text' => $request->input("image_alt_texts.{$index}") 
-                            ?? $project->title . ' - Image ' . ($index + 1),
-                        'is_featured' => $index === 0,
-                        'sort_order' => $index + 1,
-                    ]);
-                } catch (\Exception $e) {
-                    \Log::error('Image upload failed: ' . $e->getMessage());
-                }
-            }
-        }
-
-        // If created from quotation, update quotation status (only if columns exist)
-        if ($this->hasColumn('quotation_id') && $project->quotation_id) {
-            $quotation = Quotation::find($project->quotation_id);
-            if ($quotation) {
-                $updateData = [];
-                if (Schema::hasColumn('quotations', 'project_created')) {
-                    $updateData['project_created'] = true;
-                }
-                if (Schema::hasColumn('quotations', 'project_created_at')) {
-                    $updateData['project_created_at'] = now();
-                }
-                if (Schema::hasColumn('quotations', 'admin_notes')) {
-                    $updateData['admin_notes'] = ($quotation->admin_notes ? $quotation->admin_notes . "\n\n" : '') 
-                        . "Project created: " . $project->title . " on " . now()->format('Y-m-d H:i:s');
-                }
-                
-                if (!empty($updateData)) {
-                    $quotation->update($updateData);
-                }
-            }
-        }
-
-        // Send notification
-        if (class_exists('App\Facades\Notifications')) {
-            Notifications::send('project.created', $project);
-        }
-
-        $redirectRoute = match($request->input('action')) {
-            'save_and_add_another' => 'admin.projects.create',
-            'save_and_add_milestone' => 'admin.projects.milestones.create',
-            default => 'admin.projects.show'
-        };
-
-        return redirect()->route($redirectRoute, $project)
-            ->with('success', 'Project created successfully!');
     }
+
+    // Filter to only existing columns
+    $validated = $this->filterToExistingColumns($validated);
+
+    $project = Project::create($validated);
+
+    // Handle image uploads
+    if ($request->hasFile('images')) {
+        foreach ($request->file('images') as $index => $image) {
+            try {
+                $path = $this->fileUploadService->uploadImage(
+                    $image, 
+                    'projects/' . $project->id,
+                    null,
+                    1200, // max width
+                    800   // max height
+                );
+                
+                $project->images()->create([
+                    'image_path' => $path,
+                    'alt_text' => $request->input("image_alt_texts.{$index}") 
+                        ?? $project->title . ' - Image ' . ($index + 1),
+                    'is_featured' => $index === 0,
+                    'sort_order' => $index + 1,
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Image upload failed: ' . $e->getMessage());
+            }
+        }
+    }
+
+    // If created from quotation, update quotation status (only if columns exist)
+    if ($this->hasColumn('quotation_id') && $project->quotation_id) {
+        $quotation = Quotation::find($project->quotation_id);
+        if ($quotation) {
+            $updateData = [];
+            if (Schema::hasColumn('quotations', 'project_created')) {
+                $updateData['project_created'] = true;
+            }
+            if (Schema::hasColumn('quotations', 'project_created_at')) {
+                $updateData['project_created_at'] = now();
+            }
+            if (Schema::hasColumn('quotations', 'admin_notes')) {
+                $updateData['admin_notes'] = ($quotation->admin_notes ? $quotation->admin_notes . "\n\n" : '') 
+                    . "Project created: " . $project->title . " on " . now()->format('Y-m-d H:i:s');
+            }
+            
+            if (!empty($updateData)) {
+                $quotation->update($updateData);
+            }
+        }
+    }
+
+    // Send notification
+    if (class_exists('App\Facades\Notifications')) {
+        Notifications::send('project.created', $project);
+    }
+
+    $redirectRoute = match($request->input('action')) {
+        'save_and_add_another' => 'admin.projects.create',
+        'save_and_add_milestone' => 'admin.projects.milestones.create',
+        default => 'admin.projects.show'
+    };
+
+    return redirect()->route($redirectRoute, $project)
+        ->with('success', 'Project created successfully!');
+}
 
     /**
      * Display the specified project.
@@ -329,11 +337,11 @@ class ProjectController extends Controller
     public function show(Project $project)
     {
         $project->load([
-            'client', 
-            'category', 
-            'service', 
-            'images' => fn($q) => $q->orderBy('sort_order'), 
-            'files' => fn($q) => $q->orderBy('created_at', 'desc')->limit(10), 
+            'client',
+            'category',
+            'service',
+            'images' => fn($q) => $q->orderBy('sort_order'),
+            'files' => fn($q) => $q->orderBy('created_at', 'desc')->limit(10),
             'milestones' => fn($q) => $q->orderBy('due_date')->orderBy('sort_order'),
             'testimonials' => fn($q) => $q->where('is_active', true),
             'messages' => fn($q) => $q->orderBy('created_at', 'desc')->limit(5)
@@ -354,19 +362,19 @@ class ProjectController extends Controller
         ];
 
         // Add time-based calculations
-        $milestoneStats['overdue'] = $project->milestones->filter(function($milestone) {
+        $milestoneStats['overdue'] = $project->milestones->filter(function ($milestone) {
             return $milestone->due_date && $milestone->due_date < now() && $milestone->status !== 'completed';
         })->count();
 
-        $milestoneStats['due_soon'] = $project->milestones->filter(function($milestone) {
-            return $milestone->due_date && 
-                   $milestone->due_date >= now() && 
-                   $milestone->due_date <= now()->addDays(7) &&
-                   $milestone->status !== 'completed';
+        $milestoneStats['due_soon'] = $project->milestones->filter(function ($milestone) {
+            return $milestone->due_date &&
+                $milestone->due_date >= now() &&
+                $milestone->due_date <= now()->addDays(7) &&
+                $milestone->status !== 'completed';
         })->count();
 
         // Calculate completion rate
-        $milestoneStats['completion_rate'] = $milestoneStats['total'] > 0 
+        $milestoneStats['completion_rate'] = $milestoneStats['total'] > 0
             ? round(($milestoneStats['completed'] / $milestoneStats['total']) * 100, 1)
             : 0;
 
@@ -384,16 +392,16 @@ class ProjectController extends Controller
             'days_until_deadline' => $project->end_date ? $project->end_date->diffInDays(now()) : null,
             'is_overdue' => $project->end_date && $project->end_date < now() && $project->status !== 'completed',
         ];
-        
+
         // Add estimated timeline if column exists
         if ($this->hasColumn('estimated_completion_date') && $project->estimated_completion_date) {
             $timelineData['estimated_days_remaining'] = $project->estimated_completion_date->diffInDays(now());
         }
-        
+
         return view('admin.projects.show', compact(
-            'project', 
-            'milestoneStats', 
-            'fileStats', 
+            'project',
+            'milestoneStats',
+            'fileStats',
             'timelineData'
         ));
     }
@@ -402,129 +410,198 @@ class ProjectController extends Controller
      * Show the form for editing the specified project.
      */
     public function edit(Project $project)
-    {
-        $categories = ProjectCategory::where('is_active', true)->orderBy('sort_order')->get();
-        $services = Service::where('is_active', true)->orderBy('sort_order')->get();
-        $clients = User::role('client')->where('is_active', true)->orderBy('name')->get();
-        $project->services_used = is_array($project->services_used) ? $project->services_used : json_decode($project->services_used ?? '[]', true);
-        $project->technologies_used = is_array($project->technologies_used) ? $project->technologies_used : json_decode($project->technologies_used ?? '[]', true);
-        $project->team_members = is_array($project->team_members) ? $project->team_members : json_decode($project->team_members ?? '[]', true);
+{
+    $categories = ProjectCategory::where('is_active', true)->orderBy('sort_order')->get();
+    $services = Service::where('is_active', true)->orderBy('sort_order')->get();
+    $clients = User::role('client')->where('is_active', true)->orderBy('name')->get();
+    
+    // Properly decode JSON fields for editing
+    $project->services_used = $this->decodeProjectJsonField($project->services_used);
+    $project->technologies_used = $this->decodeProjectJsonField($project->technologies_used);
+    $project->team_members = $this->decodeProjectJsonField($project->team_members);
 
-        $project->load(['images', 'files']);
-        
-        return view('admin.projects.edit', compact(
-            'project', 
-            'categories', 
-            'services', 
-            'clients',
-        ));
-    }
+    $project->load(['images' => function($query) {
+        $query->orderBy('sort_order')->orderBy('created_at');
+    }, 'files']);
+    
+    return view('admin.projects.edit', compact(
+        'project', 
+        'categories', 
+        'services', 
+        'clients',
+    ));
+}
 
     /**
      * Update the specified project.
      */
     public function update(UpdateProjectRequest $request, Project $project)
-    {
-        $validated = $request->validated();
+{
+    $validated = $request->validated();
 
-        // Store old status for comparison
-        $oldStatus = $project->status;
+    // Store old status for comparison
+    $oldStatus = $project->status;
 
-        // Generate slug if not provided
-        if (empty($validated['slug'])) {
-            $validated['slug'] = Str::slug($validated['title']);
-        }
-
-        // Set boolean values
-        $validated['featured'] = $request->boolean('featured', false);
-        if ($this->hasColumn('is_active')) {
-            $validated['is_active'] = $request->boolean('is_active', true);
-        }
-
-        // Handle JSON fields properly if columns exist
-        $jsonFields = ['technologies_used', 'team_members', 'services_used'];
-        foreach ($jsonFields as $field) {
-            if ($this->hasColumn($field) && isset($validated[$field])) {
-                $validated[$field] = !empty($validated[$field]) 
-                    ? json_encode(array_filter($validated[$field])) 
-                    : null;
-            }
-        }
-
-        // Auto-set completion date if status changed to completed (only if columns exist)
-        if ($validated['status'] === 'completed' && $oldStatus !== 'completed') {
-            if ($this->hasColumn('actual_completion_date') && empty($validated['actual_completion_date'])) {
-                $validated['actual_completion_date'] = now();
-            }
-            if ($this->hasColumn('progress_percentage')) {
-                $validated['progress_percentage'] = 100;
-            }
-            
-            // Set completion notification timestamp if column exists
-            if ($this->hasColumn('completion_notification_sent_at')) {
-                $validated['completion_notification_sent_at'] = now();
-            }
-        }
-
-        // Clear completion date if status changed from completed (only if column exists)
-        if ($validated['status'] !== 'completed' && $oldStatus === 'completed') {
-            if ($this->hasColumn('actual_completion_date')) {
-                $validated['actual_completion_date'] = null;
-            }
-        }
-
-        // Filter to only existing columns
-        $validated = $this->filterToExistingColumns($validated);
-
-        $project->update($validated);
-
-        // Handle new image uploads
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $index => $image) {
-                try {
-                    $path = $this->fileUploadService->uploadImage(
-                        $image, 
-                        'projects/' . $project->id,
-                        null,
-                        1200,
-                        800
-                    );
-                    
-                    $project->images()->create([
-                        'image_path' => $path,
-                        'alt_text' => $request->input("image_alt_texts.{$index}") 
-                            ?? $project->title . ' - Image ' . ($project->images()->count() + 1),
-                        'is_featured' => $project->images()->count() === 0,
-                        'sort_order' => $project->images()->max('sort_order') + 1,
-                    ]);
-                } catch (\Exception $e) {
-                    \Log::error('Image upload failed: ' . $e->getMessage());
-                }
-            }
-        }
-
-        // Send notification if status changed
-        if (class_exists('App\Facades\Notifications')) {
-            if ($oldStatus !== $validated['status']) {
-                Notifications::send('project.status_changed', [
-                    'project' => $project,
-                    'old_status' => $oldStatus,
-                    'new_status' => $validated['status']
-                ]);
-            } else {
-                Notifications::send('project.updated', $project);
-            }
-        }
-
-        $redirectRoute = match($request->input('action')) {
-            'save_and_continue' => 'admin.projects.edit',
-            'save_and_add_milestone' => 'admin.projects.milestones.create',
-            default => 'admin.projects.show'
-        };
-
-        return redirect()->route($redirectRoute, $project)
-            ->with('success', 'Project updated successfully!');
+    // Generate slug if not provided
+    if (empty($validated['slug'])) {
+        $validated['slug'] = Str::slug($validated['title']);
     }
+
+    // Set boolean values
+    $validated['featured'] = $request->boolean('featured', false);
+    if ($this->hasColumn('is_active')) {
+        $validated['is_active'] = $request->boolean('is_active', true);
+    }
+
+    // Handle JSON fields properly - each field handles its own data
+    if ($this->hasColumn('services_used') && array_key_exists('services_used', $validated)) {
+        $validated['services_used'] = $this->processJsonField($validated['services_used']);
+    }
+    
+    if ($this->hasColumn('technologies_used') && array_key_exists('technologies_used', $validated)) {
+        $validated['technologies_used'] = $this->processJsonField($validated['technologies_used']);
+    }
+    
+    if ($this->hasColumn('team_members') && array_key_exists('team_members', $validated)) {
+        $validated['team_members'] = $this->processJsonField($validated['team_members']);
+    }
+
+    // Auto-set completion date if status changed to completed
+    if ($validated['status'] === 'completed' && $oldStatus !== 'completed') {
+        if ($this->hasColumn('actual_completion_date') && empty($validated['actual_completion_date'])) {
+            $validated['actual_completion_date'] = now();
+        }
+        if ($this->hasColumn('progress_percentage')) {
+            $validated['progress_percentage'] = 100;
+        }
+        if ($this->hasColumn('completion_notification_sent_at')) {
+            $validated['completion_notification_sent_at'] = now();
+        }
+    }
+
+    // Clear completion date if status changed from completed
+    if ($validated['status'] !== 'completed' && $oldStatus === 'completed') {
+        if ($this->hasColumn('actual_completion_date')) {
+            $validated['actual_completion_date'] = null;
+        }
+    }
+
+    // Filter to only existing columns
+    $validated = $this->filterToExistingColumns($validated);
+
+    $project->update($validated);
+
+    // Handle new image uploads
+    if ($request->hasFile('images')) {
+        foreach ($request->file('images') as $index => $image) {
+            try {
+                $path = $this->fileUploadService->uploadImage(
+                    $image, 
+                    'projects/' . $project->id,
+                    null,
+                    1200,
+                    800
+                );
+                
+                $project->images()->create([
+                    'image_path' => $path,
+                    'alt_text' => $request->input("image_alt_texts.{$index}") 
+                        ?? $project->title . ' - Image ' . ($project->images()->count() + 1),
+                    'is_featured' => $project->images()->count() === 0,
+                    'sort_order' => $project->images()->max('sort_order') + 1,
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Image upload failed: ' . $e->getMessage());
+            }
+        }
+    }
+
+    // Send notification if status changed
+    if (class_exists('App\Facades\Notifications')) {
+        if ($oldStatus !== $validated['status']) {
+            Notifications::send('project.status_changed', [
+                'project' => $project,
+                'old_status' => $oldStatus,
+                'new_status' => $validated['status']
+            ]);
+        } else {
+            Notifications::send('project.updated', $project);
+        }
+    }
+
+    $redirectRoute = match($request->input('action')) {
+        'save_and_continue' => 'admin.projects.edit',
+        'save_and_add_milestone' => 'admin.projects.milestones.create',
+        default => 'admin.projects.show'
+    };
+
+    return redirect()->route($redirectRoute, $project)
+        ->with('success', 'Project updated successfully!');
+}
+private function processJsonField($fieldData)
+{
+    // If null or empty, return null
+    if (empty($fieldData)) {
+        return null;
+    }
+
+    $cleanedArray = [];
+
+    // Handle array input (from form)
+    if (is_array($fieldData)) {
+        $cleanedArray = $this->extractValidValues($fieldData);
+    }
+    // Handle string input (existing JSON or single value)
+    elseif (is_string($fieldData)) {
+        // Try to decode as JSON first
+        $decoded = json_decode($fieldData, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            $cleanedArray = $this->extractValidValues($decoded);
+        } else {
+            // If not valid JSON, treat as single value
+            $trimmed = trim($fieldData);
+            if (!empty($trimmed)) {
+                $cleanedArray = [$trimmed];
+            }
+        }
+    }
+
+    // Return JSON string or null
+    return !empty($cleanedArray) ? json_encode(array_values($cleanedArray)) : null;
+}
+
+/**
+ * Extract valid string values from mixed array data
+ */
+private function extractValidValues($data)
+{
+    $validValues = [];
+
+    foreach ($data as $item) {
+        // Handle string values
+        if (is_string($item)) {
+            $trimmed = trim($item);
+            if (!empty($trimmed)) {
+                $validValues[] = $trimmed;
+            }
+        }
+        // Handle nested arrays (from double encoding issues)
+        elseif (is_array($item)) {
+            $nestedValues = $this->extractValidValues($item);
+            $validValues = array_merge($validValues, $nestedValues);
+        }
+        // Handle other types by converting to string
+        elseif (!is_null($item) && $item !== '') {
+            $stringValue = trim((string) $item);
+            if (!empty($stringValue)) {
+                $validValues[] = $stringValue;
+            }
+        }
+    }
+
+    // Remove duplicates and return unique values
+    return array_unique($validValues);
+}
 
     /**
      * Remove the specified project.
@@ -532,9 +609,9 @@ class ProjectController extends Controller
     public function destroy(Project $project)
     {
         // Check if project has related data
-        $hasRelatedData = $project->milestones()->count() > 0 || 
-                         $project->files()->count() > 0 || 
-                         $project->testimonials()->count() > 0;
+        $hasRelatedData = $project->milestones()->count() > 0 ||
+            $project->files()->count() > 0 ||
+            $project->testimonials()->count() > 0;
 
         if ($hasRelatedData) {
             return redirect()->back()
@@ -573,7 +650,7 @@ class ProjectController extends Controller
                 if (Schema::hasColumn('quotations', 'project_created_at')) {
                     $updateData['project_created_at'] = null;
                 }
-                
+
                 if (!empty($updateData)) {
                     $quotation->update($updateData);
                 }
@@ -585,22 +662,61 @@ class ProjectController extends Controller
         return redirect()->route('admin.projects.index')
             ->with('success', 'Project deleted successfully!');
     }
-    function decodeJsonArray($input)
-    {
-        $decoded = is_string($input) ? json_decode($input, true) : $input;
-
-        if (is_array($decoded)) {
-            // Decode each item if it's also a JSON string
-            return array_map(function ($item) {
-                if (is_string($item) && json_decode($item) !== null) {
-                    return json_decode($item);
-                }
-                return $item;
-            }, $decoded);
-        }
-
+    private function decodeProjectJsonField($field)
+{
+    // If already an array, return as is
+    if (is_array($field)) {
+        return array_filter($field, function($item) {
+            return is_string($item) && trim($item) !== '';
+        });
+    }
+    
+    // If null or empty, return empty array
+    if (empty($field)) {
         return [];
     }
+    
+    // If string, try to decode
+    if (is_string($field)) {
+        $decoded = json_decode($field, true);
+        
+        // If successful decode and is array
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return $this->flattenJsonArray($decoded);
+        }
+        
+        // If not valid JSON, treat as single value
+        $trimmed = trim($field);
+        return !empty($trimmed) ? [$trimmed] : [];
+    }
+    
+    return [];
+}
+private function flattenJsonArray($array)
+{
+    $result = [];
+    
+    foreach ($array as $item) {
+        if (is_string($item)) {
+            $trimmed = trim($item);
+            if ($trimmed !== '') {
+                $result[] = $trimmed;
+            }
+        } elseif (is_array($item)) {
+            // Recursively flatten nested arrays
+            $nested = $this->flattenJsonArray($item);
+            $result = array_merge($result, $nested);
+        } elseif (!is_null($item)) {
+            $stringValue = trim((string) $item);
+            if ($stringValue !== '') {
+                $result[] = $stringValue;
+            }
+        }
+    }
+    
+    // Remove duplicates and return clean array
+    return array_values(array_unique($result));
+}
 
     /**
      * Soft delete project (if soft deletes are enabled).
@@ -610,7 +726,7 @@ class ProjectController extends Controller
         if ($this->hasColumn('is_active')) {
             $project->update(['is_active' => false]);
         }
-        
+
         // If using soft deletes trait
         if (method_exists($project, 'delete')) {
             $project->delete();
@@ -631,7 +747,7 @@ class ProjectController extends Controller
     {
         $project = Project::withTrashed()->findOrFail($id);
         $project->restore();
-        
+
         if ($this->hasColumn('is_active')) {
             $project->update(['is_active' => true]);
         }
@@ -707,7 +823,7 @@ class ProjectController extends Controller
         $oldStatus = $project->status;
 
         // Remove empty values
-        $validated = array_filter($validated, function($value) {
+        $validated = array_filter($validated, function ($value) {
             return $value !== null && $value !== '';
         });
 
@@ -784,7 +900,7 @@ class ProjectController extends Controller
             $quotation = $project->quotation;
             if ($quotation) {
                 $updateData = ['status' => 'pending'];
-                
+
                 if (Schema::hasColumn('quotations', 'project_created')) {
                     $updateData['project_created'] = false;
                 }
@@ -792,10 +908,10 @@ class ProjectController extends Controller
                     $updateData['project_created_at'] = null;
                 }
                 if (Schema::hasColumn('quotations', 'admin_notes')) {
-                    $updateData['admin_notes'] = ($quotation->admin_notes ? $quotation->admin_notes . "\n\n" : '') 
+                    $updateData['admin_notes'] = ($quotation->admin_notes ? $quotation->admin_notes . "\n\n" : '')
                         . "Project converted back to quotation on " . now()->format('Y-m-d H:i:s');
                 }
-                
+
                 $quotation->update($updateData);
             }
 
@@ -804,7 +920,7 @@ class ProjectController extends Controller
             if ($this->hasColumn('is_active')) {
                 $projectUpdateData['is_active'] = false;
             }
-            
+
             $project->update($projectUpdateData);
         });
 
@@ -937,7 +1053,17 @@ class ProjectController extends Controller
 
         $csvData = [];
         $headers = [
-            'ID', 'Title', 'Client', 'Category', 'Service', 'Status', 'Start Date', 'End Date', 'Location', 'Featured', 'Created At'
+            'ID',
+            'Title',
+            'Client',
+            'Category',
+            'Service',
+            'Status',
+            'Start Date',
+            'End Date',
+            'Location',
+            'Featured',
+            'Created At'
         ];
 
         // Add optional headers if columns exist
@@ -1065,7 +1191,7 @@ class ProjectController extends Controller
                         if ($this->hasColumn('status') && isset($validated['status'])) {
                             $oldStatus = $project->status;
                             $updateData = ['status' => $validated['status']];
-                            
+
                             if ($validated['status'] === 'completed' && $oldStatus !== 'completed') {
                                 if ($this->hasColumn('actual_completion_date')) {
                                     $updateData['actual_completion_date'] = now();
@@ -1074,7 +1200,7 @@ class ProjectController extends Controller
                                     $updateData['progress_percentage'] = 100;
                                 }
                             }
-                            
+
                             $project->update($updateData);
                             $affectedCount++;
                         }
@@ -1132,9 +1258,9 @@ class ProjectController extends Controller
         $projects = Project::with(['client', 'category'])
             ->where(function ($q) use ($searchQuery) {
                 $q->where('title', 'like', "%{$searchQuery}%")
-                  ->orWhere('description', 'like', "%{$searchQuery}%")
-                  ->orWhere('location', 'like', "%{$searchQuery}%");
-                  
+                    ->orWhere('description', 'like', "%{$searchQuery}%")
+                    ->orWhere('location', 'like', "%{$searchQuery}%");
+
                 // Add additional search fields if they exist
                 if ($this->hasColumn('short_description')) {
                     $q->orWhere('short_description', 'like', "%{$searchQuery}%");
@@ -1217,7 +1343,7 @@ class ProjectController extends Controller
      */
     private function getStatusColor(string $status): string
     {
-        return match($status) {
+        return match ($status) {
             'planning' => '#6b7280',
             'in_progress' => '#3b82f6',
             'on_hold' => '#f59e0b',
@@ -1232,7 +1358,7 @@ class ProjectController extends Controller
      */
     private function getPriorityColor(string $priority): string
     {
-        return match($priority) {
+        return match ($priority) {
             'low' => '#10b981',
             'normal' => '#6b7280',
             'high' => '#f59e0b',
@@ -1246,7 +1372,7 @@ class ProjectController extends Controller
      */
     private function getMilestoneColor(string $status): string
     {
-        return match($status) {
+        return match ($status) {
             'pending' => '#6b7280',
             'in_progress' => '#3b82f6',
             'completed' => '#10b981',

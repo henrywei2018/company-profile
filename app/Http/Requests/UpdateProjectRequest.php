@@ -15,11 +15,11 @@ class UpdateProjectRequest extends FormRequest
     private function getProjectColumns(): array
     {
         static $columns = null;
-        
+
         if ($columns === null) {
             $columns = Schema::getColumnListing('projects');
         }
-        
+
         return $columns;
     }
 
@@ -328,72 +328,59 @@ class UpdateProjectRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        // Define fields that should be converted to null if empty
-        $nullableFields = [
-            'slug', 'location', 'year', 'start_date', 'end_date', 'challenge', 
-            'solution', 'result', 'value'
-        ];
-
-        // Add conditional nullable fields only if columns exist
-        if ($this->hasColumn('short_description')) {
-            $nullableFields[] = 'short_description';
-        }
-        if ($this->hasColumn('client_id')) {
-            $nullableFields[] = 'client_id';
-        }
-        if ($this->hasColumn('service_id')) {
-            $nullableFields[] = 'service_id';
-        }
-        if ($this->hasColumn('quotation_id')) {
-            $nullableFields[] = 'quotation_id';
-        }
-        if ($this->hasColumn('estimated_completion_date')) {
-            $nullableFields[] = 'estimated_completion_date';
-        }
-        if ($this->hasColumn('actual_completion_date')) {
-            $nullableFields[] = 'actual_completion_date';
-        }
-        if ($this->hasColumn('budget')) {
-            $nullableFields[] = 'budget';
-        }
-        if ($this->hasColumn('actual_cost')) {
-            $nullableFields[] = 'actual_cost';
-        }
-        if ($this->hasColumn('client_feedback')) {
-            $nullableFields[] = 'client_feedback';
-        }
-        if ($this->hasColumn('lessons_learned')) {
-            $nullableFields[] = 'lessons_learned';
-        }
-        if ($this->hasColumn('meta_title')) {
-            $nullableFields[] = 'meta_title';
-        }
-        if ($this->hasColumn('meta_description')) {
-            $nullableFields[] = 'meta_description';
-        }
-        if ($this->hasColumn('meta_keywords')) {
-            $nullableFields[] = 'meta_keywords';
-        }
-
         $input = $this->all();
 
-        // Normalize empty strings to null
+        // Handle nullable fields
+        $nullableFields = [
+            'slug',
+            'location',
+            'year',
+            'start_date',
+            'end_date',
+            'challenge',
+            'solution',
+            'result',
+            'value'
+        ];
+
+        // Add conditional fields if they exist
+        $conditionalFields = [
+            'short_description',
+            'client_id',
+            'service_id',
+            'quotation_id',
+            'estimated_completion_date',
+            'actual_completion_date',
+            'budget',
+            'actual_cost',
+            'client_feedback',
+            'lessons_learned',
+            'meta_title',
+            'meta_description',
+            'meta_keywords'
+        ];
+
+        foreach ($conditionalFields as $field) {
+            if ($this->hasColumn($field)) {
+                $nullableFields[] = $field;
+            }
+        }
+
+        // Convert empty strings to null
         foreach ($nullableFields as $field) {
             if (array_key_exists($field, $input) && $input[$field] === '') {
                 $input[$field] = null;
             }
         }
 
-        // Cast booleans
+        // Handle boolean fields
         $input['featured'] = $this->boolean('featured', false);
-        
         if ($this->hasColumn('is_active')) {
             $input['is_active'] = $this->boolean('is_active', true);
         }
 
-        // Clean up array fields
+        // Clean array fields properly - let each field handle its own data
         $arrayFields = ['services_used'];
-        
         if ($this->hasColumn('technologies_used')) {
             $arrayFields[] = 'technologies_used';
         }
@@ -401,13 +388,54 @@ class UpdateProjectRequest extends FormRequest
             $arrayFields[] = 'team_members';
         }
 
-        foreach ($arrayFields as $arrayField) {
-            if (isset($input[$arrayField]) && is_array($input[$arrayField])) {
-                $input[$arrayField] = array_filter($input[$arrayField], fn($v) => trim($v) !== '');
+        foreach ($arrayFields as $field) {
+            if (isset($input[$field])) {
+                $input[$field] = $this->cleanArrayField($input[$field]);
             }
         }
 
         $this->replace($input);
+    }
+
+    /**
+     * Clean array field data while preserving individual field values
+     */
+    private function cleanArrayField($fieldData)
+    {
+        if (!is_array($fieldData)) {
+            return [];
+        }
+
+        $cleaned = [];
+
+        foreach ($fieldData as $item) {
+            // Handle string values
+            if (is_string($item)) {
+                $trimmed = trim($item);
+                if ($trimmed !== '') {
+                    $cleaned[] = $trimmed;
+                }
+            }
+            // Handle numeric values
+            elseif (is_numeric($item)) {
+                $cleaned[] = (string) $item;
+            }
+            // Handle nested arrays (shouldn't happen in normal form submission)
+            elseif (is_array($item)) {
+                $nestedCleaned = $this->cleanArrayField($item);
+                $cleaned = array_merge($cleaned, $nestedCleaned);
+            }
+            // Handle other types
+            elseif (!is_null($item)) {
+                $stringValue = trim((string) $item);
+                if ($stringValue !== '') {
+                    $cleaned[] = $stringValue;
+                }
+            }
+        }
+
+        // Return clean array with sequential indexes
+        return array_values($cleaned);
     }
 
     /**
@@ -417,44 +445,46 @@ class UpdateProjectRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $project = $this->route('project');
-            
+
             // Check if project can be marked as completed (only validate if milestones exist)
             if ($this->input('status') === 'completed' && $project && method_exists($project, 'milestones')) {
                 // Validate that all required milestones are completed
                 $incompleteMilestones = $project->milestones()
                     ->where('status', '!=', 'completed')
                     ->count();
-                    
+
                 if ($incompleteMilestones > 0) {
                     $validator->errors()->add(
-                        'status', 
+                        'status',
                         "Cannot mark project as completed. {$incompleteMilestones} milestone(s) are still incomplete."
                     );
                 }
             }
-            
+
             // Validate budget vs actual cost relationship (only if both columns exist)
-            if ($this->hasColumn('budget') && $this->hasColumn('actual_cost') && 
-                $this->filled('budget') && $this->filled('actual_cost')) {
+            if (
+                $this->hasColumn('budget') && $this->hasColumn('actual_cost') &&
+                $this->filled('budget') && $this->filled('actual_cost')
+            ) {
                 $budget = floatval($this->input('budget'));
                 $actualCost = floatval($this->input('actual_cost'));
-                
+
                 if ($actualCost > $budget * 1.5) { // 50% over budget
                     $validator->errors()->add(
-                        'actual_cost', 
+                        'actual_cost',
                         'Actual cost is significantly over budget. Please review and confirm.'
                     );
                 }
             }
-            
+
             // Validate end date is reasonable
             if ($this->filled('end_date') && $this->filled('start_date')) {
                 $startDate = \Carbon\Carbon::parse($this->input('start_date'));
                 $endDate = \Carbon\Carbon::parse($this->input('end_date'));
-                
+
                 if ($endDate->diffInDays($startDate) > 365 * 5) { // More than 5 years
                     $validator->errors()->add(
-                        'end_date', 
+                        'end_date',
                         'Project duration exceeds 5 years. Please verify the dates are correct.'
                     );
                 }

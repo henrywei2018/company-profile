@@ -92,36 +92,58 @@ class StoreProjectRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $input = $this->all();
+
+        // Handle nullable fields
         $nullableFields = [
-            'slug', 'location', 'year', 'start_date', 'end_date', 'challenge', 
-            'solution', 'result', 'value'
+            'slug',
+            'location',
+            'year',
+            'start_date',
+            'end_date',
+            'challenge',
+            'solution',
+            'result',
+            'value'
         ];
 
-        $optionalFields = [
-            'short_description', 'client_id', 'service_id', 'quotation_id', 'estimated_completion_date',
-            'actual_completion_date', 'budget', 'actual_cost', 'client_feedback', 'lessons_learned',
-            'meta_title', 'meta_description', 'meta_keywords'
+        // Add conditional fields if they exist
+        $conditionalFields = [
+            'short_description',
+            'client_id',
+            'service_id',
+            'quotation_id',
+            'estimated_completion_date',
+            'actual_completion_date',
+            'budget',
+            'actual_cost',
+            'client_feedback',
+            'lessons_learned',
+            'meta_title',
+            'meta_description',
+            'meta_keywords'
         ];
 
-        foreach ($optionalFields as $field) {
+        foreach ($conditionalFields as $field) {
             if ($this->hasColumn($field)) {
                 $nullableFields[] = $field;
             }
         }
 
-        $input = $this->all();
-
+        // Convert empty strings to null
         foreach ($nullableFields as $field) {
-            if (isset($input[$field]) && $input[$field] === '') {
+            if (array_key_exists($field, $input) && $input[$field] === '') {
                 $input[$field] = null;
             }
         }
 
+        // Handle boolean fields
         $input['featured'] = $this->boolean('featured', false);
         if ($this->hasColumn('is_active')) {
             $input['is_active'] = $this->boolean('is_active', true);
         }
 
+        // Clean array fields properly - let each field handle its own data
         $arrayFields = ['services_used'];
         if ($this->hasColumn('technologies_used')) {
             $arrayFields[] = 'technologies_used';
@@ -131,12 +153,53 @@ class StoreProjectRequest extends FormRequest
         }
 
         foreach ($arrayFields as $field) {
-            if (isset($input[$field]) && is_array($input[$field])) {
-                $input[$field] = array_filter($input[$field], fn($val) => !empty(trim($val)));
+            if (isset($input[$field])) {
+                $input[$field] = $this->cleanArrayField($input[$field]);
             }
         }
 
         $this->replace($input);
+    }
+
+    /**
+     * Clean array field data while preserving individual field values
+     */
+    private function cleanArrayField($fieldData)
+    {
+        if (!is_array($fieldData)) {
+            return [];
+        }
+
+        $cleaned = [];
+
+        foreach ($fieldData as $item) {
+            // Handle string values
+            if (is_string($item)) {
+                $trimmed = trim($item);
+                if ($trimmed !== '') {
+                    $cleaned[] = $trimmed;
+                }
+            }
+            // Handle numeric values
+            elseif (is_numeric($item)) {
+                $cleaned[] = (string) $item;
+            }
+            // Handle nested arrays (shouldn't happen in normal form submission)
+            elseif (is_array($item)) {
+                $nestedCleaned = $this->cleanArrayField($item);
+                $cleaned = array_merge($cleaned, $nestedCleaned);
+            }
+            // Handle other types
+            elseif (!is_null($item)) {
+                $stringValue = trim((string) $item);
+                if ($stringValue !== '') {
+                    $cleaned[] = $stringValue;
+                }
+            }
+        }
+
+        // Return clean array with sequential indexes
+        return array_values($cleaned);
     }
 
     public function withValidator($validator): void
