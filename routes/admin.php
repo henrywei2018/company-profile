@@ -144,17 +144,25 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
             Route::get('/', [ProjectFileController::class, 'index'])->name('index');
             Route::get('/create', [ProjectFileController::class, 'create'])->name('create');
             Route::post('/', [ProjectFileController::class, 'store'])->name('store');
+            
+            Route::get('/manager', [ProjectFileController::class, 'show'])->name('show');
             Route::get('/{file}/download', [ProjectFileController::class, 'download'])->name('download');
+            Route::get('/{file}/preview', [ProjectFileController::class, 'preview'])->name('preview');
+            Route::get('/{file}/thumbnail', [ProjectFileController::class, 'thumbnail'])->name('thumbnail');
             Route::delete('/{file}', [ProjectFileController::class, 'destroy'])->name('destroy');
         
             Route::post('/upload', [ProjectFileController::class, 'upload'])->name('upload');   // temp upload
             Route::delete('/upload', [ProjectFileController::class, 'delete'])->name('delete'); // temp delete
         
-            Route::post('/process', [ProjectFileController::class, 'processFilePond'])->name('process');
+            Route::post('/process', [ProjectFileController::class, 'process'])->name('process');
+            Route::delete('/revert', [ProjectFileController::class, 'revert'])->name('revert');
+            Route::post('/submit', [ProjectFileController::class, 'processSubmission'])->name('submit');
         
             Route::post('/cleanup', [ProjectFileController::class, 'cleanupTempFiles'])->name('cleanup');
-            Route::post('/bulk-delete', [ProjectFileController::class, 'bulkDelete'])->name('bulk-delete');
+            Route::post('/bulk-download', [ProjectFileController::class, 'bulkDownload'])->name('bulk-download');
+            Route::delete('/bulk-delete', [ProjectFileController::class, 'bulkDelete'])->name('bulk-delete');
             Route::get('/search', [ProjectFileController::class, 'search'])->name('search');
+            Route::get('/statistics', [ProjectFileController::class, 'getStatistics'])->name('statistics');
             Route::get('/export', [ProjectFileController::class, 'export'])->name('export');
         });
         
