@@ -19,6 +19,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @yield('meta')
     @auth
         <meta name="auth-user-id" content="{{ auth()->id() }}">
         <meta name="is-admin" content="{{ auth()->user()->hasRole(['admin', 'super-admin']) ? 'true' : 'false' }}">
@@ -146,6 +147,7 @@
     <!-- ========== END MAIN CONTENT ========== -->
 
     <!-- Global JavaScript -->
+    
     <script>
         
         // Hide loading screen when page is ready
@@ -156,21 +158,6 @@
             }
         });
 
-        // Dark mode toggle
-        document.addEventListener('DOMContentLoaded', function() {
-            const themeToggle = document.getElementById('theme-toggle');
-            if (themeToggle) {
-                themeToggle.addEventListener('click', function() {
-                    if (document.documentElement.classList.contains('dark')) {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    } else {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    }
-                });
-            }
-        });
 
         // Global error handler for admin
         window.addEventListener('error', function(e) {

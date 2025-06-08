@@ -974,22 +974,48 @@ class ProjectFileController extends Controller
      */
     private function previewImage(ProjectFile $file)
 {
-    $imageUrl = Storage::url($file->file_path);
+    // Use absolute URL for images
+    $imageUrl = asset('storage/' . $file->file_path);
+    
+    // Also provide a fallback direct storage URL
+    $directUrl = Storage::disk('public')->url($file->file_path);
 
     $html = "
         <div class='text-center'>
-            <img src='{$imageUrl}' alt='{$file->file_name}' class='max-w-full max-h-96 mx-auto rounded-lg shadow-md'>
+            <div class='relative inline-block'>
+                <img src='{$imageUrl}' 
+                     alt='{$file->file_name}' 
+                     class='max-w-full max-h-96 mx-auto rounded-lg shadow-md'
+                     onload=\"document.getElementById('image-loading').style.display='none'\"
+                     onerror=\"this.src='{$directUrl}'; if(this.complete && this.naturalHeight === 0) { document.getElementById('image-error').style.display='block'; this.style.display='none'; }\">
+                <div id='image-loading' class='absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg'>
+                    <div class='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
+                </div>
+            </div>
+            <div id='image-error' class='hidden p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800'>
+                <p class='text-red-600 dark:text-red-400'>Failed to load image</p>
+                <a href='{$directUrl}' target='_blank' class='text-blue-600 hover:text-blue-800 dark:text-blue-400 text-sm'>Try opening directly</a>
+            </div>
             <div class='mt-4 text-sm text-gray-600 dark:text-gray-400'>
                 <p><strong>Dimensions:</strong> <span id='image-dimensions'>Loading...</span></p>
                 <p><strong>Size:</strong> {$file->formatted_file_size}</p>
+                <p><strong>Type:</strong> {$file->file_type}</p>
             </div>
         </div>
         <script>
-            const img = new Image();
-            img.onload = function() {
-                document.getElementById('image-dimensions').textContent = this.width + ' × ' + this.height + ' pixels';
-            };
-            img.src = '{$imageUrl}';
+            const img = document.querySelector('#preview-content img');
+            if (img) {
+                img.onload = function() {
+                    const dimensions = document.getElementById('image-dimensions');
+                    if (dimensions) {
+                        dimensions.textContent = this.naturalWidth + ' × ' + this.naturalHeight + ' pixels';
+                    }
+                };
+                // Trigger onload if image is already loaded
+                if (img.complete) {
+                    img.onload();
+                }
+            }
         </script>
     ";
 
@@ -1004,25 +1030,17 @@ class ProjectFileController extends Controller
     $pdfUrl = Storage::url($file->file_path);
 
     $html = "
-        <div class='text-center'>
-            <iframe src='{$pdfUrl}' class='w-full h-96 border rounded-lg' type='application/pdf'>
-                <p>Your browser does not support PDF preview. 
-                   <a href='{$pdfUrl}' target='_blank' class='text-blue-600 hover:text-blue-800'>Download the PDF</a>
-                </p>
-            </iframe>
-            <div class='mt-4'>
-                <a href='{$pdfUrl}' target='_blank' class='inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700'>
-                    <svg class='w-4 h-4 mr-2' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                        <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14'/>
-                    </svg>
-                    Open in New Tab
-                </a>
-            </div>
-        </div>
+        <iframe src='{$pdfUrl}' class='w-full h-full' type='application/pdf'>
+            <p>Your browser does not support PDF preview. 
+               <a href='{$pdfUrl}' target='_blank'>Download the PDF</a>
+            </p>
+        </iframe>
     ";
 
-    return response($html);
+    return response($html, 200)->header('Content-Type', 'text/html');
 }
+
+
 
     /**
      * Preview text file.

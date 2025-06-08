@@ -133,22 +133,6 @@
             }
         });
 
-        // Dark mode toggle
-        document.addEventListener('DOMContentLoaded', function() {
-            const themeToggle = document.getElementById('theme-toggle');
-            if (themeToggle) {
-                themeToggle.addEventListener('click', function() {
-                    if (document.documentElement.classList.contains('dark')) {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    } else {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    }
-                });
-            }
-        });
-
         // Global error handler
         window.addEventListener('error', function(e) {
             console.error('Global error:', e.error);

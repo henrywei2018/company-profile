@@ -48,7 +48,7 @@
             @endif
 
             <!-- Theme Toggle - FIXED -->
-            <button id="admin-theme-toggle"
+            <button id="theme-toggle"
                 class="size-8 flex justify-center items-center text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-neutral-700 rounded-full">
                 <!-- Dark mode: Sun icon -->
                 <svg class="hidden dark:block size-4" xmlns="http://www.w3.org/2000/svg" fill="none"

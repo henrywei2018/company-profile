@@ -141,11 +141,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
         // NEW: Project Files Management
         Route::prefix('files')->name('files.')->group(function () {
-            Route::get('/', [ProjectFileController::class, 'index'])->name('index');
+            Route::get('/', [ProjectFileController::class, 'show'])->name('index');
             Route::get('/create', [ProjectFileController::class, 'create'])->name('create');
             Route::post('/', [ProjectFileController::class, 'store'])->name('store');
             
-            Route::get('/manager', [ProjectFileController::class, 'show'])->name('show');
+            
             Route::get('/{file}/download', [ProjectFileController::class, 'download'])->name('download');
             Route::get('/{file}/preview', [ProjectFileController::class, 'preview'])->name('preview');
             Route::get('/{file}/thumbnail', [ProjectFileController::class, 'thumbnail'])->name('thumbnail');

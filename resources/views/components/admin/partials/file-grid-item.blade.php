@@ -8,7 +8,7 @@
     $fileType = method_exists($file, 'getFileCategoryAttribute') ? $file->getFileCategoryAttribute() : 'other';
 @endphp
 
-<div class="file-item bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer group relative"
+<div class="file-item w-32 h-50 bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer group relative"
      data-file-id="{{ $file->id }}"
      data-file-name="{{ strtolower($fileName) }}"
      data-file-category="{{ $fileCategory }}"
@@ -69,9 +69,6 @@
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {{ method_exists($file, 'getFormattedFileSizeAttribute') ? $file->getFormattedFileSizeAttribute() : 'Unknown size' }}
         </p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-            {{ $file->created_at->format('M j, Y') }}
-        </p>
         @if($file->download_count > 0)
             <p class="text-xs text-blue-600 dark:text-blue-400">
                 {{ $file->download_count }} downloads
@@ -80,7 +77,7 @@
     </div>
 
     <!-- Quick Actions -->
-    <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div class="absolute bottom-2 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
         <div class="flex items-center space-x-1">
             @if(method_exists($file, 'isPreviewable') && $file->isPreviewable())
                 <button onclick="previewFile({{ $file->id }}); event.stopPropagation();" 
