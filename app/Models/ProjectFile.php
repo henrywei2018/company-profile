@@ -55,7 +55,7 @@ class ProjectFile extends Model
     }
     
     try {
-        $result = \App\Helpers\FileHelper::formatFileSize($this->file_size);
+        $result = FileHelper::formatFileSize($this->file_size);
         
         // Ensure we return a string
         if (is_array($result)) {

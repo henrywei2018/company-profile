@@ -1,115 +1,92 @@
 <?php
-
-declare(strict_types=1);
+// config/filepond.php
 
 return [
     /*
     |--------------------------------------------------------------------------
-    | FilePond Permanent Disk
+    | FilePond Storage Disk
     |--------------------------------------------------------------------------
     |
-    | Set the FilePond default disk to be used for permanent file storage.
+    | Disk for storing temporary FilePond uploads
     |
     */
-    'disk' => env('FILEPOND_DISK', 'public'),
+    'disk' => env('FILEPOND_DISK', 'local'),
 
     /*
     |--------------------------------------------------------------------------
-    | FilePond Temporary Disk
+    | FilePond Temporary Path
     |--------------------------------------------------------------------------
     |
-    | Set the FilePond temporary disk and folder name to be used for temporary
-    | storage. This disk will be used for temporary file storage and cleared
-    | upon running the "artisan filepond:clear" command. It is recommended to
-    | use local disk for temporary storage when you want to take advantage of
-    | controller level validation. File validation from third party storage is
-    | not yet supported. However, global 'validation_rules' defined in this
-    | config will work fine.
+    | Path for storing temporary uploads
     |
     */
-    'temp_disk' => 'local',
-    'temp_folder' => 'filepond/temp',
+    'path' => 'filepond/tmp',
 
     /*
     |--------------------------------------------------------------------------
-    | FilePond Routes Middleware
+    | FilePond Cleanup
     |--------------------------------------------------------------------------
     |
-    | Default middleware for FilePond routes.
+    | Whether to automatically clean up old temporary files
     |
     */
-    'middleware' => [
-        'web', 'auth',
-    ],
+    'cleanup' => true,
 
     /*
     |--------------------------------------------------------------------------
-    | Soft Delete FilePond Model
+    | FilePond Max File Age
     |--------------------------------------------------------------------------
     |
-    | Determine whether to enable or disable soft delete in FilePond model.
+    | Maximum age of temporary files before cleanup (in minutes)
     |
     */
-    'soft_delete' => true,
+    'max_file_age' => 60, // 1 hour
 
     /*
     |--------------------------------------------------------------------------
-    | File Delete After (Minutes)
+    | FilePond Maximum File Size
     |--------------------------------------------------------------------------
     |
-    | Set the minutes after which the FilePond temporary storage files will be
-    | deleted while running 'artisan filepond:clear' command.
+    | Maximum file size in bytes
     |
     */
-    'expiration' => 30,
+    'max_file_size' => 10 * 1024 * 1024, // 10MB
 
     /*
     |--------------------------------------------------------------------------
-    | FilePond Controller
+    | FilePond Allowed MIME Types
     |--------------------------------------------------------------------------
     |
-    | FilePond controller determines how the requests from FilePond library is
-    | processed.
+    | Allowed file types
     |
     */
-    'controller' => RahulHaque\Filepond\Http\Controllers\FilepondController::class,
+    'allowed_mime_types' => [
+        // Images
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'image/svg+xml',
+        'image/webp',
 
-    /*
-    |--------------------------------------------------------------------------
-    | FilePond Model
-    |--------------------------------------------------------------------------
-    |
-    | Set the filepond model to be used by the package. Make sure you extend
-    | the custom model with "RahulHaque\Filepond\Models\Filepond" model.
-    |
-    */
-    'model' => RahulHaque\Filepond\Models\Filepond::class,
+        // Documents
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'text/plain',
+        'text/csv',
 
-    /*
-    |--------------------------------------------------------------------------
-    | Global Validation Rules
-    |--------------------------------------------------------------------------
-    |
-    | Set the default validation for filepond's ./process route. In other words
-    | temporary file upload validation.
-    |
-    */
-    'validation_rules' => [
-        'required',
-        'file',
-        'max:5000',
-    ],
+        // Archives
+        'application/zip',
+        'application/x-rar-compressed',
+        'application/x-7z-compressed',
 
-    /*
-    |--------------------------------------------------------------------------
-    | FilePond Server Paths
-    |--------------------------------------------------------------------------
-    |
-    | Configure url for each of the FilePond actions.
-    | See details - https://pqina.nl/filepond/docs/patterns/api/server/
-    |
-    */
-    'server' => [
-        'url' => env('FILEPOND_URL', '/filepond'),
+        // Other
+        'application/json',
+        'application/xml',
+        'text/xml',
     ],
 ];

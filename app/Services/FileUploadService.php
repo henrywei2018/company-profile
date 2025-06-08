@@ -4,478 +4,415 @@ namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
-use Intervention\Image\Laravel\Facades\Image;
-use Intervention\Image\Interfaces\ImageInterface;
+use Illuminate\Support\Str;
 
 class FileUploadService
 {
     /**
-     * Upload and process image.
+     * Upload a file to the specified directory.
      *
-     * @param \Illuminate\Http\UploadedFile $file
-     * @param string $path
-     * @param string|null $oldFile
-     * @param int|null $width
-     * @param int|null $height
-     * @param int $quality
-     * @return string
-     * @throws \Exception
-     */
-    public function uploadImage(
-        UploadedFile $file, 
-        string $path, 
-        ?string $oldFile = null, 
-        ?int $width = null, 
-        ?int $height = null,
-        int $quality = 85
-    ): string {
-        try {
-            // Validate file
-            $this->validateImageFile($file);
-
-            // Delete old file if exists
-            if ($oldFile && Storage::disk('public')->exists($oldFile)) {
-                Storage::disk('public')->delete($oldFile);
-            }
-
-            // Ensure directory exists
-            if (!Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->makeDirectory($path);
-            }
-
-            // Generate unique filename
-            $filename = $this->generateUniqueFilename($file);
-            $fullPath = $path . '/' . $filename;
-
-            // Process and resize image if dimensions specified
-            if ($width || $height) {
-                $processedImage = $this->processImage($file, $width, $height, $quality);
-                Storage::disk('public')->put($fullPath, $processedImage);
-            } else {
-                // Store original file without processing
-                $file->storeAs($path, $filename, 'public');
-            }
-
-            Log::info('Image uploaded successfully', [
-                'original_name' => $file->getClientOriginalName(),
-                'saved_path' => $fullPath,
-                'size' => $file->getSize()
-            ]);
-
-            return $fullPath;
-
-        } catch (\Exception $e) {
-            Log::error('Failed to upload image: ' . $e->getMessage(), [
-                'file_name' => $file->getClientOriginalName(),
-                'file_size' => $file->getSize(),
-                'path' => $path
-            ]);
-            throw $e;
-        }
-    }
-
-    /**
-     * Create thumbnail from uploaded file.
-     *
-     * @param \Illuminate\Http\UploadedFile $file
-     * @param string $path
+     * @param UploadedFile $file
+     * @param string $directory
      * @param string|null $filename
-     * @param int $width
-     * @param int $height
-     * @param int $quality
-     * @return string
+     * @return string The stored file path
      * @throws \Exception
      */
-    public function createThumbnail(
-        UploadedFile $file, 
-        string $path, 
-        ?string $filename = null, 
-        int $width = 300, 
-        int $height = 300,
-        int $quality = 85
-    ): string {
-        try {
-            // Ensure directory exists
-            if (!Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->makeDirectory($path);
-            }
-
-            // Generate filename if not provided
-            if (!$filename) {
-                $filename = $this->generateUniqueFilename($file);
-            }
-
-            $fullPath = $path . '/' . $filename;
-
-            // Create thumbnail
-            $thumbnail = $this->processImage($file, $width, $height, $quality);
-            Storage::disk('public')->put($fullPath, $thumbnail);
-
-            Log::info('Thumbnail created successfully', [
-                'original_file' => $file->getClientOriginalName(),
-                'thumbnail_path' => $fullPath,
-                'dimensions' => "{$width}x{$height}"
-            ]);
-
-            return $fullPath;
-
-        } catch (\Exception $e) {
-            Log::error('Failed to create thumbnail: ' . $e->getMessage());
-            throw $e;
-        }
-    }
-
-    /**
-     * Upload file (non-image).
-     *
-     * @param \Illuminate\Http\UploadedFile $file
-     * @param string $path
-     * @param string|null $oldFile
-     * @return string
-     * @throws \Exception
-     */
-    public function uploadFile(UploadedFile $file, string $path, ?string $oldFile = null): string
+    public function uploadFile(UploadedFile $file, string $directory, ?string $filename = null): string
     {
-        try {
-            // Delete old file if exists
-            if ($oldFile && Storage::disk('public')->exists($oldFile)) {
-                Storage::disk('public')->delete($oldFile);
-            }
-
-            // Ensure directory exists
-            if (!Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->makeDirectory($path);
-            }
-
-            // Generate unique filename
-            $filename = $this->generateUniqueFilename($file);
-            $fullPath = $path . '/' . $filename;
-
-            // Store file
-            $file->storeAs($path, $filename, 'public');
-
-            Log::info('File uploaded successfully', [
-                'original_name' => $file->getClientOriginalName(),
-                'saved_path' => $fullPath,
-                'size' => $file->getSize()
-            ]);
-
-            return $fullPath;
-
-        } catch (\Exception $e) {
-            Log::error('Failed to upload file: ' . $e->getMessage());
-            throw $e;
-        }
-    }
-
-    /**
-     * Delete file from storage.
-     *
-     * @param string $filePath
-     * @return bool
-     */
-    public function deleteFile(string $filePath): bool
-    {
-        try {
-            if (Storage::disk('public')->exists($filePath)) {
-                Storage::disk('public')->delete($filePath);
-                
-                Log::info('File deleted successfully', ['path' => $filePath]);
-                return true;
-            }
-            
-            return false;
-
-        } catch (\Exception $e) {
-            Log::error('Failed to delete file: ' . $e->getMessage(), ['path' => $filePath]);
-            return false;
-        }
-    }
-
-    /**
-     * Delete multiple files from storage.
-     *
-     * @param array $filePaths
-     * @return int Number of files deleted
-     */
-    public function deleteFiles(array $filePaths): int
-    {
-        $deletedCount = 0;
-        
-        foreach ($filePaths as $path) {
-            if ($this->deleteFile($path)) {
-                $deletedCount++;
-            }
-        }
-        
-        return $deletedCount;
-    }
-
-    /**
-     * Get file URL.
-     *
-     * @param string $filePath
-     * @return string|null
-     */
-    public function getFileUrl(string $filePath): ?string
-    {
-        if (Storage::disk('public')->exists($filePath)) {
-            return Storage::disk('public')->url($filePath);
-        }
-        
-        return null;
-    }
-
-    /**
-     * Check if file exists.
-     *
-     * @param string $filePath
-     * @return bool
-     */
-    public function fileExists(string $filePath): bool
-    {
-        return Storage::disk('public')->exists($filePath);
-    }
-
-    /**
-     * Get file size in bytes.
-     *
-     * @param string $filePath
-     * @return int|null
-     */
-    public function getFileSize(string $filePath): ?int
-    {
-        if (Storage::disk('public')->exists($filePath)) {
-            return Storage::disk('public')->size($filePath);
-        }
-        
-        return null;
-    }
-
-    /**
-     * Process image with Intervention Image.
-     *
-     * @param \Illuminate\Http\UploadedFile $file
-     * @param int|null $width
-     * @param int|null $height
-     * @param int $quality
-     * @return string
-     * @throws \Exception
-     */
-    private function processImage(UploadedFile $file, ?int $width, ?int $height, int $quality = 85): string
-    {
-        try {
-            // Create image instance
-            $image = Image::read($file->getRealPath());
-
-            // Resize image based on provided dimensions
-            if ($width && $height) {
-                // Fit to exact dimensions (may crop)
-                $image->cover($width, $height);
-            } elseif ($width) {
-                // Resize by width, maintain aspect ratio
-                $image->scale(width: $width);
-            } elseif ($height) {
-                // Resize by height, maintain aspect ratio
-                $image->scale(height: $height);
-            }
-
-            // Convert to JPEG and set quality
-            $processedImage = $image->toJpeg($quality);
-
-            return $processedImage;
-
-        } catch (\Exception $e) {
-            Log::error('Failed to process image: ' . $e->getMessage());
-            throw new \Exception('Image processing failed: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Generate unique filename.
-     *
-     * @param \Illuminate\Http\UploadedFile $file
-     * @return string
-     */
-    private function generateUniqueFilename(UploadedFile $file): string
-    {
-        $extension = $file->getClientOriginalExtension();
-        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-        
-        // Sanitize original name
-        $sanitizedName = preg_replace('/[^a-zA-Z0-9\-_]/', '', $originalName);
-        $sanitizedName = substr($sanitizedName, 0, 20); // Limit length
-        
-        // Generate unique filename
-        $timestamp = time();
-        $randomString = bin2hex(random_bytes(8));
-        
-        return "{$timestamp}_{$randomString}_{$sanitizedName}.{$extension}";
-    }
-
-    /**
-     * Validate uploaded image file.
-     *
-     * @param \Illuminate\Http\UploadedFile $file
-     * @throws \Exception
-     */
-    private function validateImageFile(UploadedFile $file): void
-    {
-        // Check if file is valid
+        // Validate file
         if (!$file->isValid()) {
             throw new \Exception('Invalid file upload');
         }
 
-        // Check file size (10MB max)
-        $maxSize = 10 * 1024 * 1024; // 10MB in bytes
-        if ($file->getSize() > $maxSize) {
-            throw new \Exception('File size exceeds maximum allowed size (10MB)');
+        // Generate filename if not provided
+        if (!$filename) {
+            $filename = uniqid() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
         }
 
-        // Check if it's actually an image
-        $allowedMimeTypes = [
-            'image/jpeg',
-            'image/png',
-            'image/gif',
-            'image/webp',
-            'image/bmp'
-        ];
+        // Ensure the filename is safe
+        $filename = $this->sanitizeFilename($filename);
 
-        if (!in_array($file->getMimeType(), $allowedMimeTypes)) {
-            throw new \Exception('File must be a valid image (JPEG, PNG, GIF, WebP, or BMP)');
+        // Create the full path
+        $path = $directory . '/' . $filename;
+
+        // Store the file
+        $storedPath = $file->storeAs($directory, $filename, 'public');
+
+        if (!$storedPath) {
+            throw new \Exception('Failed to store file');
         }
 
-        // Additional security check - verify image can be read
-        try {
-            $imageInfo = getimagesize($file->getRealPath());
-            if (!$imageInfo) {
-                throw new \Exception('File is not a valid image');
-            }
-        } catch (\Exception $e) {
-            throw new \Exception('File validation failed: ' . $e->getMessage());
-        }
+        return $storedPath;
     }
 
     /**
-     * Get image dimensions.
+     * Upload an image with optional resizing.
      *
-     * @param string $filePath
-     * @return array|null [width, height]
-     */
-    public function getImageDimensions(string $filePath): ?array
-    {
-        try {
-            if (!Storage::disk('public')->exists($filePath)) {
-                return null;
-            }
-
-            $fullPath = Storage::disk('public')->path($filePath);
-            $imageInfo = getimagesize($fullPath);
-
-            if ($imageInfo) {
-                return [
-                    'width' => $imageInfo[0],
-                    'height' => $imageInfo[1]
-                ];
-            }
-
-            return null;
-
-        } catch (\Exception $e) {
-            Log::error('Failed to get image dimensions: ' . $e->getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Optimize existing image.
-     *
-     * @param string $filePath
+     * @param UploadedFile $file
+     * @param string $directory
+     * @param string|null $filename
+     * @param int|null $maxWidth
+     * @param int|null $maxHeight
      * @param int $quality
+     * @return string The stored file path
+     * @throws \Exception
+     */
+    public function uploadImage(
+        UploadedFile $file, 
+        string $directory, 
+        ?string $filename = null, 
+        ?int $maxWidth = null, 
+        ?int $maxHeight = null, 
+        int $quality = 85
+    ): string {
+        // Validate that it's an image
+        if (!str_starts_with($file->getMimeType(), 'image/')) {
+            throw new \Exception('File is not an image');
+        }
+
+        // Generate filename if not provided
+        if (!$filename) {
+            $filename = uniqid() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
+        }
+
+        // Ensure the filename is safe
+        $filename = $this->sanitizeFilename($filename);
+
+        // Create the full path
+        $path = $directory . '/' . $filename;
+
+        // If no resizing is needed, just store the file normally
+        if (!$maxWidth && !$maxHeight) {
+            return $this->uploadFile($file, $directory, $filename);
+        }
+
+        // Create directory if it doesn't exist
+        $fullDirectory = storage_path('app/public/' . $directory);
+        if (!is_dir($fullDirectory)) {
+            mkdir($fullDirectory, 0755, true);
+        }
+
+        // Process the image with basic PHP (if Intervention Image is not available)
+        try {
+            // Try to use Intervention Image if available
+            if (class_exists('\Intervention\Image\Facades\Image')) {
+                $image = \Intervention\Image\Laravel\Facades\Image::make($file->getRealPath());
+                
+                if ($maxWidth || $maxHeight) {
+                    $image->resize($maxWidth, $maxHeight, function ($constraint) {
+                        $constraint->aspectRatio();
+                        $constraint->upsize();
+                    });
+                }
+                
+                $image->save(storage_path('app/public/' . $path), $quality);
+            } else {
+                // Fallback to basic file upload without resizing
+                $storedPath = $file->storeAs($directory, $filename, 'public');
+                if (!$storedPath) {
+                    throw new \Exception('Failed to store image');
+                }
+                return $storedPath;
+            }
+        } catch (\Exception $e) {
+            // If image processing fails, try to store the original file
+            $storedPath = $file->storeAs($directory, $filename, 'public');
+            if (!$storedPath) {
+                throw new \Exception('Failed to store image: ' . $e->getMessage());
+            }
+            return $storedPath;
+        }
+
+        return $path;
+    }
+
+    /**
+     * Delete a file from storage.
+     *
+     * @param string $path
+     * @param string $disk
      * @return bool
      */
-    public function optimizeImage(string $filePath, int $quality = 85): bool
+    public function deleteFile(string $path, string $disk = 'public'): bool
     {
         try {
-            if (!Storage::disk('public')->exists($filePath)) {
-                return false;
+            if (Storage::disk($disk)->exists($path)) {
+                return Storage::disk($disk)->delete($path);
             }
-
-            $fullPath = Storage::disk('public')->path($filePath);
-            $image = Image::read($fullPath);
-            
-            // Re-save with compression
-            $optimized = $image->toJpeg($quality);
-            Storage::disk('public')->put($filePath, $optimized);
-
-            Log::info('Image optimized successfully', [
-                'path' => $filePath,
-                'quality' => $quality
-            ]);
-
-            return true;
-
+            return true; // File doesn't exist, consider it deleted
         } catch (\Exception $e) {
-            Log::error('Failed to optimize image: ' . $e->getMessage());
+            \Log::error('Failed to delete file: ' . $e->getMessage(), ['path' => $path]);
             return false;
         }
     }
 
     /**
-     * Convert image format.
+     * Get file information.
      *
-     * @param string $filePath
-     * @param string $newFormat (jpeg, png, gif, webp)
-     * @param int $quality
-     * @return string|null New file path
+     * @param string $path
+     * @param string $disk
+     * @return array|null
      */
-    public function convertImageFormat(string $filePath, string $newFormat, int $quality = 85): ?string
+    public function getFileInfo(string $path, string $disk = 'public'): ?array
     {
         try {
-            if (!Storage::disk('public')->exists($filePath)) {
+            if (!Storage::disk($disk)->exists($path)) {
                 return null;
             }
 
-            $fullPath = Storage::disk('public')->path($filePath);
-            $image = Image::read($fullPath);
+            return [
+                'path' => $path,
+                'size' => Storage::disk($disk)->size($path),
+                'last_modified' => Storage::disk($disk)->lastModified($path),
+                'url' => Storage::disk($disk)->url($path),
+                'mime_type' => Storage::disk($disk)->mimeType($path),
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Failed to get file info: ' . $e->getMessage(), ['path' => $path]);
+            return null;
+        }
+    }
 
-            // Generate new filename with new extension
-            $pathInfo = pathinfo($filePath);
-            $newFilePath = $pathInfo['dirname'] . '/' . $pathInfo['filename'] . '.' . $newFormat;
-
-            // Convert based on format
-            switch (strtolower($newFormat)) {
-                case 'jpeg':
-                case 'jpg':
-                    $converted = $image->toJpeg($quality);
-                    break;
-                case 'png':
-                    $converted = $image->toPng();
-                    break;
-                case 'gif':
-                    $converted = $image->toGif();
-                    break;
-                case 'webp':
-                    $converted = $image->toWebp($quality);
-                    break;
-                default:
-                    throw new \Exception("Unsupported format: {$newFormat}");
+    /**
+     * Move a file from one location to another.
+     *
+     * @param string $from
+     * @param string $to
+     * @param string $disk
+     * @return bool
+     */
+    public function moveFile(string $from, string $to, string $disk = 'public'): bool
+    {
+        try {
+            // Ensure destination directory exists
+            $destinationDir = dirname($to);
+            if (!Storage::disk($disk)->exists($destinationDir)) {
+                Storage::disk($disk)->makeDirectory($destinationDir);
             }
 
-            Storage::disk('public')->put($newFilePath, $converted);
-
-            Log::info('Image format converted successfully', [
-                'original_path' => $filePath,
-                'new_path' => $newFilePath,
-                'format' => $newFormat
-            ]);
-
-            return $newFilePath;
-
+            return Storage::disk($disk)->move($from, $to);
         } catch (\Exception $e) {
-            Log::error('Failed to convert image format: ' . $e->getMessage());
-            return null;
+            \Log::error('Failed to move file: ' . $e->getMessage(), [
+                'from' => $from,
+                'to' => $to
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Copy a file from one location to another.
+     *
+     * @param string $from
+     * @param string $to
+     * @param string $disk
+     * @return bool
+     */
+    public function copyFile(string $from, string $to, string $disk = 'public'): bool
+    {
+        try {
+            // Ensure destination directory exists
+            $destinationDir = dirname($to);
+            if (!Storage::disk($disk)->exists($destinationDir)) {
+                Storage::disk($disk)->makeDirectory($destinationDir);
+            }
+
+            return Storage::disk($disk)->copy($from, $to);
+        } catch (\Exception $e) {
+            \Log::error('Failed to copy file: ' . $e->getMessage(), [
+                'from' => $from,
+                'to' => $to
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Validate file upload.
+     *
+     * @param UploadedFile $file
+     * @param array $rules
+     * @return array
+     */
+    public function validateFile(UploadedFile $file, array $rules = []): array
+    {
+        $errors = [];
+
+        // Default rules
+        $maxSize = $rules['max_size'] ?? 10 * 1024 * 1024; // 10MB
+        $allowedTypes = $rules['allowed_types'] ?? $this->getDefaultAllowedTypes();
+        $maxFilenameLength = $rules['max_filename_length'] ?? 255;
+
+        // Check file size
+        if ($file->getSize() > $maxSize) {
+            $errors[] = 'File size exceeds ' . $this->formatFileSize($maxSize) . ' limit';
+        }
+
+        // Check file type
+        if (!in_array($file->getMimeType(), $allowedTypes)) {
+            $errors[] = 'File type not allowed: ' . $file->getMimeType();
+        }
+
+        // Check filename length
+        if (strlen($file->getClientOriginalName()) > $maxFilenameLength) {
+            $errors[] = 'Filename too long (max ' . $maxFilenameLength . ' characters)';
+        }
+
+        // Check for potentially dangerous files
+        $dangerousExtensions = ['exe', 'bat', 'cmd', 'com', 'pif', 'scr', 'vbs', 'js', 'php'];
+        $extension = strtolower($file->getClientOriginalExtension());
+        
+        if (in_array($extension, $dangerousExtensions)) {
+            $errors[] = 'File type potentially dangerous';
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Get default allowed file types.
+     *
+     * @return array
+     */
+    public function getDefaultAllowedTypes(): array
+    {
+        return [
+            // Images
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/svg+xml',
+            'image/webp',
+
+            // Documents
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'text/plain',
+            'text/csv',
+
+            // Archives
+            'application/zip',
+            'application/x-rar-compressed',
+            'application/x-7z-compressed',
+
+            // Other
+            'application/json',
+            'application/xml',
+            'text/xml',
+        ];
+    }
+
+    /**
+     * Sanitize filename for safe storage.
+     *
+     * @param string $filename
+     * @return string
+     */
+    protected function sanitizeFilename(string $filename): string
+    {
+        // Remove or replace dangerous characters
+        $filename = preg_replace('/[^a-zA-Z0-9._-]/', '_', $filename);
+        
+        // Remove multiple underscores
+        $filename = preg_replace('/_+/', '_', $filename);
+        
+        // Remove leading/trailing underscores and dots
+        $filename = trim($filename, '_.');
+        
+        // Ensure filename is not empty
+        if (empty($filename)) {
+            $filename = 'file_' . uniqid();
+        }
+
+        return $filename;
+    }
+
+    /**
+     * Format file size in human readable format.
+     *
+     * @param int $size
+     * @param int $precision
+     * @return string
+     */
+    protected function formatFileSize(int $size, int $precision = 2): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+
+        for ($i = 0; $size > 1024 && $i < count($units) - 1; $i++) {
+            $size /= 1024;
+        }
+
+        return round($size, $precision) . ' ' . $units[$i];
+    }
+
+    /**
+     * Generate a unique filename.
+     *
+     * @param string $originalName
+     * @param string $directory
+     * @param string $disk
+     * @return string
+     */
+    public function generateUniqueFilename(string $originalName, string $directory, string $disk = 'public'): string
+    {
+        $pathInfo = pathinfo($originalName);
+        $basename = Str::slug($pathInfo['filename'] ?? 'file');
+        $extension = $pathInfo['extension'] ?? '';
+        
+        $filename = $basename . '.' . $extension;
+        $path = $directory . '/' . $filename;
+        $counter = 1;
+
+        // Keep trying until we find a unique filename
+        while (Storage::disk($disk)->exists($path)) {
+            $filename = $basename . '_' . $counter . '.' . $extension;
+            $path = $directory . '/' . $filename;
+            $counter++;
+        }
+
+        return $filename;
+    }
+
+    /**
+     * Clean up old files in a directory.
+     *
+     * @param string $directory
+     * @param int $olderThanHours
+     * @param string $disk
+     * @return int Number of files deleted
+     */
+    public function cleanupOldFiles(string $directory, int $olderThanHours = 24, string $disk = 'public'): int
+    {
+        try {
+            if (!Storage::disk($disk)->exists($directory)) {
+                return 0;
+            }
+
+            $files = Storage::disk($disk)->files($directory);
+            $deletedCount = 0;
+            $cutoffTime = now()->subHours($olderThanHours)->timestamp;
+
+            foreach ($files as $file) {
+                $lastModified = Storage::disk($disk)->lastModified($file);
+                
+                if ($lastModified < $cutoffTime) {
+                    if (Storage::disk($disk)->delete($file)) {
+                        $deletedCount++;
+                    }
+                }
+            }
+
+            return $deletedCount;
+        } catch (\Exception $e) {
+            \Log::error('Failed to cleanup old files: ' . $e->getMessage(), [
+                'directory' => $directory
+            ]);
+            return 0;
         }
     }
 }

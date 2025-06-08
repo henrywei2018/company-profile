@@ -21,13 +21,16 @@
                 Back to Project
             </x-admin.button>
             
-            <button @click="showUploadModal = true" 
-                    class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <x-admin.button 
+                href="{{ route('admin.projects.files.create', $project) }}" 
+                color="primary"
+                size="sm"
+            >
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                 </svg>
                 Upload Files
-            </button>
+            </x-admin.button>
         </div>
     </div>
 
@@ -40,83 +43,69 @@
 
     <!-- File Statistics -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <x-admin.stat-card
-            title="Total Files"
-            :value="$files->total()"
-            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>'
-            iconColor="text-blue-500"
-            iconBg="bg-blue-100 dark:bg-blue-800/30"
-        />
-        
-        <x-admin.stat-card
-            title="Total Size"
-            :value="formatFileSize($totalSize)"
-            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>'
-            iconColor="text-green-500"
-            iconBg="bg-green-100 dark:bg-green-800/30"
-        />
-        
-        <x-admin.stat-card
-            title="Downloads"
-            :value="$totalDownloads"
-            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>'
-            iconColor="text-purple-500"
-            iconBg="bg-purple-100 dark:bg-purple-800/30"
-        />
-        
-        <x-admin.stat-card
-            title="Categories"
-            :value="$filesByCategory->count()"
-            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>'
-            iconColor="text-amber-500"
-            iconBg="bg-amber-100 dark:bg-amber-800/30"
-        />
-    </div>
-
-    <!-- Upload Modal -->
-    <div x-data="{ showUploadModal: false }" x-init="$watch('showUploadModal', value => { if (!value) $nextTick(() => { if (window.location.search.includes('uploaded=1')) window.location.reload(); }) })">
-        <x-admin.modal id="upload-files-modal" x-show="showUploadModal" @click.away="showUploadModal = false" title="Upload Files" size="xl">
-            <div class="p-6">
-                <x-admin.filepond-uploader 
-                    :project="$project"
-                    name="files"
-                    :multiple="true"
-                    :maxFiles="20"
-                    maxFileSize="10MB"
-                    :acceptedFileTypes="[
-                        'image/*',
-                        'application/pdf',
-                        'application/msword',
-                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'application/vnd.ms-excel',
-                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        'application/vnd.ms-powerpoint',
-                        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                        'text/plain',
-                        'text/csv',
-                        'application/zip',
-                        'application/x-rar-compressed',
-                        'application/x-7z-compressed',
-                        'application/json',
-                        'application/xml'
-                    ]"
-                    :allowImagePreview="true"
-                    :allowImageCrop="false"
-                    :allowImageResize="true"
-                    :imageResizeTargetWidth="1200"
-                    :imageResizeTargetHeight="800"
-                    dropDescription="Drop files here or click to browse"
-                    category="general"
-                    :isPublic="false"
-                />
+        <x-admin.card class="p-4">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-8 h-8 bg-blue-100 dark:bg-blue-800/30 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $files->total() }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">Total Files</div>
+                </div>
             </div>
-            
-            <x-slot name="footer">
-                <x-admin.button color="light" @click="showUploadModal = false">
-                    Close
-                </x-admin.button>
-            </x-slot>
-        </x-admin.modal>
+        </x-admin.card>
+        
+        <x-admin.card class="p-4">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-8 h-8 bg-green-100 dark:bg-green-800/30 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatFileSize($totalSize) }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">Total Size</div>
+                </div>
+            </div>
+        </x-admin.card>
+        
+        <x-admin.card class="p-4">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-8 h-8 bg-purple-100 dark:bg-purple-800/30 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $totalDownloads }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">Downloads</div>
+                </div>
+            </div>
+        </x-admin.card>
+        
+        <x-admin.card class="p-4">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-8 h-8 bg-amber-100 dark:bg-amber-800/30 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $filesByCategory->count() }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">Categories</div>
+                </div>
+            </div>
+        </x-admin.card>
     </div>
 
     <!-- Files by Category -->
@@ -137,7 +126,7 @@
                             
                             <div class="flex items-center space-x-2">
                                 <button class="text-gray-400 hover:text-gray-600" onclick="toggleCategory('{{ $category }}')">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                     </svg>
                                 </button>
@@ -231,46 +220,49 @@
             title="No Files Uploaded"
             description="Upload your first project files to get started."
             actionText="Upload Files"
-            actionUrl="javascript:void(0)"
-            @click="showUploadModal = true"
+            :actionUrl="route('admin.projects.files.create', $project)"
             icon='<svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>'
         />
     @endif
 
     <!-- Delete Confirmation Modal -->
-    <x-admin.modal id="delete-file-modal" title="Delete File" size="md">
-        <div class="text-sm text-gray-600 dark:text-gray-400">
-            <p class="mb-4">Are you sure you want to delete this file?</p>
-            <p class="font-medium text-red-600 dark:text-red-400" id="file-name-display"></p>
-            <p class="mt-2 text-xs">This action cannot be undone.</p>
+    <div id="delete-file-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <div class="mt-3 text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30">
+                    <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mt-4">Delete File</h3>
+                <div class="mt-2 px-7 py-3">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Are you sure you want to delete this file?
+                    </p>
+                    <p class="font-medium text-red-600 dark:text-red-400 mt-2" id="file-name-display"></p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">This action cannot be undone.</p>
+                </div>
+                <div class="flex justify-center space-x-4 px-4 py-3">
+                    <button onclick="closeDeleteModal()" 
+                            class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                        Cancel
+                    </button>
+                    <form id="delete-file-form" method="POST" class="inline">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" 
+                                class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                            Delete File
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
-        
-        <x-slot name="footer">
-            <x-admin.button color="light" onclick="document.getElementById('delete-file-modal').classList.add('hidden')">
-                Cancel
-            </x-admin.button>
-            <form id="delete-file-form" method="POST" class="inline">
-                @csrf
-                @method('DELETE')
-                <x-admin.button type="submit" color="danger">
-                    Delete File
-                </x-admin.button>
-            </form>
-        </x-slot>
-    </x-admin.modal>
+    </div>
 </x-layouts.admin>
 
 @push('scripts')
 <script>
-// Helper function to format file size
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
 // Toggle category visibility
 function toggleCategory(category) {
     const element = document.getElementById('category-' + category);
@@ -286,9 +278,21 @@ function toggleCategory(category) {
     }
 }
 
+// Delete file confirmation
+function deleteFile(fileId, fileName) {
+    document.getElementById('file-name-display').textContent = fileName;
+    document.getElementById('delete-file-form').action = 
+        `{{ route('admin.projects.files.index', $project) }}/${fileId}`;
+    document.getElementById('delete-file-modal').classList.remove('hidden');
+}
+
+// Close delete modal
+function closeDeleteModal() {
+    document.getElementById('delete-file-modal').classList.add('hidden');
+}
+
 // Load more files for a category (AJAX)
 function loadMoreFiles(category) {
-    // Implementation for loading more files via AJAX
     fetch(`{{ route('admin.projects.files.index', $project) }}?category=${category}&load_more=true`, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -307,33 +311,6 @@ function loadMoreFiles(category) {
     });
 }
 
-// Delete file confirmation
-function deleteFile(fileId, fileName) {
-    document.getElementById('file-name-display').textContent = fileName;
-    document.getElementById('delete-file-form').action = 
-        `{{ route('admin.projects.files.index', $project) }}/${fileId}`;
-    document.getElementById('delete-file-modal').classList.remove('hidden');
-}
-
-// Real-time file upload status (if needed)
-function checkUploadStatus() {
-    // This could be used to check ongoing uploads
-    // Implementation depends on your needs
-}
-
-// Initialize tooltips or other interactive elements
-document.addEventListener('DOMContentLoaded', function() {
-    // Add any initialization code here
-    
-    // Example: Auto-refresh after successful upload
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('uploaded') === '1') {
-        // Remove the parameter and show success message
-        history.replaceState({}, '', window.location.pathname);
-        showNotification('success', 'Files uploaded successfully!');
-    }
-});
-
 // Simple notification system
 function showNotification(type, message) {
     const notification = document.createElement('div');
@@ -350,84 +327,22 @@ function showNotification(type, message) {
     }, 5000);
 }
 
-// File search functionality
-function searchFiles(query) {
-    if (query.length < 2) {
-        location.reload();
-        return;
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-refresh after successful upload
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('uploaded') === '1') {
+        history.replaceState({}, '', window.location.pathname);
+        showNotification('success', 'Files uploaded successfully!');
     }
     
-    fetch(`{{ route('admin.projects.files.search', $project) }}?query=${encodeURIComponent(query)}`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
+    // Close modal when clicking outside
+    document.getElementById('delete-file-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeDeleteModal();
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update the file display with search results
-            updateFileDisplay(data.files);
-        }
-    })
-    .catch(error => {
-        console.error('Search error:', error);
     });
-}
-
-// Update file display (for search results)
-function updateFileDisplay(files) {
-    // Implementation to update the file list display
-    // This would replace the current file grid with search results
-}
-
-// Bulk file operations
-function bulkDeleteFiles() {
-    const checkedFiles = document.querySelectorAll('input[name="selected_files[]"]:checked');
-    if (checkedFiles.length === 0) {
-        alert('Please select files to delete');
-        return;
-    }
-    
-    if (!confirm(`Are you sure you want to delete ${checkedFiles.length} files?`)) {
-        return;
-    }
-    
-    const fileIds = Array.from(checkedFiles).map(cb => cb.value);
-    
-    fetch(`{{ route('admin.projects.files.bulk-delete', $project) }}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({ file_ids: fileIds })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('success', data.message);
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            showNotification('error', data.message || 'Delete failed');
-        }
-    })
-    .catch(error => {
-        console.error('Bulk delete error:', error);
-        showNotification('error', 'Delete failed');
-    });
-}
-
-// File organization
-function organizeFiles() {
-    // Implementation for file organization features
-    // This could open a modal for bulk category assignment
-}
-
-// Export files list
-function exportFilesList() {
-    window.location.href = `{{ route('admin.projects.files.export', $project) }}`;
-}
+});
 </script>
 @endpush
 

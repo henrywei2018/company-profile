@@ -132,6 +132,82 @@
         />
     </x-admin.card>
 
+    <!-- Alternative: Traditional Upload Form -->
+    <x-admin.card class="mt-6">
+        <x-slot name="header">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                Traditional Upload
+            </h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Use this if the drag-and-drop uploader doesn't work
+            </p>
+        </x-slot>
+
+        <form action="{{ route('admin.projects.files.store', $project) }}" method="POST" enctype="multipart/form-data">
+            @csrf
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="traditional-files" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Select Files
+                    </label>
+                    <input type="file" 
+                           id="traditional-files" 
+                           name="files[]" 
+                           multiple 
+                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.txt,.csv,.zip,.rar,.7z"
+                           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="traditional-category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Category
+                        </label>
+                        <select id="traditional-category" name="category" class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700">
+                            <option value="general">General</option>
+                            <option value="documents">Documents</option>
+                            <option value="images">Images</option>
+                            <option value="plans">Plans & Drawings</option>
+                            <option value="contracts">Contracts</option>
+                            <option value="reports">Reports</option>
+                            <option value="certificates">Certificates</option>
+                            <option value="presentations">Presentations</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="traditional-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Description
+                        </label>
+                        <input type="text" 
+                               id="traditional-description" 
+                               name="description" 
+                               placeholder="Optional description"
+                               class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="is_public" value="1" class="rounded border-gray-300 text-blue-600">
+                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Make files public</span>
+                    </label>
+                </div>
+                
+                <div>
+                    <x-admin.button type="submit" color="primary">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        Upload Files
+                    </x-admin.button>
+                </div>
+            </div>
+        </form>
+    </x-admin.card>
+
     <!-- Current Project Files Summary -->
     @if($project->files->count() > 0)
         <x-admin.card class="mt-6">
@@ -188,48 +264,4 @@
             @endif
         </x-admin.card>
     @endif
-
-    <!-- File Categories Reference -->
-    <x-admin.card class="mt-6">
-        <x-slot name="header">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-                File Categories Reference
-            </h3>
-        </x-slot>
-
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-sm">
-            <div>
-                <h4 class="font-medium text-gray-900 dark:text-white">Documents</h4>
-                <p class="text-gray-600 dark:text-gray-400">General documents, reports, specifications</p>
-            </div>
-            <div>
-                <h4 class="font-medium text-gray-900 dark:text-white">Images</h4>
-                <p class="text-gray-600 dark:text-gray-400">Photos, screenshots, diagrams</p>
-            </div>
-            <div>
-                <h4 class="font-medium text-gray-900 dark:text-white">Plans</h4>
-                <p class="text-gray-600 dark:text-gray-400">Technical drawings, blueprints</p>
-            </div>
-            <div>
-                <h4 class="font-medium text-gray-900 dark:text-white">Contracts</h4>
-                <p class="text-gray-600 dark:text-gray-400">Legal documents, agreements</p>
-            </div>
-            <div>
-                <h4 class="font-medium text-gray-900 dark:text-white">Certificates</h4>
-                <p class="text-gray-600 dark:text-gray-400">Quality certificates, compliance docs</p>
-            </div>
-            <div>
-                <h4 class="font-medium text-gray-900 dark:text-white">Presentations</h4>
-                <p class="text-gray-600 dark:text-gray-400">PowerPoint, proposals</p>
-            </div>
-            <div>
-                <h4 class="font-medium text-gray-900 dark:text-white">Invoices</h4>
-                <p class="text-gray-600 dark:text-gray-400">Financial documents, receipts</p>
-            </div>
-            <div>
-                <h4 class="font-medium text-gray-900 dark:text-white">Archives</h4>
-                <p class="text-gray-600 dark:text-gray-400">ZIP files, compressed folders</p>
-            </div>
-        </div>
-    </x-admin.card>
 </x-layouts.admin>
