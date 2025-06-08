@@ -146,18 +146,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
             Route::post('/', [ProjectFileController::class, 'store'])->name('store');
             Route::get('/{file}/download', [ProjectFileController::class, 'download'])->name('download');
             Route::delete('/{file}', [ProjectFileController::class, 'destroy'])->name('destroy');
-            
-            // FilePond specific endpoints
+        
+            Route::post('/upload', [ProjectFileController::class, 'upload'])->name('upload');   // temp upload
+            Route::delete('/upload', [ProjectFileController::class, 'delete'])->name('delete'); // temp delete
+        
             Route::post('/process', [ProjectFileController::class, 'processFilePond'])->name('process');
-            Route::delete('/upload', [ProjectFileController::class, 'upload'])->name('upload');
-            Route::post('/upload', [ProjectFileController::class, 'delete'])->name('delete');
-            
-            // Additional file operations
+        
             Route::post('/cleanup', [ProjectFileController::class, 'cleanupTempFiles'])->name('cleanup');
             Route::post('/bulk-delete', [ProjectFileController::class, 'bulkDelete'])->name('bulk-delete');
             Route::get('/search', [ProjectFileController::class, 'search'])->name('search');
             Route::get('/export', [ProjectFileController::class, 'export'])->name('export');
         });
+        
     });
     // Additional project routes
     Route::patch('projects/{project}/toggle-featured', [ProjectController::class, 'toggleFeatured'])->name('projects.toggle-featured');
