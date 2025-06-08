@@ -1,5 +1,9 @@
 {{-- resources/views/admin/projects/files/show.blade.php --}}
 <x-layouts.admin title="Project File Manager">
+    <!-- Meta tags for CSRF and base URL -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="project-id" content="{{ $project->id }}">
+
     <!-- Sticky Header -->
     <div class="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 -mx-6 px-6 py-4 mb-6">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
@@ -20,9 +24,9 @@
                         <div class="flex items-center space-x-2 mt-1 text-sm text-gray-500 dark:text-gray-400">
                             <span>{{ $project->title }}</span>
                             <span>•</span>
-                            <span>{{ $totalFiles }} files</span>
+                            <span id="file-count">{{ $totalFiles }} files</span>
                             <span>•</span>
-                            <span>{{ formatFileSize($totalSize) }}</span>
+                            <span>{{ \App\Helpers\FileHelper::formatFileSize($totalSize) }}</span>
                         </div>
                     </div>
                 </div>
@@ -49,6 +53,15 @@
                     </button>
                 </div>
                 
+                <!-- Back to Project -->
+                <a href="{{ route('admin.projects.show', $project) }}" 
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Back to Project
+                </a>
+                
                 <!-- Upload Button -->
                 <a href="{{ route('admin.projects.files.create', $project) }}" 
                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
@@ -71,7 +84,7 @@
                 <div class="space-y-2">
                     <div class="flex items-center justify-between text-sm">
                         <span class="text-gray-500 dark:text-gray-400">Used</span>
-                        <span class="font-medium text-gray-900 dark:text-white">{{ formatFileSize($totalSize) }}</span>
+                        <span class="font-medium text-gray-900 dark:text-white">{{ \App\Helpers\FileHelper::formatFileSize($totalSize) }}</span>
                     </div>
                     <div class="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
                         @php
@@ -97,8 +110,7 @@
                     <input type="text" 
                            id="file-search" 
                            placeholder="Search files..." 
-                           class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm bg-white dark:bg-gray-700 dark:border-gray-600 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                           onkeyup="filterFiles()">
+                           class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm bg-white dark:bg-gray-700 dark:border-gray-600 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:text-white">
                 </div>
             </div>
 
@@ -135,7 +147,23 @@
                                 data-type="{{ $type }}">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center">
-                                    <x-admin.partials.file-type-icon :type="$type" />
+                                    @if($type === 'image')
+                                        <svg class="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        </svg>
+                                    @elseif($type === 'document')
+                                        <svg class="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                    @elseif($type === 'archive')
+                                        <svg class="w-4 h-4 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H16"/>
+                                        </svg>
+                                    @else
+                                        <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                    @endif
                                     <span>{{ ucfirst($type) }}s</span>
                                 </div>
                                 <span class="text-xs text-gray-500">{{ $files->count() }}</span>
@@ -156,14 +184,14 @@
                         <div class="flex items-center space-x-2" id="bulk-actions" style="display: none;">
                             <span class="text-sm text-gray-500 dark:text-gray-400" id="selected-count">0 selected</span>
                             <button onclick="downloadSelected()" 
-                                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50">
+                                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                 </svg>
                                 Download
                             </button>
                             <button onclick="deleteSelected()" 
-                                    class="inline-flex items-center px-3 py-1.5 border border-red-300 shadow-sm text-xs font-medium rounded text-red-700 bg-white hover:bg-red-50">
+                                    class="inline-flex items-center px-3 py-1.5 border border-red-300 shadow-sm text-xs font-medium rounded text-red-700 bg-white hover:bg-red-50 dark:bg-gray-700 dark:text-red-400 dark:border-red-600 dark:hover:bg-red-900/20">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                 </svg>
@@ -174,7 +202,7 @@
 
                     <!-- Sort Options -->
                     <div class="flex items-center space-x-3">
-                        <select id="sort-select" onchange="sortFiles()" class="text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                        <select id="sort-select" class="text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500">
                             <option value="name-asc">Name A-Z</option>
                             <option value="name-desc">Name Z-A</option>
                             <option value="size-asc">Size (smallest first)</option>
@@ -203,8 +231,8 @@
                             <thead class="bg-gray-50 dark:bg-gray-700">
                                 <tr>
                                     <th class="w-8 px-6 py-3">
-                                        <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll()" 
-                                               class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring-blue-500">
+                                        <input type="checkbox" id="select-all-checkbox" 
+                                               class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600">
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Size</th>
@@ -240,14 +268,72 @@
         </div>
     </div>
 
-    <x-admin.partials.file-preview-modal />
-    <x-admin.partials.file-delete-modal />
+    <!-- Preview Modal -->
+    <div id="preview-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4 mb-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white" id="preview-title">File Preview</h3>
+                <button onclick="closePreview()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="preview-content" class="text-center">
+                <div class="flex items-center justify-center py-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span class="ml-2 text-gray-600 dark:text-gray-400">Loading preview...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div id="delete-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <div class="mt-3 text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30">
+                    <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mt-4">Delete File</h3>
+                <div class="mt-2 px-7 py-3">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Are you sure you want to delete this file?
+                    </p>
+                    <p class="font-medium text-red-600 dark:text-red-400 mt-2" id="delete-file-name"></p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">This action cannot be undone.</p>
+                </div>
+                <div class="flex justify-center space-x-4 px-4 py-3">
+                    <button onclick="closeDeleteModal()" 
+                            class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                        Cancel
+                    </button>
+                    <button onclick="confirmDelete()" 
+                            class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                        Delete File
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 </x-layouts.admin>
 
 @push('scripts')
 <script>
-// Fixed File Manager JavaScript for Components
+// Global variables
+let selectedFiles = new Set();
+let currentView = 'grid';
+let deleteFileId = null;
+let currentFilters = {
+    search: '',
+    category: '',
+    type: ''
+};
+
+// Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     console.log('File Manager JavaScript loaded');
     
@@ -261,15 +347,21 @@ document.addEventListener('DOMContentLoaded', function() {
         allFilesBtn.classList.add('bg-blue-100', 'text-blue-800', 'dark:bg-blue-900/30', 'dark:text-blue-400');
     }
     
-    // Bind search input
+    // Bind events
+    bindEvents();
+});
+
+function bindEvents() {
+    // Search input
     const searchInput = document.getElementById('file-search');
     if (searchInput) {
         searchInput.addEventListener('input', function() {
-            filterFiles();
+            currentFilters.search = this.value.toLowerCase();
+            applyFilters();
         });
     }
     
-    // Bind sort select
+    // Sort select
     const sortSelect = document.getElementById('sort-select');
     if (sortSelect) {
         sortSelect.addEventListener('change', function() {
@@ -277,34 +369,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Bind select all checkbox
+    // Select all checkbox
     const selectAllCheckbox = document.getElementById('select-all-checkbox');
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener('change', function() {
             toggleSelectAll();
         });
     }
-    
-    // Keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            closePreview();
-            closeDeleteModal();
-        }
-        
-        if (e.ctrlKey && e.key === 'a') {
-            e.preventDefault();
-            const selectAllCheckbox = document.getElementById('select-all-checkbox');
-            if (selectAllCheckbox) {
-                selectAllCheckbox.checked = true;
-                toggleSelectAll();
-            }
-        }
-        
-        if (e.key === 'Delete' && selectedFiles.size > 0) {
-            deleteSelected();
-        }
-    });
     
     // Modal click outside to close
     const previewModal = document.getElementById('preview-modal');
@@ -324,12 +395,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
 
-// Global variables
-let selectedFiles = new Set();
-let currentView = 'grid';
-let deleteFileId = null;
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closePreview();
+            closeDeleteModal();
+        }
+        
+        if (e.ctrlKey && e.key === 'a' && !e.target.matches('input')) {
+            e.preventDefault();
+            const selectAllCheckbox = document.getElementById('select-all-checkbox');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = true;
+                toggleSelectAll();
+            }
+        }
+        
+        if (e.key === 'Delete' && selectedFiles.size > 0) {
+            deleteSelected();
+        }
+    });
+}
 
 // View Mode Functions
 function setViewMode(mode) {
@@ -342,12 +429,7 @@ function setViewMode(mode) {
     const listBtn = document.getElementById('list-view-btn');
 
     if (!gridView || !listView || !gridBtn || !listBtn) {
-        console.error('View elements not found:', {
-            gridView: !!gridView,
-            listView: !!listView,
-            gridBtn: !!gridBtn,
-            listBtn: !!listBtn
-        });
+        console.error('View elements not found');
         return;
     }
 
@@ -372,16 +454,20 @@ function setViewMode(mode) {
 }
 
 // Filter Functions
-function filterFiles() {
-    const searchTerm = document.getElementById('file-search').value.toLowerCase();
+function applyFilters() {
     const items = document.querySelectorAll('.file-item, .file-item-list');
     let visibleCount = 0;
 
-    console.log('Filtering files with search term:', searchTerm);
-
     items.forEach(item => {
         const fileName = (item.dataset.fileName || '').toLowerCase();
-        const isVisible = !searchTerm || fileName.includes(searchTerm);
+        const fileCategory = item.dataset.fileCategory || '';
+        const fileType = item.dataset.fileType || '';
+        
+        const matchesSearch = !currentFilters.search || fileName.includes(currentFilters.search);
+        const matchesCategory = !currentFilters.category || fileCategory === currentFilters.category;
+        const matchesType = !currentFilters.type || fileType === currentFilters.type;
+        
+        const isVisible = matchesSearch && matchesCategory && matchesType;
         
         if (isVisible) {
             item.style.display = '';
@@ -392,15 +478,14 @@ function filterFiles() {
     });
 
     updateEmptyState(visibleCount);
-    console.log('Filter complete, visible files:', visibleCount);
+    updateFileCount(visibleCount);
 }
 
 function filterByCategory(category) {
     console.log('Filtering by category:', category);
     
-    const items = document.querySelectorAll('.file-item, .file-item-list');
-    let visibleCount = 0;
-
+    currentFilters.category = category;
+    
     // Update active filter button
     document.querySelectorAll('.filter-category-btn').forEach(btn => {
         btn.classList.remove('bg-blue-100', 'text-blue-800', 'dark:bg-blue-900/30', 'dark:text-blue-400');
@@ -411,27 +496,20 @@ function filterByCategory(category) {
         activeBtn.classList.add('bg-blue-100', 'text-blue-800', 'dark:bg-blue-900/30', 'dark:text-blue-400');
     }
 
-    items.forEach(item => {
-        const itemCategory = item.dataset.fileCategory || '';
-        const isVisible = category === '' || itemCategory === category;
-        
-        if (isVisible) {
-            item.style.display = '';
-            visibleCount++;
-        } else {
-            item.style.display = 'none';
-        }
+    // Clear type filter when changing category
+    currentFilters.type = '';
+    document.querySelectorAll('.filter-type-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-100', 'text-blue-800', 'dark:bg-blue-900/30', 'dark:text-blue-400');
     });
 
-    updateEmptyState(visibleCount);
+    applyFilters();
 }
 
 function filterByType(type) {
     console.log('Filtering by type:', type);
     
-    const items = document.querySelectorAll('.file-item, .file-item-list');
-    let visibleCount = 0;
-
+    currentFilters.type = type;
+    
     // Update active filter button
     document.querySelectorAll('.filter-type-btn').forEach(btn => {
         btn.classList.remove('bg-blue-100', 'text-blue-800', 'dark:bg-blue-900/30', 'dark:text-blue-400');
@@ -442,23 +520,20 @@ function filterByType(type) {
         activeBtn.classList.add('bg-blue-100', 'text-blue-800', 'dark:bg-blue-900/30', 'dark:text-blue-400');
     }
 
-    items.forEach(item => {
-        const itemType = item.dataset.fileType || '';
-        const isVisible = itemType === type;
-        
-        if (isVisible) {
-            item.style.display = '';
-            visibleCount++;
-        } else {
-            item.style.display = 'none';
-        }
+    // Clear category filter when changing type
+    currentFilters.category = '';
+    document.querySelectorAll('.filter-category-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-100', 'text-blue-800', 'dark:bg-blue-900/30', 'dark:text-blue-400');
     });
 
-    updateEmptyState(visibleCount);
+    applyFilters();
 }
 
 function clearFilters() {
     console.log('Clearing all filters');
+    
+    // Reset filters
+    currentFilters = { search: '', category: '', type: '' };
     
     // Clear search
     const searchInput = document.getElementById('file-search');
@@ -477,13 +552,7 @@ function clearFilters() {
         allFilesBtn.classList.add('bg-blue-100', 'text-blue-800', 'dark:bg-blue-900/30', 'dark:text-blue-400');
     }
     
-    // Show all files
-    const items = document.querySelectorAll('.file-item, .file-item-list');
-    items.forEach(item => {
-        item.style.display = '';
-    });
-
-    updateEmptyState(items.length);
+    applyFilters();
 }
 
 function updateEmptyState(visibleCount) {
@@ -504,6 +573,13 @@ function updateEmptyState(visibleCount) {
         } else if (currentView === 'list' && listView) {
             listView.classList.remove('hidden');
         }
+    }
+}
+
+function updateFileCount(visibleCount) {
+    const fileCountElement = document.getElementById('file-count');
+    if (fileCountElement) {
+        fileCountElement.textContent = `${visibleCount} files`;
     }
 }
 
@@ -567,6 +643,7 @@ function selectFile(fileId, event) {
     if (event.ctrlKey || event.metaKey) {
         toggleSelection(fileId);
     } else if (event.shiftKey) {
+        // TODO: Implement shift-select range selection
         toggleSelection(fileId);
     } else {
         selectedFiles.clear();
@@ -596,9 +673,9 @@ function toggleSelectAll() {
     const isChecked = selectAllCheckbox.checked;
     
     document.querySelectorAll('.file-checkbox').forEach(checkbox => {
-        checkbox.checked = isChecked;
         const fileItem = checkbox.closest('[data-file-id]');
-        if (fileItem) {
+        if (fileItem && fileItem.style.display !== 'none') { // Only select visible items
+            checkbox.checked = isChecked;
             const fileId = parseInt(fileItem.dataset.fileId);
             
             if (isChecked) {
@@ -626,40 +703,29 @@ function updateBulkActions() {
 
 // File Actions
 function downloadFile(fileId) {
-    // Try to get download URL from data attribute first
-    const fileElement = document.querySelector(`[data-file-id="${fileId}"]`);
-    if (fileElement && fileElement.dataset.downloadUrl) {
-        window.location.href = fileElement.dataset.downloadUrl;
+    const projectId = document.querySelector('meta[name="project-id"]')?.content;
+    if (!projectId) {
+        console.error('Project ID not found');
         return;
     }
     
-    // Fallback: construct URL from current page
-    const currentPath = window.location.pathname;
-    const projectMatch = currentPath.match(/\/projects\/(\d+)/);
-    if (projectMatch) {
-        const projectId = projectMatch[1];
-        window.location.href = `/admin/projects/${projectId}/files/${fileId}/download`;
-    }
+    window.location.href = `/admin/projects/${projectId}/files/${fileId}/download`;
 }
 
 function downloadSelected() {
     if (selectedFiles.size === 0) {
-        alert('Please select files to download.');
+        showNotification('Please select files to download.', 'warning');
+        return;
+    }
+
+    const projectId = document.querySelector('meta[name="project-id"]')?.content;
+    if (!projectId) {
+        console.error('Project ID not found');
         return;
     }
 
     const form = document.createElement('form');
     form.method = 'POST';
-    
-    // Get project ID from current URL
-    const currentPath = window.location.pathname;
-    const projectMatch = currentPath.match(/\/projects\/(\d+)/);
-    if (!projectMatch) {
-        console.error('Could not determine project ID');
-        return;
-    }
-    
-    const projectId = projectMatch[1];
     form.action = `/admin/projects/${projectId}/files/bulk-download`;
     
     // Add CSRF token
@@ -700,23 +766,19 @@ function deleteFile(fileId, fileName) {
 
 function deleteSelected() {
     if (selectedFiles.size === 0) {
-        alert('Please select files to delete.');
+        showNotification('Please select files to delete.', 'warning');
         return;
     }
 
     if (confirm(`Are you sure you want to delete ${selectedFiles.size} selected file(s)? This action cannot be undone.`)) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        
-        // Get project ID from current URL
-        const currentPath = window.location.pathname;
-        const projectMatch = currentPath.match(/\/projects\/(\d+)/);
-        if (!projectMatch) {
-            console.error('Could not determine project ID');
+        const projectId = document.querySelector('meta[name="project-id"]')?.content;
+        if (!projectId) {
+            console.error('Project ID not found');
             return;
         }
-        
-        const projectId = projectMatch[1];
+
+        const form = document.createElement('form');
+        form.method = 'POST';
         form.action = `/admin/projects/${projectId}/files/bulk-delete`;
         
         // Add CSRF token
@@ -751,18 +813,14 @@ function deleteSelected() {
 
 function confirmDelete() {
     if (deleteFileId) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        
-        // Get project ID from current URL
-        const currentPath = window.location.pathname;
-        const projectMatch = currentPath.match(/\/projects\/(\d+)/);
-        if (!projectMatch) {
-            console.error('Could not determine project ID');
+        const projectId = document.querySelector('meta[name="project-id"]')?.content;
+        if (!projectId) {
+            console.error('Project ID not found');
             return;
         }
-        
-        const projectId = projectMatch[1];
+
+        const form = document.createElement('form');
+        form.method = 'POST';
         form.action = `/admin/projects/${projectId}/files/${deleteFileId}`;
         
         // Add CSRF token
@@ -805,16 +863,29 @@ function previewFile(fileId) {
         previewTitle.textContent = fileName;
     }
     
-    // Get project ID from current URL
-    const currentPath = window.location.pathname;
-    const projectMatch = currentPath.match(/\/projects\/(\d+)/);
-    if (!projectMatch) {
-        console.error('Could not determine project ID');
+    const projectId = document.querySelector('meta[name="project-id"]')?.content;
+    if (!projectId) {
+        console.error('Project ID not found');
         return;
     }
     
-    const projectId = projectMatch[1];
     const previewUrl = `/admin/projects/${projectId}/files/${fileId}/preview`;
+    
+    // Show loading state
+    const previewContent = document.getElementById('preview-content');
+    if (previewContent) {
+        previewContent.innerHTML = `
+            <div class="flex items-center justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span class="ml-2 text-gray-600 dark:text-gray-400">Loading preview...</span>
+            </div>
+        `;
+    }
+    
+    const previewModal = document.getElementById('preview-modal');
+    if (previewModal) {
+        previewModal.classList.remove('hidden');
+    }
     
     fetch(previewUrl)
         .then(response => {
@@ -824,23 +895,21 @@ function previewFile(fileId) {
             throw new Error('Preview not available');
         })
         .then(html => {
-            const previewContent = document.getElementById('preview-content');
             if (previewContent) {
                 previewContent.innerHTML = html;
             }
-            const previewModal = document.getElementById('preview-modal');
-            if (previewModal) {
-                previewModal.classList.remove('hidden');
-            }
         })
         .catch(error => {
-            const previewContent = document.getElementById('preview-content');
+            console.error('Preview error:', error);
             if (previewContent) {
-                previewContent.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Preview not available for this file type.</p>';
-            }
-            const previewModal = document.getElementById('preview-modal');
-            if (previewModal) {
-                previewModal.classList.remove('hidden');
+                previewContent.innerHTML = `
+                    <div class="text-center py-8">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <p class="mt-2 text-gray-500 dark:text-gray-400">Preview not available for this file type.</p>
+                    </div>
+                `;
             }
         });
 }
@@ -851,15 +920,52 @@ function closePreview() {
         previewModal.classList.add('hidden');
     }
 }
+
+// Utility Functions
+function showNotification(message, type = 'info') {
+    const colors = {
+        success: 'bg-green-50 border-green-200 text-green-800',
+        error: 'bg-red-50 border-red-200 text-red-800',
+        warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
+        info: 'bg-blue-50 border-blue-200 text-blue-800'
+    };
+
+    const icons = {
+        success: '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>',
+        error: '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>',
+        warning: '<path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>',
+        info: '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>'
+    };
+
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 z-50 max-w-sm w-full shadow-lg rounded-lg border p-4 ${colors[type]} transform transition-all duration-300 ease-in-out`;
+    notification.innerHTML = `
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                    ${icons[type]}
+                </svg>
+            </div>
+            <div class="ml-3 flex-1">
+                <p class="text-sm font-medium">${message}</p>
+            </div>
+            <div class="ml-auto pl-3">
+                <button onclick="this.closest('.fixed').remove()" class="inline-flex text-current hover:opacity-75">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
 </script>
 @endpush
-
-@php
-function formatFileSize($bytes) {
-    if ($bytes == 0) return '0 Bytes';
-    $k = 1024;
-    $sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    $i = floor(log($bytes) / log($k));
-    return round($bytes / pow($k, $i), 2) . ' ' . $sizes[$i];
-}
-@endphp

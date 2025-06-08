@@ -665,4 +665,5 @@ protected static function boot()
         }
     });
 }
+
 }
