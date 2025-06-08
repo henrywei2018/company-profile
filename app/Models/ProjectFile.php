@@ -591,25 +591,6 @@ public function unmarkAsFavorite(): bool
     }
 }
 
-/**
- * Get file version number (if versioning is implemented).
- */
-public function getVersionAttribute(): int
-{
-    // This would be useful if you implement file versioning
-    // For now, return 1 as default
-    return 1;
-}
-
-/**
- * Check if file is locked (being processed or downloaded).
- */
-public function isLocked(): bool
-{
-    // This could be used for file locking during operations
-    // Implementation depends on your requirements
-    return false;
-}
 
 /**
  * Get file access permissions for current user.
