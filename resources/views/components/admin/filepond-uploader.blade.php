@@ -1,208 +1,237 @@
 {{-- resources/views/components/admin/filepond-uploader.blade.php --}}
 @props([
     'project',
-    'name' => 'filepond',
+    'name' => 'files',
     'multiple' => true,
     'maxFiles' => 10,
     'maxFileSize' => '10MB',
     'acceptedFileTypes' => [],
-    'allowImagePreview' => true,
-    'allowImageCrop' => false,
-    'allowImageResize' => true,
-    'imageResizeTargetWidth' => 1200,
-    'imageResizeTargetHeight' => 800,
     'dropDescription' => 'Drop files here or click to browse',
     'category' => 'general',
     'isPublic' => false,
-    'description' => null
+    'description' => ''
 ])
 
 @php
-    $uploadId = 'filepond-' . uniqid();
-    $formId = 'filepond-form-' . uniqid();
+    $inputId = 'filepond-' . Str::random(8);
+    $acceptedTypes = !empty($acceptedFileTypes) ? implode(',', $acceptedFileTypes) : 'image/*,application/pdf,.doc,.docx,.txt,.csv,.zip,.rar,.7z';
 @endphp
 
-<div x-data="filePondUploader()" class="filepond-upload-container">
-    <!-- FilePond Upload Area -->
-    <div class="mb-4">
-        <input type="file" 
-               id="{{ $uploadId }}"
-               name="{{ $name }}"
-               @if($multiple) multiple @endif
-               class="filepond">
-    </div>
-
-    <!-- Upload Form -->
-    <form id="{{ $formId }}" 
-          action="{{ route('admin.projects.files.process-filepond', $project) }}" 
-          method="POST" 
-          class="space-y-4">
-        @csrf
-        
-        <!-- Hidden field for FilePond files -->
-        <input type="hidden" name="filepond_files" x-model="filePondFiles">
-        
-        <!-- File metadata -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Category
-                </label>
-                <select name="category" 
-                        id="category" 
-                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                    <option value="general" {{ $category === 'general' ? 'selected' : '' }}>General</option>
-                    <option value="documents" {{ $category === 'documents' ? 'selected' : '' }}>Documents</option>
-                    <option value="images" {{ $category === 'images' ? 'selected' : '' }}>Images</option>
-                    <option value="plans" {{ $category === 'plans' ? 'selected' : '' }}>Plans & Drawings</option>
-                    <option value="contracts" {{ $category === 'contracts' ? 'selected' : '' }}>Contracts</option>
-                    <option value="reports" {{ $category === 'reports' ? 'selected' : '' }}>Reports</option>
-                    <option value="certificates" {{ $category === 'certificates' ? 'selected' : '' }}>Certificates</option>
-                    <option value="presentations" {{ $category === 'presentations' ? 'selected' : '' }}>Presentations</option>
-                    <option value="other" {{ $category === 'other' ? 'selected' : '' }}>Other</option>
-                </select>
-            </div>
-            
-            <div>
-                <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Description
-                </label>
-                <input type="text" 
-                       name="description" 
-                       id="description" 
-                       value="{{ $description }}"
-                       placeholder="Optional description for uploaded files"
-                       class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-            </div>
+<div x-data="filepondUploader('{{ $inputId }}', {{ json_encode([
+    'project_id' => $project->id,
+    'upload_url' => route('admin.projects.files.upload', $project),
+    'delete_url' => route('admin.projects.files.delete', $project),
+    'process_url' => route('admin.projects.files.process', $project),
+    'csrf_token' => csrf_token(),
+    'max_files' => $maxFiles,
+    'max_file_size' => $maxFileSize,
+    'accepted_file_types' => $acceptedTypes,
+    'allow_multiple' => $multiple,
+    'drop_description' => $dropDescription,
+    'category' => $category,
+    'is_public' => $isPublic,
+    'description' => $description
+]) }})" class="filepond-container">
+    
+    <!-- File Categories and Options -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div>
+            <label for="file-category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Category
+            </label>
+            <select id="file-category" x-model="fileCategory" class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                <option value="general">General</option>
+                <option value="documents">Documents</option>
+                <option value="images">Images</option>
+                <option value="plans">Plans & Drawings</option>
+                <option value="contracts">Contracts</option>
+                <option value="reports">Reports</option>
+                <option value="certificates">Certificates</option>
+                <option value="presentations">Presentations</option>
+                <option value="other">Other</option>
+            </select>
         </div>
         
-        <div class="flex items-center">
-            <input type="checkbox" 
-                   name="is_public" 
-                   id="is_public" 
-                   value="1" 
-                   {{ $isPublic ? 'checked' : '' }}
-                   class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring-blue-500">
-            <label for="is_public" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                Make files publicly accessible
+        <div>
+            <label for="file-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Description (Optional)
+            </label>
+            <input type="text" 
+                   id="file-description" 
+                   x-model="fileDescription"
+                   placeholder="Brief description of files"
+                   class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+        </div>
+        
+        <div class="flex items-end">
+            <label class="flex items-center">
+                <input type="checkbox" x-model="isPublic" class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring-blue-500">
+                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Make files public</span>
             </label>
         </div>
-        
-        <!-- Upload Progress -->
-        <div x-show="uploading" class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
-            <div class="flex items-center">
-                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span class="text-blue-700 dark:text-blue-300">Processing files...</span>
-            </div>
-        </div>
-        
-        <!-- Upload Button -->
-        <div class="flex items-center space-x-3">
-            <button type="submit" 
-                    :disabled="filePondFiles.length === 0 || uploading"
-                    class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                </svg>
-                Upload Files
-            </button>
-            
-            <span x-show="filePondFiles.length > 0" class="text-sm text-gray-600 dark:text-gray-400">
-                <span x-text="filePondFiles.length"></span> file(s) ready
-            </span>
-        </div>
-    </form>
+    </div>
     
-    <!-- Upload Results -->
-    <div x-show="uploadComplete && uploadResults.length > 0" class="mt-4">
-        <div class="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
-            <div class="flex">
-                <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                </svg>
+    <!-- FilePond Input -->
+    <input type="file" 
+           id="{{ $inputId }}"
+           x-ref="fileInput"
+           name="{{ $name }}"
+           {{ $multiple ? 'multiple' : '' }}
+           accept="{{ $acceptedTypes }}"
+           class="filepond">
+    
+    <!-- Upload Progress -->
+    <div x-show="isUploading" class="mt-4">
+        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg class="animate-spin h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
                 <div class="ml-3">
-                    <h3 class="text-sm font-medium text-green-800 dark:text-green-400">
-                        Files uploaded successfully!
-                    </h3>
-                    <div class="mt-2 text-sm text-green-700 dark:text-green-300">
-                        <ul class="list-disc list-inside space-y-1">
-                            <template x-for="file in uploadResults" :key="file.id">
-                                <li x-text="file.name"></li>
-                            </template>
-                        </ul>
-                    </div>
+                    <p class="text-sm font-medium text-blue-800 dark:text-blue-400">
+                        Processing <span x-text="uploadedFiles.length"></span> file(s)...
+                    </p>
                 </div>
             </div>
         </div>
     </div>
+    
+    <!-- Upload Button -->
+    <div class="mt-6 flex items-center justify-between">
+        <div class="text-sm text-gray-500 dark:text-gray-400">
+            <span x-show="uploadedFiles.length > 0">
+                <span x-text="uploadedFiles.length"></span> file(s) ready to upload
+            </span>
+        </div>
+        
+        <button type="button" 
+                @click="submitFiles()"
+                :disabled="uploadedFiles.length === 0 || isUploading"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg x-show="!isUploading" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            </svg>
+            <svg x-show="isUploading" class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span x-text="isUploading ? 'Uploading...' : 'Upload Files'"></span>
+        </button>
+    </div>
 </div>
 
+@once
 @push('styles')
 <link href="https://unpkg.com/filepond/dist/filepond.css" rel="stylesheet">
 <link href="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css" rel="stylesheet">
+
+<style>
+.filepond--root {
+    margin-bottom: 0;
+}
+
+.filepond--panel-root {
+    border-radius: 0.5rem;
+    border: 2px dashed #d1d5db;
+    background-color: #f9fafb;
+}
+
+.dark .filepond--panel-root {
+    border-color: #4b5563;
+    background-color: #1f2937;
+}
+
+.filepond--drop-label {
+    color: #6b7280;
+}
+
+.dark .filepond--drop-label {
+    color: #9ca3af;
+}
+
+.filepond--label-action {
+    color: #3b82f6;
+    text-decoration: underline;
+}
+
+.dark .filepond--label-action {
+    color: #60a5fa;
+}
+
+.filepond--item {
+    border-radius: 0.375rem;
+}
+
+.filepond--file-action-button {
+    border-radius: 50%;
+}
+
+.filepond--progress-indicator {
+    color: #3b82f6;
+}
+
+.filepond--file-status {
+    color: #6b7280;
+}
+
+.dark .filepond--file-status {
+    color: #9ca3af;
+}
+</style>
 @endpush
 
 @push('scripts')
+<!-- FilePond scripts -->
 <script src="https://unpkg.com/filepond/dist/filepond.min.js"></script>
+<script src="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.min.js"></script>
+<script src="https://unpkg.com/filepond-plugin-image-resize/dist/filepond-plugin-image-resize.min.js"></script>
 <script src="https://unpkg.com/filepond-plugin-file-validate-type/dist/filepond-plugin-file-validate-type.min.js"></script>
 <script src="https://unpkg.com/filepond-plugin-file-validate-size/dist/filepond-plugin-file-validate-size.min.js"></script>
-<script src="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.min.js"></script>
-<script src="https://unpkg.com/filepond-plugin-image-crop/dist/filepond-plugin-image-crop.min.js"></script>
-<script src="https://unpkg.com/filepond-plugin-image-resize/dist/filepond-plugin-image-resize.min.js"></script>
-<script src="https://unpkg.com/filepond-plugin-image-transform/dist/filepond-plugin-image-transform.min.js"></script>
 
 <script>
-function filePondUploader() {
+// Register FilePond plugins
+FilePond.registerPlugin(
+    FilePondPluginImagePreview,
+    FilePondPluginImageResize,
+    FilePondPluginFileValidateType,
+    FilePondPluginFileValidateSize
+);
+
+function filepondUploader(inputId, config) {
     return {
-        filePondFiles: [],
-        uploading: false,
-        uploadComplete: false,
-        uploadResults: [],
         pond: null,
+        uploadedFiles: [],
+        isUploading: false,
+        fileCategory: config.category,
+        fileDescription: config.description,
+        isPublic: config.is_public,
         
         init() {
             this.initFilePond();
         },
         
         initFilePond() {
-            // Register FilePond plugins
-            FilePond.registerPlugin(
-                FilePondPluginFileValidateType,
-                FilePondPluginFileValidateSize,
-                @if($allowImagePreview)
-                FilePondPluginImagePreview,
-                @endif
-                @if($allowImageCrop)
-                FilePondPluginImageCrop,
-                @endif
-                @if($allowImageResize)
-                FilePondPluginImageResize,
-                FilePondPluginImageTransform
-                @endif
-            );
-
-            // Create FilePond instance
-            const inputElement = document.querySelector('#{{ $uploadId }}');
-            this.pond = FilePond.create(inputElement, {
-                allowMultiple: {{ $multiple ? 'true' : 'false' }},
-                maxFiles: {{ $maxFiles }},
-                maxFileSize: '{{ $maxFileSize }}',
-                @if(count($acceptedFileTypes) > 0)
-                acceptedFileTypes: @json($acceptedFileTypes),
-                @endif
-                
-                // Server configuration
+            // Wait for FilePond to be available
+            if (typeof FilePond === 'undefined') {
+                setTimeout(() => this.initFilePond(), 100);
+                return;
+            }
+            
+            // Configure FilePond using the Laravel FilePond package endpoints
+            FilePond.setOptions({
                 server: {
                     process: {
-                        url: '{{ route("admin.projects.files.filepond-process", $project) }}',
+                        url: config.upload_url,
                         method: 'POST',
                         headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            'X-CSRF-TOKEN': config.csrf_token,
+                            'Accept': 'application/json'
                         },
                         onload: (response) => {
+                            // Return the server ID for the uploaded file
                             return response;
                         },
                         onerror: (response) => {
@@ -211,139 +240,208 @@ function filePondUploader() {
                         }
                     },
                     revert: {
-                        url: '{{ route("admin.projects.files.filepond-revert", $project) }}',
+                        url: config.delete_url,
                         method: 'DELETE',
                         headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            'X-CSRF-TOKEN': config.csrf_token
+                        },
+                        onload: (response) => {
+                            return response;
                         }
                     }
                 },
-                
-                // Labels
-                labelIdle: '{{ $dropDescription }} <span class="filepond--label-action">Browse</span>',
+                allowMultiple: config.allow_multiple,
+                maxFiles: config.max_files,
+                maxFileSize: config.max_file_size,
+                acceptedFileTypes: config.accepted_file_types.split(','),
+                dropDescription: config.drop_description,
+                labelIdle: `${config.drop_description} <span class="filepond--label-action">Browse</span>`,
+                allowImagePreview: true,
+                allowImageCrop: false,
+                allowImageResize: true,
+                imageResizeTargetWidth: 1200,
+                imageResizeTargetHeight: 800,
+                imageResizeMode: 'contain',
+                stylePanelLayout: 'compact circle',
+                styleLoadIndicatorPosition: 'center bottom',
+                styleProgressIndicatorPosition: 'right bottom',
+                styleButtonRemoveItemPosition: 'left bottom',
+                styleButtonProcessItemPosition: 'right bottom',
                 labelFileProcessing: 'Uploading',
                 labelFileProcessingComplete: 'Upload complete',
                 labelFileProcessingAborted: 'Upload cancelled',
                 labelFileProcessingError: 'Error during upload',
-                labelTapToRetry: 'Tap to retry',
-                labelTapToCancel: 'Tap to cancel',
-                
-                @if($allowImageResize)
-                // Image resize options
-                imageResizeTargetWidth: {{ $imageResizeTargetWidth }},
-                imageResizeTargetHeight: {{ $imageResizeTargetHeight }},
-                imageResizeMode: 'contain',
-                imageResizeUpscale: false,
-                @endif
-                
-                // Callbacks
-                onprocessfile: (error, file) => {
-                    if (!error) {
-                        this.filePondFiles.push(file.serverId);
-                    }
-                },
-                onremovefile: (error, file) => {
-                    if (!error && file.serverId) {
-                        const index = this.filePondFiles.indexOf(file.serverId);
-                        if (index > -1) {
-                            this.filePondFiles.splice(index, 1);
-                        }
-                    }
-                },
-                onprocessfiles: () => {
-                    console.log('All files processed');
+                labelTapToCancel: 'tap to cancel',
+                labelTapToRetry: 'tap to retry',
+                labelTapToUndo: 'tap to undo'
+            });
+            
+            // Create FilePond instance
+            this.pond = FilePond.create(this.$refs.fileInput);
+            
+            // Listen for file events
+            this.pond.on('addfile', (error, file) => {
+                if (!error) {
+                    console.log('File added:', file.filename);
+                    this.updateUploadedFiles();
                 }
+            });
+            
+            this.pond.on('removefile', (error, file) => {
+                console.log('File removed:', file.filename);
+                this.updateUploadedFiles();
+            });
+            
+            this.pond.on('processfile', (error, file) => {
+                if (!error) {
+                    console.log('File processed:', file.filename, 'Server ID:', file.serverId);
+                    this.updateUploadedFiles();
+                } else {
+                    console.error('Process error:', error);
+                }
+            });
+            
+            this.pond.on('processfiles', () => {
+                console.log('All files processed');
             });
         },
         
-        async submitForm() {
-            if (this.filePondFiles.length === 0) {
-                alert('Please select files to upload');
+        updateUploadedFiles() {
+            // Get files that have been successfully processed (uploaded to temp storage)
+            this.uploadedFiles = this.pond.getFiles().filter(file => 
+                file.status === FilePond.FileStatus.PROCESSING_COMPLETE && file.serverId
+            );
+            console.log('Updated uploaded files:', this.uploadedFiles.length);
+        },
+        
+        async submitFiles() {
+            if (this.uploadedFiles.length === 0) {
+                this.showNotification('No files to upload', 'warning');
                 return;
             }
             
-            this.uploading = true;
-            this.uploadComplete = false;
-            this.uploadResults = [];
+            this.isUploading = true;
             
             try {
-                const form = document.querySelector('#{{ $formId }}');
-                const formData = new FormData(form);
+                // Get server IDs from processed files
+                const serverIds = this.uploadedFiles.map(file => file.serverId);
+                console.log('Submitting server IDs:', serverIds);
                 
-                // Add FilePond files as JSON
-                formData.set('filepond_files', JSON.stringify(this.filePondFiles));
+                // Prepare form data
+                const formData = new FormData();
+                serverIds.forEach(serverId => {
+                    formData.append('filepond_files[]', serverId);
+                });
+                formData.append('category', this.fileCategory);
+                formData.append('description', this.fileDescription);
+                formData.append('is_public', this.isPublic ? '1' : '0');
+                formData.append('_token', config.csrf_token);
                 
-                const response = await fetch(form.action, {
+                // Submit to server
+                const response = await fetch(config.process_url, {
                     method: 'POST',
                     body: formData,
                     headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 });
                 
                 const result = await response.json();
+                console.log('Submit response:', result);
                 
                 if (result.success) {
-                    this.uploadResults = result.files || [];
-                    this.uploadComplete = true;
+                    this.showNotification(result.message, 'success');
                     
                     // Clear FilePond
                     this.pond.removeFiles();
-                    this.filePondFiles = [];
+                    this.uploadedFiles = [];
                     
-                    // Show success message
-                    this.showNotification('success', result.message);
-                    
-                    // Optionally redirect or refresh
+                    // Redirect or refresh after success
                     setTimeout(() => {
-                        if (window.location.pathname.includes('/files/create')) {
-                            window.location.href = '{{ route("admin.projects.files.index", $project) }}';
-                        } else {
-                            window.location.reload();
-                        }
-                    }, 2000);
-                    
+                        window.location.href = window.location.href.replace('/create', '');
+                    }, 1500);
                 } else {
-                    this.showNotification('error', result.message || 'Upload failed');
+                    throw new Error(result.message || 'Upload failed');
                 }
                 
             } catch (error) {
                 console.error('Upload error:', error);
-                this.showNotification('error', 'Upload failed: ' + error.message);
+                this.showNotification(error.message || 'Upload failed', 'error');
             } finally {
-                this.uploading = false;
+                this.isUploading = false;
             }
         },
         
-        showNotification(type, message) {
+        showNotification(message, type = 'info') {
+            // Remove existing notifications
+            const existingNotifications = document.querySelectorAll('.notification-toast');
+            existingNotifications.forEach(notification => notification.remove());
+
             // Create notification element
             const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 px-6 py-3 rounded-md text-white z-50 ${
-                type === 'success' ? 'bg-green-500' : 'bg-red-500'
-            }`;
-            notification.textContent = message;
-            document.body.appendChild(notification);
+            notification.className = `notification-toast fixed top-4 right-4 z-50 max-w-sm w-full shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden transform transition-all duration-300 ease-in-out`;
             
-            // Remove after 5 seconds
+            let bgColor, textColor, iconSvg;
+            
+            switch (type) {
+                case 'success':
+                    bgColor = 'bg-green-50 dark:bg-green-900/20';
+                    textColor = 'text-green-800 dark:text-green-400';
+                    iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>';
+                    break;
+                case 'error':
+                    bgColor = 'bg-red-50 dark:bg-red-900/20';
+                    textColor = 'text-red-800 dark:text-red-400';
+                    iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>';
+                    break;
+                case 'warning':
+                    bgColor = 'bg-yellow-50 dark:bg-yellow-900/20';
+                    textColor = 'text-yellow-800 dark:text-yellow-400';
+                    iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>';
+                    break;
+                default:
+                    bgColor = 'bg-blue-50 dark:bg-blue-900/20';
+                    textColor = 'text-blue-800 dark:text-blue-400';
+                    iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>';
+            }
+            
+            notification.innerHTML = `
+                <div class="${bgColor} p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 ${textColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                ${iconSvg}
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium ${textColor}">${message}</p>
+                        </div>
+                        <div class="ml-auto pl-3">
+                            <div class="-mx-1.5 -my-1.5">
+                                <button onclick="this.closest('.notification-toast').remove()" 
+                                        class="inline-flex rounded-md p-1.5 ${textColor} hover:bg-black hover:bg-opacity-10 focus:outline-none">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Add to page
+            document.body.appendChild(notification);
+
+            // Auto-remove after 5 seconds
             setTimeout(() => {
-                notification.remove();
+                if (notification.parentNode) {
+                    notification.remove();
+                }
             }, 5000);
         }
     }
 }
-
-// Form submission handler
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle form submission
-    document.querySelector('#{{ $formId }}').addEventListener('submit', function(e) {
-        e.preventDefault();
-        // Get the Alpine.js component instance
-        const component = Alpine.$data(this.closest('[x-data]'));
-        if (component && component.submitForm) {
-            component.submitForm();
-        }
-    });
-});
 </script>
-@endpush
+@endonce

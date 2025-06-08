@@ -148,11 +148,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
             Route::delete('/{file}', [ProjectFileController::class, 'destroy'])->name('destroy');
             
             // FilePond specific endpoints
-            Route::post('/filepond/process', [ProjectFileController::class, 'filepondProcess'])->name('filepond-process');
-            Route::delete('/filepond/revert', [ProjectFileController::class, 'filepondRevert'])->name('filepond-revert');
-            Route::post('/filepond/submit', [ProjectFileController::class, 'processFilePondFiles'])->name('process-filepond');
+            Route::post('/process', [ProjectFileController::class, 'processFilePond'])->name('process');
+            Route::delete('/upload', [ProjectFileController::class, 'upload'])->name('upload');
+            Route::post('/upload', [ProjectFileController::class, 'delete'])->name('delete');
             
             // Additional file operations
+            Route::post('/cleanup', [ProjectFileController::class, 'cleanupTempFiles'])->name('cleanup');
             Route::post('/bulk-delete', [ProjectFileController::class, 'bulkDelete'])->name('bulk-delete');
             Route::get('/search', [ProjectFileController::class, 'search'])->name('search');
             Route::get('/export', [ProjectFileController::class, 'export'])->name('export');

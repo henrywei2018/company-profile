@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "29c0290a2e5566a92bf0f09748d110cd",
+    "content-hash": "658cb849790608b0a17f0f3e731d0bee",
     "packages": [
         {
             "name": "barryvdh/laravel-dompdf",
@@ -4078,16 +4078,16 @@
         },
         {
             "name": "rahulhaque/laravel-filepond",
-            "version": "v12.0.0",
+            "version": "v12.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/rahulhaque/laravel-filepond.git",
-                "reference": "09c31ca280689229ce318638cc05b83caf1fe721"
+                "reference": "fa3ed0d4825c70f8be54ea08cae3d8da513efce1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/rahulhaque/laravel-filepond/zipball/09c31ca280689229ce318638cc05b83caf1fe721",
-                "reference": "09c31ca280689229ce318638cc05b83caf1fe721",
+                "url": "https://api.github.com/repos/rahulhaque/laravel-filepond/zipball/fa3ed0d4825c70f8be54ea08cae3d8da513efce1",
+                "reference": "fa3ed0d4825c70f8be54ea08cae3d8da513efce1",
                 "shasum": ""
             },
             "require": {
@@ -4141,7 +4141,7 @@
             ],
             "support": {
                 "issues": "https://github.com/rahulhaque/laravel-filepond/issues",
-                "source": "https://github.com/rahulhaque/laravel-filepond/tree/v12.0.0"
+                "source": "https://github.com/rahulhaque/laravel-filepond/tree/v12.1.1"
             },
             "funding": [
                 {
@@ -4149,7 +4149,7 @@
                     "type": "ko_fi"
                 }
             ],
-            "time": "2025-02-27T17:51:23+00:00"
+            "time": "2025-05-08T07:55:02+00:00"
         },
         {
             "name": "ralouphie/getallheaders",

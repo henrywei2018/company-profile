@@ -1,5 +1,5 @@
 <?php
-// config/filepond.php
+// config/filepond.php - Complete configuration
 
 return [
     /*
@@ -20,7 +20,7 @@ return [
     | Path for storing temporary uploads
     |
     */
-    'path' => 'filepond/tmp',
+    'path' => 'temp/filepond',
 
     /*
     |--------------------------------------------------------------------------
@@ -88,5 +88,52 @@ return [
         'application/json',
         'application/xml',
         'text/xml',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Route Settings
+    |--------------------------------------------------------------------------
+    |
+    | Configure the routes for FilePond endpoints
+    |
+    */
+    'route' => [
+        'prefix' => 'filepond',
+        'middleware' => ['web'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Soft Validation
+    |--------------------------------------------------------------------------
+    |
+    | Enable soft validation to allow files that don't pass validation
+    | but mark them with errors
+    |
+    */
+    'soft_validation' => false,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Input Field
+    |--------------------------------------------------------------------------
+    |
+    | The name of the input field that FilePond will use
+    |
+    */
+    'input_field' => 'file',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Chunks
+    |--------------------------------------------------------------------------
+    |
+    | Enable chunked uploads for large files
+    |
+    */
+    'chunks' => [
+        'enabled' => false,
+        'chunk_size' => 1024 * 1024, // 1MB chunks
     ],
 ];

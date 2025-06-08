@@ -86,52 +86,6 @@
         </ul>
     </x-admin.help-text>
 
-    <!-- FilePond Upload Interface -->
-    <x-admin.card>
-        <x-slot name="header">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-                File Upload
-            </h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Drag and drop files or click to browse
-            </p>
-        </x-slot>
-
-        <!-- FilePond Component -->
-        <x-admin.filepond-uploader 
-            :project="$project"
-            name="files"
-            :multiple="true"
-            :maxFiles="10"
-            maxFileSize="10MB"
-            :acceptedFileTypes="[
-                'image/*',
-                'application/pdf',
-                'application/msword',
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'application/vnd.ms-excel',
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'application/vnd.ms-powerpoint',
-                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                'text/plain',
-                'text/csv',
-                'application/zip',
-                'application/x-rar-compressed',
-                'application/x-7z-compressed',
-                'application/json',
-                'application/xml'
-            ]"
-            :allowImagePreview="true"
-            :allowImageCrop="false"
-            :allowImageResize="true"
-            :imageResizeTargetWidth="1200"
-            :imageResizeTargetHeight="800"
-            dropDescription="Drop files here or click to browse"
-            category="general"
-            :isPublic="false"
-        />
-    </x-admin.card>
-
     <!-- Alternative: Traditional Upload Form -->
     <x-admin.card class="mt-6">
         <x-slot name="header">

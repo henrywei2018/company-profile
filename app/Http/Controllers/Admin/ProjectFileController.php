@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectFile;
 use App\Services\FileUploadService;
-use App\Services\FilePondService;
 use App\Facades\Notifications;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use RahulHaque\LaravelFilepond\Http\Controllers\FilepondController;
 
 class ProjectFileController extends Controller
 {
@@ -34,7 +34,7 @@ class ProjectFileController extends Controller
             ->paginate(20);
 
         // Group files by category
-        $filesByCategory = $project->files()
+        $filesByCategory = $project->files() 
             ->orderBy('category')
             ->orderBy('created_at', 'desc')
             ->get()
@@ -161,96 +161,93 @@ class ProjectFileController extends Controller
     }
 
     /**
-     * FilePond process endpoint - handles single file upload to temporary storage
+     * FilePond upload endpoint - handles single file upload to temporary storage
+     * This extends the FilePond controller from the package
      */
-    public function process(Request $request, Project $project)
+    public function upload(Request $request, Project $project)
     {
         $this->authorize('update', $project);
 
         try {
-            $file = $request->file('file');
-            
-            if (!$file || !$file->isValid()) {
-                return response('No valid file provided', 400);
-            }
-
-            // Validate file
-            $errors = $this->validateFile($file);
-            if (!empty($errors)) {
-                return response(implode(', ', $errors), 422);
-            }
-
-            // Generate unique filename
-            $filename = uniqid('filepond_') . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
-            
-            // Store in temporary location
-            $tempPath = 'temp/filepond/' . $filename;
-            $file->storeAs('temp/filepond', $filename, 'public');
-
-            // Store metadata in session for later processing
-            session()->put("filepond_files.{$filename}", [
-                'original_name' => $file->getClientOriginalName(),
-                'size' => $file->getSize(),
-                'type' => $file->getMimeType(),
-                'temp_path' => $tempPath,
-                'project_id' => $project->id,
-                'uploaded_at' => now()->toISOString()
+            // Validate the file
+            $request->validate([
+                'file' => 'required|file|max:10240', // Max 10MB
             ]);
 
-            // Return the filename as the server ID
-            return response($filename, 200)
-                ->header('Content-Type', 'text/plain');
+            $file = $request->file('file');
+            
+            // Additional validation
+            $errors = $this->validateFile($file);
+            if (!empty($errors)) {
+                return response()->json(['error' => implode(', ', $errors)], 422);
+            }
+
+            // Use the FilePond controller from the package
+            $filepondController = new FilepondController();
+            
+            // Store the file temporarily using FilePond
+            $response = $filepondController->upload($request);
+            
+            // If successful, store additional project metadata in session
+            if ($response->getStatusCode() === 200) {
+                $serverId = $response->getContent();
+                
+                // Store project context in session
+                session()->put("filepond_project_{$serverId}", [
+                    'project_id' => $project->id,
+                    'original_name' => $file->getClientOriginalName(),
+                    'size' => $file->getSize(),
+                    'type' => $file->getMimeType(),
+                    'uploaded_at' => now()->toISOString()
+                ]);
+            }
+
+            return $response;
 
         } catch (\Exception $e) {
-            \Log::error('FilePond process failed: ' . $e->getMessage(), [
+            \Log::error('FilePond upload failed: ' . $e->getMessage(), [
                 'project_id' => $project->id,
                 'file_name' => $request->file('file')?->getClientOriginalName()
             ]);
             
-            return response('Upload failed: ' . $e->getMessage(), 500);
+            return response()->json(['error' => 'Upload failed: ' . $e->getMessage()], 500);
         }
     }
 
     /**
-     * FilePond revert endpoint - removes temporary file
+     * FilePond delete endpoint - removes temporary file
      */
-    public function revert(Request $request, Project $project)
+    public function delete(Request $request, Project $project)
     {
         $this->authorize('update', $project);
 
         try {
-            // FilePond sends the server ID in the request body for DELETE requests
+            // Get the server ID from request body
             $serverId = $request->getContent();
             
             if (empty($serverId)) {
-                return response('Invalid server ID', 400);
+                return response()->json(['error' => 'Invalid server ID'], 400);
             }
 
-            // Get file metadata from session
-            $fileData = session()->get("filepond_files.{$serverId}");
+            // Use the FilePond controller from the package
+            $filepondController = new FilepondController();
+            $response = $filepondController->delete($request);
             
-            if ($fileData && isset($fileData['temp_path'])) {
-                // Delete temporary file
-                if (Storage::disk('public')->exists($fileData['temp_path'])) {
-                    Storage::disk('public')->delete($fileData['temp_path']);
-                }
-                
-                // Remove from session
-                session()->forget("filepond_files.{$serverId}");
-            }
+            // Clean up our session data
+            session()->forget("filepond_project_{$serverId}");
             
-            return response('', 200);
+            return $response;
 
         } catch (\Exception $e) {
-            \Log::error('FilePond revert failed: ' . $e->getMessage());
-            return response('', 500);
+            \Log::error('FilePond delete failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Delete failed'], 500);
         }
     }
 
     /**
-     * Process FilePond submitted files - move from temp to permanent storage
+     * Process FilePond form submission
      */
-    public function processSubmission(Request $request, Project $project)
+    public function processFilePond(Request $request, Project $project)
     {
         $this->authorize('update', $project);
 
@@ -275,47 +272,52 @@ class ProjectFileController extends Controller
         DB::transaction(function () use ($serverIds, $request, $project, &$processedFiles) {
             foreach ($serverIds as $serverId) {
                 try {
-                    // Get file info from session
-                    $fileData = session()->get("filepond_files.{$serverId}");
+                    // Get file metadata from session
+                    $fileData = session()->get("filepond_project_{$serverId}");
                     
-                    if (!$fileData) {
-                        \Log::warning('Invalid server ID in FilePond submission', ['server_id' => $serverId]);
+                    if (!$fileData || $fileData['project_id'] != $project->id) {
+                        \Log::warning('Invalid FilePond server ID or project mismatch', [
+                            'server_id' => $serverId,
+                            'expected_project' => $project->id
+                        ]);
                         continue;
                     }
 
-                    // Check if temp file exists
-                    if (!Storage::disk('public')->exists($fileData['temp_path'])) {
-                        \Log::warning('Temp file not found for FilePond submission', [
+                    // Get the temporary file path from FilePond
+                    $tempPath = config('filepond.path') . '/' . $serverId;
+                    $tempDisk = config('filepond.disk', 'local');
+                    
+                    if (!Storage::disk($tempDisk)->exists($tempPath)) {
+                        \Log::warning('FilePond temporary file not found', [
                             'server_id' => $serverId,
-                            'temp_path' => $fileData['temp_path']
+                            'temp_path' => $tempPath
                         ]);
                         continue;
                     }
 
                     // Generate permanent path
-                    $permanentPath = 'projects/' . $project->id . '/files/' . 
-                        uniqid() . '_' . Str::slug(pathinfo($fileData['original_name'], PATHINFO_FILENAME)) . 
-                        '.' . pathinfo($fileData['original_name'], PATHINFO_EXTENSION);
-                    
-                    // Move from temp to permanent location
-                    if (Storage::disk('public')->move($fileData['temp_path'], $permanentPath)) {
-                        // Create database record
-                        $projectFile = $project->files()->create([
-                            'file_path' => $permanentPath,
-                            'file_name' => $fileData['original_name'],
-                            'file_size' => $fileData['size'],
-                            'file_type' => $fileData['type'],
-                            'category' => $request->input('category', 'general'),
-                            'description' => $request->input('description'),
-                            'is_public' => $request->boolean('is_public', false),
-                            'download_count' => 0,
-                        ]);
+                    $filename = $this->generateSafeFilename($fileData['original_name']);
+                    $permanentPath = 'projects/' . $project->id . '/files/' . $filename;
 
-                        $processedFiles[] = $projectFile;
-                        
-                        // Clean up session
-                        session()->forget("filepond_files.{$serverId}");
+                    // Move from temp to permanent location
+                    $publicDisk = 'public';
+
+                    if ($tempDisk === $publicDisk) {
+                        // Same disk, just move
+                        if (Storage::disk($publicDisk)->move($tempPath, $permanentPath)) {
+                            $this->createFileRecord($project, $fileData, $permanentPath, $request, $processedFiles);
+                        }
+                    } else {
+                        // Different disks, copy then delete
+                        $tempContent = Storage::disk($tempDisk)->get($tempPath);
+                        if (Storage::disk($publicDisk)->put($permanentPath, $tempContent)) {
+                            Storage::disk($tempDisk)->delete($tempPath);
+                            $this->createFileRecord($project, $fileData, $permanentPath, $request, $processedFiles);
+                        }
                     }
+
+                    // Clean up session data
+                    session()->forget("filepond_project_{$serverId}");
 
                 } catch (\Exception $e) {
                     \Log::error('FilePond file processing failed: ' . $e->getMessage(), [
@@ -448,38 +450,53 @@ class ProjectFileController extends Controller
     }
 
     /**
-     * Cleanup old temporary FilePond files
+     * Cleanup old temporary files
      */
     public function cleanupTempFiles()
     {
         try {
-            $tempPath = 'temp/filepond';
+            $tempPath = config('filepond.path');
+            $tempDisk = config('filepond.disk', 'local');
             
-            if (Storage::disk('public')->exists($tempPath)) {
-                $files = Storage::disk('public')->files($tempPath);
-                $deletedCount = 0;
+            $deletedCount = 0;
+            
+            if (Storage::disk($tempDisk)->exists($tempPath)) {
+                $files = Storage::disk($tempDisk)->files($tempPath);
                 
                 foreach ($files as $file) {
-                    $fileAge = now()->diffInHours(Storage::disk('public')->lastModified($file) ?: 0);
+                    $fileAge = now()->diffInHours(Storage::disk($tempDisk)->lastModified($file) ?: 0);
                     
                     // Delete files older than 2 hours
                     if ($fileAge > 2) {
-                        Storage::disk('public')->delete($file);
+                        Storage::disk($tempDisk)->delete($file);
                         $deletedCount++;
                     }
                 }
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => "Cleaned up {$deletedCount} temporary files",
-                    'deleted_count' => $deletedCount
-                ]);
+            }
+            
+            // Clean up old session data
+            $sessionKeys = array_keys(session()->all());
+            $filepondKeys = array_filter($sessionKeys, function($key) {
+                return str_starts_with($key, 'filepond_project_');
+            });
+            
+            $sessionCleanedCount = 0;
+            foreach ($filepondKeys as $key) {
+                $data = session()->get($key);
+                if (isset($data['uploaded_at'])) {
+                    $uploadedAt = \Carbon\Carbon::parse($data['uploaded_at']);
+                    if ($uploadedAt->addHours(2)->isPast()) {
+                        session()->forget($key);
+                        $sessionCleanedCount++;
+                    }
+                }
             }
             
             return response()->json([
                 'success' => true,
-                'message' => 'No temporary files to clean up',
-                'deleted_count' => 0
+                'message' => "Cleaned up {$deletedCount} temporary files and {$sessionCleanedCount} session entries",
+                'deleted_files' => $deletedCount,
+                'cleared_sessions' => $sessionCleanedCount
             ]);
             
         } catch (\Exception $e) {
@@ -490,6 +507,37 @@ class ProjectFileController extends Controller
                 'message' => 'Cleanup failed: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Helper method to create file record
+     */
+    private function createFileRecord(Project $project, array $fileData, string $permanentPath, Request $request, array &$processedFiles)
+    {
+        $projectFile = $project->files()->create([
+            'file_path' => $permanentPath,
+            'file_name' => $fileData['original_name'],
+            'file_size' => $fileData['size'],
+            'file_type' => $fileData['type'],
+            'category' => $request->input('category', 'general'),
+            'description' => $request->input('description'),
+            'is_public' => $request->boolean('is_public', false),
+            'download_count' => 0,
+        ]);
+
+        $processedFiles[] = $projectFile;
+    }
+
+    /**
+     * Generate safe filename
+     */
+    private function generateSafeFilename(string $originalName): string
+    {
+        $pathInfo = pathinfo($originalName);
+        $extension = isset($pathInfo['extension']) ? '.' . $pathInfo['extension'] : '';
+        $basename = $pathInfo['filename'] ?? 'file';
+        
+        return uniqid() . '_' . Str::slug($basename) . $extension;
     }
 
     /**

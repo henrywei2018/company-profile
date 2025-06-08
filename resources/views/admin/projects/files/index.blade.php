@@ -186,8 +186,8 @@
                                                target="_blank"
                                                class="text-blue-600 hover:text-blue-800 text-xs">
                                                 Preview
-                                            </a>
-                                        @endif
+                                            </a> 
+                                        @endif 
                                         
                                         <a href="{{ route('admin.projects.files.download', [$project, $file]) }}" 
                                            class="text-green-600 hover:text-green-800 text-xs">
