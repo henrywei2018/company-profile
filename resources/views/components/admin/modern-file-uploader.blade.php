@@ -370,7 +370,7 @@ function modernFileUploader() {
                     
                     // Redirect after success
                     setTimeout(() => {
-                        window.location.href = '{{ route("admin.projects.files.index", $project) }}';
+                        window.location.href = '{{ route("admin.projects.files.show", $project) }}';
                     }, 2000);
                 } else {
                     throw new Error(result.message || 'Upload failed');
