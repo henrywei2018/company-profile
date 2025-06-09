@@ -22,6 +22,7 @@ use App\Http\Controllers\Client\{
     NotificationPreferencesController
 };
 use App\Http\Controllers\RobotsController;
+use App\Http\Controllers\UnifiedProfileController;
 
 require __DIR__ . '/auth.php';
 
@@ -103,7 +104,7 @@ Route::prefix('api/chat')->group(function () {
 | Authenticated User Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth')->group(function () {
+Route::middleware('auth, admin')->group(function () {
     Route::get('/dashboard', function () {
         $user = auth()->user();
 
@@ -122,6 +123,37 @@ Route::middleware('auth')->group(function () {
 
         abort(403, 'Unauthorized');
     })->name('dashboard');
+
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', [UnifiedProfileController::class, 'show'])->name('show');
+        Route::get('/edit', [UnifiedProfileController::class, 'edit'])->name('edit');
+        Route::patch('/', [UnifiedProfileController::class, 'update'])->name('update');
+    
+        // Password Management
+        Route::get('/change-password', [UnifiedProfileController::class, 'showChangePasswordForm'])->name('change-password');
+        Route::patch('/password', [UnifiedProfileController::class, 'updatePassword'])->name('password.update');
+    
+        // Notification Preferences
+        Route::get('/preferences', [UnifiedProfileController::class, 'preferences'])->name('preferences');
+        Route::patch('/preferences', [UnifiedProfileController::class, 'updatePreferences'])->name('preferences.update');
+    
+        // Profile Completion
+        Route::get('/completion', [UnifiedProfileController::class, 'completion'])->name('completion');
+    
+        // Data Export (GDPR)
+        Route::get('/export', [UnifiedProfileController::class, 'export'])->name('export');
+    
+        // Account Deletion
+        Route::get('/delete', [UnifiedProfileController::class, 'showDeleteForm'])->name('delete');
+        Route::delete('/', [UnifiedProfileController::class, 'destroy'])->name('destroy');
+    
+        // AJAX Endpoints
+        Route::get('/completion-status', [UnifiedProfileController::class, 'completionStatus'])->name('completion-status');
+        Route::get('/activity-summary', [UnifiedProfileController::class, 'activitySummary'])->name('activity-summary');
+        Route::post('/test-notification', [UnifiedProfileController::class, 'testNotification'])->name('test-notification');
+    });
+    
+
     Route::get('/chat/notifications', function () {
         $user = auth()->user();
         
@@ -149,8 +181,6 @@ Route::middleware('auth')->group(function () {
             'unread_count' => $notifications->count()
         ]);
     })->name('chat.notifications');
-
-    
 
     Route::post('/api/analytics/track', fn() => response()->json(['success' => true]))
         ->name('api.analytics.track');
