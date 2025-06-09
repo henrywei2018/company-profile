@@ -6,6 +6,7 @@ use App\Http\Controllers\{
     PortfolioController,
     QuotationController,
     MessageController,
+    ProfileController,
     ProjectController,
     BlogController,
     ContactController,
@@ -149,11 +150,7 @@ Route::middleware('auth')->group(function () {
         ]);
     })->name('chat.notifications');
 
-    Route::prefix('profile')->group(function () {
-        Route::get('/', [ClientProfileController::class, 'edit'])->name('profile.edit');
-        Route::patch('/', [ClientProfileController::class, 'update'])->name('profile.update');
-        Route::delete('/', [ClientProfileController::class, 'destroy'])->name('profile.destroy');
-    });
+    
 
     Route::post('/api/analytics/track', fn() => response()->json(['success' => true]))
         ->name('api.analytics.track');

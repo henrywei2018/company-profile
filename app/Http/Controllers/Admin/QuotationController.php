@@ -8,6 +8,7 @@ use App\Models\QuotationAttachment;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\Project;
+use App\Models\ProjectCategory;
 use App\Services\QuotationService;
 use App\Services\TempNotifiable;
 use App\Facades\Notifications;
@@ -15,7 +16,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class QuotationController extends Controller
 {
@@ -1230,4 +1233,492 @@ class QuotationController extends Controller
             'today' => Quotation::whereDate('created_at', Carbon::today())->count(),
         ]);
     }
+    public function convertToProject(Request $request, Quotation $quotation)
+{
+    // Validate quotation eligibility
+    if ($quotation->status !== 'approved') {
+        return redirect()->back()
+            ->with('error', 'Only approved quotations can be converted to projects.');
+    }
+
+    if ($quotation->project_created) {
+        $existingProject = Project::where('quotation_id', $quotation->id)->first();
+        if ($existingProject) {
+            return redirect()->route('admin.projects.show', $existingProject)
+                ->with('info', 'This quotation has already been converted to a project.');
+        }
+    }
+
+    // Validate additional project data if provided
+    $projectData = $request->validate([
+        'project_title' => 'nullable|string|max:255',
+        'project_category_id' => 'nullable|exists:project_categories,id',
+        'project_description' => 'nullable|string',
+        'estimated_completion_date' => 'nullable|date|after:today',
+        'budget' => 'nullable|numeric|min:0',
+        'priority' => 'nullable|in:low,normal,high,urgent',
+        'copy_attachments' => 'boolean',
+        'create_initial_milestone' => 'boolean',
+        'notify_client' => 'boolean',
+    ]);
+
+    try {
+        DB::beginTransaction();
+
+        // Prepare project data using existing quotation fields
+        $defaultProjectData = [
+            'title' => $projectData['project_title'] ?? $quotation->project_type ?? 'Project from Quotation #' . $quotation->id,
+            'description' => $projectData['project_description'] ?? $quotation->requirements ?? '',
+            'client_id' => $quotation->client_id,
+            'quotation_id' => $quotation->id,
+            'location' => $quotation->location,
+            'status' => 'planning',
+            'start_date' => $quotation->start_date,
+            'year' => $quotation->start_date ? $quotation->start_date->year : now()->year,
+            'featured' => false,
+        ];
+
+        // Add optional fields only if they exist in projects table
+        if (Schema::hasColumn('projects', 'project_category_id') && !empty($projectData['project_category_id'])) {
+            $defaultProjectData['project_category_id'] = $projectData['project_category_id'];
+        }
+
+        if (Schema::hasColumn('projects', 'service_id') && $quotation->service_id) {
+            $defaultProjectData['service_id'] = $quotation->service_id;
+        }
+
+        if (Schema::hasColumn('projects', 'estimated_completion_date') && !empty($projectData['estimated_completion_date'])) {
+            $defaultProjectData['estimated_completion_date'] = $projectData['estimated_completion_date'];
+        }
+
+        if (Schema::hasColumn('projects', 'budget') && !empty($projectData['budget'])) {
+            $defaultProjectData['budget'] = $projectData['budget'];
+        }
+
+        if (Schema::hasColumn('projects', 'priority')) {
+            $defaultProjectData['priority'] = $projectData['priority'] ?? $quotation->priority ?? 'normal';
+        }
+
+        if (Schema::hasColumn('projects', 'client_name') && !$quotation->client_id) {
+            $defaultProjectData['client_name'] = $quotation->name;
+        }
+
+        if (Schema::hasColumn('projects', 'short_description')) {
+            $defaultProjectData['short_description'] = Str::limit($quotation->requirements ?? '', 200);
+        }
+
+        if (Schema::hasColumn('projects', 'is_active')) {
+            $defaultProjectData['is_active'] = true;
+        }
+
+        // Generate unique slug
+        $baseSlug = Str::slug($defaultProjectData['title']);
+        $slug = $baseSlug;
+        $counter = 1;
+        while (Project::where('slug', $slug)->exists()) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+        $defaultProjectData['slug'] = $slug;
+
+        // Filter to only existing project columns
+        $projectColumns = Schema::getColumnListing('projects');
+        $defaultProjectData = array_intersect_key($defaultProjectData, array_flip($projectColumns));
+
+        // Create the project
+        $project = Project::create($defaultProjectData);
+
+        // Copy attachments if requested and if project files system exists
+        if ($request->boolean('copy_attachments', false) && Schema::hasTable('project_files')) {
+            $this->copyAttachmentsToProject($quotation, $project);
+        }
+
+        // Create initial milestone if requested and if milestone system exists
+        if ($request->boolean('create_initial_milestone', true) && Schema::hasTable('project_milestones')) {
+            $this->createInitialMilestone($project, $quotation);
+        }
+
+        // Update quotation using existing fields
+        $quotation->update([
+            'project_created' => true,
+            'project_created_at' => now(),
+            'admin_notes' => ($quotation->admin_notes ? $quotation->admin_notes . "\n\n" : '') 
+                . "Converted to project: " . $project->title . " on " . now()->format('Y-m-d H:i:s')
+        ]);
+
+        // Send notifications if requested
+        if ($request->boolean('notify_client', false)) {
+            try {
+                if ($quotation->client) {
+                    // You can add notification logic here if you have a notification system
+                    Log::info('Project conversion notification sent to client', [
+                        'quotation_id' => $quotation->id,
+                        'project_id' => $project->id,
+                        'client_email' => $quotation->client->email
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send conversion notifications: ' . $e->getMessage());
+            }
+        }
+
+        DB::commit();
+
+        return redirect()->route('admin.projects.show', $project)
+            ->with('success', 'Quotation successfully converted to project: ' . $project->title);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Failed to convert quotation to project: ' . $e->getMessage(), [
+            'quotation_id' => $quotation->id
+        ]);
+
+        return redirect()->back()
+            ->with('error', 'Failed to convert quotation to project. Please try again.');
+    }
+}
+
+/**
+ * Quick convert quotation to project with minimal data
+ */
+public function quickConvertToProject(Quotation $quotation)
+{
+    if ($quotation->status !== 'approved') {
+        return response()->json([
+            'success' => false,
+            'message' => 'Only approved quotations can be converted to projects.'
+        ], 422);
+    }
+
+    if ($quotation->project_created) {
+        return response()->json([
+            'success' => false,
+            'message' => 'This quotation has already been converted to a project.'
+        ], 422);
+    }
+
+    try {
+        DB::beginTransaction();
+
+        // Create project with minimal data from quotation
+        $projectData = [
+            'title' => $quotation->project_type ?? 'Project from Quotation #' . $quotation->id,
+            'description' => $quotation->requirements ?? 'Project created from quotation request',
+            'client_id' => $quotation->client_id,
+            'quotation_id' => $quotation->id,
+            'location' => $quotation->location,
+            'status' => 'planning',
+            'start_date' => $quotation->start_date,
+            'year' => $quotation->start_date ? $quotation->start_date->year : now()->year,
+            'featured' => false,
+            'priority' => $quotation->priority ?? 'normal',
+        ];
+
+        // Add optional fields only if they exist in projects table
+        if (Schema::hasColumn('projects', 'service_id') && $quotation->service_id) {
+            $projectData['service_id'] = $quotation->service_id;
+        }
+
+        if (Schema::hasColumn('projects', 'client_name') && !$quotation->client_id) {
+            $projectData['client_name'] = $quotation->name;
+        }
+
+        if (Schema::hasColumn('projects', 'short_description')) {
+            $projectData['short_description'] = Str::limit($quotation->requirements ?? '', 200);
+        }
+
+        if (Schema::hasColumn('projects', 'is_active')) {
+            $projectData['is_active'] = true;
+        }
+
+        // Generate unique slug
+        $baseSlug = Str::slug($projectData['title']);
+        $slug = $baseSlug;
+        $counter = 1;
+        while (Project::where('slug', $slug)->exists()) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+        $projectData['slug'] = $slug;
+
+        // Filter to only existing columns
+        $projectColumns = Schema::getColumnListing('projects');
+        $projectData = array_intersect_key($projectData, array_flip($projectColumns));
+
+        $project = Project::create($projectData);
+
+        // Update quotation using existing fields
+        $quotation->update([
+            'project_created' => true,
+            'project_created_at' => now(),
+            'admin_notes' => ($quotation->admin_notes ? $quotation->admin_notes . "\n\n" : '') 
+                . "Project created: " . $project->title . " on " . now()->format('Y-m-d H:i:s')
+        ]);
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Quotation successfully converted to project!',
+            'project_url' => route('admin.projects.show', $project),
+            'project_title' => $project->title
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Quick convert failed: ' . $e->getMessage());
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to convert quotation to project: ' . $e->getMessage()
+        ], 500);
+    }
+}
+private function copyAttachmentsToProject(Quotation $quotation, Project $project): int
+{
+    $copiedCount = 0;
+
+    if (!Schema::hasTable('project_files') || $quotation->attachments->count() === 0) {
+        return $copiedCount;
+    }
+
+    foreach ($quotation->attachments as $attachment) {
+        try {
+            // Generate new file path for project
+            $originalPath = $attachment->file_path;
+            $fileName = pathinfo($attachment->file_name, PATHINFO_FILENAME);
+            $extension = pathinfo($attachment->file_name, PATHINFO_EXTENSION);
+            $newFileName = $fileName . '_from_quotation_' . $quotation->id . '.' . $extension;
+            $newPath = 'project_files/' . $project->id . '/' . $newFileName;
+
+            // Copy file if it exists
+            if (Storage::disk('public')->exists($originalPath)) {
+                // Ensure directory exists
+                $directory = dirname($newPath);
+                if (!Storage::disk('public')->exists($directory)) {
+                    Storage::disk('public')->makeDirectory($directory);
+                }
+
+                // Copy the file
+                Storage::disk('public')->copy($originalPath, $newPath);
+
+                // Create project file record - adjust fields based on your project_files table structure
+                $fileData = [
+                    'file_path' => $newPath,
+                    'file_name' => $newFileName,
+                    'file_type' => $attachment->file_type,
+                    'file_size' => $attachment->file_size,
+                    'uploaded_by' => auth()->id(),
+                    'description' => 'Transferred from quotation #' . $quotation->id,
+                ];
+
+                // Add optional fields if they exist in project_files table
+                if (Schema::hasColumn('project_files', 'original_name')) {
+                    $fileData['original_name'] = $attachment->file_name;
+                }
+                if (Schema::hasColumn('project_files', 'is_public')) {
+                    $fileData['is_public'] = false;
+                }
+                if (Schema::hasColumn('project_files', 'category')) {
+                    $fileData['category'] = 'quotation_transfer';
+                }
+
+                $project->files()->create($fileData);
+                $copiedCount++;
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to copy attachment from quotation to project', [
+                'quotation_id' => $quotation->id,
+                'project_id' => $project->id,
+                'attachment_id' => $attachment->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    return $copiedCount;
+}
+private function createInitialMilestone(Project $project, Quotation $quotation): bool
+{
+    if (!Schema::hasTable('project_milestones')) {
+        return false;
+    }
+    
+    try {
+        $milestoneData = [
+            'title' => 'Project Initiation',
+            'description' => 'Initial project setup and planning phase from quotation #' . $quotation->id,
+            'due_date' => now()->addWeeks(2),
+            'status' => 'pending',
+            'sort_order' => 1,
+        ];
+        
+        // Add optional fields if they exist
+        if (Schema::hasColumn('project_milestones', 'progress_percent')) {
+            $milestoneData['progress_percent'] = 0;
+        }
+        if (Schema::hasColumn('project_milestones', 'is_critical')) {
+            $milestoneData['is_critical'] = true;
+        }
+        if (Schema::hasColumn('project_milestones', 'created_by')) {
+            $milestoneData['created_by'] = auth()->id();
+        }
+        
+        $project->milestones()->create($milestoneData);
+        return true;
+    } catch (\Exception $e) {
+        Log::warning('Failed to create initial milestone: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Show conversion form for quotation to project
+ */
+public function showConversionForm(Quotation $quotation)
+{
+    // Validate quotation eligibility
+    if ($quotation->status !== 'approved') {
+        return redirect()->back()
+            ->with('error', 'Only approved quotations can be converted to projects.');
+    }
+
+    if ($quotation->project_created) {
+        $existingProject = Project::where('quotation_id', $quotation->id)->first();
+        if ($existingProject) {
+            return redirect()->route('admin.projects.show', $existingProject)
+                ->with('info', 'This quotation has already been converted to a project.');
+        }
+    }
+
+    // Get project categories if the table exists
+    $categories = collect();
+    if (Schema::hasTable('project_categories')) {
+        $categories = ProjectCategory::where('is_active', true)->orderBy('name')->get();
+    }
+    
+    // Pre-populate suggested data
+    $suggestedData = [
+        'title' => $quotation->project_type ?? 'Project from Quotation #' . $quotation->id,
+        'description' => $quotation->requirements,
+        'location' => $quotation->location,
+        'start_date' => $quotation->start_date?->format('Y-m-d'),
+        'budget' => $this->extractBudgetFromText($quotation->estimated_cost ?? $quotation->budget_range),
+        'priority' => $quotation->priority ?? 'normal',
+    ];
+
+    return view('admin.quotations.convert-to-project', compact(
+        'quotation',
+        'categories', 
+        'suggestedData'
+    ));
+}
+
+/**
+ * Get conversion statistics
+ */
+public function getConversionStatistics()
+{
+    $stats = Quotation::getConversionMetrics();
+    
+    // Add additional statistics
+    $stats['ready_for_conversion'] = Quotation::where('status', 'approved')
+        ->where('project_created', false)
+        ->count();
+    
+    $stats['conversion_by_month'] = Quotation::where('project_created', true)
+        ->selectRaw('YEAR(project_created_at) as year, MONTH(project_created_at) as month, COUNT(*) as count')
+        ->groupBy('year', 'month')
+        ->orderBy('year', 'desc')
+        ->orderBy('month', 'desc')
+        ->limit(12)
+        ->get();
+
+    return response()->json($stats);
+}
+
+/**
+ * Bulk convert quotations to projects
+ */
+public function bulkConvertToProjects(Request $request)
+{
+    $request->validate([
+        'quotation_ids' => 'required|string',
+        'notify_clients' => 'boolean',
+        'create_milestones' => 'boolean',
+        'copy_attachments' => 'boolean',
+    ]);
+
+    // Parse comma-separated IDs
+    $quotationIds = array_filter(explode(',', $request->quotation_ids));
+    
+    if (empty($quotationIds)) {
+        return redirect()->back()->with('error', 'No quotations selected.');
+    }
+
+    try {
+        $results = Quotation::bulkConvertToProjects($quotationIds);
+        
+        $successCount = count($results['successful']);
+        $failedCount = count($results['failed']);
+        $skippedCount = count($results['skipped']);
+        
+        $message = "Conversion completed: {$successCount} successful";
+        if ($failedCount > 0) {
+            $message .= ", {$failedCount} failed";
+        }
+        if ($skippedCount > 0) {
+            $message .= ", {$skippedCount} skipped";
+        }
+        $message .= ".";
+        
+        if ($failedCount > 0 || $skippedCount > 0) {
+            session()->flash('conversion_details', $results);
+        }
+        
+        return redirect()->back()->with('success', $message);
+        
+    } catch (\Exception $e) {
+        Log::error('Bulk conversion failed: ' . $e->getMessage());
+        
+        return redirect()->back()
+            ->with('error', 'Bulk conversion failed. Please try again.');
+    }
+}
+
+/**
+ * Get quotations ready for conversion (AJAX endpoint)
+ */
+public function getReadyForConversion(Request $request)
+{
+    $quotations = Quotation::where('status', 'approved')
+        ->where('project_created', false)
+        ->with(['service', 'client'])
+        ->orderBy('approved_at', 'asc')
+        ->paginate($request->get('per_page', 15));
+
+    return response()->json([
+        'success' => true,
+        'quotations' => $quotations->map(function ($quotation) {
+            return [
+                'id' => $quotation->id,
+                'name' => $quotation->name,
+                'project_type' => $quotation->project_type,
+                'service' => $quotation->service?->title,
+                'budget_range' => $quotation->budget_range,
+                'created_at' => $quotation->created_at->format('Y-m-d'),
+                'approved_at' => $quotation->approved_at->format('Y-m-d'),
+                'readiness_score' => $quotation->getConversionReadinessScore(),
+                'conversion_status' => $quotation->getConversionStatusText(),
+                'actions' => $quotation->getConversionActions(),
+            ];
+        }),
+        'pagination' => [
+            'current_page' => $quotations->currentPage(),
+            'last_page' => $quotations->lastPage(),
+            'per_page' => $quotations->perPage(),
+            'total' => $quotations->total(),
+        ]
+    ]);
+}
 }

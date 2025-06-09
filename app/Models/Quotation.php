@@ -5,11 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\FilterableTrait;
+use App\Traits\QuotationProjectConversion;
 use Carbon\Carbon;
 
 class Quotation extends Model
 {
-    use HasFactory, FilterableTrait;
+    use HasFactory, FilterableTrait, QuotationProjectConversion;
 
     /**
      * The attributes that are mass assignable.
@@ -17,6 +18,7 @@ class Quotation extends Model
      * @var array
      */
     protected $fillable = [
+        'quotation_number',
         'name',
         'email',
         'phone',
@@ -26,6 +28,8 @@ class Quotation extends Model
         'location',
         'requirements',
         'budget_range',
+        'estimated_cost',
+        'estimated_timeline',
         'start_date',
         'status',
         'priority',
@@ -37,11 +41,11 @@ class Quotation extends Model
         'client_approved',
         'client_decline_reason',
         'client_approved_at',
-        'estimated_cost',
-        'estimated_timeline',
         'reviewed_at',
         'approved_at',
         'last_communication_at',
+        'project_created',
+        'project_created_at',
     ];
     
     /**
@@ -60,7 +64,6 @@ class Quotation extends Model
         'updated_at' => 'datetime',
         'project_created' => 'boolean',
         'project_created_at' => 'datetime',
-        
     ];
     
     /**
@@ -76,7 +79,6 @@ class Quotation extends Model
         'source',
         'search',
         'project_created',
-        'project_created_at',
     ];
     
     /**
@@ -133,6 +135,9 @@ class Quotation extends Model
         ];
     }
 
+    /**
+     * Get quotation attachments
+     */
     public function attachments()
     {
         return $this->hasMany(QuotationAttachment::class);
@@ -187,6 +192,7 @@ class Quotation extends Model
     
     /**
      * Get the project created from this quotation
+     * Uses existing quotation_id field in projects table
      */
     public function project()
     {
@@ -276,6 +282,23 @@ class Quotation extends Model
     {
         return $query->where('created_at', '>=', Carbon::now()->subDays(7));
     }
+
+    /**
+     * Scope for quotations that have been converted to projects
+     */
+    public function scopeConvertedToProject($query)
+    {
+        return $query->where('project_created', true);
+    }
+
+    /**
+     * Scope for quotations ready for project conversion
+     */
+    public function scopeReadyForConversion($query)
+    {
+        return $query->where('status', self::STATUS_APPROVED)
+                    ->where('project_created', false);
+    }
     
     /**
      * Check if quotation is overdue (pending for more than X days)
@@ -295,9 +318,56 @@ class Quotation extends Model
                $this->priority === self::PRIORITY_HIGH || 
                $this->isOverdue();
     }
+
+    /**
+     * Check if this quotation can be converted to a project
+     * Using existing fields only
+     */
+    public function canConvertToProject(): bool
+    {
+        return $this->status === self::STATUS_APPROVED && 
+               !$this->project_created && 
+               !$this->hasExistingProject();
+    }
+
+    /**
+     * Check if there's already a project for this quotation
+     * Uses existing quotation_id field in projects table
+     */
+    public function hasExistingProject(): bool
+    {
+        return $this->project()->exists();
+    }
+
+    /**
+     * Get the existing project if it exists
+     */
+    public function getExistingProject(): ?Project
+    {
+        return $this->project;
+    }
+
+    /**
+     * Check if quotation has been converted to project
+     * Using existing project_created field
+     */
+    public function hasProject(): bool
+    {
+        return $this->project_created || $this->hasExistingProject();
+    }
+
+    /**
+     * Check if quotation is ready for project conversion
+     */
+    public function isReadyForProjectConversion(): bool
+    {
+        return $this->status === self::STATUS_APPROVED && 
+               ($this->client_approved === true || $this->client_approved === null) &&
+               !$this->project_created;
+    }
     
     /**
-     * Get the status badge color
+     * Get the status badge color.
      */
     public function getStatusColorAttribute(): string
     {
@@ -311,7 +381,7 @@ class Quotation extends Model
     }
     
     /**
-     * Get the priority badge color
+     * Get the priority badge color.
      */
     public function getPriorityColorAttribute(): string
     {
@@ -325,7 +395,7 @@ class Quotation extends Model
     }
     
     /**
-     * Get formatted status
+     * Get formatted status.
      */
     public function getFormattedStatusAttribute(): string
     {
@@ -333,7 +403,7 @@ class Quotation extends Model
     }
     
     /**
-     * Get formatted priority
+     * Get formatted priority.
      */
     public function getFormattedPriorityAttribute(): string
     {
@@ -365,23 +435,306 @@ class Quotation extends Model
     }
     
     /**
-     * Check if quotation has been converted to project
-     */
-    public function hasProject(): bool
-    {
-        return $this->project_created || $this->project()->exists();
-    }
-    public function canCreateProject(): bool
-    {
-        return $this->status === 'approved' && !$this->hasProject();
-    }
-    
-    /**
      * Get days since creation
      */
     public function getDaysSinceCreationAttribute(): int
     {
         return $this->created_at->diffInDays(Carbon::now());
+    }
+
+    /**
+     * Get suggested project data from quotation
+     * Uses existing quotation fields to suggest project data
+     */
+    public function getSuggestedProjectData(): array
+    {
+        $data = [
+            'title' => $this->project_type ?? 'Project from Quotation #' . $this->id,
+            'description' => $this->requirements ?? 'Project created from quotation request',
+            'client_id' => $this->client_id,
+            'quotation_id' => $this->id,
+            'location' => $this->location,
+            'status' => 'planning',
+            'start_date' => $this->start_date,
+            'year' => $this->start_date ? $this->start_date->year : now()->year,
+            'featured' => false,
+            'priority' => $this->priority ?? 'normal',
+        ];
+
+        // Add service mapping if the project has service_id field
+        if ($this->service_id && \Illuminate\Support\Facades\Schema::hasColumn('projects', 'service_id')) {
+            $data['service_id'] = $this->service_id;
+        }
+
+        // Add client name if no client_id but projects table has client_name field
+        if (!$this->client_id && \Illuminate\Support\Facades\Schema::hasColumn('projects', 'client_name')) {
+            $data['client_name'] = $this->name;
+        }
+
+        // Add additional fields if they exist in projects table
+        if (\Illuminate\Support\Facades\Schema::hasColumn('projects', 'short_description')) {
+            $data['short_description'] = $this->requirements ? \Illuminate\Support\Str::limit($this->requirements, 200) : null;
+        }
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('projects', 'is_active')) {
+            $data['is_active'] = true;
+        }
+
+        // Try to extract budget if projects table has budget field
+        if (\Illuminate\Support\Facades\Schema::hasColumn('projects', 'budget')) {
+            $data['budget'] = $this->extractBudgetAmount();
+        }
+
+        // Suggest category based on service or project type if projects table has category_id field
+        if (\Illuminate\Support\Facades\Schema::hasColumn('projects', 'project_category_id')) {
+            $data['project_category_id'] = $this->suggestProjectCategory();
+        }
+
+        // Estimate completion date if projects table has estimated_completion_date field
+        if (\Illuminate\Support\Facades\Schema::hasColumn('projects', 'estimated_completion_date')) {
+            $data['estimated_completion_date'] = $this->estimateCompletionDate();
+        }
+
+        return $data;
+    }
+
+    /**
+     * Extract numeric budget amount from existing text fields
+     */
+    public function extractBudgetAmount(): ?float
+    {
+        // Try estimated_cost first, then budget_range
+        $budgetText = $this->estimated_cost ?? $this->budget_range;
+        
+        if (!$budgetText) {
+            return null;
+        }
+
+        // Remove currency symbols and extract numbers
+        $cleanText = preg_replace('/[^\d.,\-]/', '', $budgetText);
+        
+        // Handle ranges (take the higher value)
+        if (strpos($cleanText, '-') !== false) {
+            $parts = explode('-', $cleanText);
+            $cleanText = trim(end($parts));
+        }
+
+        // Clean up and convert to float
+        $cleanText = str_replace(',', '', $cleanText);
+        
+        if (is_numeric($cleanText)) {
+            return floatval($cleanText);
+        }
+
+        return null;
+    }
+
+    /**
+     * Suggest project category based on service or project type
+     */
+    public function suggestProjectCategory(): ?int
+    {
+        // First try to match by service
+        if ($this->service) {
+            $category = \App\Models\ProjectCategory::where('name', 'like', '%' . $this->service->title . '%')
+                ->where('is_active', true)
+                ->first();
+            
+            if ($category) {
+                return $category->id;
+            }
+        }
+
+        // Then try to match by project type
+        if ($this->project_type) {
+            $keywords = explode(' ', strtolower($this->project_type));
+            
+            foreach ($keywords as $keyword) {
+                $category = \App\Models\ProjectCategory::where('name', 'like', '%' . $keyword . '%')
+                    ->where('is_active', true)
+                    ->first();
+                
+                if ($category) {
+                    return $category->id;
+                }
+            }
+        }
+
+        // Try to find a default or "General" category
+        $defaultCategory = \App\Models\ProjectCategory::where('name', 'like', '%general%')
+            ->orWhere('name', 'like', '%default%')
+            ->orWhere('name', 'like', '%misc%')
+            ->where('is_active', true)
+            ->first();
+
+        return $defaultCategory?->id;
+    }
+
+    /**
+     * Estimate project completion date
+     */
+    public function estimateCompletionDate(): ?\Carbon\Carbon
+    {
+        if ($this->start_date) {
+            // Estimate based on project type or default to 3 months
+            $estimatedDuration = $this->estimateProjectDuration();
+            return $this->start_date->copy()->addMonths($estimatedDuration);
+        }
+
+        // Default to 3 months from now
+        return now()->addMonths(3);
+    }
+
+    /**
+     * Estimate project duration in months based on project type
+     */
+    protected function estimateProjectDuration(): int
+    {
+        if (!$this->project_type) {
+            return 3; // Default 3 months
+        }
+
+        $projectType = strtolower($this->project_type);
+        
+        // Define duration estimates based on common project types
+        $durationMap = [
+            'website' => 2,
+            'web development' => 3,
+            'mobile app' => 4,
+            'construction' => 6,
+            'renovation' => 3,
+            'interior design' => 2,
+            'marketing campaign' => 2,
+            'software development' => 4,
+            'system integration' => 5,
+            'consulting' => 1,
+            'training' => 1,
+            'audit' => 1,
+        ];
+
+        foreach ($durationMap as $keyword => $months) {
+            if (strpos($projectType, $keyword) !== false) {
+                return $months;
+            }
+        }
+
+        // If no match, estimate based on budget
+        $budget = $this->extractBudgetAmount();
+        if ($budget) {
+            if ($budget < 10000) return 1;
+            if ($budget < 50000) return 2;
+            if ($budget < 100000) return 3;
+            if ($budget < 500000) return 6;
+            return 12;
+        }
+
+        return 3; // Default fallback
+    }
+
+    /**
+     * Mark quotation as converted to project using existing fields
+     */
+    public function markAsConvertedToProject(Project $project): void
+    {
+        $updateData = [
+            'project_created' => true,
+            'project_created_at' => now(),
+        ];
+
+        // Add admin notes about the conversion using existing admin_notes field
+        if ($this->admin_notes) {
+            $updateData['admin_notes'] = $this->admin_notes . "\n\n" 
+                . "Converted to project: {$project->title} (ID: {$project->id}) on " . now()->format('Y-m-d H:i:s');
+        } else {
+            $updateData['admin_notes'] = "Converted to project: {$project->title} (ID: {$project->id}) on " . now()->format('Y-m-d H:i:s');
+        }
+
+        $this->update($updateData);
+    }
+
+    /**
+     * Get conversion summary for this quotation
+     */
+    public function getConversionSummary(): array
+    {
+        $summary = [
+            'can_convert' => $this->canConvertToProject(),
+            'is_ready' => $this->isReadyForProjectConversion(),
+            'has_existing_project' => $this->hasExistingProject(),
+            'existing_project' => $this->getExistingProject(),
+            'suggested_data' => $this->getSuggestedProjectData(),
+            'attachments_count' => $this->attachments->count(),
+            'estimated_budget' => $this->extractBudgetAmount(),
+            'estimated_duration' => $this->estimateProjectDuration(),
+        ];
+
+        // Add validation warnings
+        $warnings = [];
+        
+        if (!$this->client_id) {
+            $warnings[] = 'No linked client account - project will use client name only';
+        }
+
+        if (!$this->start_date) {
+            $warnings[] = 'No start date specified - project timeline may need adjustment';
+        }
+
+        if (!$this->extractBudgetAmount()) {
+            $warnings[] = 'No budget information available';
+        }
+
+        if (!$this->service_id) {
+            $warnings[] = 'No service specified - project category may need manual selection';
+        }
+
+        $summary['warnings'] = $warnings;
+
+        return $summary;
+    }
+
+    /**
+     * Validate quotation for conversion
+     */
+    public function validateForConversion(): array
+    {
+        $errors = [];
+        $warnings = [];
+
+        // Check basic eligibility
+        if ($this->status !== self::STATUS_APPROVED) {
+            $errors[] = 'Quotation must be approved before conversion';
+        }
+
+        if ($this->project_created) {
+            $errors[] = 'Quotation has already been converted to a project';
+        }
+
+        if ($this->hasExistingProject()) {
+            $errors[] = 'A project already exists for this quotation';
+        }
+
+        // Check for potential issues
+        if (!$this->project_type || strlen($this->project_type) < 3) {
+            $warnings[] = 'Project type is very short or missing';
+        }
+
+        if (!$this->requirements || strlen($this->requirements) < 10) {
+            $warnings[] = 'Project requirements are very brief';
+        }
+
+        if ($this->client_approved === false) {
+            $warnings[] = 'Client has declined this quotation';
+        }
+
+        if (!$this->client_id) {
+            $warnings[] = 'No registered client account linked';
+        }
+
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors,
+            'warnings' => $warnings,
+        ];
     }
     
     /**
@@ -398,6 +751,11 @@ class Quotation extends Model
             
             if (empty($quotation->priority)) {
                 $quotation->priority = self::PRIORITY_NORMAL;
+            }
+
+            // Generate quotation number if not provided
+            if (empty($quotation->quotation_number)) {
+                $quotation->quotation_number = 'QUO-' . now()->format('Y') . '-' . str_pad(static::whereYear('created_at', now()->year)->count() + 1, 4, '0', STR_PAD_LEFT);
             }
         });
         

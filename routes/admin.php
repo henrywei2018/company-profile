@@ -81,17 +81,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::get('/activity', [ProfileController::class, 'activity'])->name('activity');
         Route::get('/test-notification', [ProfileController::class, 'testNotification'])->name('test.notification');
     });
+
     // Users
     Route::resource('users', UserController::class);
-    Route::get('/users/{user}/roles', [UserController::class, 'showRoles'])->name('users.roles');
-    Route::put('/users/{user}/roles', [UserController::class, 'updateRoles'])->name('users.roles.update');
-    Route::post('/users/{user}/assign-role', [UserController::class, 'assignRole'])->name('users.assign-role');
-    Route::delete('/users/{user}/remove-role/{role}', [UserController::class, 'removeRole'])->name('users.remove-role');
-    Route::post('/users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggle-active');
-    Route::get('/users/{user}/change-password', [UserController::class, 'showChangePasswordForm'])->name('users.password.form');
-    Route::post('/users/{user}/change-password', [UserController::class, 'changePassword'])->name('users.password.update');
-    Route::post('/users/{user}/verify', [UserController::class, 'verifyClient'])->name('users.verify');
-
+    Route::prefix('/users')->name('users.')->group(function () {
+        Route::get('/{user}/roles', [UserController::class, 'showRoles'])->name('roles');
+        Route::put('/{user}/roles', [UserController::class, 'updateRoles'])->name('roles.update');
+        Route::post('/{user}/assign-role', [UserController::class, 'assignRole'])->name('assign-role');
+        Route::delete('/{user}/remove-role/{role}', [UserController::class, 'removeRole'])->name('remove-role');
+        Route::post('/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('toggle-active');
+        Route::get('/{user}/change-password', [UserController::class, 'showChangePasswordForm'])->name('password.form');
+        Route::post('/{user}/change-password', [UserController::class, 'changePassword'])->name('password.update');
+        Route::post('/{user}/verify', [UserController::class, 'verifyClient'])->name('verify');
+    
+    });
+    
     // Services
     Route::resource('services', ServiceController::class);
     Route::post('/services/{service}/toggle-status', [ServiceController::class, 'toggleActive'])->name('services.toggle-status');
@@ -263,22 +267,38 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     // Quotations
     Route::resource('quotations', QuotationController::class);
-    Route::get('/quotations/{quotation}/create-project', [ProjectController::class, 'createFromQuotation'])->name('quotations.create-project');
     Route::prefix('quotations')->name('quotations.')->group(function () {
+        // Status management
         Route::post('/{quotation}/update-status', [QuotationController::class, 'updateStatus'])->name('update-status');
-        Route::post('/{quotation}/send-response', [QuotationController::class, 'sendResponse'])->middleware('throttle:10,1')->name('send-response');
-        Route::get('/{quotation}/create-project', [QuotationController::class, 'createProject'])->name('create-project');
-        Route::post('/{quotation}/duplicate', [QuotationController::class, 'duplicate'])->name('duplicate');
-        Route::get('/export', [QuotationController::class, 'export'])->name('export');
-        Route::post('/bulk-action', [QuotationController::class, 'bulkAction'])->middleware('throttle:30,1')->name('bulk-action');
-        Route::get('/statistics', [QuotationController::class, 'statistics'])->name('statistics');
         Route::post('/{quotation}/approve', [QuotationController::class, 'quickApprove'])->name('approve');
         Route::post('/{quotation}/reject', [QuotationController::class, 'quickReject'])->name('reject');
         Route::post('/{quotation}/mark-reviewed', [QuotationController::class, 'markAsReviewed'])->name('mark-reviewed');
-        Route::get('/{quotation}/attachments/{attachment}/download', [QuotationController::class, 'downloadAttachment'])->name('attachments.download')->where('attachment', '[0-9]+');
+        
+        // Communication
+        Route::post('/{quotation}/send-response', [QuotationController::class, 'sendResponse'])->middleware('throttle:10,1')->name('send-response');
+        Route::get('/{quotation}/communications', [QuotationController::class, 'communications'])->name('communications');
+        
+        // Project conversion - NEW ROUTES
+        Route::get('/{quotation}/convert-to-project', [QuotationController::class, 'showConversionForm'])->name('convert-to-project.form');
+        Route::post('/{quotation}/convert-to-project', [QuotationController::class, 'convertToProject'])->name('convert-to-project');
+        Route::post('/{quotation}/quick-convert', [QuotationController::class, 'quickConvertToProject'])->name('quick-convert');
+        
+        // Management actions
+        Route::post('/{quotation}/duplicate', [QuotationController::class, 'duplicate'])->name('duplicate');
         Route::post('/{quotation}/priority', [QuotationController::class, 'updatePriority'])->name('update-priority');
         Route::post('/{quotation}/link-client', [QuotationController::class, 'linkClient'])->name('link-client');
-        Route::get('/{quotation}/communications', [QuotationController::class, 'communications'])->name('communications');
+        
+        // Attachments
+        Route::get('/{quotation}/attachments/{attachment}/download', [QuotationController::class, 'downloadAttachment'])
+            ->name('attachments.download')->where('attachment', '[0-9]+');
+        
+        // Bulk operations
+        Route::post('/bulk-action', [QuotationController::class, 'bulkAction'])->middleware('throttle:30,1')->name('bulk-action');
+        
+        // Data exports and statistics
+        Route::get('/export', [QuotationController::class, 'export'])->name('export');
+        Route::get('/statistics', [QuotationController::class, 'statistics'])->name('statistics');
+        Route::get('/counts', [QuotationController::class, 'getCounts'])->name('counts');
     });
 
     
