@@ -1,7 +1,7 @@
 <!-- resources/views/profile/preferences.blade.php -->
-<x-layouts.app title="Notification Preferences">
-    <div class="py-12">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+<x-dynamic-component :component="$layout" title="Notification Preferences">
+    <div class="py-2">
+        <div class="max-w-7xl mx-auto sm:px-4 lg:px-4">
             <!-- Header -->
             <div class="flex items-center justify-between mb-6">
                 <div>
@@ -21,9 +21,9 @@
                 @csrf
                 @method('PATCH')
                 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
                     <!-- Main Preferences -->
-                    <div class="lg:col-span-2 space-y-6">
+                    <div class="lg:col-span-2 space-y-3">
                         <!-- General Notification Settings -->
                         <x-admin.form-section 
                             title="General Settings"
@@ -119,7 +119,7 @@
                             </div>
                         </x-admin.form-section>
 
-                        <!-- System Notifications -->
+                        {{-- <!-- System Notifications -->
                         <x-admin.form-section 
                             title="System & Security"
                             description="Important system updates and security alerts"
@@ -159,7 +159,7 @@
                                 />
                                 @endif
                             </div>
-                        </x-admin.form-section>
+                        </x-admin.form-section> --}}
 
                         <!-- Marketing Notifications -->
                         <x-admin.form-section 
@@ -193,7 +193,7 @@
                             </div>
                         </x-admin.form-section>
 
-                        <!-- Quiet Hours -->
+                        {{-- <!-- Quiet Hours -->
                         <x-admin.form-section 
                             title="Quiet Hours"
                             description="Set times when you don't want to receive notifications"
@@ -243,30 +243,11 @@
                                     </div>
                                 </div>
                             </div>
-                        </x-admin.form-section>
+                        </x-admin.form-section> --}}
                     </div>
 
                     <!-- Sidebar -->
-                    <div class="space-y-6">
-                        <!-- Quick Test -->
-                        <x-admin.card title="Test Notifications">
-                            <div class="space-y-4">
-                                <p class="text-sm text-gray-600 dark:text-gray-400">
-                                    Send a test notification to verify your settings are working correctly.
-                                </p>
-                                
-                                <x-admin.button 
-                                    type="button" 
-                                    color="info" 
-                                    class="w-full"
-                                    onclick="sendTestNotification()"
-                                    icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM15 17H9a2 2 0 01-2-2V9a2 2 0 012-2h8a2 2 0 012 2v2"/>'
-                                >
-                                    Send Test Email
-                                </x-admin.button>
-                            </div>
-                        </x-admin.card>
-
+                    <div class="space-y-3">
                         <!-- Current Settings Summary -->
                         <x-admin.card title="Current Settings">
                             <div class="space-y-3">
@@ -287,17 +268,6 @@
                                 </div>
 
                                 <div class="flex justify-between items-center">
-                                    <span class="text-sm text-gray-600 dark:text-gray-400">Quiet Hours</span>
-                                    @if($user->quiet_hours['enabled'] ?? false)
-                                        <x-admin.badge type="warning" size="sm">
-                                            {{ $user->quiet_hours['start'] ?? '22:00' }} - {{ $user->quiet_hours['end'] ?? '08:00' }}
-                                        </x-admin.badge>
-                                    @else
-                                        <x-admin.badge type="gray" size="sm">Disabled</x-admin.badge>
-                                    @endif
-                                </div>
-
-                                <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600 dark:text-gray-400">Project Updates</span>
                                     @if($user->project_update_notifications ?? true)
                                         <x-admin.badge type="success" size="sm">On</x-admin.badge>
@@ -314,32 +284,6 @@
                                         <x-admin.badge type="gray" size="sm">Unsubscribed</x-admin.badge>
                                     @endif
                                 </div>
-                            </div>
-                        </x-admin.card>
-
-                        <!-- Help & Information -->
-                        <x-admin.card title="Need Help?">
-                            <div class="space-y-3">
-                                <p class="text-sm text-gray-600 dark:text-gray-400">
-                                    Having trouble with notifications? Here are some helpful tips:
-                                </p>
-                                
-                                <ul class="text-xs text-gray-500 dark:text-gray-500 space-y-1">
-                                    <li>• Check your spam/junk folder</li>
-                                    <li>• Verify your email address is correct</li>
-                                    <li>• Ensure email notifications are enabled</li>
-                                    <li>• Test with a notification to verify delivery</li>
-                                </ul>
-
-                                <x-admin.button 
-                                    href="mailto:support@example.com" 
-                                    color="light" 
-                                    size="sm"
-                                    class="w-full"
-                                    icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>'
-                                >
-                                    Contact Support
-                                </x-admin.button>
                             </div>
                         </x-admin.card>
 
@@ -374,27 +318,6 @@
 
     @push('scripts')
     <script>
-        function sendTestNotification() {
-            fetch('{{ route("profile.test-notification") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification('Test notification sent! Check your email.', 'success');
-                } else {
-                    showNotification('Failed to send test notification.', 'error');
-                }
-            })
-            .catch(error => {
-                showNotification('Error sending test notification.', 'error');
-            });
-        }
-
         function resetToDefaults() {
             if (confirm('Are you sure you want to reset all notification preferences to their default values?')) {
                 // Reset form to default values
@@ -504,4 +427,4 @@
         });
     </script>
     @endpush
-</x-layouts.app>
+</x-dynamic-component>

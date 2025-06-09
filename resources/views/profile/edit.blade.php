@@ -1,13 +1,7 @@
-{{-- resources/views/profile/edit.blade.php --}}
-@php
-    $isOwnProfile = !isset($user) || $user->id === auth()->id();
-    $pageTitle = $isOwnProfile ? 'Edit Profile' : 'Edit User Profile: ' . $user->name;
-    $layout = $isOwnProfile ? 'layouts.client' : 'layouts.admin';
-@endphp
-
-<x-dynamic-component :component="$layout" :title="$pageTitle">
+{{-- resources/views/profile/edit.blade.php - FIXED VERSION --}}
+<x-dynamic-component :component="$layout" title="Sunting Profil">
     <div class="py-12">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <!-- Header -->
             <div class="flex items-center justify-between mb-6">
                 <div>

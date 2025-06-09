@@ -1,5 +1,5 @@
 <!-- resources/views/profile/completion.blade.php -->
-<x-layouts.app title="Complete Your Profile">
+<x-dynamic-component :component="$layout" title="Complete Your Profile">
     <div class="py-12">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <!-- Header -->
@@ -323,4 +323,4 @@
         });
     </script>
     @endpush
-</x-layouts.app>
+</x-dynamic-component>

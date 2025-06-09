@@ -3,113 +3,116 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Services\CentralizedProfileService;
+use App\Services\UserProfileService;
+use App\Services\UserService;
 use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Requests\UpdateNotificationPreferencesRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use App\Models\User;
 
-use Illuminate\Validation\Rule;
-
+/**
+ * UnifiedProfileController - SELF-ONLY Profile Management
+ * 
+ * This controller handles profile management for authenticated users.
+ * Users can ONLY manage their OWN profiles - no admin overrides.
+ * 
+ * Key Principle: $user parameter is always ignored, we use auth()->user()
+ */
 class UnifiedProfileController extends Controller
 {
-    protected CentralizedProfileService $profileService;
+    protected UserProfileService $profileService;
+    protected UserService $userService;
 
-    public function __construct(CentralizedProfileService $profileService)
-    {
+    public function __construct(
+        UserProfileService $profileService,
+        UserService $userService
+    ) {
         $this->profileService = $profileService;
+        $this->userService = $userService;
+        
+        // Ensure only authenticated users can access
+        $this->middleware('auth');
     }
 
     /**
-     * Display the user's profile (context-aware)
+     * Display the authenticated user's profile
+     * Note: $user parameter is ignored - always shows current user's profile
      */
     public function show(?User $user = null)
     {
-        $user = $user ?? auth()->user();
-        $currentUser = auth()->user();
-        
-        // Check permission to view profile
-        if ($user->id !== $currentUser->id && !$currentUser->hasAdminAccess()) {
-            abort(403, 'Unauthorized to view this profile');
-        }
-
-        $activitySummary = $this->profileService->getUserActivitySummary($user, $currentUser);
+        $user = auth()->user(); // Always use authenticated user
+        $activitySummary = $this->profileService->getUserActivitySummary($user);
         $suggestions = $this->profileService->getProfileSuggestions($user);
-        $isOwnProfile = $user->id === $currentUser->id;
+        $layout = $this->getLayout();
 
-        // Determine which view to use based on context
-        $view = $isOwnProfile ? 'profile.show' : 'admin.users.profile.show';
-
-        return view($view, compact('user', 'activitySummary', 'suggestions', 'isOwnProfile'));
+        return view('profile.show', compact('user', 'activitySummary', 'suggestions', 'layout'));
     }
 
     /**
-     * Show the form for editing the user's profile (context-aware)
+     * Show the form for editing the authenticated user's profile
+     * Note: $user parameter is ignored - always edits current user's profile
      */
     public function edit(?User $user = null)
     {
-        $user = $user ?? auth()->user();
-        $currentUser = auth()->user();
-        
-        // Check permission to edit profile
-        if ($user->id !== $currentUser->id && !$currentUser->can('edit users')) {
-            abort(403, 'Unauthorized to edit this profile');
-        }
-
+        $user = auth()->user(); // Always use authenticated user
         $completion = $this->profileService->getProfileCompletionStatus($user);
-        $isOwnProfile = $user->id === $currentUser->id;
-
-        // Determine which view to use based on context
-        $view = $isOwnProfile ? 'profile.edit' : 'admin.users.edit';
-
-        return view($view, compact('user', 'completion', 'isOwnProfile'));
+        $layout = $this->getLayout();
+        return view('profile.edit', compact('user', 'completion', 'layout'));
     }
 
     /**
-     * Update the user's profile (context-aware)
+     * Update the authenticated user's profile information
+     * Note: $user parameter is ignored - always updates current user's profile
      */
-    public function update(UpdateProfileRequest $request, ?User $user = null)
+    public function update(Request $request, ?User $user = null)
     {
-        $user = $user ?? auth()->user();
-        $currentUser = auth()->user();
+        $user = auth()->user(); // Always use authenticated user
         
-        // Check permission to update profile
-        if ($user->id !== $currentUser->id && !$currentUser->can('edit users')) {
-            abort(403, 'Unauthorized to edit this profile');
-        }
-
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'company' => ['nullable', 'string', 'max:255'],
+            'address' => ['nullable', 'string'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'state' => ['nullable', 'string', 'max:100'],
+            'postal_code' => ['nullable', 'string', 'max:20'],
+            'country' => ['nullable', 'string', 'max:100'],
+            'avatar' => ['nullable', 'image', 'max:1024'],
+            'bio' => ['nullable', 'string', 'max:500'],
+            'website' => ['nullable', 'url', 'max:255'],
+            'position' => ['nullable', 'string', 'max:255'],
+            'allow_testimonials' => ['boolean'],
+            'allow_public_profile' => ['boolean'],
+            'marketing_notifications' => ['boolean'],
+        ]);
+        
         try {
             $updatedUser = $this->profileService->updateProfile(
                 $user, 
-                $request->validated(), 
-                $request->file('avatar'),
-                $currentUser
+                $validated, 
+                $request->file('avatar')
             );
 
-            $isOwnProfile = $user->id === $currentUser->id;
-            $redirectUrl = $this->profileService->getRedirectUrl($updatedUser, 'show', $currentUser);
-
-            // Handle email change verification
+            // Check if email changed and require verification
             if ($user->email !== $request->email && $request->has('email')) {
-                $message = $isOwnProfile 
-                    ? 'Profile updated successfully! Please verify your new email address.'
-                    : 'User profile updated successfully! Email verification required for new email.';
+                $updatedUser->email_verified_at = null;
+                $updatedUser->save();
                 
-                return redirect($redirectUrl)->with('success', $message);
+                return redirect()->route('profile.show')
+                    ->with('success', 'Profile updated successfully! Please verify your new email address.');
             }
 
-            $message = $isOwnProfile 
-                ? 'Profile updated successfully!'
-                : 'User profile updated successfully!';
-
-            return redirect($redirectUrl)->with('success', $message);
+            return redirect()->route('profile.show')
+                ->with('success', 'Profile updated successfully!');
 
         } catch (\Exception $e) {
             Log::error('Profile update failed', [
                 'user_id' => $user->id,
-                'updated_by' => $currentUser->id,
                 'error' => $e->getMessage()
             ]);
 
@@ -120,61 +123,38 @@ class UnifiedProfileController extends Controller
     }
 
     /**
-     * Show the form for changing password (context-aware)
+     * Show the form for changing the authenticated user's password
+     * Note: $user parameter is ignored - always for current user
      */
     public function showChangePasswordForm(?User $user = null)
     {
-        $user = $user ?? auth()->user();
-        $currentUser = auth()->user();
-        
-        // Check permission
-        if ($user->id !== $currentUser->id && !$currentUser->can('edit users')) {
-            abort(403, 'Unauthorized to change this user\'s password');
-        }
-
-        $isOwnProfile = $user->id === $currentUser->id;
-        $view = $isOwnProfile ? 'profile.change-password' : 'admin.users.change-password';
-
-        return view($view, compact('user', 'isOwnProfile'));
+        $user = auth()->user();
+        $layout = $this->getLayout();
+        return view('profile.change-password', compact('user', 'layout'));
     }
 
     /**
-     * Update the user's password (context-aware)
+     * Update the authenticated user's password
+     * Note: $user parameter is ignored - always updates current user's password
      */
     public function updatePassword(Request $request, ?User $user = null)
     {
-        $user = $user ?? auth()->user();
-        $currentUser = auth()->user();
-        $isOwnProfile = $user->id === $currentUser->id;
-
-        // Check permission
-        if (!$isOwnProfile && !$currentUser->can('edit users')) {
-            abort(403, 'Unauthorized to change this user\'s password');
-        }
-
-        // Validation rules depend on context
-        $rules = ['password' => ['required', 'string', 'min:8', 'confirmed']];
+        $user = auth()->user(); // Always use authenticated user
         
-        if ($isOwnProfile) {
-            $rules['current_password'] = ['required', 'current_password'];
-        }
-
-        $request->validate($rules);
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
 
         try {
-            $this->profileService->changePassword($user, $request->password);
+            $this->userService->changePassword($user, $request->password);
 
-            $redirectUrl = $this->profileService->getRedirectUrl($user, 'show', $currentUser);
-            $message = $isOwnProfile 
-                ? 'Password updated successfully!'
-                : 'User password updated successfully!';
-
-            return redirect($redirectUrl)->with('success', $message);
+            return redirect()->route('profile.show')
+                ->with('success', 'Password updated successfully!');
 
         } catch (\Exception $e) {
             Log::error('Password update failed', [
                 'user_id' => $user->id,
-                'updated_by' => $currentUser->id,
                 'error' => $e->getMessage()
             ]);
 
@@ -184,57 +164,54 @@ class UnifiedProfileController extends Controller
     }
 
     /**
-     * Show notification preferences (context-aware)
+     * Show notification preferences for the authenticated user
+     * Note: $user parameter is ignored - always for current user
      */
     public function preferences(?User $user = null)
     {
-        $user = $user ?? auth()->user();
-        $currentUser = auth()->user();
-        
-        // Only own profile for preferences, or admin access
-        if ($user->id !== $currentUser->id && !$currentUser->hasAdminAccess()) {
-            abort(403, 'Unauthorized to view notification preferences');
-        }
-
+        $user = auth()->user(); // Always use authenticated user
         $completion = $this->profileService->getProfileCompletionStatus($user);
-        $isOwnProfile = $user->id === $currentUser->id;
-
-        $view = $isOwnProfile ? 'profile.preferences' : 'admin.users.preferences';
-
-        return view($view, compact('user', 'completion', 'isOwnProfile'));
+        $layout = $this->getLayout();
+        return view('profile.preferences', compact('user', 'completion', 'layout'));
     }
 
     /**
-     * Update notification preferences (context-aware)
+     * Update notification preferences for the authenticated user
+     * Note: $user parameter is ignored - always updates current user's preferences
      */
-    public function updatePreferences(UpdateNotificationPreferencesRequest $request, ?User $user = null)
+    public function updatePreferences(Request $request, ?User $user = null)
     {
-        $user = $user ?? auth()->user();
-        $currentUser = auth()->user();
+        $user = auth()->user(); // Always use authenticated user
         
-        // Only own profile for preferences, or admin access
-        if ($user->id !== $currentUser->id && !$currentUser->hasAdminAccess()) {
-            abort(403, 'Unauthorized to update notification preferences');
-        }
+        $validated = $request->validate([
+            // Notification preferences
+            'email_notifications' => 'boolean',
+            'project_update_notifications' => 'boolean',
+            'quotation_update_notifications' => 'boolean',
+            'message_reply_notifications' => 'boolean',
+            'deadline_alert_notifications' => 'boolean',
+            'chat_notifications' => 'boolean',
+            'system_notifications' => 'boolean',
+            'marketing_notifications' => 'boolean',
+            'testimonial_notifications' => 'boolean',
+            'urgent_notifications' => 'boolean',
+            'security_alert_notifications' => 'boolean',
+            'notification_frequency' => 'nullable|string|in:immediate,hourly,daily,weekly',
+            'quiet_hours' => 'nullable|array',
+            'quiet_hours.enabled' => 'boolean',
+            'quiet_hours.start' => 'nullable|string',
+            'quiet_hours.end' => 'nullable|string',
+        ]);
 
         try {
-            $this->profileService->updateNotificationPreferences($user, $request->validated(), $currentUser);
+            $this->profileService->updateNotificationPreferences($user, $validated);
 
-            $isOwnProfile = $user->id === $currentUser->id;
-            $redirectUrl = $isOwnProfile 
-                ? route('profile.preferences')
-                : route('admin.users.show', $user);
-
-            $message = $isOwnProfile 
-                ? 'Notification preferences updated successfully!'
-                : 'User notification preferences updated successfully!';
-
-            return redirect($redirectUrl)->with('success', $message);
+            return redirect()->route('profile.preferences')
+                ->with('success', 'Notification preferences updated successfully!');
 
         } catch (\Exception $e) {
             Log::error('Notification preferences update failed', [
                 'user_id' => $user->id,
-                'updated_by' => $currentUser->id,
                 'error' => $e->getMessage()
             ]);
 
@@ -244,11 +221,11 @@ class UnifiedProfileController extends Controller
     }
 
     /**
-     * Show profile completion guide
+     * Show profile completion guide for the authenticated user
      */
     public function completion()
     {
-        $user = auth()->user();
+        $user = auth()->user(); // Always use authenticated user
         $completion = $this->profileService->getProfileCompletionStatus($user);
         $suggestions = $this->profileService->getProfileSuggestions($user);
 
@@ -256,15 +233,14 @@ class UnifiedProfileController extends Controller
     }
 
     /**
-     * Export user data (GDPR compliance)
+     * Export authenticated user's data (GDPR compliance)
      */
-    public function export(?User $user = null)
+    public function export()
     {
-        $user = $user ?? auth()->user();
-        $currentUser = auth()->user();
-
+        $user = auth()->user(); // Always use authenticated user
+        
         try {
-            $data = $this->profileService->exportUserData($user, $currentUser);
+            $data = $this->profileService->exportUserData($user);
             
             $filename = 'profile_data_' . $user->id . '_' . now()->format('Y-m-d_H-i-s') . '.json';
             
@@ -276,7 +252,6 @@ class UnifiedProfileController extends Controller
         } catch (\Exception $e) {
             Log::error('Data export failed', [
                 'user_id' => $user->id,
-                'requested_by' => $currentUser->id,
                 'error' => $e->getMessage()
             ]);
 
@@ -286,45 +261,11 @@ class UnifiedProfileController extends Controller
     }
 
     /**
-     * Send profile completion reminder (admin only)
-     */
-    public function sendCompletionReminder(User $user)
-    {
-        $currentUser = auth()->user();
-
-        if (!$currentUser->hasAdminAccess()) {
-            abort(403, 'Unauthorized action');
-        }
-
-        try {
-            $sent = $this->profileService->sendCompletionReminder($user);
-            
-            if ($sent) {
-                return redirect()->back()
-                    ->with('success', 'Profile completion reminder sent successfully!');
-            } else {
-                return redirect()->back()
-                    ->with('info', 'Reminder was not sent (user profile is complete or reminder sent recently).');
-            }
-
-        } catch (\Exception $e) {
-            Log::error('Failed to send completion reminder', [
-                'user_id' => $user->id,
-                'admin_id' => $currentUser->id,
-                'error' => $e->getMessage()
-            ]);
-
-            return redirect()->back()
-                ->with('error', 'Failed to send reminder. Please try again.');
-        }
-    }
-
-    /**
-     * Show account deletion form
+     * Show account deletion form for the authenticated user
      */
     public function showDeleteForm()
     {
-        $user = auth()->user();
+        $user = auth()->user(); // Always use authenticated user
         
         // Get user's data summary for deletion confirmation
         $dataSummary = [
@@ -333,74 +274,55 @@ class UnifiedProfileController extends Controller
             'messages_count' => $user->messages()->count(),
             'posts_count' => $user->posts()->count(),
         ];
+        $layout = $this->getLayout();
 
-        return view('profile.delete', compact('user', 'dataSummary'));
+        return view('profile.delete', compact('user', 'dataSummary', 'layout'));
     }
 
     /**
-     * Delete the user's account
+     * Delete the authenticated user's account
      */
-    public function destroy(Request $request, ?User $user = null)
+    public function destroy(Request $request)
     {
-        $user = $user ?? auth()->user();
-        $currentUser = auth()->user();
-        $isOwnProfile = $user->id === $currentUser->id;
-
-        // Check permissions
-        if (!$isOwnProfile && !$currentUser->can('delete users')) {
-            abort(403, 'Unauthorized to delete this account');
-        }
-
+        $user = auth()->user(); // Always use authenticated user
+        
         $request->validate([
-            'password' => $isOwnProfile ? ['required', 'current_password'] : [],
+            'password' => ['required', 'current_password'],
             'confirmation' => ['required', 'accepted'],
         ]);
 
         try {
             Log::info('User account deletion initiated', [
                 'user_id' => $user->id,
-                'deleted_by' => $currentUser->id,
-                'is_own_profile' => $isOwnProfile,
+                'email' => $user->email,
                 'ip' => $request->ip(),
             ]);
 
-            // Use the centralized service
-            $this->profileService->deleteUser($user);
+            // Use the UserService to handle deletion properly
+            $this->userService->deleteUser($user);
 
-            if ($isOwnProfile) {
-                Auth::logout();
-                return redirect()->route('login')
-                    ->with('success', 'Your account has been successfully deleted.');
-            } else {
-                return redirect()->route('admin.users.index')
-                    ->with('success', 'User account has been successfully deleted.');
-            }
+            Auth::logout();
+
+            return redirect()->route('login')
+                ->with('success', 'Your account has been successfully deleted.');
 
         } catch (\Exception $e) {
             Log::error('Account deletion failed', [
                 'user_id' => $user->id,
-                'deleted_by' => $currentUser->id,
                 'error' => $e->getMessage()
             ]);
 
             return redirect()->back()
-                ->with('error', $e->getMessage());
+                ->with('error', 'Failed to delete account. Please contact support if this persists.');
         }
     }
 
     /**
-     * API: Get completion status as JSON for AJAX requests
+     * Get completion status as JSON for AJAX requests
      */
-    public function completionStatus(?User $user = null)
+    public function completionStatus()
     {
-        $user = $user ?? auth()->user();
-        $currentUser = auth()->user();
-        
-        // Check permission
-        if ($user->id !== $currentUser->id && !$currentUser->hasAdminAccess()) {
-            abort(403, 'Unauthorized');
-        }
-
+        $user = auth()->user(); // Always use authenticated user
         $completion = $this->profileService->getProfileCompletionStatus($user);
         $suggestions = $this->profileService->getProfileSuggestions($user);
 
@@ -411,97 +333,30 @@ class UnifiedProfileController extends Controller
     }
 
     /**
-     * API: Get profile activity summary as JSON
+     * Get profile activity summary as JSON
      */
-    public function activitySummary(?User $user = null)
+    public function activitySummary()
     {
-        $user = $user ?? auth()->user();
-        $currentUser = auth()->user();
-        
-        // Check permission
-        if ($user->id !== $currentUser->id && !$currentUser->hasAdminAccess()) {
-            abort(403, 'Unauthorized');
-        }
-
-        $summary = $this->profileService->getUserActivitySummary($user, $currentUser);
+        $user = auth()->user(); // Always use authenticated user
+        $summary = $this->profileService->getUserActivitySummary($user);
 
         return response()->json($summary);
     }
-
-    /**
-     * API: Test notification system
-     */
-    public function testNotification()
+    private function getLayout()
     {
-        try {
-            $user = auth()->user();
-            
-            // Send test notification using the centralized service
-            $result = $this->profileService->sendTestNotification($user);
-            
-            if ($result) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Test notification sent successfully! Check your email and notifications.'
-                ]);
-            }
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send test notification.'
-            ], 500);
-            
-        } catch (\Exception $e) {
-            Log::error('Failed to send test notification', [
-                'user_id' => auth()->id(),
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send test notification.'
-            ], 500);
+        $user = auth()->user();
+        
+        // Admin users get admin layout
+        if ($user->hasAnyRole(['super-admin', 'admin', 'manager', 'editor'])) {
+            return 'layouts.admin';
         }
-    }
-
-    /**
-     * Determine the appropriate redirect after action based on user context
-     */
-    protected function getContextualRedirect(User $user, string $action = 'show'): string
-    {
-        return $this->profileService->getRedirectUrl($user, $action, auth()->user());
-    }
-
-    /**
-     * Check if current user can perform action on target user
-     */
-    protected function canPerformAction(User $targetUser, string $action): bool
-    {
-        $currentUser = auth()->user();
-        $isOwnProfile = $targetUser->id === $currentUser->id;
-
-        return match($action) {
-            'view' => $isOwnProfile || $currentUser->hasAdminAccess(),
-            'edit' => $isOwnProfile || $currentUser->can('edit users'),
-            'delete' => ($isOwnProfile && $targetUser->id !== 1) || $currentUser->can('delete users'),
-            'change_password' => $isOwnProfile || $currentUser->can('edit users'),
-            'export' => $isOwnProfile || $currentUser->can('export user data'),
-            default => false,
-        };
-    }
-
-    /**
-     * Get success message based on action and context
-     */
-    protected function getSuccessMessage(string $action, bool $isOwnProfile): string
-    {
-        $messages = [
-            'update' => $isOwnProfile ? 'Profile updated successfully!' : 'User profile updated successfully!',
-            'password' => $isOwnProfile ? 'Password updated successfully!' : 'User password updated successfully!',
-            'preferences' => $isOwnProfile ? 'Preferences updated successfully!' : 'User preferences updated successfully!',
-            'delete' => $isOwnProfile ? 'Your account has been deleted.' : 'User account has been deleted.',
-        ];
-
-        return $messages[$action] ?? 'Action completed successfully!';
+        
+        // Client users get client layout  
+        if ($user->hasRole('client')) {
+            return 'layouts.client';
+        }
+        
+        // Default layout for other users
+        return 'layouts.app';
     }
 }

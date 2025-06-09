@@ -1,6 +1,6 @@
 <!-- resources/views/profile/show.blade.php -->
-<x-layouts.app title="My Profile">
-    <div class="py-12">
+<x-dynamic-component :component="$layout" title="My Profile">
+    <div class="py-2">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <!-- Profile Header -->
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
@@ -44,7 +44,7 @@
                         </div>
                         <div class="flex flex-col sm:flex-row gap-3">
                             <x-admin.button 
-                                href="{{ route('admin.users.profile.edit') }}" 
+                                href="{{ route('profile.edit') }}" 
                                 color="primary"
                                 icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>'
                             >
@@ -232,7 +232,7 @@
                     <x-admin.card title="Quick Actions">
                         <div class="space-y-3">
                             <x-admin.button 
-                                href="{{ route('admin.users.profile.edit') }}" 
+                                href="{{ route('profile.edit') }}" 
                                 color="primary" 
                                 class="w-full"
                                 icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>'
@@ -272,4 +272,4 @@
             </div>
         </div>
     </div>
-</x-layouts.app>
+</x-dynamic-component>

@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Services\CentralizedProfileService;
+use App\Services\UserService;
+use App\Facades\Notifications;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -16,11 +17,11 @@ use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
-    protected CentralizedProfileService $profileService;
+    protected UserService $userService;
 
-    public function __construct(CentralizedProfileService $profileService)
+    public function __construct(UserService $userService)
     {
-        $this->profileService = $profileService;
+        $this->userService = $userService;
     }
 
     /**
@@ -37,7 +38,7 @@ class UserController extends Controller
             ->when($request->filled('search'), function ($query) use ($request) {
                 return $query->where(function ($q) use ($request) {
                     $q->where('name', 'like', "%{$request->search}%")
-                      ->orWhere('email', 'like', "%{$request->search}%");
+                        ->orWhere('email', 'like', "%{$request->search}%");
                 });
             })
             ->when($request->filled('status'), function ($query) use ($request) {
@@ -53,9 +54,9 @@ class UserController extends Controller
                 }
             })
             ->paginate(15);
-        
+
         $roles = Role::pluck('name', 'name');
-        
+
         return view('admin.users.index', compact('users', 'roles'));
     }
 
@@ -65,7 +66,7 @@ class UserController extends Controller
     public function create()
     {
         $roles = Role::all();
-        
+
         return view('admin.users.create', compact('roles'));
     }
 
@@ -86,33 +87,33 @@ class UserController extends Controller
             'address' => 'nullable|string',
             'company' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100', 
+            'state' => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:20',
             'country' => 'nullable|string|max:100',
             'position' => 'nullable|string|max:255',
             'website' => 'nullable|url|max:255',
             'bio' => 'nullable|string|max:1000',
         ]);
-        
+
         DB::beginTransaction();
-        
+
         try {
-            // Use CentralizedProfileService for user creation
-            $user = $this->profileService->createUser($validated, $request->file('avatar'));
-            
+            // Use UserService for user creation
+            $user = $this->userService->createUser($validated, $request->file('avatar'));
+
             DB::commit();
-            
+
             return redirect()->route('admin.users.index')
                 ->with('success', 'User created successfully!');
-                
+
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Admin user creation failed', [
                 'admin_id' => auth()->id(),
                 'error' => $e->getMessage()
             ]);
-            
+
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Error creating user: ' . $e->getMessage());
@@ -121,19 +122,19 @@ class UserController extends Controller
 
     /**
      * 🚫 REMOVED - Delegated to UnifiedProfileController
-     * Use route: admin.users.profile.show
+     * Use route: profile.show (for users to view their own profile)
      */
     // public function show(User $user) { ... }
 
     /**
      * 🚫 REMOVED - Delegated to UnifiedProfileController  
-     * Use route: admin.users.profile.edit
+     * Use route: profile.edit (for users to edit their own profile)
      */
     // public function edit(User $user) { ... }
 
     /**
      * 🚫 REMOVED - Delegated to UnifiedProfileController
-     * Use route: admin.users.profile.update
+     * Use route: profile.update (for users to update their own profile)
      */
     // public function update(Request $request, User $user) { ... }
 
@@ -147,7 +148,7 @@ class UserController extends Controller
             return redirect()->route('admin.users.index')
                 ->with('error', 'You cannot delete your own account!');
         }
-        
+
         if ($user->hasRole('super-admin')) {
             $superAdminCount = Role::where('name', 'super-admin')->first()->users()->count();
             if ($superAdminCount <= 1) {
@@ -155,38 +156,37 @@ class UserController extends Controller
                     ->with('error', 'Cannot delete the last super-admin user!');
             }
         }
-        
+
         try {
-            // Use centralized service for deletion
-            $this->profileService->deleteUser($user);
-            
+            $this->userService->deleteUser($user);
+
             return redirect()->route('admin.users.index')
                 ->with('success', 'User deleted successfully!');
-                
+
         } catch (\Exception $e) {
             Log::error('Admin user deletion failed', [
                 'admin_id' => auth()->id(),
                 'user_id' => $user->id,
                 'error' => $e->getMessage()
             ]);
-            
+
             return redirect()->route('admin.users.index')
                 ->with('error', 'Error deleting user: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * 🚫 REMOVED - Delegated to UnifiedProfileController
-     * Use route: admin.users.profile.password
+     * Use route: profile.change-password (for users to change their own password)
      */
     // public function showChangePasswordForm(User $user) { ... }
-    
+
     /**
      * 🚫 REMOVED - Delegated to UnifiedProfileController  
-     * Use route: admin.users.profile.password.update
+     * Use route: profile.password.update (for users to update their own password)
      */
     // public function changePassword(Request $request, User $user) { ... }
-    
+
     /**
      * ✅ KEEP - Toggle user active status (admin-only)
      */
@@ -196,10 +196,10 @@ class UserController extends Controller
             return redirect()->route('admin.users.index')
                 ->with('error', 'You cannot deactivate your own account!');
         }
-        
+
         try {
-            $this->profileService->toggleActive($user);
-            
+            $this->userService->toggleActive($user);
+
             return redirect()->back()
                 ->with('success', 'User status updated!');
         } catch (\Exception $e) {
@@ -207,7 +207,7 @@ class UserController extends Controller
                 ->with('error', 'Failed to update user status.');
         }
     }
-    
+
     /**
      * ✅ KEEP - Verify a client account (admin-only)
      */
@@ -217,10 +217,10 @@ class UserController extends Controller
             return redirect()->route('admin.users.index')
                 ->with('error', 'Only client accounts can be verified!');
         }
-        
+
         try {
-            $this->profileService->verifyEmail($user);
-            
+            $this->userService->verifyEmail($user);
+
             return redirect()->back()
                 ->with('success', 'Client account verified successfully!');
         } catch (\Exception $e) {
@@ -229,102 +229,11 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * ✅ NEW - Show user roles management (enhanced admin feature)
-     */
-    public function showRoles(User $user)
-    {
-        $user->load(['roles', 'roles.permissions']);
-        $availableRoles = Role::with('permissions')->get();
-        $userRoles = $user->roles->pluck('id')->toArray();
-        
-        return view('admin.users.roles', compact('user', 'availableRoles', 'userRoles'));
-    }
-
-    /**
-     * ✅ NEW - Update user roles (enhanced admin feature)
-     */
-    public function updateRoles(Request $request, User $user)
-    {
-        $request->validate([
-            'roles' => 'required|array',
-            'roles.*' => 'exists:roles,id',
-        ]);
-
-        // Prevent removing super-admin from self
-        if ($user->id === auth()->id() && $user->hasRole('super-admin')) {
-            $superAdminRole = Role::where('name', 'super-admin')->first();
-            if ($superAdminRole && !in_array($superAdminRole->id, $request->roles)) {
-                return redirect()->back()
-                    ->with('error', 'You cannot remove super-admin role from yourself!');
-            }
-        }
-
-        try {
-            $roles = Role::whereIn('id', $request->roles)->get();
-            $user->syncRoles($roles);
-            
-            // Send notification about role change
-            $this->profileService->sendRoleChangeNotification($user, $roles, auth()->user());
-            
-            return redirect()->route('admin.users.index')
-                ->with('success', 'User roles updated successfully!');
-                
-        } catch (\Exception $e) {
-            Log::error('Role update failed', [
-                'admin_id' => auth()->id(),
-                'user_id' => $user->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return redirect()->back()
-                ->with('error', 'Failed to update user roles.');
-        }
-    }
-
-    /**
-     * ✅ NEW - Assign specific role to user
-     */
-    public function assignRole(Request $request, User $user)
-    {
-        $request->validate([
-            'role' => 'required|exists:roles,name',
-        ]);
-
-        try {
-            $user->assignRole($request->role);
-            
-            return redirect()->back()
-                ->with('success', "Role '{$request->role}' assigned successfully!");
-                
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Failed to assign role.');
-        }
-    }
-
-    /**
-     * ✅ NEW - Remove specific role from user
-     */
-    public function removeRole(User $user, Role $role)
-    {
-        // Prevent removing super-admin from self
-        if ($user->id === auth()->id() && $role->name === 'super-admin') {
-            return redirect()->back()
-                ->with('error', 'You cannot remove super-admin role from yourself!');
-        }
-
-        try {
-            $user->removeRole($role);
-            
-            return redirect()->back()
-                ->with('success', "Role '{$role->name}' removed successfully!");
-                
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Failed to remove role.');
-        }
-    }
+    // 🚫 ROLE MANAGEMENT REMOVED - Use RoleController instead
+    // Role-specific operations should be handled in:
+    // - app/Http/Controllers/Admin/RoleController.php
+    // - Routes: admin/roles/* for role management
+    // - Users can be assigned roles through RoleController
 
     /**
      * ✅ NEW - Bulk actions on multiple users
@@ -332,33 +241,43 @@ class UserController extends Controller
     public function bulkAction(Request $request)
     {
         $request->validate([
-            'action' => 'required|in:activate,deactivate,verify,delete,assign_role',
+            'action' => 'required|in:activate,deactivate,verify,delete',
             'user_ids' => 'required|array',
             'user_ids.*' => 'exists:users,id',
-            'role_id' => 'required_if:action,assign_role|exists:roles,id',
         ]);
 
         $userIds = $request->user_ids;
         $currentUserId = auth()->id();
-        
+
         // Remove current user from bulk actions
         $userIds = array_filter($userIds, fn($id) => $id != $currentUserId);
-        
+
         if (empty($userIds)) {
             return redirect()->back()
                 ->with('error', 'No valid users selected for bulk action.');
         }
 
         try {
-            $result = $this->profileService->bulkUserAction(
-                $request->action,
-                $userIds,
-                $request->role_id
-            );
-            
+            switch ($request->action) {
+                case 'activate':
+                    $affected = $this->userService->bulkToggleActive($userIds, true);
+                    break;
+                case 'deactivate':
+                    $affected = $this->userService->bulkToggleActive($userIds, false);
+                    break;
+                case 'verify':
+                    $affected = $this->userService->bulkSendVerificationEmail($userIds);
+                    break;
+                case 'delete':
+                    $affected = $this->bulkDeleteUsers($userIds);
+                    break;
+                default:
+                    throw new \Exception('Invalid bulk action');
+            }
+
             return redirect()->back()
-                ->with('success', "Bulk action completed. {$result['affected']} users processed.");
-                
+                ->with('success', "Bulk action completed. {$affected} users processed.");
+
         } catch (\Exception $e) {
             Log::error('Bulk action failed', [
                 'admin_id' => $currentUserId,
@@ -366,7 +285,7 @@ class UserController extends Controller
                 'user_ids' => $userIds,
                 'error' => $e->getMessage()
             ]);
-            
+
             return redirect()->back()
                 ->with('error', 'Bulk action failed: ' . $e->getMessage());
         }
@@ -378,14 +297,57 @@ class UserController extends Controller
     public function sendWelcomeEmail(User $user)
     {
         try {
-            $this->profileService->sendWelcomeEmail($user);
-            
+            $this->userService->sendWelcomeEmail($user);
+
             return redirect()->back()
                 ->with('success', 'Welcome email sent successfully!');
-                
+
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Failed to send welcome email.');
+        }
+    }
+
+    /**
+     * ✅ NEW - Reset user password (admin action - no current password required)
+     */
+    public function resetPassword(Request $request, User $user)
+    {
+        $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+            'notify_user' => 'boolean',
+        ]);
+
+        if ($user->id === auth()->id()) {
+            return redirect()->back()
+                ->with('error', 'Use the regular password change for your own account.');
+        }
+
+        try {
+            $this->userService->changePassword($user, $request->password);
+
+            // Optionally notify user
+            if ($request->notify_user) {
+                Notifications::send('user.password_changed_by_admin', [
+                    'user' => $user,
+                    'admin' => auth()->user(),
+                    'timestamp' => now()
+                ], $user);
+            }
+
+            Log::info('Admin password reset', [
+                'admin_id' => auth()->id(),
+                'user_id' => $user->id,
+                'notified' => $request->notify_user
+            ]);
+
+            return redirect()->back()
+                ->with('success', 'Password reset successfully!' .
+                    ($request->notify_user ? ' User has been notified.' : ''));
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to reset password.');
         }
     }
 
@@ -406,18 +368,18 @@ class UserController extends Controller
         try {
             // Store original user ID in session
             session(['impersonator_id' => auth()->id()]);
-            
+
             // Login as the target user
             auth()->login($user);
-            
+
             Log::info('User impersonation started', [
                 'admin_id' => session('impersonator_id'),
                 'target_user_id' => $user->id
             ]);
-            
+
             return redirect()->route('dashboard')
                 ->with('info', "You are now impersonating {$user->name}. Click here to stop impersonation.");
-                
+
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Failed to impersonate user.');
@@ -430,13 +392,13 @@ class UserController extends Controller
     public function stopImpersonation()
     {
         $impersonatorId = session('impersonator_id');
-        
+
         if (!$impersonatorId) {
             return redirect()->route('dashboard');
         }
 
         $impersonator = User::find($impersonatorId);
-        
+
         if (!$impersonator) {
             session()->forget('impersonator_id');
             return redirect()->route('login');
@@ -449,31 +411,9 @@ class UserController extends Controller
 
         session()->forget('impersonator_id');
         auth()->login($impersonator);
-        
+
         return redirect()->route('admin.users.index')
             ->with('success', 'Impersonation stopped successfully.');
-    }
-
-    /**
-     * ✅ NEW - User activity log (admin view)
-     */
-    public function activityLog(User $user)
-    {
-        // This would integrate with your activity logging system
-        $activities = collect(); // Replace with actual activity log query
-        
-        return view('admin.users.activity-log', compact('user', 'activities'));
-    }
-
-    /**
-     * ✅ NEW - User login history (admin view)
-     */
-    public function loginHistory(User $user)
-    {
-        // This would query login history table
-        $loginHistory = collect(); // Replace with actual login history query
-        
-        return view('admin.users.login-history', compact('user', 'loginHistory'));
     }
 
     /**
@@ -488,14 +428,15 @@ class UserController extends Controller
         ]);
 
         try {
-            $users = $request->user_ids 
+            $users = $request->user_ids
                 ? User::whereIn('id', $request->user_ids)->get()
                 : User::all();
 
-            $exportData = $this->profileService->bulkExportUsers($users, $request->format);
-            
+            // Generate export data based on format
+            $exportData = $this->generateExportData($users, $request->format);
+
             $filename = 'users_export_' . now()->format('Y-m-d_H-i-s') . '.' . $request->format;
-            
+
             return response()->streamDownload(
                 function () use ($exportData) {
                     echo $exportData;
@@ -503,55 +444,16 @@ class UserController extends Controller
                 $filename,
                 ['Content-Type' => $this->getContentType($request->format)]
             );
-            
+
         } catch (\Exception $e) {
             Log::error('User export failed', [
                 'admin_id' => auth()->id(),
                 'format' => $request->format,
                 'error' => $e->getMessage()
             ]);
-            
+
             return redirect()->back()
                 ->with('error', 'Export failed: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * ✅ NEW - Reset user password (admin without current password)
-     */
-    public function resetPassword(Request $request, User $user)
-    {
-        $request->validate([
-            'password' => 'required|string|min:8|confirmed',
-            'notify_user' => 'boolean',
-        ]);
-
-        if ($user->id === auth()->id()) {
-            return redirect()->back()
-                ->with('error', 'Use the regular password change for your own account.');
-        }
-
-        try {
-            $this->profileService->adminResetPassword($user, $request->password);
-            
-            // Optionally notify user
-            if ($request->notify_user) {
-                $this->profileService->sendPasswordResetNotification($user, auth()->user());
-            }
-            
-            Log::info('Admin password reset', [
-                'admin_id' => auth()->id(),
-                'user_id' => $user->id,
-                'notified' => $request->notify_user
-            ]);
-            
-            return redirect()->back()
-                ->with('success', 'Password reset successfully!' . 
-                    ($request->notify_user ? ' User has been notified.' : ''));
-                
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Failed to reset password.');
         }
     }
 
@@ -561,10 +463,10 @@ class UserController extends Controller
     public function getUserStatistics()
     {
         try {
-            $stats = $this->profileService->getAdminUserStatistics();
-            
+            $stats = $this->userService->getStatistics();
+
             return response()->json($stats);
-            
+
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to load statistics'], 500);
         }
@@ -597,25 +499,82 @@ class UserController extends Controller
                         'company' => $user->company,
                         'avatar_url' => $user->avatar_url,
                         'roles' => $user->roles->pluck('name'),
-                        'url' => route('admin.users.profile.show', $user),
+                        'url' => route('admin.users.show', $user),
                     ];
                 })
             ]);
-            
+
         } catch (\Exception $e) {
             return response()->json(['error' => 'Search failed'], 500);
         }
     }
 
-    /**
-     * Helper method for export content types
-     */
-    protected function getContentType(string $format): string
+    private function bulkDeleteUsers(array $userIds): int
     {
-        return match($format) {
+        $deleted = 0;
+        foreach ($userIds as $userId) {
+            $user = User::find($userId);
+            if ($user && !$user->hasRole('super-admin')) {
+                try {
+                    $this->userService->deleteUser($user);
+                    $deleted++;
+                } catch (\Exception $e) {
+                    Log::warning("Failed to delete user {$userId}: " . $e->getMessage());
+                }
+            }
+        }
+        return $deleted;
+    }
+
+    private function bulkAssignRole(array $userIds, int $roleId): int
+    {
+        $role = Role::find($roleId);
+        if (!$role) {
+            throw new \Exception('Role not found');
+        }
+
+        $assigned = 0;
+        foreach ($userIds as $userId) {
+            $user = User::find($userId);
+            if ($user) {
+                try {
+                    $user->assignRole($role);
+                    $assigned++;
+                } catch (\Exception $e) {
+                    Log::warning("Failed to assign role to user {$userId}: " . $e->getMessage());
+                }
+            }
+        }
+        return $assigned;
+    }
+
+    private function generateExportData($users, string $format)
+    {
+        switch ($format) {
+            case 'json':
+                return $users->toJson(JSON_PRETTY_PRINT);
+            case 'csv':
+                $csv = fopen('php://temp', 'r+');
+                fputcsv($csv, ['ID', 'Name', 'Email', 'Company']);
+                foreach ($users as $user) {
+                    fputcsv($csv, [$user->id, $user->name, $user->email, $user->company]);
+                }
+                rewind($csv);
+                return stream_get_contents($csv);
+            case 'xlsx':
+                // Placeholder; for production use Laravel Excel package
+                return json_encode(['error' => 'XLSX export requires Laravel Excel package']);
+            default:
+                throw new \Exception('Unsupported format');
+        }
+    }
+
+    private function getContentType(string $format): string
+    {
+        return match ($format) {
+            'json' => 'application/json',
             'csv' => 'text/csv',
             'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'json' => 'application/json',
             default => 'application/octet-stream',
         };
     }

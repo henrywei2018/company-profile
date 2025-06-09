@@ -114,34 +114,34 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'role:client'])->g
         Route::get('/{chatSession}', [ChatController::class, 'show'])->name('show');
     });
 
-    Route::prefix('profile')->group(function () {
-        Route::get('', [UnifiedProfileController::class, 'show'])->name('show');
-        Route::get('/edit', [UnifiedProfileController::class, 'edit'])->name('edit');
-        Route::patch('', [UnifiedProfileController::class, 'update'])->name('update');
+    // Route::prefix('profile')->group(function () {
+    //     Route::get('', [UnifiedProfileController::class, 'show'])->name('show');
+    //     Route::get('/edit', [UnifiedProfileController::class, 'edit'])->name('edit');
+    //     Route::patch('', [UnifiedProfileController::class, 'update'])->name('update');
         
-        // Password Management
-        Route::get('/change-password', [UnifiedProfileController::class, 'showChangePasswordForm'])->name('change-password');
-        Route::patch('/password', [UnifiedProfileController::class, 'updatePassword'])->name('password.update');
+    //     // Password Management
+    //     Route::get('/change-password', [UnifiedProfileController::class, 'showChangePasswordForm'])->name('change-password');
+    //     Route::patch('/password', [UnifiedProfileController::class, 'updatePassword'])->name('password.update');
         
-        // Notification Preferences
-        Route::get('/preferences', [UnifiedProfileController::class, 'preferences'])->name('preferences');
-        Route::patch('/preferences', [UnifiedProfileController::class, 'updatePreferences'])->name('preferences.update');
+    //     // Notification Preferences
+    //     Route::get('/preferences', [UnifiedProfileController::class, 'preferences'])->name('preferences');
+    //     Route::patch('/preferences', [UnifiedProfileController::class, 'updatePreferences'])->name('preferences.update');
         
-        // Profile Completion
-        Route::get('/completion', [UnifiedProfileController::class, 'completion'])->name('completion');
+    //     // Profile Completion
+    //     Route::get('/completion', [UnifiedProfileController::class, 'completion'])->name('completion');
         
-        // Data Export (GDPR)
-        Route::get('/export', [UnifiedProfileController::class, 'export'])->name('export');
+    //     // Data Export (GDPR)
+    //     Route::get('/export', [UnifiedProfileController::class, 'export'])->name('export');
         
-        // Account Deletion
-        Route::get('/delete', [UnifiedProfileController::class, 'showDeleteForm'])->name('delete');
-        Route::delete('', [UnifiedProfileController::class, 'destroy'])->name('destroy');
+    //     // Account Deletion
+    //     Route::get('/delete', [UnifiedProfileController::class, 'showDeleteForm'])->name('delete');
+    //     Route::delete('', [UnifiedProfileController::class, 'destroy'])->name('destroy');
         
-        // AJAX Endpoints
-        Route::get('/completion-status', [UnifiedProfileController::class, 'completionStatus'])->name('completion-status');
-        Route::get('/activity-summary', [UnifiedProfileController::class, 'activitySummary'])->name('activity-summary');
-        Route::post('/test-notification', [UnifiedProfileController::class, 'testNotification'])->name('test-notification');
-    });
+    //     // AJAX Endpoints
+    //     Route::get('/completion-status', [UnifiedProfileController::class, 'completionStatus'])->name('completion-status');
+    //     Route::get('/activity-summary', [UnifiedProfileController::class, 'activitySummary'])->name('activity-summary');
+    //     Route::post('/test-notification', [UnifiedProfileController::class, 'testNotification'])->name('test-notification');
+    // });
 
 
     Route::prefix('api')->name('api.')->group(function () {

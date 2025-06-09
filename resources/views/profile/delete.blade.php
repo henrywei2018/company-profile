@@ -1,11 +1,6 @@
 {{-- resources/views/profile/delete.blade.php --}}
-@php
-    $isOwnProfile = !isset($user) || $user->id === auth()->id();
-    $pageTitle = $isOwnProfile ? 'Delete Account' : 'Delete User Account - ' . $user->name;
-    $layout = $isOwnProfile ? 'layouts.app' : 'layouts.admin';
-@endphp
 
-<x-dynamic-component :component="$layout" :title="$pageTitle">
+<x-dynamic-component :component="$layout" title="Delete Account">
     <div class="py-12">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
             <!-- Header -->

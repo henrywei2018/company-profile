@@ -5,7 +5,6 @@ use App\Http\Controllers\Admin\{
     DashboardController,
     RoleController,
     PermissionController,
-    ProfileController,
     RBACController,
     UserController,
     ServiceController,
@@ -58,30 +57,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/rbac/audit-log', [RBACController::class, 'auditLog'])->name('rbac.audit-log');
     Route::post('/rbac/clear-cache', [RBACController::class, 'clearCache'])->name('rbac.clear-cache');
 
-    Route::prefix('/profile')->name('profile.')->group(function () {
-        Route::get('/', [ProfileController::class, 'show'])->name('show');
-        Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
-        Route::post('/update', [ProfileController::class, 'update'])->name('update');
-
-        Route::get('/change-password', [ProfileController::class, 'showChangePasswordForm'])->name('password.form');
-        Route::post('/change-password', [ProfileController::class, 'changePassword'])->name('password.change');
-
-        Route::get('/preferences', [ProfileController::class, 'preferences'])->name('preferences');
-        Route::post('/preferences', [ProfileController::class, 'updatePreferences'])->name('preferences.update');
-
-        Route::get('/privacy', [ProfileController::class, 'privacy'])->name('privacy');
-        Route::post('/privacy', [ProfileController::class, 'updatePrivacy'])->name('privacy.update');
-
-        Route::get('/security', [ProfileController::class, 'security'])->name('security');
-        Route::post('/security', [ProfileController::class, 'updateSecurity'])->name('security.update');
-
-        Route::get('/delete', [ProfileController::class, 'showDeleteForm'])->name('delete.form');
-        Route::post('/delete', [ProfileController::class, 'deleteAccount'])->name('delete');
-
-        Route::get('/export', [ProfileController::class, 'exportData'])->name('export');
-        Route::get('/activity', [ProfileController::class, 'activity'])->name('activity');
-        Route::get('/test-notification', [ProfileController::class, 'testNotification'])->name('test.notification');
-    });
 
     // Users
     Route::resource('users', UserController::class);
@@ -96,50 +71,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('toggle-active');
         Route::post('/{user}/verify', [UserController::class, 'verifyClient'])->name('verify');
         
-        // ✅ NEW - Enhanced admin features
-        Route::get('/{user}/roles', [UserController::class, 'showRoles'])->name('roles');
-        Route::put('/{user}/roles', [UserController::class, 'updateRoles'])->name('roles.update');
-        Route::post('/{user}/assign-role', [UserController::class, 'assignRole'])->name('assign-role');
-        Route::delete('/{user}/remove-role/{role}', [UserController::class, 'removeRole'])->name('remove-role');
-        
         // ✅ NEW - Bulk operations
         Route::post('/bulk-action', [UserController::class, 'bulkAction'])->name('bulk-action');
         Route::get('/export', [UserController::class, 'exportUsers'])->name('export');
         Route::get('/search', [UserController::class, 'searchUsers'])->name('search');
         Route::get('/statistics', [UserController::class, 'getUserStatistics'])->name('statistics');
-        
-        // ✅ NEW - Admin utilities
         Route::post('/{user}/send-welcome', [UserController::class, 'sendWelcomeEmail'])->name('send-welcome');
         Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])->name('reset-password');
-        Route::get('/{user}/activity-log', [UserController::class, 'activityLog'])->name('activity-log');
-        Route::get('/{user}/login-history', [UserController::class, 'loginHistory'])->name('login-history');
-        
-        // ✅ NEW - Impersonation (super-admin only)
         Route::post('/{user}/impersonate', [UserController::class, 'impersonate'])->name('impersonate');
         Route::post('/stop-impersonation', [UserController::class, 'stopImpersonation'])->name('stop-impersonation');
-    
-        // 🔄 MIGRATED - Profile management (now handled by UnifiedProfileController)
-        Route::prefix('{user}/profile')->name('profile.')->group(function () {
-            Route::get('/', [UnifiedProfileController::class, 'show'])->name('show');
-            Route::get('/edit', [UnifiedProfileController::class, 'edit'])->name('edit');
-            Route::patch('/', [UnifiedProfileController::class, 'update'])->name('update');
-            
-            // Password management
-            Route::get('/password', [UnifiedProfileController::class, 'showChangePasswordForm'])->name('password');
-            Route::patch('/password', [UnifiedProfileController::class, 'updatePassword'])->name('password.update');
-            
-            // Notification preferences
-            Route::get('/preferences', [UnifiedProfileController::class, 'preferences'])->name('preferences');
-            Route::patch('/preferences', [UnifiedProfileController::class, 'updatePreferences'])->name('preferences.update');
-            
-            // Profile completion
-            Route::get('/completion-status', [UnifiedProfileController::class, 'completionStatus'])->name('completion-status');
-            Route::post('/send-completion-reminder', [UnifiedProfileController::class, 'sendCompletionReminder'])->name('send-completion-reminder');
-            
-            // Data export
-            Route::get('/export', [UnifiedProfileController::class, 'export'])->name('export');
-            Route::get('/activity-summary', [UnifiedProfileController::class, 'activitySummary'])->name('activity-summary');
-        });
+        
     });
     
     // Services

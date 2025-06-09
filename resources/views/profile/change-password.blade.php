@@ -1,11 +1,6 @@
 {{-- resources/views/profile/change-password.blade.php --}}
-@php
-    $isOwnProfile = !isset($user) || $user->id === auth()->id();
-    $pageTitle = $isOwnProfile ? 'Change Password' : 'Change Password - ' . $user->name;
-    $layout = $isOwnProfile ? 'layouts.app' : 'layouts.admin';
-@endphp
 
-<x-dynamic-component :component="$layout" :title="$pageTitle">
+<x-dynamic-component :component="$layout" title="Change Password">
     <div class="py-12">
         <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
             <!-- Header -->
