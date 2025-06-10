@@ -1,5 +1,5 @@
 @if($banners->count() > 0)
-<div class="px-4 py-8 sm:px-6 lg:px-8">
+<div class="">
     <div data-hs-carousel='{
         "loadingClasses": "opacity-0"
     }' class="relative">
@@ -8,7 +8,7 @@
                 @foreach($banners as $index => $banner)
                 <!-- Item -->
                 <div class="hs-carousel-slide">
-                    <div class="h-120 md:h-[calc(100vh-106px)] flex flex-col bg-[url('{{ $banner->imageUrl }}')] bg-cover bg-center bg-no-repeat">
+                    <div class="h-50 md:h-[calc(100vh-106px)] flex flex-col bg-[url('{{ $banner->imageUrl }}')] bg-cover bg-center bg-no-repeat">
                         <div class="mt-auto w-2/3 md:max-w-lg ps-5 pb-5 md:ps-10 md:pb-10">
                             @if($banner->subtitle)
                             <span class="block text-white">{{ $banner->subtitle }}</span>

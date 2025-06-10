@@ -1,59 +1,25 @@
 {{-- resources/views/profile/change-password.blade.php --}}
-
 <x-dynamic-component :component="$layout" title="Change Password">
-    <div class="py-12">
-        <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
+    <div class="py-2">
+        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <!-- Header -->
             <div class="flex items-center justify-between mb-6">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-                        {{ $isOwnProfile ? 'Change Your Password' : 'Change User Password' }}
-                    </h1>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Change Your Password</h1>
                     <p class="text-sm text-gray-600 dark:text-gray-400">
-                        {{ $isOwnProfile ? 'Update your account password for security' : 'Set a new password for this user account' }}
+                        Update your account password for security
                     </p>
-                    @if(!$isOwnProfile)
-                        <div class="flex items-center space-x-2 mt-2">
-                            <x-admin.badge type="warning" size="sm">Admin Action</x-admin.badge>
-                            <span class="text-xs text-gray-500">Changing password for: {{ $user->name }}</span>
-                        </div>
-                    @endif
                 </div>
                 <x-admin.button 
-                    href="{{ $isOwnProfile ? route('profile.show') : route('admin.users.profile.show', $user) }}" 
+                    href="{{ route('profile.show') }}" 
                     color="light"
                     icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>'
                 >
-                    {{ $isOwnProfile ? 'Back to Profile' : 'Back to User Profile' }}
+                    Back to Profile
                 </x-admin.button>
             </div>
 
-            <!-- User Info Card (for admin context) -->
-            @if(!$isOwnProfile)
-            <x-admin.card class="mb-6">
-                <div class="flex items-center space-x-4">
-                    <x-admin.avatar 
-                        :src="$user->avatar_url" 
-                        :alt="$user->name"
-                        size="md"
-                    />
-                    <div>
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">{{ $user->name }}</h3>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ $user->email }}</p>
-                        <div class="flex items-center space-x-2 mt-1">
-                            @foreach($user->roles as $role)
-                                <x-admin.badge :type="$role->badge_color ?? 'primary'" size="sm">
-                                    {{ $role->formatted_name }}
-                                </x-admin.badge>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
-            </x-admin.card>
-            @endif
-
             <!-- Security Notices -->
-            @if($isOwnProfile)
             <x-admin.alert type="info" class="mb-6">
                 <div class="flex">
                     <div class="flex-shrink-0">
@@ -69,37 +35,19 @@
                     </div>
                 </div>
             </x-admin.alert>
-            @else
-            <x-admin.alert type="warning" class="mb-6">
-                <div class="flex">
-                    <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                        </svg>
-                    </div>
-                    <div class="ml-3">
-                        <h4 class="text-sm font-medium text-amber-800 dark:text-amber-400">Admin Password Reset</h4>
-                        <div class="mt-1 text-sm text-amber-700 dark:text-amber-300">
-                            <p>As an administrator, you can reset this user's password without knowing their current password. The user will be notified of this change.</p>
-                        </div>
-                    </div>
-                </div>
-            </x-admin.alert>
-            @endif
 
             <!-- Change Password Form -->
             <x-admin.form-section 
                 title="New Password"
-                description="{{ $isOwnProfile ? 'Enter your current password and choose a new secure password' : 'Set a new secure password for this user account' }}"
+                description="Enter your current password and choose a new secure password"
             >
-                <form action="{{ $isOwnProfile ? route('profile.password.update') : route('admin.users.profile.password.update', $user) }}" 
+                <form action="{{ route('profile.password.update') }}" 
                       method="POST" 
-                      x-data="passwordForm({{ $isOwnProfile ? 'true' : 'false' }})">
+                      x-data="passwordForm()">
                     @csrf
                     @method('PATCH')
                     
                     <div class="space-y-6">
-                        @if($isOwnProfile)
                         <x-admin.input
                             label="Current Password"
                             name="current_password"
@@ -109,7 +57,6 @@
                             helper="Your existing password for verification"
                             x-ref="currentPassword"
                         />
-                        @endif
 
                         <x-admin.input
                             label="New Password"
@@ -162,52 +109,53 @@
                             </div>
                         </div>
 
-                        @if(!$isOwnProfile)
-                        <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-                            <x-admin.checkbox
-                                label="Notify user via email"
-                                name="notify_user"
-                                :checked="true"
-                                helper="Send an email notification to the user about the password change"
-                            />
-                        </div>
-                        @endif
-
                         <!-- Security Recommendations -->
-                        <x-admin.help-text type="info" title="Password Security Tips">
-                            <ul class="text-sm space-y-1 mt-2">
-                                <li class="flex items-center">
-                                    <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                                     </svg>
-                                    Use at least 8 characters
-                                </li>
-                                <li class="flex items-center">
-                                    <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                    </svg>
-                                    Include uppercase and lowercase letters
-                                </li>
-                                <li class="flex items-center">
-                                    <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                    </svg>
-                                    Include numbers and special characters
-                                </li>
-                                <li class="flex items-center">
-                                    <svg class="w-4 h-4 mr-2 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                    </svg>
-                                    Avoid common words or personal information
-                                </li>
-                                <li class="flex items-center">
-                                    <svg class="w-4 h-4 mr-2 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                    </svg>
-                                    Don't reuse passwords from other accounts
-                                </li>
-                            </ul>
-                        </x-admin.help-text>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="text-sm font-medium text-blue-800 dark:text-blue-400">Password Security Tips</h4>
+                                    <div class="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                                        <ul class="space-y-1">
+                                            <li class="flex items-center">
+                                                <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                </svg>
+                                                Use at least 8 characters
+                                            </li>
+                                            <li class="flex items-center">
+                                                <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                </svg>
+                                                Include uppercase and lowercase letters
+                                            </li>
+                                            <li class="flex items-center">
+                                                <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                </svg>
+                                                Include numbers and special characters
+                                            </li>
+                                            <li class="flex items-center">
+                                                <svg class="w-4 h-4 mr-2 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                </svg>
+                                                Avoid common words or personal information
+                                            </li>
+                                            <li class="flex items-center">
+                                                <svg class="w-4 h-4 mr-2 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                </svg>
+                                                Don't reuse passwords from other accounts
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         
                         <!-- Account History Info -->
                         @if($user->last_login_at ?? false)
@@ -225,46 +173,31 @@
                                 <div>
                                     <span class="font-medium">Login Count:</span> {{ $user->login_count ?? 0 }} times
                                 </div>
-                                @if(!$isOwnProfile)
-                                <div>
-                                    <span class="font-medium">Account Created:</span> {{ $user->created_at->format('M d, Y') }}
-                                </div>
-                                <div>
-                                    <span class="font-medium">Email Status:</span> 
-                                    @if($user->email_verified_at)
-                                        <span class="text-green-600">Verified</span>
-                                    @else
-                                        <span class="text-amber-600">Unverified</span>
-                                    @endif
-                                </div>
-                                @endif
                             </div>
                         </div>
                         @endif
                     </div>
 
-                    <x-slot name="footer">
-                        <div class="flex items-center justify-end space-x-3">
-                            <x-admin.button 
-                                type="button" 
-                                color="light" 
-                                onclick="history.back()"
-                                icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>'
-                            >
-                                Cancel
-                            </x-admin.button>
-                            
-                            <x-admin.button 
-                                type="submit" 
-                                color="primary"
-                                x-bind:disabled="!canSubmit"
-                                icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1221 9z"/>'
-                            >
-                                <span x-show="!canSubmit">Complete Password Requirements</span>
-                                <span x-show="canSubmit">{{ $isOwnProfile ? 'Change Password' : 'Update User Password' }}</span>
-                            </x-admin.button>
-                        </div>
-                    </x-slot>
+                    <div class="flex items-center justify-end space-x-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                        <x-admin.button 
+                            type="button" 
+                            color="light" 
+                            onclick="history.back()"
+                            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>'
+                        >
+                            Cancel
+                        </x-admin.button>
+                        
+                        <x-admin.button 
+                            type="submit" 
+                            color="primary"
+                            x-bind:disabled="!canSubmit"
+                            icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1221 9z"/>'
+                        >
+                            <span x-show="!canSubmit">Complete Password Requirements</span>
+                            <span x-show="canSubmit">Change Password</span>
+                        </x-admin.button>
+                    </div>
                 </form>
             </x-admin.form-section>
         </div>
@@ -272,7 +205,7 @@
 
     @push('scripts')
     <script>
-        function passwordForm(isOwnProfile) {
+        function passwordForm() {
             return {
                 password: '',
                 confirmPassword: '',
@@ -281,20 +214,14 @@
                 strengthColor: 'bg-gray-300',
                 strengthTextColor: 'text-gray-500',
                 passwordsMatch: false,
-                isOwnProfile: isOwnProfile,
                 
                 get canSubmit() {
-                    const basicRequirements = this.password.length >= 8 && 
-                                           this.confirmPassword.length > 0 && 
-                                           this.passwordsMatch && 
-                                           this.strengthPercentage >= 50;
-                    
-                    if (this.isOwnProfile) {
-                        const currentPassword = this.$refs.currentPassword?.value || '';
-                        return basicRequirements && currentPassword.length > 0;
-                    }
-                    
-                    return basicRequirements;
+                    const currentPassword = this.$refs.currentPassword?.value || '';
+                    return this.password.length >= 8 && 
+                           this.confirmPassword.length > 0 && 
+                           this.passwordsMatch && 
+                           this.strengthPercentage >= 50 &&
+                           currentPassword.length > 0;
                 },
                 
                 checkPasswordStrength() {

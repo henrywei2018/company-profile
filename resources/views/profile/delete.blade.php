@@ -1,7 +1,6 @@
 {{-- resources/views/profile/delete.blade.php --}}
-
 <x-dynamic-component :component="$layout" title="Delete Account">
-    <div class="py-12">
+    <div class="py-3">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
             <!-- Header -->
             <div class="text-center mb-8">
@@ -10,18 +9,10 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z"/>
                     </svg>
                 </div>
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-                    {{ $isOwnProfile ? 'Delete Your Account' : 'Delete User Account' }}
-                </h1>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Delete Your Account</h1>
                 <p class="text-lg text-gray-600 dark:text-gray-400 mt-2">
-                    {{ $isOwnProfile ? 'This action cannot be undone and will permanently remove all your data' : 'This will permanently remove all user data and cannot be undone' }}
+                    This action cannot be undone and will permanently remove all your data
                 </p>
-                @if(!$isOwnProfile)
-                    <div class="flex items-center justify-center space-x-2 mt-4">
-                        <x-admin.badge type="danger" size="sm">Admin Action</x-admin.badge>
-                        <span class="text-sm text-gray-500">Deleting account for: {{ $user->name }}</span>
-                    </div>
-                @endif
             </div>
 
             <!-- Warning Alert -->
@@ -34,7 +25,7 @@
                     </div>
                     <div class="ml-3">
                         <h3 class="text-sm font-medium text-red-800 dark:text-red-400">
-                            {{ $isOwnProfile ? 'Your account will be permanently deleted' : 'This user account will be permanently deleted' }}
+                            Your account will be permanently deleted
                         </h3>
                         <div class="mt-2 text-sm text-red-700 dark:text-red-300">
                             <p>This action is irreversible. All associated data will be permanently removed from our systems and cannot be recovered.</p>
@@ -119,7 +110,6 @@
                     </x-admin.card>
 
                     <!-- Data Export Option -->
-                    @if($isOwnProfile)
                     <x-admin.card title="Backup Your Data">
                         <div class="space-y-4">
                             <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -141,22 +131,20 @@
                             </p>
                         </div>
                     </x-admin.card>
-                    @endif
                 </div>
 
                 <!-- Deletion Confirmation -->
                 <div class="space-y-6">
                     <x-admin.card title="Confirm Account Deletion">
-                        <form action="{{ $isOwnProfile ? route('profile.destroy') : route('admin.users.destroy', $user) }}" 
+                        <form action="{{ route('profile.destroy') }}" 
                               method="POST" 
-                              x-data="deletionForm({{ $isOwnProfile ? 'true' : 'false' }})"
+                              x-data="deletionForm()"
                               x-on:submit="handleSubmit">
                             @csrf
                             @method('DELETE')
                             
                             <div class="space-y-6">
                                 <!-- User Confirmation -->
-                                @if($isOwnProfile)
                                 <div>
                                     <x-admin.input
                                         label="Current Password"
@@ -168,34 +156,17 @@
                                         x-model="password"
                                     />
                                 </div>
-                                @else
-                                <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                                    <div class="flex">
-                                        <div class="flex-shrink-0">
-                                            <svg class="h-5 w-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                            </svg>
-                                        </div>
-                                        <div class="ml-3">
-                                            <h4 class="text-sm font-medium text-amber-800 dark:text-amber-400">Admin Account Deletion</h4>
-                                            <div class="mt-1 text-sm text-amber-700 dark:text-amber-300">
-                                                <p>You are about to permanently delete the account for <strong>{{ $user->name }}</strong> ({{ $user->email }}). This action will be logged for audit purposes.</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endif
 
                                 <!-- Confirmation Text -->
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Type "{{ $isOwnProfile ? 'DELETE MY ACCOUNT' : 'DELETE USER ACCOUNT' }}" to confirm
+                                        Type "DELETE MY ACCOUNT" to confirm
                                     </label>
                                     <x-admin.input
                                         name="confirmation_text"
                                         :value="old('confirmation_text')"
                                         required
-                                        placeholder="{{ $isOwnProfile ? 'DELETE MY ACCOUNT' : 'DELETE USER ACCOUNT' }}"
+                                        placeholder="DELETE MY ACCOUNT"
                                         helper="This confirms you understand the consequences of this action"
                                         x-model="confirmationText"
                                         x-on:input="checkConfirmation()"
@@ -221,7 +192,7 @@
                                         name="reason"
                                         :value="old('reason')"
                                         rows="3"
-                                        placeholder="{{ $isOwnProfile ? 'Let us know why you\'re leaving (optional feedback)' : 'Administrative reason for account deletion' }}"
+                                        placeholder="Let us know why you're leaving (optional feedback)"
                                         helper="This information helps us improve our service"
                                         x-model="reason"
                                     />
@@ -234,7 +205,7 @@
                                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                         </svg>
                                         <span class="text-sm font-medium text-red-800 dark:text-red-400">
-                                            Ready to delete {{ $isOwnProfile ? 'your account' : 'user account' }}
+                                            Ready to delete your account
                                         </span>
                                     </div>
                                 </div>
@@ -257,14 +228,13 @@
                                     icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>'
                                 >
                                     <span x-show="!canDelete">Complete All Requirements</span>
-                                    <span x-show="canDelete">{{ $isOwnProfile ? 'Delete My Account' : 'Delete User Account' }}</span>
+                                    <span x-show="canDelete">Delete My Account</span>
                                 </x-admin.button>
                             </div>
                         </form>
                     </x-admin.card>
 
                     <!-- Alternative Actions -->
-                    @if($isOwnProfile)
                     <x-admin.card title="Alternative Options">
                         <div class="space-y-4">
                             <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -298,7 +268,6 @@
                             </div>
                         </div>
                     </x-admin.card>
-                    @endif
                 </div>
             </div>
         </div>
@@ -306,26 +275,23 @@
 
     @push('scripts')
     <script>
-        function deletionForm(isOwnProfile) {
+        function deletionForm() {
             return {
                 password: '',
                 confirmationText: '',
                 finalConfirmation: false,
                 reason: '',
                 isValidated: false,
-                isOwnProfile: isOwnProfile,
                 
                 get canDelete() {
-                    const requiredText = this.isOwnProfile ? 'DELETE MY ACCOUNT' : 'DELETE USER ACCOUNT';
-                    const textMatch = this.confirmationText.trim().toUpperCase() === requiredText;
-                    const passwordValid = this.isOwnProfile ? this.password.length > 0 : true;
+                    const textMatch = this.confirmationText.trim().toUpperCase() === 'DELETE MY ACCOUNT';
+                    const passwordValid = this.password.length > 0;
                     
                     return textMatch && this.finalConfirmation && passwordValid;
                 },
                 
                 checkConfirmation() {
-                    const requiredText = this.isOwnProfile ? 'DELETE MY ACCOUNT' : 'DELETE USER ACCOUNT';
-                    this.isValidated = this.confirmationText.trim().toUpperCase() === requiredText && this.finalConfirmation;
+                    this.isValidated = this.confirmationText.trim().toUpperCase() === 'DELETE MY ACCOUNT' && this.finalConfirmation;
                 },
                 
                 handleSubmit(event) {
@@ -335,9 +301,7 @@
                     }
                     
                     // Final confirmation dialog
-                    const confirmMessage = this.isOwnProfile 
-                        ? 'Are you absolutely sure you want to delete your account? This action cannot be undone.'
-                        : `Are you sure you want to delete the account for ${@json($user->name ?? '')}? This action cannot be undone.`;
+                    const confirmMessage = 'Are you absolutely sure you want to delete your account? This action cannot be undone.';
                     
                     if (!confirm(confirmMessage)) {
                         event.preventDefault();

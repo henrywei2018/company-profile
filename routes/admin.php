@@ -9,6 +9,8 @@ use App\Http\Controllers\Admin\{
     UserController,
     ServiceController,
     ServiceCategoryController,
+    BannerCategoryController,
+    BannerController,
     ProjectController,
     ProjectFileController, 
     ProjectMilestoneController,
@@ -88,7 +90,25 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/services/{service}/toggle-status', [ServiceController::class, 'toggleActive'])->name('services.toggle-status');
     Route::patch('/services/{service}/toggle-featured', [ServiceController::class, 'toggleFeatured'])->name('services.toggle-featured');
     Route::post('/services/update-order', [ServiceController::class, 'updateOrder'])->name('services.update-order');
-
+    // Banner Management
+    Route::resource('banner-categories', BannerCategoryController::class)->except(['show']);
+    Route::resource('banners', BannerController::class)->except(['show']);
+    Route::prefix('banners')->name('banners.')->group(function () {
+        Route::post('filepond/upload', [BannerController::class, 'filepondUpload'])->name('filepond.upload');
+        Route::delete('filepond/delete', [BannerController::class, 'filepondDelete'])->name('filepond.delete');
+        
+        Route::post('{banner}/toggle-status', [BannerController::class, 'toggleStatus'])->name('toggle-status');
+        Route::post('{banner}/duplicate', [BannerController::class, 'duplicate'])->name('duplicate');
+        Route::delete('{banner}/remove-image', [BannerController::class, 'removeImage'])->name('remove-image');
+    
+        Route::post('bulk-action', [BannerController::class, 'bulkAction'])->name('bulk-action');
+        Route::post('reorder', [BannerController::class, 'reorder'])->name('reorder');
+        Route::get('statistics', [BannerController::class, 'statistics'])->name('statistics');
+        Route::get('export', [BannerController::class, 'export'])->name('export');
+        Route::post('cleanup-temp', [BannerController::class, 'cleanupTempFiles'])->name('cleanup-temp');
+    });
+    
+    
     // Service Categories
     Route::resource('service-categories', ServiceCategoryController::class);
     Route::patch('/service-categories/{serviceCategory}/toggle-active', [ServiceCategoryController::class, 'toggleActive'])->name('service-categories.toggle-active');

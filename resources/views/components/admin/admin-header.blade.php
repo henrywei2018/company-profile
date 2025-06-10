@@ -190,7 +190,7 @@
                                     </svg>
                                     Refresh
                                 </button>
-                                <a href="{{ route('admin.notifications.preferences') }}"
+                                <a href="{{ route('profile.preferences') }}"
                                     class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
                                     Settings
                                 </a>
