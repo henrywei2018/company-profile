@@ -26,6 +26,7 @@ class Banner extends Model
         'mobile_image',
         'button_text',
         'button_link',
+        'link_type',
         'open_in_new_tab',
         'is_active',
         'display_order',
@@ -51,15 +52,6 @@ class Banner extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(BannerCategory::class, 'banner_category_id');
-    }
-
-    /**
-     * Relationship for banner images (if you want to use a separate table)
-     * This is optional and can be used for more complex scenarios
-     */
-    public function images(): HasMany
-    {
-        return $this->hasMany(BannerImage::class);
     }
 
     /**
@@ -331,5 +323,256 @@ class Banner extends Model
                 Storage::disk('public')->delete($banner->mobile_image);
             }
         });
+    }
+    public function getProcessedButtonLinkAttribute()
+    {
+        if (empty($this->button_link)) {
+            return null;
+        }
+
+        return $this->processUrl($this->button_link, $this->link_type);
+    }
+
+    /**
+     * Process URL based on type and base URL
+     */
+    public function processUrl($url, $linkType = null)
+    {
+        if (empty($url)) {
+            return null;
+        }
+
+        // If no link type specified, try to detect
+        if (!$linkType) {
+            $linkType = $this->detectLinkType($url);
+        }
+
+        switch ($linkType) {
+            case 'external':
+                // External URL - use as is, but ensure it has protocol
+                return $this->ensureProtocol($url);
+
+            case 'internal':
+                // Internal URL - prepend base URL if needed
+                return $this->makeInternalUrl($url);
+
+            case 'route':
+                // Laravel route - generate URL from route name
+                return $this->makeRouteUrl($url);
+
+            case 'email':
+                // Email link
+                return 'mailto:' . $url;
+
+            case 'phone':
+                // Phone link
+                return 'tel:' . $url;
+
+            case 'anchor':
+                // Anchor link (same page)
+                return $url;
+
+            default:
+                // Auto-detect and process
+                return $this->autoProcessUrl($url);
+        }
+    }
+
+    /**
+     * Detect link type based on URL pattern
+     */
+    private function detectLinkType($url)
+    {
+        // Email detection
+        if (filter_var($url, FILTER_VALIDATE_EMAIL)) {
+            return 'email';
+        }
+
+        // Phone detection
+        if (preg_match('/^\+?[\d\s\-\(\)]+$/', $url)) {
+            return 'phone';
+        }
+
+        // Anchor detection
+        if (str_starts_with($url, '#')) {
+            return 'anchor';
+        }
+
+        // External URL detection
+        if (preg_match('/^https?:\/\//', $url)) {
+            $parsed = parse_url($url);
+            $currentDomain = parse_url(config('app.url'), PHP_URL_HOST);
+            
+            if (isset($parsed['host']) && $parsed['host'] !== $currentDomain) {
+                return 'external';
+            }
+            return 'internal';
+        }
+
+        // Route detection (if it matches a route name pattern)
+        if (preg_match('/^[a-zA-Z][a-zA-Z0-9._-]*$/', $url) && \Route::has($url)) {
+            return 'route';
+        }
+
+        // Default to internal
+        return 'internal';
+    }
+
+    /**
+     * Ensure URL has protocol
+     */
+    private function ensureProtocol($url)
+    {
+        if (!preg_match('/^https?:\/\//', $url)) {
+            return 'https://' . $url;
+        }
+        return $url;
+    }
+
+    /**
+     * Make internal URL with base URL
+     */
+    private function makeInternalUrl($url)
+    {
+        // If already a full URL, return as is
+        if (preg_match('/^https?:\/\//', $url)) {
+            return $url;
+        }
+
+        // Remove leading slash if present
+        $url = ltrim($url, '/');
+
+        // Use Laravel's url() helper to create proper URL
+        return url($url);
+    }
+
+    /**
+     * Make route URL
+     */
+    private function makeRouteUrl($routeName)
+    {
+        try {
+            // Check if route has parameters (format: route.name:param1,param2)
+            if (str_contains($routeName, ':')) {
+                [$route, $params] = explode(':', $routeName, 2);
+                $paramArray = explode(',', $params);
+                return route($route, $paramArray);
+            }
+
+            return route($routeName);
+        } catch (\Exception $e) {
+            \Log::warning("Invalid route name in banner: {$routeName}", [
+                'banner_id' => $this->id,
+                'error' => $e->getMessage()
+            ]);
+            return '#';
+        }
+    }
+
+    /**
+     * Auto-process URL with intelligent detection
+     */
+    private function autoProcessUrl($url)
+    {
+        // Already has protocol - external or same domain
+        if (preg_match('/^https?:\/\//', $url)) {
+            return $url;
+        }
+
+        // Email
+        if (filter_var($url, FILTER_VALIDATE_EMAIL)) {
+            return 'mailto:' . $url;
+        }
+
+        // Phone
+        if (preg_match('/^\+?[\d\s\-\(\)]+$/', $url)) {
+            return 'tel:' . $url;
+        }
+
+        // Anchor
+        if (str_starts_with($url, '#')) {
+            return $url;
+        }
+
+        // Try as route first
+        if (\Route::has($url)) {
+            return route($url);
+        }
+
+        // Default to internal URL
+        return $this->makeInternalUrl($url);
+    }
+
+    /**
+     * Get link type for display
+     */
+    public function getLinkTypeDisplayAttribute()
+    {
+        $linkType = $this->link_type ?: $this->detectLinkType($this->button_link);
+        
+        return match($linkType) {
+            'external' => 'External Link',
+            'internal' => 'Internal Link',
+            'route' => 'Route Link',
+            'email' => 'Email Link',
+            'phone' => 'Phone Link',
+            'anchor' => 'Anchor Link',
+            default => 'Auto-detect'
+        };
+    }
+
+    /**
+     * Check if link should open in new tab
+     */
+    public function shouldOpenInNewTab()
+    {
+        // Always open external links in new tab
+        if ($this->detectLinkType($this->button_link) === 'external') {
+            return true;
+        }
+
+        // Use the open_in_new_tab setting
+        return $this->open_in_new_tab;
+    }
+
+    /**
+     * Get the complete link attributes for HTML
+     */
+    public function getLinkAttributesAttribute()
+    {
+        $attributes = [
+            'href' => $this->processed_button_link
+        ];
+
+        if ($this->shouldOpenInNewTab()) {
+            $attributes['target'] = '_blank';
+            $attributes['rel'] = 'noopener noreferrer';
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * Generate HTML link tag
+     */
+    public function generateLinkHtml($content = null, $additionalClasses = '')
+    {
+        if (!$this->button_link || !$this->button_text) {
+            return '';
+        }
+
+        $content = $content ?: $this->button_text;
+        $attributes = $this->link_attributes;
+        $classes = trim("banner-button {$additionalClasses}");
+
+        $html = '<a class="' . $classes . '"';
+        
+        foreach ($attributes as $attr => $value) {
+            $html .= ' ' . $attr . '="' . htmlspecialchars($value) . '"';
+        }
+
+        $html .= '>' . htmlspecialchars($content) . '</a>';
+
+        return $html;
     }
 }

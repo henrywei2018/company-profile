@@ -218,8 +218,53 @@
                         </ul>
                     </div>
                 </li>
+                <!-- Services -->
+                <li class="hs-accordion" id="banners-accordion">
+                    <button type="button"
+                        class="hs-accordion-toggle w-full text-start flex items-center gap-x-3.5 py-2 px-3 text-sm {{ request()->routeIs(['admin.banners.*', 'admin.banner-categories.*']) ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }} rounded-md">
+                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M21 13.255A23.931 23.931 0 0 1 12 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2m4 6h.01M5 20h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z">
+                            </path>
+                        </svg>
+                        Banners
+                        <svg class="hs-accordion-active:block ms-auto hidden w-4 h-4"
+                            xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <path d="m18 15-6-6-6 6" />
+                        </svg>
+                        <svg class="hs-accordion-active:hidden ms-auto block w-4 h-4"
+                            xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <path d="m6 9 6 6 6-6" />
+                        </svg>
+                    </button>
 
-
+                    <div id="banners-accordion-child"
+                        class="hs-accordion-content w-full overflow-hidden transition-[height] duration-300 {{ request()->routeIs(['admin.banners.*']) ? 'block' : 'hidden' }}">
+                        <ul class="pt-2 ps-2">
+                            <li>
+                                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.services.index') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
+                                    href="{{ route('admin.banners.index') }}">
+                                    Banners
+                                </a>
+                            </li>
+                            <li class="my-2">
+                                <div class="border-t border-gray-200 dark:border-gray-700"></div>
+                            </li>
+                            <li>
+                                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('admin.banner-categories.*') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
+                                    href="{{ route('admin.banner-categories.index') }}">
+                                    Banner Categories
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
                 <!-- Services -->
                 <li class="hs-accordion" id="services-accordion">
                     <button type="button"
@@ -261,7 +306,7 @@
                                     Add New Service
                                 </a>
                             </li>
-                            
+
                             <li class="my-2">
                                 <div class="border-t border-gray-200 dark:border-gray-700"></div>
                             </li>
@@ -271,7 +316,7 @@
                                     Service Categories
                                 </a>
                             </li>
-                            
+
                         </ul>
                     </div>
                 </li>
