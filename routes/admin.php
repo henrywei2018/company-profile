@@ -90,23 +90,34 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/services/{service}/toggle-status', [ServiceController::class, 'toggleActive'])->name('services.toggle-status');
     Route::patch('/services/{service}/toggle-featured', [ServiceController::class, 'toggleFeatured'])->name('services.toggle-featured');
     Route::post('/services/update-order', [ServiceController::class, 'updateOrder'])->name('services.update-order');
+    
     // Banner Management
-    Route::resource('banner-categories', BannerCategoryController::class)->except(['show']);
-    Route::resource('banners', BannerController::class)->except(['show']);
+    Route::prefix('banner-categories')->name('banner-categories.')->group(function () {
+        Route::resource('/', BannerCategoryController::class)->parameters(['' => 'bannerCategory']);
+        Route::post('{bannerCategory}/toggle-status', [BannerCategoryController::class, 'toggleStatus'])->name('toggle-status');
+        Route::post('reorder', [BannerCategoryController::class, 'reorder'])->name('reorder');
+        Route::get('statistics', [BannerCategoryController::class, 'statistics'])->name('statistics');
+        Route::get('export', [BannerCategoryController::class, 'export'])->name('export');
+        Route::post('bulk-action', [BannerCategoryController::class, 'bulkAction'])->name('bulk-action');
+    });
     Route::prefix('banners')->name('banners.')->group(function () {
-        Route::post('filepond/upload', [BannerController::class, 'filepondUpload'])->name('filepond.upload');
-        Route::delete('filepond/delete', [BannerController::class, 'filepondDelete'])->name('filepond.delete');
+        Route::resource('/', BannerController::class)->parameters(['' => 'banner']);
         
         Route::post('{banner}/toggle-status', [BannerController::class, 'toggleStatus'])->name('toggle-status');
         Route::post('{banner}/duplicate', [BannerController::class, 'duplicate'])->name('duplicate');
-        Route::delete('{banner}/remove-image', [BannerController::class, 'removeImage'])->name('remove-image');
-    
+        
+        Route::post('{banner}/upload-images', [BannerController::class, 'uploadImages'])->name('upload-images');
+        Route::delete('{banner}/delete-image', [BannerController::class, 'deleteImage'])->name('delete-image');
+        
         Route::post('bulk-action', [BannerController::class, 'bulkAction'])->name('bulk-action');
         Route::post('reorder', [BannerController::class, 'reorder'])->name('reorder');
+        
         Route::get('statistics', [BannerController::class, 'statistics'])->name('statistics');
         Route::get('export', [BannerController::class, 'export'])->name('export');
-        Route::post('cleanup-temp', [BannerController::class, 'cleanupTempFiles'])->name('cleanup-temp');
+        
+        Route::get('{banner}/preview', [BannerController::class, 'preview'])->name('preview');
     });
+
     
     
     // Service Categories
