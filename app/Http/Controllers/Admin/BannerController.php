@@ -5,18 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Banner;
 use App\Models\BannerCategory;
-use App\Traits\HandlesFileUploads;
 use Illuminate\Http\Request;
 use App\Services\BannerService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\ImageManager;
-use App\Helpers\FileHelper;
 
 class BannerController extends Controller
 {
-
     protected $bannerService;
 
     public function __construct(BannerService $bannerService)
@@ -24,6 +21,9 @@ class BannerController extends Controller
         $this->bannerService = $bannerService;
     }
 
+    /**
+     * Display a listing of banners
+     */
     public function index(Request $request)
     {
         $filters = $request->only(['search', 'category', 'status']);
@@ -33,6 +33,9 @@ class BannerController extends Controller
         return view('admin.banners.index', compact('banners', 'categories'));
     }
 
+    /**
+     * Show the form for creating a new banner
+     */
     public function create()
     {
         $categories = BannerCategory::where('is_active', true)
@@ -42,6 +45,9 @@ class BannerController extends Controller
         return view('admin.banners.create', compact('categories'));
     }
 
+    /**
+     * Store a newly created banner
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -57,53 +63,45 @@ class BannerController extends Controller
             'display_order' => 'nullable|integer',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
+            // File validation
+            'desktop_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'mobile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'files' => 'nullable|array|max:2',
+            'files.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120',
         ]);
 
         $banner = null;
         $uploadedFiles = [];
 
-        \Log::info('DEBUG: Starting banner creation', [
-            'validated_data' => $validated,
-            'request_files' => $request->allFiles(),
-            'has_files' => $request->hasFile('files'),
-        ]);
-
         try {
             DB::transaction(function () use ($request, $validated, &$banner, &$uploadedFiles) {
-                
-                // Set default display order if not provided
+                // Set default display order
                 if (empty($validated['display_order'])) {
-                    $validated['display_order'] = Banner::where('banner_category_id', $validated['banner_category_id'])->max('display_order') + 1;
+                    $validated['display_order'] = Banner::where('banner_category_id', $validated['banner_category_id'])
+                        ->max('display_order') + 1;
                 }
 
-                // Create the banner first
+                // Create banner
                 $banner = Banner::create($validated);
-                
+
                 if (!$banner) {
                     throw new \Exception('Failed to create banner record');
                 }
-                
-                \Log::info('DEBUG: Banner created successfully', [
+
+                \Log::info('Banner created successfully', [
                     'banner_id' => $banner->id,
                     'title' => $banner->title
                 ]);
 
-                // Handle image uploads INSIDE the transaction
-                if ($request->hasFile('files')) {
-                    \Log::info('DEBUG: Processing files array', [
-                        'files_count' => count($request->file('files'))
-                    ]);
-                    
-                    $uploadedFiles = $this->processUniversalFiles($request, $banner);
-                    
-                    \Log::info('DEBUG: Files processed', [
-                        'banner_id' => $banner->id,
-                        'uploaded_count' => count($uploadedFiles)
-                    ]);
-                }
+                // Handle file uploads
+                $uploadedFiles = $this->processFileUploads($request, $banner);
+
+                \Log::info('File processing completed', [
+                    'banner_id' => $banner->id,
+                    'uploaded_count' => count($uploadedFiles)
+                ]);
             });
 
-            // Clear banner service cache
             $this->bannerService->clearCache();
 
             if ($request->expectsJson()) {
@@ -120,11 +118,9 @@ class BannerController extends Controller
                 ->with('success', 'Banner created successfully.');
 
         } catch (\Exception $e) {
-            \Log::error('DEBUG: Banner creation failed: ' . $e->getMessage(), [
+            \Log::error('Banner creation failed: ' . $e->getMessage(), [
                 'validated_data' => $validated,
-                'trace' => $e->getTraceAsString(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile()
+                'trace' => $e->getTraceAsString()
             ]);
 
             if ($request->expectsJson()) {
@@ -134,29 +130,27 @@ class BannerController extends Controller
                 ], 422);
             }
 
-            $categories = BannerCategory::where('is_active', true)
-                ->orderBy('display_order')
-                ->get();
-
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Failed to create banner. Please try again.')
-                ->with(compact('categories'));
+                ->with('error', 'Failed to create banner. Please try again.');
         }
     }
 
+    /**
+     * Show the form for editing a banner
+     */
     public function edit(Banner $banner)
     {
         $categories = BannerCategory::where('is_active', true)
             ->orderBy('display_order')
             ->get();
 
-        // Get existing banner images for the file uploader
-        $existingImages = $banner->getImagesForUploader();
-
-        return view('admin.banners.edit', compact('banner', 'categories', 'existingImages'));
+        return view('admin.banners.edit', compact('banner', 'categories'));
     }
 
+    /**
+     * Update the specified banner
+     */
     public function update(Request $request, Banner $banner)
     {
         $validated = $request->validate([
@@ -172,37 +166,37 @@ class BannerController extends Controller
             'display_order' => 'nullable|integer',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
-            // File validation for traditional uploads
+            // File validation
             'desktop_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
             'mobile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'files' => 'nullable|array|max:2',
+            'files.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120',
         ]);
 
         $uploadedFiles = [];
 
         try {
             DB::transaction(function () use ($request, $banner, $validated, &$uploadedFiles) {
-                \Log::info('Starting banner update transaction', [
-                    'banner_id' => $banner->id,
-                    'validated_data' => $validated
-                ]);
-
-                // Update the banner
-                $banner->update($validated);
+                // Update banner
+                $updated = $banner->update($validated);
                 
+                if (!$updated) {
+                    throw new \Exception('Failed to update banner record');
+                }
+
                 \Log::info('Banner updated successfully', [
                     'banner_id' => $banner->id
                 ]);
 
-                // Handle image uploads INSIDE the transaction
-                $uploadedFiles = $this->handleImageUploads($request, $banner);
-                
-                \Log::info('Image uploads completed for update', [
+                // Handle file uploads
+                $uploadedFiles = $this->processFileUploads($request, $banner);
+
+                \Log::info('File processing completed for update', [
                     'banner_id' => $banner->id,
-                    'uploaded_files_count' => count($uploadedFiles)
+                    'uploaded_count' => count($uploadedFiles)
                 ]);
             });
 
-            // Clear banner service cache
             $this->bannerService->clearCache();
 
             if ($request->expectsJson()) {
@@ -221,9 +215,7 @@ class BannerController extends Controller
             \Log::error('Banner update failed: ' . $e->getMessage(), [
                 'banner_id' => $banner->id,
                 'validated_data' => $validated,
-                'trace' => $e->getTraceAsString(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile()
+                'trace' => $e->getTraceAsString()
             ]);
 
             if ($request->expectsJson()) {
@@ -233,30 +225,27 @@ class BannerController extends Controller
                 ], 422);
             }
 
-            $categories = BannerCategory::where('is_active', true)
-                ->orderBy('display_order')
-                ->get();
-
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Failed to update banner. Please try again.')
-                ->with(compact('banner', 'categories'));
+                ->with('error', 'Failed to update banner. Please try again.');
         }
     }
 
+    /**
+     * AJAX image upload for existing banners
+     */
     public function uploadImages(Request $request, Banner $banner)
     {
         try {
             $request->validate([
                 'files' => 'required|array|min:1|max:2',
                 'files.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
-                'category' => 'nullable|string|in:desktop,mobile',
             ]);
 
             $uploadedFiles = [];
 
             DB::transaction(function () use ($request, $banner, &$uploadedFiles) {
-                $uploadedFiles = $this->handleUniversalFileUploads($request, $banner);
+                $uploadedFiles = $this->processFileUploads($request, $banner);
             });
 
             return response()->json([
@@ -269,7 +258,6 @@ class BannerController extends Controller
         } catch (\Exception $e) {
             \Log::error('AJAX image upload failed: ' . $e->getMessage(), [
                 'banner_id' => $banner->id,
-                'request_data' => $request->all(),
                 'trace' => $e->getTraceAsString()
             ]);
 
@@ -281,7 +269,7 @@ class BannerController extends Controller
     }
 
     /**
-     * Handle image deletion
+     * Delete specific banner image
      */
     public function deleteImage(Request $request, Banner $banner)
     {
@@ -329,399 +317,8 @@ class BannerController extends Controller
     }
 
     /**
-     * Handle banner image uploads and assignment
+     * Remove the specified banner
      */
-    private function handleImageUploads(Request $request, Banner $banner)
-{
-    $uploadedFiles = [];
-
-    // Enhanced file detection logging
-    \Log::info('DEBUG: File detection in handleImageUploads', [
-        'banner_id' => $banner->id,
-        'request_files' => $request->allFiles(),
-        'has_files_array' => $request->hasFile('files'),
-        'has_desktop_image' => $request->hasFile('desktop_image'),
-        'has_mobile_image' => $request->hasFile('mobile_image'),
-        'files_count' => $request->hasFile('files') ? count($request->file('files')) : 0,
-    ]);
-
-    try {
-        // Handle traditional file uploads first
-        if ($request->hasFile('desktop_image')) {
-            \Log::info('DEBUG: Processing desktop_image');
-            $uploadedFiles[] = $this->handleSingleImageUpload($request->file('desktop_image'), $banner, 'desktop');
-        }
-
-        if ($request->hasFile('mobile_image')) {
-            \Log::info('DEBUG: Processing mobile_image');
-            $uploadedFiles[] = $this->handleSingleImageUpload($request->file('mobile_image'), $banner, 'mobile');
-        }
-
-        // Handle universal file uploader files
-        if ($request->hasFile('files')) {
-            \Log::info('DEBUG: Processing files array', [
-                'files_count' => count($request->file('files'))
-            ]);
-            $universalFiles = $this->handleUniversalFileUploads($request, $banner);
-            $uploadedFiles = array_merge($uploadedFiles, $universalFiles);
-        }
-
-        \Log::info('DEBUG: All image uploads completed', [
-            'banner_id' => $banner->id,
-            'total_uploaded' => count($uploadedFiles)
-        ]);
-
-        return $uploadedFiles;
-
-    } catch (\Exception $e) {
-        \Log::error('DEBUG: Image uploads failed: ' . $e->getMessage(), [
-            'banner_id' => $banner->id,
-            'trace' => $e->getTraceAsString()
-        ]);
-        throw $e;
-    }
-    }
-
-    /**
-     * Handle single image upload (traditional form)
-     */
-    private function handleSingleImageUpload($file, Banner $banner, string $imageType)
-    {
-        try {
-            // Validate image
-            $this->validateImageFile($file);
-
-            // Generate filename
-            $filename = $this->generateImageFilename($file, $imageType, $banner->id);
-            $directory = "banners/{$banner->id}";
-            $filePath = $directory . '/' . $filename;
-
-            // Process and store image
-            $storedPath = $this->processAndStoreImage($file, $filePath);
-
-            // Update banner with image path - WITH PROPER ERROR CHECKING
-            $this->assignImageToBanner($banner, $storedPath, $imageType);
-
-            \Log::info("Single image uploaded successfully", [
-                'banner_id' => $banner->id,
-                'image_type' => $imageType,
-                'file_path' => $storedPath
-            ]);
-
-            return [
-                'id' => $imageType . '_' . $banner->id,
-                'name' => ucfirst($imageType) . ' Image',
-                'file_name' => $filename,
-                'type' => $imageType,
-                'url' => Storage::disk('public')->url($storedPath),
-                'file_path' => $storedPath,
-                'size' => FileHelper::formatFileSize($file->getSize()),
-                'download_url' => Storage::disk('public')->url($storedPath),
-            ];
-
-        } catch (\Exception $e) {
-            \Log::error('Single image upload failed: ' . $e->getMessage(), [
-                'banner_id' => $banner->id,
-                'image_type' => $imageType,
-                'file_name' => $file->getClientOriginalName()
-            ]);
-            throw $e;
-        }
-    }
-
-    /**
-     * Handle universal file uploader files
-     */
-    private function handleUniversalFileUploads(Request $request, Banner $banner)
-{
-    $uploadedFiles = [];
-    
-    // Get files array
-    $files = $request->file('files');
-    if (!$files || !is_array($files)) {
-        \Log::info('DEBUG: No files array found in handleUniversalFileUploads', [
-            'files_type' => gettype($files),
-            'files_empty' => empty($files)
-        ]);
-        return $uploadedFiles;
-    }
-
-    // Get categories - check multiple possible input names
-    $categories = $request->input('category', []);
-    if (empty($categories)) {
-        $categories = $request->input('categories', []);
-    }
-    
-    \Log::info('DEBUG: Processing universal files in handleUniversalFileUploads', [
-        'files_count' => count($files),
-        'categories' => $categories,
-        'all_request_inputs' => $request->all()
-    ]);
-
-    foreach ($files as $index => $file) {
-        try {
-            // Determine image type from category or index
-            $imageType = 'desktop'; // default
-            
-            if (is_array($categories) && isset($categories[$index])) {
-                $imageType = $categories[$index];
-            } elseif (is_string($categories)) {
-                $imageType = $categories;
-            } elseif ($index > 0) {
-                $imageType = 'mobile';
-            }
-            
-            \Log::info('DEBUG: Processing individual file in handleUniversalFileUploads', [
-                'index' => $index,
-                'image_type' => $imageType,
-                'file_name' => $file->getClientOriginalName(),
-                'file_size' => $file->getSize()
-            ]);
-            
-            // Validate image
-            $this->validateImageFile($file);
-
-            // Generate filename
-            $filename = $this->generateImageFilename($file, $imageType, $banner->id);
-            $directory = "banners/{$banner->id}";
-            $filePath = $directory . '/' . $filename;
-
-            // Process and store image
-            $storedPath = $this->processAndStoreImage($file, $filePath);
-
-            // Update banner with image path
-            $this->assignImageToBanner($banner, $storedPath, $imageType);
-
-            $uploadedFiles[] = [
-                'id' => $imageType . '_' . $banner->id,
-                'name' => ucfirst($imageType) . ' Image',
-                'file_name' => $filename,
-                'type' => $imageType,
-                'url' => Storage::disk('public')->url($storedPath),
-                'file_path' => $storedPath,
-                'size' => FileHelper::formatFileSize($file->getSize()),
-                'download_url' => Storage::disk('public')->url($storedPath),
-            ];
-
-            \Log::info("DEBUG: Universal file upload successful in handleUniversalFileUploads", [
-                'banner_id' => $banner->id,
-                'image_type' => $imageType,
-                'file_path' => $storedPath,
-                'index' => $index
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('DEBUG: Universal file upload failed in handleUniversalFileUploads: ' . $e->getMessage(), [
-                'banner_id' => $banner->id,
-                'file_name' => $file->getClientOriginalName(),
-                'index' => $index,
-                'trace' => $e->getTraceAsString()
-            ]);
-            throw $e;
-        }
-    }
-
-    return $uploadedFiles;
-    }
-
-    /**
-     * Validate banner image
-     */
-    private function validateImageFile($file)
-    {
-        $allowedMimes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
-        $maxSize = 5 * 1024 * 1024; // 5MB
-
-        if (!in_array($file->getMimeType(), $allowedMimes)) {
-            throw new \InvalidArgumentException('Invalid image type. Allowed: JPEG, PNG, GIF, WebP');
-        }
-
-        if ($file->getSize() > $maxSize) {
-            throw new \InvalidArgumentException('Image size exceeds 5MB limit');
-        }
-
-        if (!getimagesize($file->getRealPath())) {
-            throw new \InvalidArgumentException('Invalid image file');
-        }
-    }
-
-    /**
-     * Generate safe filename for banner image
-     */
-    private function generateImageFilename($file, $imageType, $bannerId)
-    {
-        $extension = $file->getClientOriginalExtension();
-        $timestamp = now()->format('YmdHis');
-        $random = Str::random(6);
-        
-        return "banner_{$bannerId}_{$imageType}_{$timestamp}_{$random}.{$extension}";
-    }
-
-    /**
-     * Process and store image with resizing
-     */
-    private function processAndStoreImage($file, $filePath)
-    {
-        try {
-            // Ensure directory exists
-            $directory = dirname($filePath);
-            Storage::disk('public')->makeDirectory($directory);
-
-            // Try with Intervention Image v3/v4
-            if (class_exists('Intervention\Image\ImageManager')) {
-                $manager = new ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
-                $image = $manager->read($file->getRealPath());
-                
-                // Resize to max 1920px width while maintaining aspect ratio
-                $image->scaleDown(width: 1920);
-                
-                // Encode as JPEG with 85% quality for better compression
-                $encoded = $image->toJpeg(85);
-                
-                // Store the processed image
-                $stored = Storage::disk('public')->put($filePath, $encoded);
-                
-                if (!$stored) {
-                    throw new \Exception('Failed to store processed image');
-                }
-                
-                \Log::info("Image processed with Intervention Image", [
-                    'file_path' => $filePath,
-                    'original_size' => $file->getSize(),
-                    'processed_size' => strlen($encoded)
-                ]);
-                
-                return $filePath;
-            }
-
-            // Fallback to basic upload if Intervention Image is not available
-            $storedPath = $file->storeAs(dirname($filePath), basename($filePath), 'public');
-            
-            if (!$storedPath) {
-                throw new \Exception('Failed to store image file');
-            }
-            
-            \Log::info("Image stored with basic upload", [
-                'file_path' => $storedPath,
-                'size' => $file->getSize()
-            ]);
-            
-            return $storedPath;
-
-        } catch (\Exception $e) {
-            \Log::error('Image processing failed: ' . $e->getMessage(), [
-                'file_path' => $filePath,
-                'trace' => $e->getTraceAsString()
-            ]);
-            throw $e;
-        }
-    }
-
-    /**
-     * Assign image to banner based on type - WITH PROPER ERROR CHECKING
-     */
-    private function assignImageToBanner(Banner $banner, $imagePath, $imageType)
-{
-    try {
-        // Verify the file was actually stored
-        if (!Storage::disk('public')->exists($imagePath)) {
-            throw new \Exception("Stored image file not found: {$imagePath}");
-        }
-
-        \Log::info("DEBUG: Starting assignImageToBanner", [
-            'banner_id' => $banner->id,
-            'image_path' => $imagePath,
-            'image_type' => $imageType,
-            'file_exists' => Storage::disk('public')->exists($imagePath)
-        ]);
-
-        if ($imageType === 'mobile') {
-            // Delete old mobile image if exists
-            if ($banner->mobile_image && Storage::disk('public')->exists($banner->mobile_image)) {
-                Storage::disk('public')->delete($banner->mobile_image);
-                \Log::info("DEBUG: Deleted old mobile image: {$banner->mobile_image}");
-            }
-            
-            $updated = $banner->update(['mobile_image' => $imagePath]);
-            if (!$updated) {
-                throw new \Exception('Failed to update banner mobile_image field');
-            }
-        } else {
-            // Delete old desktop image if exists
-            if ($banner->image && Storage::disk('public')->exists($banner->image)) {
-                Storage::disk('public')->delete($banner->image);
-                \Log::info("DEBUG: Deleted old desktop image: {$banner->image}");
-            }
-            
-            $updated = $banner->update(['image' => $imagePath]);
-            if (!$updated) {
-                throw new \Exception('Failed to update banner image field');
-            }
-        }
-
-        // Verify the update worked
-        $freshBanner = Banner::find($banner->id);
-        if (!$freshBanner) {
-            throw new \Exception("Banner not found after update - may have been deleted");
-        }
-
-        $currentPath = $imageType === 'mobile' ? $freshBanner->mobile_image : $freshBanner->image;
-        if ($currentPath !== $imagePath) {
-            throw new \Exception("Database update verification failed. Expected: {$imagePath}, Got: {$currentPath}");
-        }
-
-        \Log::info("DEBUG: assignImageToBanner successful", [
-            'banner_id' => $banner->id,
-            'image_type' => $imageType,
-            'image_path' => $imagePath,
-            'verification_passed' => true
-        ]);
-
-        // Refresh the banner instance
-        $banner->refresh();
-
-    } catch (\Exception $e) {
-        \Log::error('DEBUG: assignImageToBanner failed: ' . $e->getMessage(), [
-            'banner_id' => $banner->id,
-            'image_type' => $imageType,
-            'image_path' => $imagePath,
-            'file_exists' => Storage::disk('public')->exists($imagePath),
-            'banner_exists' => Banner::find($banner->id) ? true : false,
-            'trace' => $e->getTraceAsString()
-        ]);
-        throw $e;
-    }
-}
-
-    /**
-     * Clean up uploaded files in case of failure
-     */
-    private function cleanupUploadedFiles(array $uploadedFiles)
-    {
-        foreach ($uploadedFiles as $fileInfo) {
-            if (isset($fileInfo['file_path']) && Storage::disk('public')->exists($fileInfo['file_path'])) {
-                Storage::disk('public')->delete($fileInfo['file_path']);
-                \Log::info('Cleaned up uploaded file: ' . $fileInfo['file_path']);
-            }
-        }
-    }
-
-    /**
-     * Get image file size
-     */
-    private function getImageSize($imagePath)
-    {
-        try {
-            if (Storage::disk('public')->exists($imagePath)) {
-                return Storage::disk('public')->size($imagePath);
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Could not get image size: ' . $e->getMessage());
-        }
-        
-        return 0;
-    }
-
     public function destroy(Banner $banner)
     {
         try {
@@ -751,7 +348,266 @@ class BannerController extends Controller
         }
     }
 
-    // Keep other existing methods...
+    /**
+     * Process all file uploads (traditional inputs + universal uploader)
+     */
+    private function processFileUploads(Request $request, Banner $banner)
+    {
+        $uploadedFiles = [];
+
+        \Log::info('Processing file uploads', [
+            'banner_id' => $banner->id,
+            'request_files' => array_keys($request->allFiles()),
+            'has_desktop' => $request->hasFile('desktop_image'),
+            'has_mobile' => $request->hasFile('mobile_image'),
+            'has_files_array' => $request->hasFile('files'),
+        ]);
+
+        try {
+            // Handle traditional file inputs
+            if ($request->hasFile('desktop_image')) {
+                $uploadedFiles[] = $this->processFile($request->file('desktop_image'), $banner, 'desktop');
+            }
+
+            if ($request->hasFile('mobile_image')) {
+                $uploadedFiles[] = $this->processFile($request->file('mobile_image'), $banner, 'mobile');
+            }
+
+            // Handle universal file uploader files
+            if ($request->hasFile('files')) {
+                $files = $request->file('files');
+                $categories = $this->getFileCategories($request);
+
+                foreach ($files as $index => $file) {
+                    $imageType = $this->determineImageType($categories, $index);
+                    $uploadedFiles[] = $this->processFile($file, $banner, $imageType);
+                }
+            }
+
+            \Log::info('All files processed successfully', [
+                'banner_id' => $banner->id,
+                'total_uploaded' => count($uploadedFiles)
+            ]);
+
+            return $uploadedFiles;
+
+        } catch (\Exception $e) {
+            \Log::error('File processing failed: ' . $e->getMessage(), [
+                'banner_id' => $banner->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Process a single file upload
+     */
+    private function processFile($file, Banner $banner, string $imageType)
+    {
+        \Log::info('Processing single file', [
+            'banner_id' => $banner->id,
+            'image_type' => $imageType,
+            'file_name' => $file->getClientOriginalName(),
+            'file_size' => $file->getSize()
+        ]);
+
+        // Validate file
+        $this->validateFile($file);
+
+        // Generate filename and paths
+        $filename = $this->generateFilename($file, $imageType, $banner->id);
+        $directory = "banners/{$banner->id}";
+        $filePath = $directory . '/' . $filename;
+
+        // Store file
+        $storedPath = $this->storeFile($file, $filePath);
+
+        // Update banner record
+        $this->updateBannerImage($banner, $storedPath, $imageType);
+
+        \Log::info('File processed successfully', [
+            'banner_id' => $banner->id,
+            'image_type' => $imageType,
+            'stored_path' => $storedPath
+        ]);
+
+        return [
+            'id' => $imageType . '_' . $banner->id,
+            'name' => ucfirst($imageType) . ' Image',
+            'file_name' => $filename,
+            'type' => $imageType,
+            'url' => Storage::disk('public')->url($storedPath),
+            'file_path' => $storedPath,
+            'size' => $this->formatFileSize($file->getSize()),
+            'download_url' => Storage::disk('public')->url($storedPath),
+        ];
+    }
+
+    /**
+     * Validate uploaded file
+     */
+    private function validateFile($file)
+    {
+        $allowedMimes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
+        $maxSize = 5 * 1024 * 1024; // 5MB
+
+        if (!in_array($file->getMimeType(), $allowedMimes)) {
+            throw new \InvalidArgumentException('Invalid image type. Allowed: JPEG, PNG, GIF, WebP');
+        }
+
+        if ($file->getSize() > $maxSize) {
+            throw new \InvalidArgumentException('Image size exceeds 5MB limit');
+        }
+
+        if (!getimagesize($file->getRealPath())) {
+            throw new \InvalidArgumentException('Invalid image file');
+        }
+    }
+
+    /**
+     * Generate unique filename
+     */
+    private function generateFilename($file, string $imageType, int $bannerId)
+    {
+        $extension = $file->getClientOriginalExtension();
+        $timestamp = now()->format('YmdHis');
+        $random = Str::random(6);
+        
+        return "banner_{$bannerId}_{$imageType}_{$timestamp}_{$random}.{$extension}";
+    }
+
+    /**
+     * Store file with optional image processing
+     */
+    private function storeFile($file, string $filePath)
+    {
+        try {
+            // Ensure directory exists
+            $directory = dirname($filePath);
+            Storage::disk('public')->makeDirectory($directory);
+
+            // Try with Intervention Image if available
+            if (class_exists('Intervention\Image\ImageManager')) {
+                $manager = new ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
+                $image = $manager->read($file->getRealPath());
+                
+                // Resize to max 1920px width while maintaining aspect ratio
+                $image->scaleDown(width: 1920);
+                
+                // Encode as JPEG with 85% quality
+                $encoded = $image->toJpeg(85);
+                
+                // Store the processed image
+                $stored = Storage::disk('public')->put($filePath, $encoded);
+                
+                if (!$stored) {
+                    throw new \Exception('Failed to store processed image');
+                }
+                
+                \Log::info("Image processed with Intervention Image", [
+                    'file_path' => $filePath,
+                    'original_size' => $file->getSize(),
+                    'processed_size' => strlen($encoded)
+                ]);
+                
+                return $filePath;
+            }
+
+            // Fallback to basic upload
+            $storedPath = $file->storeAs(dirname($filePath), basename($filePath), 'public');
+            
+            if (!$storedPath) {
+                throw new \Exception('Failed to store image file');
+            }
+            
+            return $storedPath;
+
+        } catch (\Exception $e) {
+            \Log::error('File storage failed: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Update banner with image path
+     */
+    private function updateBannerImage(Banner $banner, string $imagePath, string $imageType)
+    {
+        // Verify file exists
+        if (!Storage::disk('public')->exists($imagePath)) {
+            throw new \Exception("Stored image file not found: {$imagePath}");
+        }
+
+        if ($imageType === 'mobile') {
+            // Delete old mobile image if exists
+            if ($banner->mobile_image && Storage::disk('public')->exists($banner->mobile_image)) {
+                Storage::disk('public')->delete($banner->mobile_image);
+            }
+            
+            $updated = $banner->update(['mobile_image' => $imagePath]);
+        } else {
+            // Delete old desktop image if exists
+            if ($banner->image && Storage::disk('public')->exists($banner->image)) {
+                Storage::disk('public')->delete($banner->image);
+            }
+            
+            $updated = $banner->update(['image' => $imagePath]);
+        }
+
+        if (!$updated) {
+            throw new \Exception("Failed to update banner {$imageType} field");
+        }
+
+        // Refresh banner instance
+        $banner->refresh();
+    }
+
+    /**
+     * Get file categories from request
+     */
+    private function getFileCategories(Request $request)
+    {
+        // Check multiple possible input names
+        $categories = $request->input('category', []);
+        if (empty($categories)) {
+            $categories = $request->input('categories', []);
+        }
+        
+        return $categories;
+    }
+
+    /**
+     * Determine image type based on categories and index
+     */
+    private function determineImageType($categories, int $index)
+    {
+        if (is_array($categories) && isset($categories[$index])) {
+            return $categories[$index];
+        } elseif (is_string($categories)) {
+            return $categories;
+        } elseif ($index > 0) {
+            return 'mobile';
+        }
+        
+        return 'desktop'; // default
+    }
+
+    /**
+     * Format file size in human readable format
+     */
+    private function formatFileSize(int $bytes, int $precision = 2)
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+        
+        return round($bytes, $precision) . ' ' . $units[$i];
+    }
+
+    // Additional banner management methods
     public function toggleStatus(Banner $banner)
     {
         $this->bannerService->toggleStatus($banner);
@@ -811,18 +667,6 @@ class BannerController extends Controller
                     'category' => $banner->category->name,
                     'status' => $banner->is_active ? 'active' : 'inactive',
                     'created_at' => $banner->created_at->format('M j, Y'),
-                ];
-            });
-
-        $stats['popular_categories'] = BannerCategory::withCount('banners')
-            ->orderBy('banners_count', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function ($category) {
-                return [
-                    'id' => $category->id,
-                    'name' => $category->name,
-                    'banners_count' => $category->banners_count,
                 ];
             });
 

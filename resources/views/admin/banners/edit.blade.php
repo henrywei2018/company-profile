@@ -194,54 +194,50 @@
 
                     <!-- Current Images Display -->
                     @if ($banner->hasImages())
-                        <div class="mb-6">
-                            <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4">Current Images</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                @if ($banner->hasDesktopImage())
-                                    <div class="relative">
-                                        <div
-                                            class="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                                            <img src="{{ $banner->imageUrl }}" alt="Desktop Banner"
-                                                class="w-full h-full object-cover">
-                                        </div>
-                                        <div class="mt-2 flex items-center justify-between">
+                    <div class="mb-6">
+                        <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4">Current Images</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                            {{-- Desktop Image --}}
+                            <div class="relative" id="desktop-image-preview">
+                                <div class="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+                                    @if ($banner->hasDesktopImage())
+                                        <img src="{{ $banner->imageUrl }}" alt="Desktop Banner" class="w-full h-full object-cover">
+                                    @else
+                                        <div class="flex items-center justify-center h-full text-center text-gray-400 dark:text-gray-500">
                                             <div>
-                                                <p class="text-sm font-medium text-gray-900 dark:text-white">Desktop
-                                                    Image</p>
-                                                <p class="text-xs text-gray-500 dark:text-gray-400">
-                                                    {{ $banner->getImageFileSize('desktop') }}</p>
+                                                <svg class="w-10 h-10 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                                <p class="text-sm mt-2">No desktop image uploaded.</p>
                                             </div>
-                                            <button type="button" onclick="removeImage('desktop')"
-                                                class="px-3 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded hover:bg-red-100 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/30">
-                                                Remove
-                                            </button>
                                         </div>
-                                    </div>
-                                @endif
-
-                                @if ($banner->hasMobileImage())
-                                    <div class="relative">
-                                        <div
-                                            class="aspect-w-9 aspect-h-16 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden max-w-xs">
-                                            <img src="{{ $banner->mobileImageUrl }}" alt="Mobile Banner"
-                                                class="w-full h-full object-cover">
-                                        </div>
-                                        <div class="mt-2 flex items-center justify-between">
+                                    @endif
+                                </div>
+                            </div>
+                    
+                            {{-- Mobile Image --}}
+                            <div class="relative" id="mobile-image-preview">
+                                <div class="aspect-w-9 aspect-h-16 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden max-w-xs">
+                                    @if ($banner->hasMobileImage())
+                                        <img src="{{ $banner->mobileImageUrl }}" alt="Mobile Banner" class="w-full h-full object-cover">
+                                    @else
+                                        <div class="flex items-center justify-center h-full text-center text-gray-400 dark:text-gray-500">
                                             <div>
-                                                <p class="text-sm font-medium text-gray-900 dark:text-white">Mobile
-                                                    Image</p>
-                                                <p class="text-xs text-gray-500 dark:text-gray-400">
-                                                    {{ $banner->getImageFileSize('mobile') }}</p>
+                                                <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                </svg>
+                                                <p class="text-sm mt-2">No mobile image uploaded.</p>
                                             </div>
-                                            <button type="button" onclick="removeImage('mobile')"
-                                                class="px-3 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded hover:bg-red-100 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/30">
-                                                Remove
-                                            </button>
                                         </div>
-                                    </div>
-                                @endif
+                                    @endif
+                                </div>
                             </div>
                         </div>
+                    </div>
+                    
                     @endif
 
                     <!-- Universal File Uploader -->
@@ -368,134 +364,6 @@
                         </div>
                     </div>
                 </x-admin.card>
-
-                <!-- Preview -->
-                <x-admin.card>
-                    <x-slot name="header">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Preview</h3>
-                    </x-slot>
-
-                    <div id="banner-preview" class="space-y-4">
-                        <!-- Device Toggle -->
-                        <div class="flex items-center justify-center space-x-2 mb-4">
-                            <button type="button" id="preview-desktop" onclick="switchPreviewDevice('desktop')"
-                                class="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 border border-blue-200 rounded-lg hover:bg-blue-200 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/50">
-                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
-                                Desktop
-                            </button>
-                            <button type="button" id="preview-mobile" onclick="switchPreviewDevice('mobile')"
-                                class="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-600">
-                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                </svg>
-                                Mobile
-                            </button>
-                        </div>
-
-                        <!-- Preview Container -->
-                        <div id="preview-container"
-                            class="relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-                            <!-- Desktop Preview -->
-                            <div id="desktop-preview" class="preview-device active transition-all duration-300">
-                                <div class="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-700 relative">
-                                    <!-- Background Image -->
-                                    <div id="desktop-bg" class="absolute inset-0 bg-cover bg-center bg-no-repeat">
-                                    </div>
-                                    <!-- Overlay -->
-                                    <div class="absolute inset-0 bg-black bg-opacity-30"></div>
-                                    <!-- Content -->
-                                    <div class="relative z-10 flex items-center justify-start p-8">
-                                        <div class="max-w-lg text-white">
-                                            <p id="desktop-subtitle" class="text-sm opacity-90 mb-2"></p>
-                                            <h3 id="desktop-title" class="text-2xl font-bold mb-3">Banner Title</h3>
-                                            <p id="desktop-description" class="text-sm opacity-80 mb-4"></p>
-                                            <div id="desktop-button" class="hidden">
-                                                <span
-                                                    class="inline-block px-6 py-3 bg-white text-gray-900 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors">
-                                                    Button Text
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- No Image Placeholder -->
-                                    <div id="desktop-placeholder"
-                                        class="absolute inset-0 flex items-center justify-center">
-                                        <div class="text-center">
-                                            <svg class="w-12 h-12 mx-auto text-gray-400 mb-2" fill="none"
-                                                stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            <p class="text-gray-500 dark:text-gray-400 text-sm">Desktop Preview</p>
-                                            <p class="text-gray-400 dark:text-gray-500 text-xs">Upload desktop image to
-                                                see preview</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Mobile Preview -->
-                            <div id="mobile-preview" class="preview-device hidden transition-all duration-300">
-                                <div class="max-w-sm mx-auto">
-                                    <div
-                                        class="aspect-w-9 aspect-h-16 bg-gray-100 dark:bg-gray-700 relative rounded-lg overflow-hidden">
-                                        <!-- Background Image -->
-                                        <div id="mobile-bg" class="absolute inset-0 bg-cover bg-center bg-no-repeat">
-                                        </div>
-                                        <!-- Overlay -->
-                                        <div class="absolute inset-0 bg-black bg-opacity-30"></div>
-                                        <!-- Content -->
-                                        <div class="relative z-10 flex items-end p-6">
-                                            <div class="text-white">
-                                                <p id="mobile-subtitle" class="text-xs opacity-90 mb-1"></p>
-                                                <h3 id="mobile-title" class="text-lg font-bold mb-2">Banner Title</h3>
-                                                <p id="mobile-description" class="text-xs opacity-80 mb-3"></p>
-                                                <div id="mobile-button" class="hidden">
-                                                    <span
-                                                        class="inline-block px-4 py-2 bg-white text-gray-900 rounded text-xs font-medium">
-                                                        Button Text
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <!-- No Image Placeholder -->
-                                        <div id="mobile-placeholder"
-                                            class="absolute inset-0 flex items-center justify-center">
-                                            <div class="text-center">
-                                                <svg class="w-8 h-8 mx-auto text-gray-400 mb-2" fill="none"
-                                                    stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                                </svg>
-                                                <p class="text-gray-500 dark:text-gray-400 text-sm">Mobile Preview</p>
-                                                <p class="text-gray-400 dark:text-gray-500 text-xs">Upload mobile image
-                                                    or use desktop</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Update Button -->
-                        <button type="button" onclick="updatePreview()"
-                            class="w-full px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/30">
-                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            Update Preview
-                        </button>
-                    </div>
-                </x-admin.card>
             </div>
         </div>
 
@@ -528,20 +396,30 @@
             </div>
 
             <div class="flex gap-3">
-                <button type="submit" name="action" value="save"
-                    class="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                    </svg>
-                    Update Banner
-                </button>
+                
+                    <button type="submit" 
+                        class="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                        Update Banner
+                    </button>
             </div>
         </div>
     </form>
 
     @push('scripts')
         <script>
+            window.uploadedImages = {
+                @if ($banner->hasDesktopImage())
+                    desktop: @json($banner->imageUrl),
+                @endif
+                @if ($banner->hasMobileImage())
+                    mobile: @json($banner->mobileImageUrl),
+                @endif
+            };
+            
             document.addEventListener('DOMContentLoaded', function() {
                 // Setup image previews for new uploads
                 function setupNewImagePreview(inputId, previewContainerId, previewImgId) {
@@ -618,26 +496,11 @@
                     }
                 };
 
-                // Update preview images
-                function updatePreviewImages() {
+                document.addEventListener('DOMContentLoaded', function() {
                     if (typeof uploadedImages !== 'undefined') {
-                        // Check for new image previews
-                        const newDesktopImg = document.getElementById('new_desktop_img');
-                        const newMobileImg = document.getElementById('new_mobile_img');
-
-                        if (newDesktopImg && !newDesktopImg.closest('.hidden') && newDesktopImg.src) {
-                            uploadedImages.desktop = newDesktopImg.src;
-                        }
-                        if (newMobileImg && !newMobileImg.closest('.hidden') && newMobileImg.src) {
-                            uploadedImages.mobile = newMobileImg.src;
-                        }
-
-                        // Update global preview
-                        if (typeof updatePreview === 'function') {
-                            updatePreview();
-                        }
+                        updatePreview();
                     }
-                }
+                });
 
                 // Listen for AJAX upload events
                 document.addEventListener('files-uploaded', function(event) {
@@ -697,6 +560,76 @@
                     };
                     return icons[type] || icons.info;
                 }
+                window.updatePreview = function() {
+                    const title = document.getElementById('title')?.value || 'Banner Title';
+                    const subtitle = document.getElementById('subtitle')?.value || '';
+                    const description = document.getElementById('description')?.value || '';
+                    const buttonText = document.getElementById('button_text')?.value || '';
+
+                    const desktopImage = window.uploadedImages?.desktop;
+                    const mobileImage = window.uploadedImages?.mobile;
+
+                    const desktopBg = document.getElementById('desktop-bg');
+                    const desktopPlaceholder = document.getElementById('desktop-placeholder');
+                    if (desktopBg) desktopBg.style.backgroundImage = desktopImage ? `url('${desktopImage}')` : '';
+                    if (desktopPlaceholder) desktopPlaceholder.style.display = desktopImage ? 'none' : 'flex';
+
+                    document.getElementById('desktop-title').textContent = title;
+                    document.getElementById('desktop-subtitle').textContent = subtitle;
+                    document.getElementById('desktop-description').textContent = description;
+                    const desktopBtn = document.getElementById('desktop-button');
+                    desktopBtn.style.display = buttonText ? 'block' : 'none';
+                    desktopBtn.querySelector('span').textContent = buttonText;
+
+                    const mobileBg = document.getElementById('mobile-bg');
+                    const mobilePlaceholder = document.getElementById('mobile-placeholder');
+                    if (mobileBg) mobileBg.style.backgroundImage = mobileImage ? `url('${mobileImage}')` : '';
+                    if (mobilePlaceholder) mobilePlaceholder.style.display = mobileImage ? 'none' : 'flex';
+
+                    document.getElementById('mobile-title').textContent = title;
+                    document.getElementById('mobile-subtitle').textContent = subtitle;
+                    document.getElementById('mobile-description').textContent = description;
+                    const mobileBtn = document.getElementById('mobile-button');
+                    mobileBtn.style.display = buttonText ? 'block' : 'none';
+                    mobileBtn.querySelector('span').textContent = buttonText;
+                };
+                window.switchPreviewDevice = function(device) {
+                    const desktopBtn = document.getElementById('preview-desktop');
+                    const mobileBtn = document.getElementById('preview-mobile');
+                    const desktopPreview = document.getElementById('desktop-preview');
+                    const mobilePreview = document.getElementById('mobile-preview');
+
+                    if (!desktopBtn || !mobileBtn || !desktopPreview || !mobilePreview) {
+                        console.warn('Preview toggle elements not found');
+                        return;
+                    }
+
+                    if (device === 'desktop') {
+                        desktopPreview.classList.remove('hidden');
+                        desktopPreview.classList.add('active');
+                        mobilePreview.classList.add('hidden');
+                        mobilePreview.classList.remove('active');
+
+                        desktopBtn.classList.remove('bg-gray-100', 'text-gray-600');
+                        desktopBtn.classList.add('bg-blue-100', 'text-blue-600');
+
+                        mobileBtn.classList.remove('bg-blue-100', 'text-blue-600');
+                        mobileBtn.classList.add('bg-gray-100', 'text-gray-600');
+                    } else {
+                        mobilePreview.classList.remove('hidden');
+                        mobilePreview.classList.add('active');
+                        desktopPreview.classList.add('hidden');
+                        desktopPreview.classList.remove('active');
+
+                        mobileBtn.classList.remove('bg-gray-100', 'text-gray-600');
+                        mobileBtn.classList.add('bg-blue-100', 'text-blue-600');
+
+                        desktopBtn.classList.remove('bg-blue-100', 'text-blue-600');
+                        desktopBtn.classList.add('bg-gray-100', 'text-gray-600');
+                    }
+                };
+                
+
             });
         </script>
         <style>

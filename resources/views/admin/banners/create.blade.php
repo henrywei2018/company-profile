@@ -190,7 +190,20 @@
                         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Upload desktop and mobile versions of
                             your banner</p>
                     </x-slot>
-
+                    <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                        <h4 class="font-medium text-yellow-800 mb-2">🧪 Test: Traditional File Upload</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Desktop Image:</label>
+                                <input type="file" name="desktop_image" accept="image/*" class="block w-full text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Mobile Image:</label>
+                                <input type="file" name="mobile_image" accept="image/*" class="block w-full text-sm">
+                            </div>
+                        </div>
+                        <p class="text-xs text-yellow-600 mt-2">This is for testing - use this instead of the fancy uploader</p>
+                    </div>
                     <!-- Single Universal File Uploader with categories -->
                     <x-universal-file-uploader name="files" :multiple="false" :maxFiles="1" maxFileSize="5MB"
                         :acceptedFileTypes="['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']" dropDescription="Drop banner image here or click to browse" :uploadEndpoint="isset($banner) ? route('admin.banners.upload-image', $banner) : null"
