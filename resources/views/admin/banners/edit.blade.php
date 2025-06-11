@@ -250,14 +250,14 @@
                             {{ $banner->hasImages() ? 'Replace Images' : 'Upload Images' }}
                         </h4>
 
-                        <x-universal-file-uploader name="files" :multiple="true" :maxFiles="2"
-                            maxFileSize="5MB" :acceptedFileTypes="['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']"
-                            dropDescription="Drop banner images here or click to browse" :uploadEndpoint="route('admin.banners.upload-images', $banner)"
-                            :deleteEndpoint="route('admin.banners.delete-image', $banner)" :allowPreview="true" :enableCategories="true" :categories="[
+                        <x-universal-file-uploader name="ajax_files" :multiple="true" :maxFiles="2"
+                            maxFileSize="5MB" :acceptedFileTypes="['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']" dropDescription="Drop images for instant upload"
+                            :uploadEndpoint="route('admin.banners.upload-image', $banner)" :deleteEndpoint="route('admin.banners.delete-image', $banner)" :allowPreview="true" :enableCategories="true" :categories="[
                                 ['value' => 'desktop', 'label' => 'Desktop Image'],
                                 ['value' => 'mobile', 'label' => 'Mobile Image'],
-                            ]" :enableDescription="true"
-                            :autoUpload="false" :existingFiles="$banner->getImagesForUploader()" theme="modern" id="banner-image-uploader" />
+                            ]"
+                            :enableDescription="false" :autoUpload="true" :existingFiles="[]" theme="modern"
+                            id="banner-ajax-uploader" />
                     </div>
                 </x-admin.card>
             </div>
@@ -542,296 +542,178 @@
 
     @push('scripts')
         <script>
-            let uploadedImages = {
-                desktop: null,
-                mobile: null
-            };
-
-            let currentPreviewDevice = 'desktop';
-            @if (isset($banner))
-                uploadedImages.desktop = @json($banner->hasDesktopImage() ? $banner->imageUrl : null);
-                uploadedImages.mobile = @json($banner->hasMobileImage() ? $banner->mobileImageUrl : null);
-            @endif
-            function switchPreviewDevice(device) {
-                currentPreviewDevice = device;
-
-                // Update button states
-                document.getElementById('preview-desktop').className = device === 'desktop' ?
-                    'px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 border border-blue-200 rounded-lg hover:bg-blue-200 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/50' :
-                    'px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-600';
-
-                document.getElementById('preview-mobile').className = device === 'mobile' ?
-                    'px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 border border-blue-200 rounded-lg hover:bg-blue-200 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/50' :
-                    'px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-600';
-
-                // Show/hide preview containers
-                document.getElementById('desktop-preview').className = device === 'desktop' ?
-                    'preview-device active transition-all duration-300' :
-                    'preview-device hidden transition-all duration-300';
-
-                document.getElementById('mobile-preview').className = device === 'mobile' ?
-                    'preview-device active transition-all duration-300' :
-                    'preview-device hidden transition-all duration-300';
-
-                // Update preview content
-                updatePreview();
-            }
-
-            // Enhanced update preview function
-            function updatePreview() {
-                const title = document.getElementById('title')?.value || 'Banner Title';
-                const subtitle = document.getElementById('subtitle')?.value || '';
-                const description = document.getElementById('description')?.value || '';
-                const buttonText = document.getElementById('button_text')?.value || '';
-
-                // Update desktop preview
-                updateDevicePreview('desktop', title, subtitle, description, buttonText);
-
-                // Update mobile preview
-                updateDevicePreview('mobile', title, subtitle, description, buttonText);
-            }
-
-            function updateDevicePreview(device, title, subtitle, description, buttonText) {
-                const titleEl = document.getElementById(`${device}-title`);
-                const subtitleEl = document.getElementById(`${device}-subtitle`);
-                const descriptionEl = document.getElementById(`${device}-description`);
-                const buttonEl = document.getElementById(`${device}-button`);
-                const bgEl = document.getElementById(`${device}-bg`);
-                const placeholderEl = document.getElementById(`${device}-placeholder`);
-
-                // Update text content
-                if (titleEl) titleEl.textContent = title;
-                if (subtitleEl) {
-                    subtitleEl.textContent = subtitle;
-                    subtitleEl.style.display = subtitle ? 'block' : 'none';
-                }
-                if (descriptionEl) {
-                    descriptionEl.textContent = description;
-                    descriptionEl.style.display = description ? 'block' : 'none';
-                }
-                if (buttonEl) {
-                    if (buttonText) {
-                        buttonEl.style.display = 'block';
-                        const buttonSpan = buttonEl.querySelector('span');
-                        if (buttonSpan) buttonSpan.textContent = buttonText;
-                    } else {
-                        buttonEl.style.display = 'none';
-                    }
-                }
-
-                // Update background image
-                let imageUrl = uploadedImages[device];
-
-                // Fallback: use desktop image for mobile if mobile image doesn't exist
-                if (!imageUrl && device === 'mobile' && uploadedImages.desktop) {
-                    imageUrl = uploadedImages.desktop;
-                }
-
-                if (imageUrl && bgEl && placeholderEl) {
-                    bgEl.style.backgroundImage = `url('${imageUrl}')`;
-                    bgEl.style.display = 'block';
-                    placeholderEl.style.display = 'none';
-                } else if (bgEl && placeholderEl) {
-                    bgEl.style.backgroundImage = '';
-                    bgEl.style.display = 'none';
-                    placeholderEl.style.display = 'flex';
-                }
-            }
             document.addEventListener('DOMContentLoaded', function() {
-                // Image preview functionality
-                function previewImage(input, previewId) {
-                    if (input.files && input.files[0]) {
-                        const reader = new FileReader();
-                        reader.onload = function(e) {
-                            const img = document.getElementById(previewId);
-                            if (img) {
-                                img.src = e.target.result;
-                                img.classList.remove('hidden');
-                            }
-                        };
-                        reader.readAsDataURL(input.files[0]);
-                    }
-                }
-
-                // Add event listeners for traditional file inputs
-                document.getElementById('desktop_image')?.addEventListener('change', function() {
-                    previewImage(this, 'desktop_preview');
-                    updatePreview();
-                });
-
-                document.getElementById('mobile_image')?.addEventListener('change', function() {
-                    previewImage(this, 'mobile_preview');
-                    updatePreview();
-                });
-
-                // Listen for universal file uploader events
-                document.addEventListener('files-uploaded', function(event) {
-                    if (event.detail.component === 'banner-image-uploader') {
-                        console.log('Banner image uploaded:', event.detail);
-
-                        // Update preview
-                        updatePreview();
-
-                        // For edit mode, refresh the page to show updated images
-                        if (typeof bannerEditMode !== 'undefined' && bannerEditMode) {
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 2000);
-                        }
-
-                        // Show success message
-                        showNotification('Image uploaded successfully!', 'success');
-                    }
-                });
-
-                document.addEventListener('file-deleted', function(event) {
-                    if (event.detail.component === 'banner-image-uploader') {
-                        console.log('Banner image deleted:', event.detail.file);
-                        updatePreview();
-                        showNotification('Image removed successfully!', 'success');
-                    }
-                });
-
-                // Form validation
-                document.getElementById('banner-form').addEventListener('submit', function(e) {
-                    const title = document.getElementById('title').value.trim();
-                    const category = document.getElementById('banner_category_id').value;
-
-                    if (!title) {
-                        e.preventDefault();
-                        alert('Please enter a banner title.');
-                        document.getElementById('title').focus();
-                        return;
-                    }
-
-                    if (!category) {
-                        e.preventDefault();
-                        alert('Please select a banner category.');
-                        document.getElementById('banner_category_id').focus();
-                        return;
-                    }
-
-                    // Check if button text is provided but no link
-                    const buttonText = document.getElementById('button_text').value.trim();
-                    const buttonLink = document.getElementById('button_link').value.trim();
-
-                    if (buttonText && !buttonLink) {
-                        e.preventDefault();
-                        alert('Please provide a button link when button text is specified.');
-                        document.getElementById('button_link').focus();
-                        return;
-                    }
-                });
-
-                // Character counters
-                function addCharCounter(inputId, maxLength) {
+                // Setup image previews for new uploads
+                function setupNewImagePreview(inputId, previewContainerId, previewImgId) {
                     const input = document.getElementById(inputId);
-                    if (!input) return;
+                    const previewContainer = document.getElementById(previewContainerId);
+                    const previewImg = document.getElementById(previewImgId);
 
-                    const existingCounter = document.getElementById(inputId + '_counter');
-                    if (existingCounter) return; // Don't create if already exists
+                    if (!input || !previewContainer || !previewImg) return;
 
-                    const counter = document.createElement('div');
-                    counter.className = 'text-xs text-gray-500 dark:text-gray-400 mt-1';
-                    counter.id = inputId + '_counter';
+                    input.addEventListener('change', function(e) {
+                        const file = e.target.files[0];
+                        if (file && file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                previewImg.src = e.target.result;
+                                previewContainer.classList.remove('hidden');
 
-                    input.parentNode.appendChild(counter);
-
-                    function updateCounter() {
-                        const remaining = maxLength - input.value.length;
-                        counter.textContent = `${input.value.length}/${maxLength} characters`;
-
-                        if (remaining < 10) {
-                            counter.className = 'text-xs text-red-500 mt-1';
+                                // Update preview
+                                updatePreviewImages();
+                            };
+                            reader.readAsDataURL(file);
                         } else {
-                            counter.className = 'text-xs text-gray-500 dark:text-gray-400 mt-1';
+                            previewContainer.classList.add('hidden');
+                        }
+                    });
+                }
+
+                // Setup previews
+                setupNewImagePreview('desktop_image', 'new_desktop_preview', 'new_desktop_img');
+                setupNewImagePreview('mobile_image', 'new_mobile_preview', 'new_mobile_img');
+
+                // Clear new image preview function
+                window.clearNewImagePreview = function(type) {
+                    const input = document.getElementById(type + '_image');
+                    const preview = document.getElementById('new_' + type + '_preview');
+
+                    if (input) input.value = '';
+                    if (preview) preview.classList.add('hidden');
+
+                    updatePreviewImages();
+                };
+
+                // Remove existing image function
+                window.removeExistingImage = function(imageType) {
+                    if (confirm(`Are you sure you want to remove the ${imageType} image?`)) {
+                        fetch('{{ route('admin.banners.delete-image', $banner) }}', {
+                                method: 'DELETE',
+                                headers: {
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                        .getAttribute('content'),
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    image_type: imageType
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    // Reload page to reflect changes
+                                    showNotification(data.message, 'success');
+                                    setTimeout(() => {
+                                        window.location.reload();
+                                    }, 1500);
+                                } else {
+                                    showNotification(data.message || 'Failed to remove image', 'error');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                showNotification('An error occurred while removing the image', 'error');
+                            });
+                    }
+                };
+
+                // Update preview images
+                function updatePreviewImages() {
+                    if (typeof uploadedImages !== 'undefined') {
+                        // Check for new image previews
+                        const newDesktopImg = document.getElementById('new_desktop_img');
+                        const newMobileImg = document.getElementById('new_mobile_img');
+
+                        if (newDesktopImg && !newDesktopImg.closest('.hidden') && newDesktopImg.src) {
+                            uploadedImages.desktop = newDesktopImg.src;
+                        }
+                        if (newMobileImg && !newMobileImg.closest('.hidden') && newMobileImg.src) {
+                            uploadedImages.mobile = newMobileImg.src;
+                        }
+
+                        // Update global preview
+                        if (typeof updatePreview === 'function') {
+                            updatePreview();
                         }
                     }
-
-                    input.addEventListener('input', updateCounter);
-                    updateCounter();
                 }
 
-                // Add character counters
-                addCharCounter('title', 255);
-                addCharCounter('subtitle', 255);
-                addCharCounter('button_text', 50);
+                // Listen for AJAX upload events
+                document.addEventListener('files-uploaded', function(event) {
+                    if (event.detail.component === 'banner-ajax-uploader') {
+                        showNotification('Images uploaded successfully! Refreshing page...', 'success');
 
-                // Initialize preview
-                updatePreview();
-            });
-
-            // Update preview function
-            function updatePreview() {
-                const title = document.getElementById('title').value || 'Banner Title';
-                const subtitle = document.getElementById('subtitle').value || '';
-                const description = document.getElementById('description').value || '';
-                const buttonText = document.getElementById('button_text').value || '';
-
-                // Use existing banner image as background if available
-                const backgroundImage = '{{ $banner->hasDesktopImage() ? $banner->imageUrl : '' }}';
-                const backgroundStyle = backgroundImage ?
-                    `background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('${backgroundImage}'); background-size: cover; background-position: center;` :
-                    'background: linear-gradient(to right, #2563eb, #7c3aed);';
-
-                const previewHtml = `
-                <div class="relative rounded-lg p-6 text-white min-h-32" style="${backgroundStyle}">
-                    <div class="relative z-10">
-                        ${subtitle ? `<p class="text-sm opacity-90 mb-1">${subtitle}</p>` : ''}
-                        <h3 class="text-lg font-bold mb-2">${title}</h3>
-                        ${description ? `<p class="text-sm opacity-80 mb-3">${description}</p>` : ''}
-                        ${buttonText ? `<span class="inline-block px-4 py-2 bg-white text-blue-600 rounded-lg text-sm font-medium">${buttonText}</span>` : ''}
-                    </div>
-                </div>
-            `;
-
-                document.getElementById('banner-preview').innerHTML = previewHtml;
-            }
-
-            // Remove image function
-            function removeImage(imageType) {
-                if (confirm(`Are you sure you want to remove the ${imageType} image?`)) {
-                    fetch('{{ route('admin.banners.delete-image', $banner) }}', {
-                            method: 'DELETE',
-                            headers: {
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                image_type: imageType
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                // Reload the page to reflect changes
-                                window.location.reload();
-                            } else {
-                                alert('Failed to remove image: ' + (data.message || 'Unknown error'));
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert('An error occurred while removing the image.');
-                        });
-                }
-                const bannerEditMode = true;
-                document.addEventListener('DOMContentLoaded', function() {
-                    updatePreview();
+                        // Reload page after a short delay to show updated images
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    }
                 });
-            }
+
+                // Notification function
+                function showNotification(message, type = 'info') {
+                    const notification = document.createElement('div');
+                    notification.className =
+                        `fixed top-4 right-4 z-50 max-w-sm w-full shadow-lg rounded-lg p-4 ${getNotificationClasses(type)} transform transition-all duration-300 ease-in-out`;
+                    notification.innerHTML = `
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    ${getNotificationIcon(type)}
+                </div>
+                <div class="ml-3 flex-1">
+                    <p class="text-sm font-medium">${message}</p>
+                </div>
+                <div class="ml-auto pl-3">
+                    <button onclick="this.closest('.fixed').remove()" class="inline-flex text-current hover:opacity-75">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+
+                    document.body.appendChild(notification);
+                    setTimeout(() => notification?.remove(), 5000);
+                }
+
+                function getNotificationClasses(type) {
+                    const classes = {
+                        success: 'bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400',
+                        error: 'bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400',
+                        warning: 'bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-400',
+                        info: 'bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400'
+                    };
+                    return classes[type] || classes.info;
+                }
+
+                function getNotificationIcon(type) {
+                    const icons = {
+                        success: '<svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>',
+                        error: '<svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>',
+                        warning: '<svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>',
+                        info: '<svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>'
+                    };
+                    return icons[type] || icons.info;
+                }
+            });
         </script>
         <style>
             .aspect-w-16 {
                 position: relative;
-                padding-bottom: 56.25%; /* 16:9 aspect ratio */
+                padding-bottom: 56.25%;
+                /* 16:9 aspect ratio */
             }
+
             .aspect-w-9 {
-                position: relative;  
-                padding-bottom: 177.78%; /* 9:16 aspect ratio */
+                position: relative;
+                padding-bottom: 177.78%;
+                /* 9:16 aspect ratio */
             }
-            .aspect-w-16 > *, .aspect-w-9 > * {
+
+            .aspect-w-16>*,
+            .aspect-w-9>* {
                 position: absolute;
                 height: 100%;
                 width: 100%;
@@ -840,7 +722,7 @@
                 bottom: 0;
                 left: 0;
             }
-            </style>
+        </style>
     @endpush
 
 </x-layouts.admin>

@@ -106,7 +106,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('{banner}/toggle-status', [BannerController::class, 'toggleStatus'])->name('toggle-status');
         Route::post('{banner}/duplicate', [BannerController::class, 'duplicate'])->name('duplicate');
         
-        Route::post('{banner}/upload-images', [BannerController::class, 'uploadImages'])->name('upload-images');
+        Route::post('{banner}/upload-image', [BannerController::class, 'uploadImages'])->name('upload-image');
         Route::delete('{banner}/delete-image', [BannerController::class, 'deleteImage'])->name('delete-image');
         
         Route::post('bulk-action', [BannerController::class, 'bulkAction'])->name('bulk-action');
