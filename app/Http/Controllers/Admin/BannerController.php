@@ -40,76 +40,73 @@ class BannerController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'banner_category_id' => 'required|exists:banner_categories,id',
-            'title' => 'required|string|max:255',
-            'subtitle' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'button_text' => 'nullable|string|max:50',
-            'button_link' => 'nullable|string|max:255',
-            'link_type' => 'nullable|string|in:auto,internal,external,route,email,phone,anchor',
-            'open_in_new_tab' => 'boolean',
-            'is_active' => 'boolean',
-            'display_order' => 'nullable|integer',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            // Traditional file upload validation
-            'banner_images' => 'nullable|array|max:2',
-            'banner_images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120',
-            // Universal uploader data
-            'image_categories' => 'nullable|array',
-            'image_categories.*' => 'string|in:desktop,mobile',
+{
+    $validated = $request->validate([
+        'banner_category_id' => 'required|exists:banner_categories,id',
+        'title' => 'required|string|max:255',
+        'subtitle' => 'nullable|string|max:255',
+        'description' => 'nullable|string',
+        'button_text' => 'nullable|string|max:50',
+        'button_link' => 'nullable|string|max:255',
+        'link_type' => 'nullable|string|in:auto,internal,external,route,email,phone,anchor',
+        'open_in_new_tab' => 'boolean',
+        'is_active' => 'boolean',
+        'display_order' => 'nullable|integer',
+        'start_date' => 'nullable|date',
+        'end_date' => 'nullable|date|after_or_equal:start_date',
+        // Updated validation for temp files
+        'temp_images' => 'nullable|array',
+        'temp_images.*' => 'string', // JSON strings from temp upload
+    ]);
+
+    try {
+        DB::transaction(function () use ($request, $validated, &$banner) {
+            // Set default display order
+            if (empty($validated['display_order'])) {
+                $validated['display_order'] = Banner::where('banner_category_id', $validated['banner_category_id'])
+                    ->max('display_order') + 1;
+            }
+
+            // Create banner without images first
+            $bannerData = collect($validated)->except(['temp_images'])->toArray();
+            $banner = Banner::create($bannerData);
+
+            // Handle temporary images if present
+            if ($request->filled('temp_images')) {
+                $this->processTempImages($request->input('temp_images'), $banner);
+            }
+        });
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Banner created successfully!',
+                'banner' => $banner->fresh()->load('category'),
+                'redirect' => route('admin.banners.edit', $banner)
+            ]);
+        }
+
+        return redirect()->route('admin.banners.index')
+            ->with('success', 'Banner created successfully!');
+
+    } catch (\Exception $e) {
+        \Log::error('Banner creation failed: ' . $e->getMessage(), [
+            'validated_data' => $validated,
+            'temp_images' => $request->input('temp_images')
         ]);
 
-        try {
-            DB::transaction(function () use ($request, $validated, &$banner) {
-                // Set default display order
-                if (empty($validated['display_order'])) {
-                    $validated['display_order'] = Banner::where('banner_category_id', $validated['banner_category_id'])
-                        ->max('display_order') + 1;
-                }
-
-                // Create banner without images first
-                $bannerData = collect($validated)->except(['banner_images', 'image_categories'])->toArray();
-                $banner = Banner::create($bannerData);
-
-                // Handle image uploads if present
-                if ($request->hasFile('banner_images') || $request->filled('temp_images')) {
-                    $this->handleCreatePageImages($request, $banner);
-                }
-            });
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Banner created successfully!',
-                    'banner' => $banner->fresh()->load('category'),
-                    'redirect' => route('admin.banners.edit', $banner)
-                ]);
-            }
-
-            return redirect()->route('admin.banners.index')
-                ->with('success', 'Banner created successfully!');
-
-        } catch (\Exception $e) {
-            \Log::error('Banner creation failed: ' . $e->getMessage(), [
-                'validated_data' => $validated,
-                'has_files' => $request->hasFile('banner_images')
-            ]);
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to create banner: ' . $e->getMessage()
-                ], 422);
-            }
-
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Failed to create banner. Please try again.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create banner: ' . $e->getMessage()
+            ], 422);
         }
+
+        return redirect()->back()
+            ->withInput()
+            ->with('error', 'Failed to create banner. Please try again.');
     }
+}
 
     public function edit(Banner $banner)
     {
@@ -170,71 +167,74 @@ class BannerController extends Controller
         }
     }
     public function uploadTempImages(Request $request)
-    {
-        try {
-            $request->validate([
-                'files' => 'required|array|min:1|max:2',
-                'files.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
-                'categories' => 'nullable|array',
-                'categories.*' => 'string|in:desktop,mobile',
-            ]);
+{
+    try {
+        // Updated validation to match universal uploader
+        $request->validate([
+            'temp_images' => 'required|array|min:1|max:2',
+            'temp_images.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'category' => 'nullable|string|in:desktop,mobile',
+            'categories' => 'nullable|array',
+            'categories.*' => 'string|in:desktop,mobile',
+        ]);
 
-            $uploadedFiles = [];
-            $categories = $request->input('categories', []);
-            $sessionKey = 'temp_banner_images_' . session()->getId();
+        $uploadedFiles = [];
+        $files = $request->file('temp_images');
+        $categories = $request->input('categories', []);
+        $sessionKey = 'temp_banner_images_' . session()->getId();
 
-            foreach ($request->file('files') as $index => $file) {
-                $imageType = $categories[$index] ?? ($index === 0 ? 'desktop' : 'mobile');
-                
-                // Store in temporary directory
-                $tempFilename = 'temp_' . uniqid() . '_' . $imageType . '.' . $file->getClientOriginalExtension();
-                $tempPath = $file->storeAs('temp/banners', $tempFilename, 'public');
+        foreach ($files as $index => $file) {
+            $imageType = $categories[$index] ?? ($request->input('category')) ?? ($index === 0 ? 'desktop' : 'mobile');
+            
+            // Store in temporary directory
+            $tempFilename = 'temp_' . uniqid() . '_' . $imageType . '.' . $file->getClientOriginalExtension();
+            $tempPath = $file->storeAs('temp/banners', $tempFilename, 'public');
 
-                // Store temp file info in session
-                $tempImageData = [
-                    'temp_path' => $tempPath,
-                    'original_name' => $file->getClientOriginalName(),
-                    'image_type' => $imageType,
-                    'file_size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
-                    'uploaded_at' => now()->toISOString()
-                ];
+            // Store temp file info in session
+            $tempImageData = [
+                'temp_path' => $tempPath,
+                'original_name' => $file->getClientOriginalName(),
+                'image_type' => $imageType,
+                'file_size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+                'uploaded_at' => now()->toISOString()
+            ];
 
-                // Store in session grouped by type
-                $sessionData = session()->get($sessionKey, []);
-                $sessionData[$imageType] = $tempImageData;
-                session()->put($sessionKey, $sessionData);
+            // Store in session grouped by type
+            $sessionData = session()->get($sessionKey, []);
+            $sessionData[$imageType] = $tempImageData;
+            session()->put($sessionKey, $sessionData);
 
-                $uploadedFiles[] = [
-                    'id' => 'temp_' . $imageType . '_' . uniqid(),
-                    'name' => ucfirst($imageType) . ' Image',
-                    'file_name' => $file->getClientOriginalName(),
-                    'category' => $imageType,
-                    'type' => $imageType,
-                    'url' => Storage::disk('public')->url($tempPath),
-                    'size' => $this->formatFileSize($file->getSize()),
-                    'temp_path' => $tempPath,
-                    'is_temp' => true
-                ];
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => count($uploadedFiles) === 1 
-                    ? 'Image uploaded successfully!' 
-                    : count($uploadedFiles) . ' images uploaded successfully!',
-                'files' => $uploadedFiles
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Temporary image upload failed: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Upload failed: ' . $e->getMessage()
-            ], 500);
+            $uploadedFiles[] = [
+                'id' => 'temp_' . $imageType . '_' . uniqid(),
+                'name' => ucfirst($imageType) . ' Image',
+                'file_name' => $file->getClientOriginalName(),
+                'category' => $imageType,
+                'type' => $imageType,
+                'url' => Storage::disk('public')->url($tempPath),
+                'size' => $this->formatFileSize($file->getSize()),
+                'temp_path' => $tempPath,
+                'is_temp' => true
+            ];
         }
+
+        return response()->json([
+            'success' => true,
+            'message' => count($uploadedFiles) === 1 
+                ? 'Image uploaded successfully!' 
+                : count($uploadedFiles) . ' images uploaded successfully!',
+            'files' => $uploadedFiles
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Temporary image upload failed: ' . $e->getMessage());
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Upload failed: ' . $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * Delete temporary image
@@ -433,78 +433,81 @@ class BannerController extends Controller
      * Enhanced image upload handler for Universal File Uploader
      */
     public function uploadImages(Request $request, Banner $banner)
-    {
-        try {
-            // Validate the request
-            $request->validate([
-                'files' => 'required|array|min:1|max:2',
-                'files.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
-                'category' => 'nullable|string|in:desktop,mobile',
-            ]);
+{
+    try {
+        // Updated validation to match universal uploader field names
+        $request->validate([
+            'banner_images' => 'required|array|min:1|max:2',
+            'banner_images.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'category' => 'nullable|string|in:desktop,mobile',
+            'categories' => 'nullable|array',
+            'categories.*' => 'string|in:desktop,mobile',
+        ]);
 
-            $uploadedFiles = [];
-            $categories = $request->input('categories', []);
+        $uploadedFiles = [];
+        $files = $request->file('banner_images');
+        $categories = $request->input('categories', []);
 
-            foreach ($request->file('files') as $index => $file) {
-                // Determine image type from category or index
-                $imageType = $categories[$index] ?? ($index === 0 ? 'desktop' : 'mobile');
-                
-                try {
-                    $fileData = $this->processImageUpload($file, $banner, $imageType);
-                    $uploadedFiles[] = $fileData;
+        foreach ($files as $index => $file) {
+            // Determine image type from category or index
+            $imageType = $categories[$index] ?? ($request->input('category')) ?? ($index === 0 ? 'desktop' : 'mobile');
+            
+            try {
+                $fileData = $this->processImageUpload($file, $banner, $imageType);
+                $uploadedFiles[] = $fileData;
 
-                    \Log::info("Banner image uploaded successfully", [
-                        'banner_id' => $banner->id,
-                        'image_type' => $imageType,
-                        'file_path' => $fileData['file_path']
-                    ]);
+                \Log::info("Banner image uploaded successfully", [
+                    'banner_id' => $banner->id,
+                    'image_type' => $imageType,
+                    'file_path' => $fileData['file_path']
+                ]);
 
-                } catch (\Exception $e) {
-                    \Log::error('Individual image upload failed: ' . $e->getMessage(), [
-                        'banner_id' => $banner->id,
-                        'image_type' => $imageType,
-                        'file_name' => $file->getClientOriginalName()
-                    ]);
-                    // Continue with other files instead of failing completely
-                }
+            } catch (\Exception $e) {
+                \Log::error('Individual image upload failed: ' . $e->getMessage(), [
+                    'banner_id' => $banner->id,
+                    'image_type' => $imageType,
+                    'file_name' => $file->getClientOriginalName()
+                ]);
+                // Continue with other files instead of failing completely
             }
-
-            if (empty($uploadedFiles)) {
-                throw new \Exception('No images were uploaded successfully');
-            }
-
-            // Clear banner cache if using cache
-            if (method_exists($this->bannerService, 'clearCache')) {
-                $this->bannerService->clearCache();
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => count($uploadedFiles) === 1 
-                    ? 'Image uploaded successfully!' 
-                    : count($uploadedFiles) . ' images uploaded successfully!',
-                'files' => $uploadedFiles,
-                'banner' => $banner->fresh()->load('category')
-            ]);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all())
-            ], 422);
-
-        } catch (\Exception $e) {
-            \Log::error('Banner image upload failed: ' . $e->getMessage(), [
-                'banner_id' => $banner->id,
-                'request_data' => $request->except(['files'])
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Upload failed: ' . $e->getMessage()
-            ], 500);
         }
+
+        if (empty($uploadedFiles)) {
+            throw new \Exception('No images were uploaded successfully');
+        }
+
+        // Clear banner cache if using cache
+        if (method_exists($this->bannerService, 'clearCache')) {
+            $this->bannerService->clearCache();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => count($uploadedFiles) === 1 
+                ? 'Image uploaded successfully!' 
+                : count($uploadedFiles) . ' images uploaded successfully!',
+            'files' => $uploadedFiles,
+            'banner' => $banner->fresh()->load('category')
+        ]);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all())
+        ], 422);
+
+    } catch (\Exception $e) {
+        \Log::error('Banner image upload failed: ' . $e->getMessage(), [
+            'banner_id' => $banner->id,
+            'request_data' => $request->except(['banner_images'])
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Upload failed: ' . $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * Enhanced image deletion handler
@@ -545,6 +548,33 @@ class BannerController extends Controller
             ], 500);
         }
     }
+    protected function processTempImages(array $tempImagesData, Banner $banner)
+{
+    $sessionKey = 'temp_banner_images_' . session()->getId();
+    $sessionData = session()->get($sessionKey, []);
+
+    foreach ($tempImagesData as $tempDataJson) {
+        try {
+            $tempData = json_decode($tempDataJson, true);
+            if (!$tempData || !isset($tempData['type'])) {
+                continue;
+            }
+
+            $imageType = $tempData['type']; // desktop or mobile
+            
+            // Get temp file data from session
+            if (isset($sessionData[$imageType])) {
+                $tempImageData = $sessionData[$imageType];
+                $this->moveTempImageToPermanent($tempImageData, $banner, $imageType);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to process temp image: ' . $e->getMessage());
+        }
+    }
+
+    // Clear session data
+    session()->forget($sessionKey);
+}
 
     /**
      * Process individual image upload

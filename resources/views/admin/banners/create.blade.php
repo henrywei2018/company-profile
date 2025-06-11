@@ -208,23 +208,33 @@
                         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Upload desktop and mobile versions</p>
                     </x-slot>
 
-                    <!-- Note about creating banner first -->
-                    <div class="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                        <div class="flex">
-                            <svg class="w-5 h-5 text-amber-400 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                            </svg>
-                            <div>
-                                <h4 class="text-sm font-medium text-amber-800 dark:text-amber-200">Create Banner First</h4>
-                                <p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                                    Please save the banner information first, then you can upload images on the edit page.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Universal File Uploader for Temporary Upload -->
+                    <x-universal-file-uploader
+                        id="banner-temp-uploader"
+                        name="temp_images"
+                        :multiple="true"
+                        :maxFiles="2"
+                        maxFileSize="5MB"
+                        :acceptedFileTypes="['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']"
+                        :uploadEndpoint="route('admin.banners.temp-upload')"
+                        :deleteEndpoint="route('admin.banners.temp-delete')"
+                        dropDescription="Drop banner images here or click to browse"
+                        :enableCategories="true"
+                        :categories="[
+                            ['value' => 'desktop', 'label' => 'Desktop Image'],
+                            ['value' => 'mobile', 'label' => 'Mobile Image']
+                        ]"
+                        :autoUpload="true"
+                        :galleryMode="true"
+                        containerClass="mb-4"
+                        theme="modern"
+                    />
+
+                    <!-- Hidden inputs to store temp file data -->
+                    <div id="temp-files-data"></div>
 
                     <!-- Image Guidelines -->
-                    <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                         <h4 class="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Image Guidelines</h4>
                         <div class="grid grid-cols-1 gap-3 text-xs text-blue-800 dark:text-blue-200">
                             <div>
@@ -257,16 +267,83 @@
                     </x-slot>
 
                     <div id="banner-preview" class="space-y-4">
-                        <!-- Preview Content -->
-                        <div class="relative bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 text-white min-h-32">
-                            <div class="relative z-10">
-                                <p id="preview-subtitle" class="text-sm opacity-90 mb-1"></p>
-                                <h3 id="preview-title" class="text-lg font-bold mb-2">Banner Title</h3>
-                                <p id="preview-description" class="text-sm opacity-80 mb-3"></p>
-                                <div id="preview-button" class="hidden">
-                                    <span class="inline-block px-4 py-2 bg-white text-blue-600 rounded-lg text-sm font-medium">
-                                        Button Text
-                                    </span>
+                        <!-- Device Toggle -->
+                        <div class="flex items-center justify-center space-x-2 mb-4">
+                            <button type="button" id="preview-desktop" onclick="switchPreviewDevice('desktop')"
+                                class="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 border border-blue-200 rounded-lg hover:bg-blue-200 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/50">
+                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                </svg>
+                                Desktop
+                            </button>
+                            <button type="button" id="preview-mobile" onclick="switchPreviewDevice('mobile')"
+                                class="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-600">
+                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                </svg>
+                                Mobile
+                            </button>
+                        </div>
+
+                        <!-- Preview Container -->
+                        <div id="preview-container" class="relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                            <!-- Desktop Preview -->
+                            <div id="desktop-preview" class="preview-device active transition-all duration-300">
+                                <div class="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-700 relative">
+                                    <div id="desktop-bg" class="absolute inset-0 bg-cover bg-center bg-no-repeat"></div>
+                                    <div class="absolute inset-0 bg-black bg-opacity-30"></div>
+                                    <div class="relative z-10 flex items-center justify-start p-8">
+                                        <div class="max-w-lg text-white">
+                                            <p id="desktop-subtitle" class="text-sm opacity-90 mb-2"></p>
+                                            <h3 id="desktop-title" class="text-2xl font-bold mb-3">Banner Title</h3>
+                                            <p id="desktop-description" class="text-sm opacity-80 mb-4"></p>
+                                            <div id="desktop-button" class="hidden">
+                                                <span class="inline-block px-6 py-3 bg-white text-gray-900 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors">
+                                                    Button Text
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="desktop-placeholder" class="absolute inset-0 flex items-center justify-center">
+                                        <div class="text-center">
+                                            <svg class="w-12 h-12 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                            <p class="text-gray-500 dark:text-gray-400 text-sm">Desktop Preview</p>
+                                            <p class="text-gray-400 dark:text-gray-500 text-xs">Upload desktop image to see preview</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Mobile Preview -->
+                            <div id="mobile-preview" class="preview-device hidden transition-all duration-300">
+                                <div class="max-w-sm mx-auto">
+                                    <div class="aspect-w-9 aspect-h-16 bg-gray-100 dark:bg-gray-700 relative rounded-lg overflow-hidden">
+                                        <div id="mobile-bg" class="absolute inset-0 bg-cover bg-center bg-no-repeat"></div>
+                                        <div class="absolute inset-0 bg-black bg-opacity-30"></div>
+                                        <div class="relative z-10 flex items-end p-6">
+                                            <div class="text-white">
+                                                <p id="mobile-subtitle" class="text-xs opacity-90 mb-1"></p>
+                                                <h3 id="mobile-title" class="text-lg font-bold mb-2">Banner Title</h3>
+                                                <p id="mobile-description" class="text-xs opacity-80 mb-3"></p>
+                                                <div id="mobile-button" class="hidden">
+                                                    <span class="inline-block px-4 py-2 bg-white text-gray-900 rounded text-xs font-medium">
+                                                        Button Text
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div id="mobile-placeholder" class="absolute inset-0 flex items-center justify-center">
+                                            <div class="text-center">
+                                                <svg class="w-8 h-8 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                                </svg>
+                                                <p class="text-gray-500 dark:text-gray-400 text-sm">Mobile Preview</p>
+                                                <p class="text-gray-400 dark:text-gray-500 text-xs">Upload mobile image or use desktop</p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -307,6 +384,12 @@
     @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Global variables to track uploaded images
+            window.uploadedImages = {
+                desktop: null,
+                mobile: null
+            };
+
             // Initialize preview
             updatePreview();
 
@@ -314,25 +397,39 @@
             ['title', 'subtitle', 'description', 'button_text'].forEach(id => {
                 const element = document.getElementById(id);
                 if (element) {
-                    element.addEventListener('input', updatePreview);
+                    element.addEventListener('input', debounce(updatePreview, 300));
                 }
             });
 
-            // Form validation
+            // Listen for universal uploader events
+            document.addEventListener('files-uploaded', function(event) {
+                if (event.detail.component === 'banner-temp-uploader') {
+                    handleTempUploadSuccess(event.detail);
+                }
+            });
+
+            document.addEventListener('file-deleted', function(event) {
+                if (event.detail.component === 'banner-temp-uploader') {
+                    handleTempFileDelete(event.detail);
+                }
+            });
+
+            // Form validation and submission handling
             document.getElementById('banner-form').addEventListener('submit', function(e) {
+                // Basic validation
                 const title = document.getElementById('title').value.trim();
                 const category = document.getElementById('banner_category_id').value;
 
                 if (!title) {
                     e.preventDefault();
-                    alert('Please enter a banner title.');
+                    showNotification('Please enter a banner title.', 'error');
                     document.getElementById('title').focus();
                     return;
                 }
 
                 if (!category) {
                     e.preventDefault();
-                    alert('Please select a banner category.');
+                    showNotification('Please select a banner category.', 'error');
                     document.getElementById('banner_category_id').focus();
                     return;
                 }
@@ -343,37 +440,165 @@
 
                 if (buttonText && !buttonLink) {
                     e.preventDefault();
-                    alert('Please provide a button link when button text is specified.');
+                    showNotification('Please provide a button link when button text is specified.', 'warning');
                     document.getElementById('button_link').focus();
                     return;
                 }
+
+                // Add temp files data to form before submission
+                addTempFilesDataToForm();
             });
 
             // Character counters
             addCharCounter('title', 255);
             addCharCounter('subtitle', 255);
             addCharCounter('button_text', 50);
+
+            // Initialize link placeholder
+            updateLinkPlaceholder();
         });
 
+        // Handle temporary upload success
+        function handleTempUploadSuccess(detail) {
+            const files = detail.files || [];
+            
+            files.forEach(file => {
+                if (file.category === 'desktop') {
+                    window.uploadedImages.desktop = file.url;
+                    window.tempFileData = window.tempFileData || {};
+                    window.tempFileData.desktop = file;
+                } else if (file.category === 'mobile') {
+                    window.uploadedImages.mobile = file.url;
+                    window.tempFileData = window.tempFileData || {};
+                    window.tempFileData.mobile = file;
+                }
+            });
+
+            // Update preview with new images
+            updatePreview();
+            
+            showNotification(detail.message || 'Images uploaded successfully!', 'success');
+        }
+
+        // Handle temporary file deletion
+        function handleTempFileDelete(detail) {
+            const file = detail.file;
+            
+            if (file.category === 'desktop') {
+                window.uploadedImages.desktop = null;
+                if (window.tempFileData) {
+                    delete window.tempFileData.desktop;
+                }
+            } else if (file.category === 'mobile') {
+                window.uploadedImages.mobile = null;
+                if (window.tempFileData) {
+                    delete window.tempFileData.mobile;
+                }
+            }
+
+            // Update preview
+            updatePreview();
+        }
+
+        // Add temporary files data to form before submission
+        function addTempFilesDataToForm() {
+            const tempFilesContainer = document.getElementById('temp-files-data');
+            tempFilesContainer.innerHTML = ''; // Clear existing
+
+            // Add temp file data as hidden inputs if we have uploaded files
+            if (window.tempFileData) {
+                Object.keys(window.tempFileData).forEach(imageType => {
+                    const fileData = window.tempFileData[imageType];
+                    if (fileData && fileData.temp_path) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'temp_images[]';
+                        input.value = JSON.stringify({
+                            type: imageType,
+                            temp_path: fileData.temp_path,
+                            original_name: fileData.file_name,
+                            uploaded: true
+                        });
+                        tempFilesContainer.appendChild(input);
+                    }
+                });
+            }
+        }
+
+        // Preview device switching
+        window.switchPreviewDevice = function(device) {
+            const desktopBtn = document.getElementById('preview-desktop');
+            const mobileBtn = document.getElementById('preview-mobile');
+            const desktopPreview = document.getElementById('desktop-preview');
+            const mobilePreview = document.getElementById('mobile-preview');
+
+            if (device === 'desktop') {
+                desktopBtn.className = 'px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 border border-blue-200 rounded-lg hover:bg-blue-200 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/50';
+                mobileBtn.className = 'px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-600';
+                desktopPreview.classList.remove('hidden');
+                mobilePreview.classList.add('hidden');
+            } else {
+                mobileBtn.className = 'px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 border border-blue-200 rounded-lg hover:bg-blue-200 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/50';
+                desktopBtn.className = 'px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-600';
+                mobilePreview.classList.remove('hidden');
+                desktopPreview.classList.add('hidden');
+            }
+        };
+
         // Update preview function
-        function updatePreview() {
+        window.updatePreview = function() {
             const title = document.getElementById('title').value || 'Banner Title';
             const subtitle = document.getElementById('subtitle').value || '';
             const description = document.getElementById('description').value || '';
             const buttonText = document.getElementById('button_text').value || '';
 
-            document.getElementById('preview-title').textContent = title;
-            document.getElementById('preview-subtitle').textContent = subtitle;
-            document.getElementById('preview-description').textContent = description;
-
-            const buttonElement = document.getElementById('preview-button');
+            // Update desktop preview
+            document.getElementById('desktop-title').textContent = title;
+            document.getElementById('desktop-subtitle').textContent = subtitle;
+            document.getElementById('desktop-description').textContent = description;
+            
+            const desktopButton = document.getElementById('desktop-button');
             if (buttonText) {
-                buttonElement.querySelector('span').textContent = buttonText;
-                buttonElement.classList.remove('hidden');
+                desktopButton.querySelector('span').textContent = buttonText;
+                desktopButton.classList.remove('hidden');
             } else {
-                buttonElement.classList.add('hidden');
+                desktopButton.classList.add('hidden');
             }
-        }
+
+            // Update mobile preview
+            document.getElementById('mobile-title').textContent = title;
+            document.getElementById('mobile-subtitle').textContent = subtitle;
+            document.getElementById('mobile-description').textContent = description;
+            
+            const mobileButton = document.getElementById('mobile-button');
+            if (buttonText) {
+                mobileButton.querySelector('span').textContent = buttonText;
+                mobileButton.classList.remove('hidden');
+            } else {
+                mobileButton.classList.add('hidden');
+            }
+
+            // Update background images if available
+            if (window.uploadedImages.desktop) {
+                document.getElementById('desktop-bg').style.backgroundImage = `url(${window.uploadedImages.desktop})`;
+                document.getElementById('desktop-placeholder').style.display = 'none';
+            } else {
+                document.getElementById('desktop-bg').style.backgroundImage = '';
+                document.getElementById('desktop-placeholder').style.display = 'flex';
+            }
+
+            if (window.uploadedImages.mobile) {
+                document.getElementById('mobile-bg').style.backgroundImage = `url(${window.uploadedImages.mobile})`;
+                document.getElementById('mobile-placeholder').style.display = 'none';
+            } else if (window.uploadedImages.desktop) {
+                // Use desktop image for mobile if no mobile image
+                document.getElementById('mobile-bg').style.backgroundImage = `url(${window.uploadedImages.desktop})`;
+                document.getElementById('mobile-placeholder').style.display = 'none';
+            } else {
+                document.getElementById('mobile-bg').style.backgroundImage = '';
+                document.getElementById('mobile-placeholder').style.display = 'flex';
+            }
+        };
 
         // Update link placeholder based on type
         function updateLinkPlaceholder() {
@@ -382,23 +607,23 @@
             const helpText = document.getElementById('link-help');
 
             const placeholders = {
-                'auto': 'https://example.com or /about',
-                'internal': '/about or contact-us',
+                'auto': 'https://example.com or /about-us',
+                'internal': '/about-us or pages/contact',
                 'external': 'https://example.com',
-                'route': 'home or pages.about',
+                'route': 'home or contact.index',
                 'email': 'contact@example.com',
                 'phone': '+1234567890',
                 'anchor': '#section-id'
             };
 
             const helpTexts = {
-                'auto': 'The system will automatically detect the link type',
-                'internal': 'Links within your website (relative URLs)',
-                'external': 'Links to other websites (must include https://)',
-                'route': 'Laravel route names (e.g., home, pages.about)',
-                'email': 'Email addresses (will create mailto: links)',
-                'phone': 'Phone numbers (will create tel: links)',
-                'anchor': 'Links to sections on the same page'
+                'auto': 'System will automatically detect the link type',
+                'internal': 'Link to pages within your website',
+                'external': 'Link to external websites (opens in new tab)',
+                'route': 'Laravel route name (e.g., home, contact.index)',
+                'email': 'Email address for mailto links',
+                'phone': 'Phone number for tel links',
+                'anchor': 'Link to section on same page'
             };
 
             linkInput.placeholder = placeholders[linkType] || placeholders['auto'];
@@ -431,8 +656,85 @@
             updateCounter();
         }
 
-        // Initialize link placeholder
-        updateLinkPlaceholder();
+        // Utility functions
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 max-w-sm w-full shadow-lg rounded-lg p-4 ${getNotificationClasses(type)} transform transition-all duration-300 ease-in-out`;
+            notification.innerHTML = `
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        ${getNotificationIcon(type)}
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <p class="text-sm font-medium">${message}</p>
+                    </div>
+                    <div class="ml-auto pl-3">
+                        <button onclick="this.closest('.fixed').remove()" class="inline-flex text-current hover:opacity-75">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(notification);
+            setTimeout(() => notification?.remove(), 5000);
+        }
+
+        function getNotificationClasses(type) {
+            const classes = {
+                success: 'bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400',
+                error: 'bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400',
+                warning: 'bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-400',
+                info: 'bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400'
+            };
+            return classes[type] || classes.info;
+        }
+
+        function getNotificationIcon(type) {
+            const icons = {
+                success: '<svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>',
+                error: '<svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>',
+                warning: '<svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>',
+                info: '<svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>'
+            };
+            return icons[type] || icons.info;
+        }
     </script>
+
+    <style>
+        .aspect-w-16 {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+        }
+
+        .aspect-w-9 {
+            position: relative;
+            padding-bottom: 177.78%; /* 9:16 aspect ratio */
+        }
+
+        .aspect-w-16 > *, .aspect-w-9 > * {
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+        }
+    </style>
     @endpush
 </x-layouts.admin>
