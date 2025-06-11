@@ -250,7 +250,7 @@
                             {{ $banner->hasImages() ? 'Replace Images' : 'Upload Images' }}
                         </h4>
 
-                        <x-universal-file-uploader name="ajax_files" :multiple="true" :maxFiles="2"
+                        <x-universal-file-uploader name="files" :multiple="true" :maxFiles="2"
                             maxFileSize="5MB" :acceptedFileTypes="['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']" dropDescription="Drop images for instant upload"
                             :uploadEndpoint="route('admin.banners.upload-image', $banner)" :deleteEndpoint="route('admin.banners.delete-image', $banner)" :allowPreview="true" :enableCategories="true" :categories="[
                                 ['value' => 'desktop', 'label' => 'Desktop Image'],

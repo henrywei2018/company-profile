@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\ImageManager;
+use App\Helpers\FileHelper;
 
 class BannerController extends Controller
 {
@@ -378,6 +379,7 @@ class BannerController extends Controller
         
         return "banner_{$bannerId}_{$imageType}_{$timestamp}_{$random}.{$extension}";
     }
+    
 
     /**
      * Process and store image with resizing
@@ -705,7 +707,7 @@ class BannerController extends Controller
                     'type' => $imageType,
                     'url' => Storage::disk('public')->url($storedPath),
                     'file_path' => $storedPath,
-                    'size' => $this->formatFileSize($file->getSize()),
+                    'size' => FileHelper::formatFileSize($file->getSize()),
                     'download_url' => Storage::disk('public')->url($storedPath),
                 ];
 
