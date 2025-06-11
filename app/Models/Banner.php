@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 class Banner extends Model
@@ -136,20 +135,6 @@ class Banner extends Model
     }
 
     /**
-     * Format file size in human readable format
-     */
-    private function formatFileSize($bytes, $precision = 2)
-    {
-        $units = ['B', 'KB', 'MB', 'GB'];
-        
-        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
-            $bytes /= 1024;
-        }
-        
-        return round($bytes, $precision) . ' ' . $units[$i];
-    }
-
-    /**
      * Check if banner has any images
      */
     public function hasImages()
@@ -174,45 +159,152 @@ class Banner extends Model
     }
 
     /**
-     * Get all banner images as array for file uploader
+     * Get all banner images formatted for Universal File Uploader
      */
     public function getImagesForUploader()
     {
         $images = [];
         
         if ($this->hasDesktopImage()) {
+            $dimensions = $this->getImageDimensions('desktop');
             $images[] = [
                 'id' => 'desktop_' . $this->id,
                 'name' => 'Desktop Image',
                 'file_name' => basename($this->image),
                 'file_path' => $this->image,
-                'file_type' => 'image/' . pathinfo($this->image, PATHINFO_EXTENSION),
-                'file_size' => Storage::disk('public')->size($this->image),
+                'file_type' => $this->getImageMimeType($this->image),
+                'file_size' => $this->getImageFileSizeBytes('desktop'),
                 'category' => 'desktop',
+                'type' => 'desktop',
                 'url' => $this->getImageUrlAttribute(),
                 'download_url' => $this->getImageUrlAttribute(),
-                'type' => 'desktop',
-                'dimensions' => $this->getImageDimensions('desktop'),
+                'size' => $this->getImageFileSize('desktop'),
+                'dimensions' => $dimensions,
+                'created_at' => $this->updated_at->format('M j, Y H:i'),
+                'description' => 'Desktop banner image (' . ($dimensions['width'] ?? '?') . 'x' . ($dimensions['height'] ?? '?') . ')',
             ];
         }
         
         if ($this->hasMobileImage()) {
+            $dimensions = $this->getImageDimensions('mobile');
             $images[] = [
                 'id' => 'mobile_' . $this->id,
                 'name' => 'Mobile Image',
                 'file_name' => basename($this->mobile_image),
                 'file_path' => $this->mobile_image,
-                'file_type' => 'image/' . pathinfo($this->mobile_image, PATHINFO_EXTENSION),
-                'file_size' => Storage::disk('public')->size($this->mobile_image),
+                'file_type' => $this->getImageMimeType($this->mobile_image),
+                'file_size' => $this->getImageFileSizeBytes('mobile'),
                 'category' => 'mobile',
+                'type' => 'mobile',
                 'url' => $this->getMobileImageUrlAttribute(),
                 'download_url' => $this->getMobileImageUrlAttribute(),
-                'type' => 'mobile',
-                'dimensions' => $this->getImageDimensions('mobile'),
+                'size' => $this->getImageFileSize('mobile'),
+                'dimensions' => $dimensions,
+                'created_at' => $this->updated_at->format('M j, Y H:i'),
+                'description' => 'Mobile banner image (' . ($dimensions['width'] ?? '?') . 'x' . ($dimensions['height'] ?? '?') . ')',
             ];
         }
         
         return $images;
+    }
+
+    /**
+     * Get image MIME type
+     */
+    protected function getImageMimeType($imagePath)
+    {
+        if (!$imagePath || !Storage::disk('public')->exists($imagePath)) {
+            return 'image/jpeg';
+        }
+
+        try {
+            $fullPath = Storage::disk('public')->path($imagePath);
+            $imageInfo = getimagesize($fullPath);
+            return $imageInfo['mime'] ?? 'image/jpeg';
+        } catch (\Exception $e) {
+            // Fallback based on file extension
+            $extension = strtolower(pathinfo($imagePath, PATHINFO_EXTENSION));
+            return match($extension) {
+                'png' => 'image/png',
+                'gif' => 'image/gif',
+                'webp' => 'image/webp',
+                default => 'image/jpeg'
+            };
+        }
+    }
+
+    /**
+     * Get image file size in bytes
+     */
+    protected function getImageFileSizeBytes($imageType = 'desktop')
+    {
+        $imagePath = $imageType === 'mobile' ? $this->mobile_image : $this->image;
+        
+        if (!$imagePath || !Storage::disk('public')->exists($imagePath)) {
+            return 0;
+        }
+
+        try {
+            return Storage::disk('public')->size($imagePath);
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Format file size in human readable format
+     */
+    protected function formatFileSize($bytes, $precision = 2)
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+        
+        return round($bytes, $precision) . ' ' . $units[$i];
+    }
+
+    /**
+     * Get optimized image URLs with responsive support
+     */
+    public function getOptimizedImageUrls()
+    {
+        return [
+            'desktop' => [
+                'original' => $this->getImageUrlAttribute(),
+                'large' => $this->getImageUrlAttribute(), // Could add image variants here
+                'medium' => $this->getImageUrlAttribute(),
+                'small' => $this->getMobileImageUrlAttribute(),
+            ],
+            'mobile' => [
+                'original' => $this->getMobileImageUrlAttribute(),
+                'large' => $this->getMobileImageUrlAttribute(),
+                'medium' => $this->getMobileImageUrlAttribute(),
+                'small' => $this->getMobileImageUrlAttribute(),
+            ]
+        ];
+    }
+
+    /**
+     * Get banner data for JSON responses
+     */
+    public function toUploadResponse()
+    {
+        return [
+            'id' => $this->id,
+            'title' => $this->title,
+            'subtitle' => $this->subtitle,
+            'description' => $this->description,
+            'category' => $this->category->name,
+            'images' => $this->getImagesForUploader(),
+            'status' => $this->status,
+            'is_active' => $this->is_active,
+            'has_desktop_image' => $this->hasDesktopImage(),
+            'has_mobile_image' => $this->hasMobileImage(),
+            'desktop_image_url' => $this->hasDesktopImage() ? $this->getImageUrlAttribute() : null,
+            'mobile_image_url' => $this->hasMobileImage() ? $this->getMobileImageUrlAttribute() : null,
+        ];
     }
 
     /**
@@ -298,32 +390,8 @@ class Banner extends Model
     }
 
     /**
-     * Boot method to handle model events
+     * Process URL based on type and base URL
      */
-    protected static function boot()
-    {
-        parent::boot();
-        
-        // Auto-set display order if not provided
-        static::creating(function ($banner) {
-            if (empty($banner->display_order)) {
-                $maxOrder = static::where('banner_category_id', $banner->banner_category_id)
-                    ->max('display_order');
-                $banner->display_order = ($maxOrder ?? 0) + 1;
-            }
-        });
-        
-        // Clean up images when banner is deleted
-        static::deleting(function ($banner) {
-            if ($banner->image && Storage::disk('public')->exists($banner->image)) {
-                Storage::disk('public')->delete($banner->image);
-            }
-            
-            if ($banner->mobile_image && Storage::disk('public')->exists($banner->mobile_image)) {
-                Storage::disk('public')->delete($banner->mobile_image);
-            }
-        });
-    }
     public function getProcessedButtonLinkAttribute()
     {
         if (empty($this->button_link)) {
@@ -334,7 +402,7 @@ class Banner extends Model
     }
 
     /**
-     * Process URL based on type and base URL
+     * Process URL based on type
      */
     public function processUrl($url, $linkType = null)
     {
@@ -349,31 +417,18 @@ class Banner extends Model
 
         switch ($linkType) {
             case 'external':
-                // External URL - use as is, but ensure it has protocol
                 return $this->ensureProtocol($url);
-
             case 'internal':
-                // Internal URL - prepend base URL if needed
                 return $this->makeInternalUrl($url);
-
             case 'route':
-                // Laravel route - generate URL from route name
                 return $this->makeRouteUrl($url);
-
             case 'email':
-                // Email link
                 return 'mailto:' . $url;
-
             case 'phone':
-                // Phone link
                 return 'tel:' . $url;
-
             case 'anchor':
-                // Anchor link (same page)
                 return $url;
-
             default:
-                // Auto-detect and process
                 return $this->autoProcessUrl($url);
         }
     }
@@ -381,7 +436,7 @@ class Banner extends Model
     /**
      * Detect link type based on URL pattern
      */
-    private function detectLinkType($url)
+    protected function detectLinkType($url)
     {
         // Email detection
         if (filter_var($url, FILTER_VALIDATE_EMAIL)) {
@@ -409,19 +464,18 @@ class Banner extends Model
             return 'internal';
         }
 
-        // Route detection (if it matches a route name pattern)
+        // Route detection
         if (preg_match('/^[a-zA-Z][a-zA-Z0-9._-]*$/', $url) && \Route::has($url)) {
             return 'route';
         }
 
-        // Default to internal
         return 'internal';
     }
 
     /**
      * Ensure URL has protocol
      */
-    private function ensureProtocol($url)
+    protected function ensureProtocol($url)
     {
         if (!preg_match('/^https?:\/\//', $url)) {
             return 'https://' . $url;
@@ -432,27 +486,22 @@ class Banner extends Model
     /**
      * Make internal URL with base URL
      */
-    private function makeInternalUrl($url)
+    protected function makeInternalUrl($url)
     {
-        // If already a full URL, return as is
         if (preg_match('/^https?:\/\//', $url)) {
             return $url;
         }
 
-        // Remove leading slash if present
         $url = ltrim($url, '/');
-
-        // Use Laravel's url() helper to create proper URL
         return url($url);
     }
 
     /**
      * Make route URL
      */
-    private function makeRouteUrl($routeName)
+    protected function makeRouteUrl($routeName)
     {
         try {
-            // Check if route has parameters (format: route.name:param1,param2)
             if (str_contains($routeName, ':')) {
                 [$route, $params] = explode(':', $routeName, 2);
                 $paramArray = explode(',', $params);
@@ -472,9 +521,9 @@ class Banner extends Model
     /**
      * Auto-process URL with intelligent detection
      */
-    private function autoProcessUrl($url)
+    protected function autoProcessUrl($url)
     {
-        // Already has protocol - external or same domain
+        // Already has protocol
         if (preg_match('/^https?:\/\//', $url)) {
             return $url;
         }
@@ -504,24 +553,6 @@ class Banner extends Model
     }
 
     /**
-     * Get link type for display
-     */
-    public function getLinkTypeDisplayAttribute()
-    {
-        $linkType = $this->link_type ?: $this->detectLinkType($this->button_link);
-        
-        return match($linkType) {
-            'external' => 'External Link',
-            'internal' => 'Internal Link',
-            'route' => 'Route Link',
-            'email' => 'Email Link',
-            'phone' => 'Phone Link',
-            'anchor' => 'Anchor Link',
-            default => 'Auto-detect'
-        };
-    }
-
-    /**
      * Check if link should open in new tab
      */
     public function shouldOpenInNewTab()
@@ -531,7 +562,6 @@ class Banner extends Model
             return true;
         }
 
-        // Use the open_in_new_tab setting
         return $this->open_in_new_tab;
     }
 
@@ -553,26 +583,30 @@ class Banner extends Model
     }
 
     /**
-     * Generate HTML link tag
+     * Boot method to handle model events
      */
-    public function generateLinkHtml($content = null, $additionalClasses = '')
+    protected static function boot()
     {
-        if (!$this->button_link || !$this->button_text) {
-            return '';
-        }
-
-        $content = $content ?: $this->button_text;
-        $attributes = $this->link_attributes;
-        $classes = trim("banner-button {$additionalClasses}");
-
-        $html = '<a class="' . $classes . '"';
+        parent::boot();
         
-        foreach ($attributes as $attr => $value) {
-            $html .= ' ' . $attr . '="' . htmlspecialchars($value) . '"';
-        }
-
-        $html .= '>' . htmlspecialchars($content) . '</a>';
-
-        return $html;
+        // Auto-set display order if not provided
+        static::creating(function ($banner) {
+            if (empty($banner->display_order)) {
+                $maxOrder = static::where('banner_category_id', $banner->banner_category_id)
+                    ->max('display_order');
+                $banner->display_order = ($maxOrder ?? 0) + 1;
+            }
+        });
+        
+        // Clean up images when banner is deleted
+        static::deleting(function ($banner) {
+            if ($banner->image && Storage::disk('public')->exists($banner->image)) {
+                Storage::disk('public')->delete($banner->image);
+            }
+            
+            if ($banner->mobile_image && Storage::disk('public')->exists($banner->mobile_image)) {
+                Storage::disk('public')->delete($banner->mobile_image);
+            }
+        });
     }
 }

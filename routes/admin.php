@@ -108,7 +108,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         
         Route::post('{banner}/upload-image', [BannerController::class, 'uploadImages'])->name('upload-image');
         Route::delete('{banner}/delete-image', [BannerController::class, 'deleteImage'])->name('delete-image');
-        
+        Route::post('/temp-upload', [BannerController::class, 'uploadTempImages'])->name('temp-upload');
+        Route::delete('/temp-delete', [BannerController::class, 'deleteTempImage'])->name('temp-delete');
+        Route::post('/cleanup-temp', [BannerController::class, 'cleanupTempFiles'])->name('cleanup-temp');
         Route::post('bulk-action', [BannerController::class, 'bulkAction'])->name('bulk-action');
         Route::post('reorder', [BannerController::class, 'reorder'])->name('reorder');
         
