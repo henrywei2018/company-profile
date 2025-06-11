@@ -194,50 +194,60 @@
 
                     <!-- Current Images Display -->
                     @if ($banner->hasImages())
-                    <div class="mb-6">
-                        <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4">Current Images</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
-                            {{-- Desktop Image --}}
-                            <div class="relative" id="desktop-image-preview">
-                                <div class="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                                    @if ($banner->hasDesktopImage())
-                                        <img src="{{ $banner->imageUrl }}" alt="Desktop Banner" class="w-full h-full object-cover">
-                                    @else
-                                        <div class="flex items-center justify-center h-full text-center text-gray-400 dark:text-gray-500">
-                                            <div>
-                                                <svg class="w-10 h-10 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
-                                                <p class="text-sm mt-2">No desktop image uploaded.</p>
+                        <div class="mb-6">
+                            <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4">Current Images</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                                {{-- Desktop Image --}}
+                                <div class="relative" id="desktop-image-preview">
+                                    <div
+                                        class="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+                                        @if ($banner->hasDesktopImage())
+                                            <img src="{{ $banner->imageUrl }}" alt="Desktop Banner"
+                                                class="w-full h-full object-cover">
+                                        @else
+                                            <div
+                                                class="flex items-center justify-center h-full text-center text-gray-400 dark:text-gray-500">
+                                                <div>
+                                                    <svg class="w-10 h-10 mx-auto" fill="none"
+                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                    </svg>
+                                                    <p class="text-sm mt-2">No desktop image uploaded.</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    @endif
+                                        @endif
+                                    </div>
                                 </div>
-                            </div>
-                    
-                            {{-- Mobile Image --}}
-                            <div class="relative" id="mobile-image-preview">
-                                <div class="aspect-w-9 aspect-h-16 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden max-w-xs">
-                                    @if ($banner->hasMobileImage())
-                                        <img src="{{ $banner->mobileImageUrl }}" alt="Mobile Banner" class="w-full h-full object-cover">
-                                    @else
-                                        <div class="flex items-center justify-center h-full text-center text-gray-400 dark:text-gray-500">
-                                            <div>
-                                                <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                                </svg>
-                                                <p class="text-sm mt-2">No mobile image uploaded.</p>
+
+                                {{-- Mobile Image --}}
+                                <div class="relative" id="mobile-image-preview">
+                                    <div
+                                        class="aspect-w-9 aspect-h-16 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden max-w-xs">
+                                        @if ($banner->hasMobileImage())
+                                            <img src="{{ $banner->mobileImageUrl }}" alt="Mobile Banner"
+                                                class="w-full h-full object-cover">
+                                        @else
+                                            <div
+                                                class="flex items-center justify-center h-full text-center text-gray-400 dark:text-gray-500">
+                                                <div>
+                                                    <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                    </svg>
+                                                    <p class="text-sm mt-2">No mobile image uploaded.</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    @endif
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
+
                     @endif
 
                     <!-- Universal File Uploader -->
@@ -378,26 +388,9 @@
                     </svg>
                     Back to Banners
                 </a>
+                <div class="flex gap-3">
 
-                <!-- Delete Button -->
-                <form method="POST" action="{{ route('admin.banners.destroy', $banner) }}" class="inline"
-                    onsubmit="return confirm('Are you sure you want to delete this banner? This action cannot be undone.')">
-                    @csrf
-                    @method('DELETE')
                     <button type="submit"
-                        class="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/30">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Delete Banner
-                    </button>
-                </form>
-            </div>
-
-            <div class="flex gap-3">
-                
-                    <button type="submit" 
                         class="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -405,7 +398,24 @@
                         </svg>
                         Update Banner
                     </button>
+                </div>
             </div>
+            <form method="POST" action="{{ route('admin.banners.destroy', $banner) }}" 
+                  class="inline-block"
+                  onsubmit="return confirm('Are you sure you want to delete this banner? This action cannot be undone.')">
+                @csrf
+                @method('DELETE')
+                <button type="submit"
+                    class="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/30">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete Banner
+                </button>
+            </form>
+            
+
+
         </div>
     </form>
 
@@ -419,7 +429,7 @@
                     mobile: @json($banner->mobileImageUrl),
                 @endif
             };
-            
+
             document.addEventListener('DOMContentLoaded', function() {
                 // Setup image previews for new uploads
                 function setupNewImagePreview(inputId, previewContainerId, previewImgId) {
@@ -628,7 +638,7 @@
                         desktopBtn.classList.add('bg-gray-100', 'text-gray-600');
                     }
                 };
-                
+
 
             });
         </script>
