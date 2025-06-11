@@ -54,9 +54,6 @@ class BannerController extends Controller
         'display_order' => 'nullable|integer',
         'start_date' => 'nullable|date',
         'end_date' => 'nullable|date|after_or_equal:start_date',
-        // Updated validation for temp files
-        'temp_images' => 'nullable|array',
-        'temp_images.*' => 'string', // JSON strings from temp upload
     ]);
 
     try {
@@ -68,13 +65,10 @@ class BannerController extends Controller
             }
 
             // Create banner without images first
-            $bannerData = collect($validated)->except(['temp_images'])->toArray();
-            $banner = Banner::create($bannerData);
+            $banner = Banner::create($validated);
 
             // Handle temporary images if present
-            if ($request->filled('temp_images')) {
-                $this->processTempImages($request->input('temp_images'), $banner);
-            }
+            $this->handleTempImages($banner);
         });
 
         if ($request->expectsJson()) {
@@ -92,7 +86,7 @@ class BannerController extends Controller
     } catch (\Exception $e) {
         \Log::error('Banner creation failed: ' . $e->getMessage(), [
             'validated_data' => $validated,
-            'temp_images' => $request->input('temp_images')
+            'session_data' => session()->all()
         ]);
 
         if ($request->expectsJson()) {
@@ -169,7 +163,6 @@ class BannerController extends Controller
     public function uploadTempImages(Request $request)
 {
     try {
-        // Updated validation to match universal uploader
         $request->validate([
             'temp_images' => 'required|array|min:1|max:2',
             'temp_images.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
@@ -182,6 +175,9 @@ class BannerController extends Controller
         $files = $request->file('temp_images');
         $categories = $request->input('categories', []);
         $sessionKey = 'temp_banner_images_' . session()->getId();
+
+        // Get existing session data
+        $sessionData = session()->get($sessionKey, []);
 
         foreach ($files as $index => $file) {
             $imageType = $categories[$index] ?? ($request->input('category')) ?? ($index === 0 ? 'desktop' : 'mobile');
@@ -200,10 +196,8 @@ class BannerController extends Controller
                 'uploaded_at' => now()->toISOString()
             ];
 
-            // Store in session grouped by type
-            $sessionData = session()->get($sessionKey, []);
+            // Update session data
             $sessionData[$imageType] = $tempImageData;
-            session()->put($sessionKey, $sessionData);
 
             $uploadedFiles[] = [
                 'id' => 'temp_' . $imageType . '_' . uniqid(),
@@ -217,6 +211,15 @@ class BannerController extends Controller
                 'is_temp' => true
             ];
         }
+
+        // Save updated session data
+        session()->put($sessionKey, $sessionData);
+
+        \Log::info('Temp images uploaded and stored in session', [
+            'session_key' => $sessionKey,
+            'uploaded_files' => count($uploadedFiles),
+            'session_data' => $sessionData
+        ]);
 
         return response()->json([
             'success' => true,
@@ -277,6 +280,38 @@ class BannerController extends Controller
             ], 500);
         }
     }
+    protected function handleTempImages(Banner $banner)
+{
+    $sessionKey = 'temp_banner_images_' . session()->getId();
+    $tempImages = session()->get($sessionKey, []);
+
+    \Log::info('Processing temp images', [
+        'banner_id' => $banner->id,
+        'session_key' => $sessionKey,
+        'temp_images' => $tempImages
+    ]);
+
+    if (empty($tempImages)) {
+        \Log::info('No temp images found in session');
+        return;
+    }
+
+    foreach ($tempImages as $imageType => $tempImageData) {
+        try {
+            $this->moveTempImageToPermanent($tempImageData, $banner, $imageType);
+        } catch (\Exception $e) {
+            \Log::error('Failed to process temp image: ' . $e->getMessage(), [
+                'banner_id' => $banner->id,
+                'image_type' => $imageType,
+                'temp_data' => $tempImageData
+            ]);
+        }
+    }
+
+    // Clear session data after processing
+    session()->forget($sessionKey);
+    \Log::info('Cleared temp images from session');
+}
 
     /**
      * Handle images from create page (temp files or traditional upload)
@@ -311,51 +346,51 @@ class BannerController extends Controller
      * Move temporary image to permanent location
      */
     protected function moveTempImageToPermanent(array $tempImageData, Banner $banner, string $imageType)
-    {
-        try {
-            $tempPath = $tempImageData['temp_path'];
+{
+    try {
+        $tempPath = $tempImageData['temp_path'];
+        
+        if (!Storage::disk('public')->exists($tempPath)) {
+            \Log::warning('Temporary file not found: ' . $tempPath);
+            return;
+        }
+
+        // Generate permanent filename
+        $extension = pathinfo($tempImageData['original_name'], PATHINFO_EXTENSION);
+        $filename = $this->generateImageFilename($tempImageData['original_name'], $imageType, $banner->id, $extension);
+        $directory = "banners/{$banner->id}";
+        $permanentPath = $directory . '/' . $filename;
+
+        // Ensure directory exists
+        Storage::disk('public')->makeDirectory($directory);
+
+        // Move file from temp to permanent location
+        if (Storage::disk('public')->move($tempPath, $permanentPath)) {
+            // Update banner with new image path
+            $this->assignImageToBanner($banner, $permanentPath, $imageType);
             
-            if (!Storage::disk('public')->exists($tempPath)) {
-                \Log::warning('Temporary file not found: ' . $tempPath);
-                return;
-            }
-
-            // Generate permanent filename
-            $extension = pathinfo($tempImageData['original_name'], PATHINFO_EXTENSION);
-            $filename = $this->generateImageFilename($tempImageData['original_name'], $imageType, $banner->id, $extension);
-            $directory = "banners/{$banner->id}";
-            $permanentPath = $directory . '/' . $filename;
-
-            // Ensure directory exists
-            Storage::disk('public')->makeDirectory($directory);
-
-            // Move file from temp to permanent location
-            if (Storage::disk('public')->move($tempPath, $permanentPath)) {
-                // Update banner with new image path
-                $this->assignImageToBanner($banner, $permanentPath, $imageType);
-                
-                \Log::info('Temporary image moved to permanent location', [
-                    'banner_id' => $banner->id,
-                    'image_type' => $imageType,
-                    'from' => $tempPath,
-                    'to' => $permanentPath
-                ]);
-            } else {
-                \Log::error('Failed to move temporary image', [
-                    'banner_id' => $banner->id,
-                    'image_type' => $imageType,
-                    'temp_path' => $tempPath
-                ]);
-            }
-
-        } catch (\Exception $e) {
-            \Log::error('Error moving temporary image: ' . $e->getMessage(), [
+            \Log::info('Temporary image moved to permanent location', [
                 'banner_id' => $banner->id,
                 'image_type' => $imageType,
-                'temp_data' => $tempImageData
+                'from' => $tempPath,
+                'to' => $permanentPath
+            ]);
+        } else {
+            \Log::error('Failed to move temporary image', [
+                'banner_id' => $banner->id,
+                'image_type' => $imageType,
+                'temp_path' => $tempPath
             ]);
         }
+
+    } catch (\Exception $e) {
+        \Log::error('Error moving temporary image: ' . $e->getMessage(), [
+            'banner_id' => $banner->id,
+            'image_type' => $imageType,
+            'temp_data' => $tempImageData
+        ]);
     }
+}
 
     /**
      * Process and assign image directly (for traditional uploads)

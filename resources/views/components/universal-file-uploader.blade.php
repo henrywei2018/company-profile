@@ -117,9 +117,6 @@
                         <h3 class="text-xl font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                             {{ $dropDescription }}
                         </h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                            Maximum {{ $maxFiles }} files, {{ $maxFileSize }} each
-                        </p>
                     </div>
                     <button type="button" class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-200 shadow-lg">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -257,12 +254,7 @@
 
                         <!-- File Actions -->
                         <div class="flex items-center space-x-2 mt-3" :class="galleryMode ? 'justify-center' : ''">
-                            <button v-if="allowPreview && previewEndpoint" @click="previewFile(file)" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 text-xs">
-                                Preview
-                            </button>
-                            <a v-if="file.download_url" :href="file.download_url" class="text-green-600 hover:text-green-800 dark:text-green-400 text-xs">
-                                Download
-                            </a>
+                            
                             <button v-if="deleteEndpoint" @click="deleteExistingFile(file, index)" class="text-red-600 hover:text-red-800 dark:text-red-400 text-xs">
                                 Delete
                             </button>
