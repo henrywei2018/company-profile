@@ -507,9 +507,6 @@
                             Update
                         </button>
                     </div>
-                    <div class="flex gap-3">
-
-                    </div>
                 </div>
     </form>
 

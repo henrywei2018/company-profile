@@ -342,10 +342,34 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/messages/email-reply-webhook', [MessageController::class, 'handleEmailReply'])->middleware('throttle:100,1')->name('messages.email-reply-webhook');
 
     // Team
-    Route::resource('team', TeamController::class);
-    Route::post('/team/{teamMember}/toggle-active', [TeamController::class, 'toggleActive'])->name('team.toggle-active');
-    Route::post('/team/{teamMember}/toggle-featured', [TeamController::class, 'toggleFeatured'])->name('team.toggle-featured');
-    Route::post('/team/update-order', [TeamController::class, 'updateOrder'])->name('team.update-order');
+    Route::prefix('team')->name('team.')->group(function () {
+        // Standard CRUD routes
+        Route::get('/', [TeamController::class, 'index'])->name('index');
+        Route::get('/create', [TeamController::class, 'create'])->name('create');
+        Route::post('/', [TeamController::class, 'store'])->name('store');
+        Route::get('/{teamMember}', [TeamController::class, 'show'])->name('show');
+        Route::get('/{teamMember}/edit', [TeamController::class, 'edit'])->name('edit');
+        Route::put('/{teamMember}', [TeamController::class, 'update'])->name('update');
+        Route::delete('/{teamMember}', [TeamController::class, 'destroy'])->name('destroy');
+        
+        // Team member specific actions
+        Route::post('/{teamMember}/toggle-active', [TeamController::class, 'toggleActive'])->name('toggle-active');
+        Route::post('/{teamMember}/toggle-featured', [TeamController::class, 'toggleFeatured'])->name('toggle-featured');
+        Route::delete('/{teamMember}/delete-photo', [TeamController::class, 'deletePhoto'])->name('delete-photo');
+        
+        // Temporary file upload routes (MUST come before resource routes to avoid conflicts)
+        Route::post('/upload-temp', [TeamController::class, 'uploadTempImages'])->name('upload-temp');
+        Route::delete('/delete-temp', [TeamController::class, 'deleteTempImage'])->name('delete-temp');
+        Route::get('/temp-files', [TeamController::class, 'getTempFiles'])->name('temp-files');
+        
+        // Bulk operations
+        Route::post('/bulk-action', [TeamController::class, 'bulkAction'])->name('bulk-action');
+        Route::post('/update-order', [TeamController::class, 'updateOrder'])->name('update-order');
+        
+        // Data endpoints
+        Route::get('/statistics', [TeamController::class, 'statistics'])->name('statistics');
+        Route::get('/export', [TeamController::class, 'export'])->name('export');
+    });
 
     // Team Departments
     Route::resource('team-member-departments', TeamMemberDepartmentController::class);

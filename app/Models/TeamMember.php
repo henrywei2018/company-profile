@@ -24,16 +24,16 @@ class TeamMember extends Model
         'name',
         'slug',
         'position',
-        'department',
+        'department_id',
         'bio',
         'email',
         'phone',
-        'photo',
-        'facebook',
-        'twitter',
+        'image',
+        'social_facebook',
+        'social_twitter',
+        'social_instagram',
         'linkedin',
-        'instagram',
-        'featured',
+        'is_featured',
         'is_active',
         'sort_order',
     ];
@@ -44,7 +44,7 @@ class TeamMember extends Model
      * @var array
      */
     protected $casts = [
-        'featured' => 'boolean',
+        'is_featured' => 'boolean',
         'is_active' => 'boolean',
     ];
     
@@ -54,8 +54,8 @@ class TeamMember extends Model
      * @var array
      */
     protected $filterable = [
-        'department',
-        'featured',
+        'department_id',
+        'is_featured',
         'is_active',
         'search',
     ];
@@ -68,7 +68,7 @@ class TeamMember extends Model
     protected $searchable = [
         'name',
         'position',
-        'department',
+        'department_id',
         'bio',
     ];
     
