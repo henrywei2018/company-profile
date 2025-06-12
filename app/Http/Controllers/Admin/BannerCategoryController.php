@@ -34,7 +34,7 @@ class BannerCategoryController extends Controller
         if (in_array($sortField, ['name', 'created_at', 'display_order'])) {
             $query->orderBy($sortField, $sortDirection);
         } else {
-            $query->orderBy('display_order', 'asc');
+            $query->orderBy('display_order', 'asc'); 
         }
 
         $categories = $query->paginate(10);

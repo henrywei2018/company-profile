@@ -117,6 +117,9 @@
                         <h3 class="text-xl font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                             {{ $dropDescription }}
                         </h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            Maximum {{ $maxFiles }} files, {{ $maxFileSize }} each
+                        </p>
                     </div>
                     <button type="button" class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-200 shadow-lg">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,27 +127,6 @@
                         </svg>
                         Choose Files
                     </button>
-                </div>
-                
-                <!-- Compact Mode -->
-                <div v-else-if="compact" class="flex items-center justify-center space-x-2">
-                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 12l2 2 4-4"/>
-                    </svg>
-                    <span class="text-sm font-medium text-gray-600 dark:text-gray-300">{{ $dropDescription }}</span>
-                </div>
-                
-                <!-- Single Mode -->
-                <div v-else class="space-y-3">
-                    <div class="mx-auto w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors">
-                        <svg class="w-8 h-8 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $dropDescription }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Max {{ $maxFileSize }}</p>
-                    </div>
                 </div>
             </div>
             

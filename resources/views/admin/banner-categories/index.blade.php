@@ -157,7 +157,7 @@
                                 </x-admin.dropdown-item>
                             </x-admin.dropdown>
                         </div>
-                    </x-admin.table-cell>
+                    </x-admin.table-cell> 
                 </x-admin.table-row>
             @empty
                 <tr>
