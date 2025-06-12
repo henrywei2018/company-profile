@@ -425,6 +425,32 @@
                         handleTempFileDelete(event.detail);
                     }
                 });
+                loadExistingTempFiles();
+                function loadExistingTempFiles() {
+    fetch('{{ route('admin.banners.temp-files') }}', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.files.length > 0) {
+            data.files.forEach(file => {
+                if (file.category === 'desktop') {
+                    window.uploadedImages.desktop = file.url;
+                } else if (file.category === 'mobile') {
+                    window.uploadedImages.mobile = file.url;
+                }
+            });
+            updatePreview();
+        }
+    })
+    .catch(error => {
+        console.warn('Could not load existing temp files:', error);
+    });
+}
 
                 // Form submission handling - CRITICAL FIX
                 document.getElementById('banner-form').addEventListener('submit', function(e) {
@@ -476,48 +502,32 @@
 
             // Handle temporary upload success
             function handleTempUploadSuccess(detail) {
-                console.log('Temp upload success:', detail);
+    const files = detail.files || [];
+    
+    files.forEach(file => {
+        if (file.category === 'desktop') {
+            window.uploadedImages.desktop = file.url;
+        } else if (file.category === 'mobile') {
+            window.uploadedImages.mobile = file.url;
+        }
+    });
 
-                const files = detail.files || [];
-
-                files.forEach(file => {
-                    if (file.category === 'desktop') {
-                        window.uploadedImages.desktop = file.url;
-                        window.tempFileData.desktop = file;
-                    } else if (file.category === 'mobile') {
-                        window.uploadedImages.mobile = file.url;
-                        window.tempFileData.mobile = file;
-                    }
-                });
-
-                // Update preview with new images
-                updatePreview();
-
-                showNotification(detail.message || 'Images uploaded successfully!', 'success');
-                console.log('Updated uploadedImages:', window.uploadedImages);
-            }
+    updatePreview();
+    showNotification(detail.message || 'Images uploaded successfully!', 'success');
+}
 
             // Handle temporary file deletion
             function handleTempFileDelete(detail) {
-                console.log('Temp file delete:', detail);
+    const file = detail.file;
+    
+    if (file.category === 'desktop') {
+        window.uploadedImages.desktop = null;
+    } else if (file.category === 'mobile') {
+        window.uploadedImages.mobile = null;
+    }
 
-                const file = detail.file;
-
-                if (file.category === 'desktop') {
-                    window.uploadedImages.desktop = null;
-                    if (window.tempFileData) {
-                        delete window.tempFileData.desktop;
-                    }
-                } else if (file.category === 'mobile') {
-                    window.uploadedImages.mobile = null;
-                    if (window.tempFileData) {
-                        delete window.tempFileData.mobile;
-                    }
-                }
-
-                // Update preview
-                updatePreview();
-            }
+    updatePreview();
+}
 
             // Preview device switching
             window.switchPreviewDevice = function(device) {

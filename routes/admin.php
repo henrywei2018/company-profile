@@ -101,22 +101,30 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('bulk-action', [BannerCategoryController::class, 'bulkAction'])->name('bulk-action');
     });
     Route::prefix('banners')->name('banners.')->group(function () {
-        Route::resource('/', BannerController::class)->parameters(['' => 'banner']);
-        
-        Route::post('{banner}/toggle-status', [BannerController::class, 'toggleStatus'])->name('toggle-status');
-        Route::post('{banner}/duplicate', [BannerController::class, 'duplicate'])->name('duplicate');
-        
-        Route::post('{banner}/upload-image', [BannerController::class, 'uploadImages'])->name('upload-image');
-        Route::delete('{banner}/delete-image', [BannerController::class, 'deleteImage'])->name('delete-image');
+        // Temporary file routes (MUST come before resource routes to avoid conflicts)
         Route::post('/temp-upload', [BannerController::class, 'uploadTempImages'])->name('temp-upload');
         Route::delete('/temp-delete', [BannerController::class, 'deleteTempImage'])->name('temp-delete');
+        Route::get('/temp-files', [BannerController::class, 'getTempFiles'])->name('temp-files');
         Route::post('/cleanup-temp', [BannerController::class, 'cleanupTempFiles'])->name('cleanup-temp');
+        
+        // Resource routes (these will bind {banner} parameter)
+        Route::resource('/', BannerController::class)->parameters(['' => 'banner']);
+        
+        // Banner-specific routes (these need {banner} parameter)
+        Route::post('{banner}/toggle-status', [BannerController::class, 'toggleStatus'])->name('toggle-status');
+        Route::post('{banner}/duplicate', [BannerController::class, 'duplicate'])->name('duplicate');
+        Route::post('{banner}/upload-image', [BannerController::class, 'uploadImages'])->name('upload-image');
+        Route::delete('{banner}/delete-image', [BannerController::class, 'deleteImage'])->name('delete-image');
+        
+        // Bulk operations (no specific banner needed)
         Route::post('bulk-action', [BannerController::class, 'bulkAction'])->name('bulk-action');
         Route::post('reorder', [BannerController::class, 'reorder'])->name('reorder');
         
+        // Data endpoints (no specific banner needed)
         Route::get('statistics', [BannerController::class, 'statistics'])->name('statistics');
         Route::get('export', [BannerController::class, 'export'])->name('export');
         
+        // Preview route (needs {banner} parameter)
         Route::get('{banner}/preview', [BannerController::class, 'preview'])->name('preview');
     });
 

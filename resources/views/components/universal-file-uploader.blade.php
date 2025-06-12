@@ -743,44 +743,73 @@ function enhancedFileUploader(config = {}) {
         },
 
         async deleteExistingFile(file, index) {
-            if (!this.deleteEndpoint) {
-                this.showNotification('Delete endpoint not configured', 'error');
-                return;
-            }
+    if (!this.deleteEndpoint) {
+        this.showNotification('Delete endpoint not configured', 'error');
+        return;
+    }
 
-            if (!confirm(`Are you sure you want to delete "${file.name || file.file_name}"?`)) {
-                return;
-            }
+    if (!confirm(`Are you sure you want to delete "${file.name || file.file_name}"?`)) {
+        return;
+    }
 
-            try {
-                const url = this.deleteEndpoint.replace(':id', file.id);
-                const response = await fetch(url, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-                    }
-                });
+    try {
+        let deleteUrl = this.deleteEndpoint;
+        let requestMethod = 'DELETE';
+        let requestBody = {};
 
-                const result = await response.json();
+        // Handle different deletion scenarios
+        if (file.temp_id || file.is_temp) {
+            // This is a temporary file - send as JSON body
+            requestBody = {
+                temp_id: file.temp_id || file.id,
+                id: file.temp_id || file.id,
+                image_type: file.category || file.type
+            };
+            
+            console.log('Deleting temp file with data:', requestBody); // Debug log
+        } else if (file.id) {
+            // This is a regular file with ID
+            deleteUrl = this.deleteEndpoint.replace(':id', file.id);
+            requestBody = {
+                file_id: file.id,
+                image_type: file.category || file.type
+            };
+        } else {
+            // Fallback for files with category/type information only
+            requestBody = {
+                image_type: file.category || file.type || 'desktop'
+            };
+        }
 
-                if (result.success) {
-                    this.existingFiles.splice(index, 1);
-                    this.showNotification(result.message || 'File deleted successfully!', 'success');
+        const response = await fetch(deleteUrl, {
+            method: requestMethod,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            },
+            body: JSON.stringify(requestBody)
+        });
 
-                    this.$dispatch('file-deleted', {
-                        file: file,
-                        component: this.componentId
-                    });
-                } else {
-                    throw new Error(result.message || 'Delete failed');
-                }
-            } catch (error) {
-                this.showNotification(error.message, 'error');
-            }
-        },
+        const result = await response.json();
+
+        if (result.success) {
+            this.existingFiles.splice(index, 1);
+            this.showNotification(result.message || 'File deleted successfully!', 'success');
+
+            this.$dispatch('file-deleted', {
+                file: file,
+                component: this.componentId
+            });
+        } else {
+            throw new Error(result.message || 'Delete failed');
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        this.showNotification(error.message || 'Failed to delete file', 'error');
+    }
+},
 
         async previewFile(file) {
             if (!this.allowPreview || !this.previewEndpoint) {

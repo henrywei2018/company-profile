@@ -40,67 +40,66 @@ class BannerController extends Controller
     }
 
     public function store(Request $request)
-{
-    $validated = $request->validate([
-        'banner_category_id' => 'required|exists:banner_categories,id',
-        'title' => 'required|string|max:255',
-        'subtitle' => 'nullable|string|max:255',
-        'description' => 'nullable|string',
-        'button_text' => 'nullable|string|max:50',
-        'button_link' => 'nullable|string|max:255',
-        'link_type' => 'nullable|string|in:auto,internal,external,route,email,phone,anchor',
-        'open_in_new_tab' => 'boolean',
-        'is_active' => 'boolean',
-        'display_order' => 'nullable|integer',
-        'start_date' => 'nullable|date',
-        'end_date' => 'nullable|date|after_or_equal:start_date',
-    ]);
-
-    try {
-        DB::transaction(function () use ($request, $validated, &$banner) {
-            // Set default display order
-            if (empty($validated['display_order'])) {
-                $validated['display_order'] = Banner::where('banner_category_id', $validated['banner_category_id'])
-                    ->max('display_order') + 1;
-            }
-
-            // Create banner without images first
-            $banner = Banner::create($validated);
-
-            // Handle temporary images if present
-            $this->handleTempImages($banner);
-        });
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Banner created successfully!',
-                'banner' => $banner->fresh()->load('category'),
-                'redirect' => route('admin.banners.edit', $banner)
-            ]);
-        }
-
-        return redirect()->route('admin.banners.index')
-            ->with('success', 'Banner created successfully!');
-
-    } catch (\Exception $e) {
-        \Log::error('Banner creation failed: ' . $e->getMessage(), [
-            'validated_data' => $validated,
-            'session_data' => session()->all()
+    {
+        $validated = $request->validate([
+            'banner_category_id' => 'required|exists:banner_categories,id',
+            'title' => 'required|string|max:255',
+            'subtitle' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'button_text' => 'nullable|string|max:50',
+            'button_link' => 'nullable|string|max:255',
+            'link_type' => 'nullable|string|in:auto,internal,external,route,email,phone,anchor',
+            'open_in_new_tab' => 'boolean',
+            'is_active' => 'boolean',
+            'display_order' => 'nullable|integer',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
-        if ($request->expectsJson()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create banner: ' . $e->getMessage()
-            ], 422);
-        }
+        try {
+            DB::transaction(function () use ($request, $validated, &$banner) {
+                // Set default display order
+                if (empty($validated['display_order'])) {
+                    $validated['display_order'] = Banner::where('banner_category_id', $validated['banner_category_id'])
+                        ->max('display_order') + 1;
+                }
 
-        return redirect()->back()
-            ->withInput()
-            ->with('error', 'Failed to create banner. Please try again.');
+                // Create banner without images first
+                $banner = Banner::create($validated);
+
+                // Process temporary images
+                $this->processTempImagesFromSession($banner);
+            });
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Banner created successfully!',
+                    'banner' => $banner->fresh()->load('category'),
+                    'redirect' => route('admin.banners.edit', $banner)
+                ]);
+            }
+
+            return redirect()->route('admin.banners.index')
+                ->with('success', 'Banner created successfully!');
+
+        } catch (\Exception $e) {
+            \Log::error('Banner creation failed: ' . $e->getMessage(), [
+                'validated_data' => $validated
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create banner: ' . $e->getMessage()
+                ], 422);
+            }
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to create banner. Please try again.');
+        }
     }
-}
 
     public function edit(Banner $banner)
     {
@@ -161,125 +160,262 @@ class BannerController extends Controller
         }
     }
     public function uploadTempImages(Request $request)
-{
-    try {
-        $request->validate([
-            'temp_images' => 'required|array|min:1|max:2',
-            'temp_images.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
-            'category' => 'nullable|string|in:desktop,mobile',
-            'categories' => 'nullable|array',
-            'categories.*' => 'string|in:desktop,mobile',
-        ]);
+    {
+        try {
+            $request->validate([
+                'temp_images' => 'required|array|min:1|max:2',
+                'temp_images.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+                'category' => 'nullable|string|in:desktop,mobile',
+                'categories' => 'nullable|array',
+                'categories.*' => 'string|in:desktop,mobile',
+            ]);
 
-        $uploadedFiles = [];
-        $files = $request->file('temp_images');
-        $categories = $request->input('categories', []);
-        $sessionKey = 'temp_banner_images_' . session()->getId();
-
-        // Get existing session data
-        $sessionData = session()->get($sessionKey, []);
-
-        foreach ($files as $index => $file) {
-            $imageType = $categories[$index] ?? ($request->input('category')) ?? ($index === 0 ? 'desktop' : 'mobile');
+            $uploadedFiles = [];
+            $files = $request->file('temp_images');
+            $categories = $request->input('categories', []);
             
-            // Store in temporary directory
-            $tempFilename = 'temp_' . uniqid() . '_' . $imageType . '.' . $file->getClientOriginalExtension();
-            $tempPath = $file->storeAs('temp/banners', $tempFilename, 'public');
+            // Consistent session key format
+            $sessionKey = 'banner_temp_files_' . session()->getId();
+            $sessionData = session()->get($sessionKey, []);
 
-            // Store temp file info in session
-            $tempImageData = [
-                'temp_path' => $tempPath,
-                'original_name' => $file->getClientOriginalName(),
-                'image_type' => $imageType,
-                'file_size' => $file->getSize(),
-                'mime_type' => $file->getMimeType(),
-                'uploaded_at' => now()->toISOString()
-            ];
-
-            // Update session data
-            $sessionData[$imageType] = $tempImageData;
-
-            $uploadedFiles[] = [
-                'id' => 'temp_' . $imageType . '_' . uniqid(),
-                'name' => ucfirst($imageType) . ' Image',
-                'file_name' => $file->getClientOriginalName(),
-                'category' => $imageType,
-                'type' => $imageType,
-                'url' => Storage::disk('public')->url($tempPath),
-                'size' => $this->formatFileSize($file->getSize()),
-                'temp_path' => $tempPath,
-                'is_temp' => true
-            ];
+            foreach ($files as $index => $file) {
+                $imageType = $categories[$index] ?? ($request->input('category')) ?? ($index === 0 ? 'desktop' : 'mobile');
+                
+                // Generate unique temp identifier with better format
+                $tempId = 'temp_' . $imageType . '_' . uniqid() . '_' . time();
+                $tempFilename = $tempId . '.' . $file->getClientOriginalExtension();
+                $tempPath = $file->storeAs('temp/banners', $tempFilename, 'public');
+    
+                // Enhanced temp file metadata
+                $tempImageData = [
+                    'temp_id' => $tempId,
+                    'temp_path' => $tempPath,
+                    'original_name' => $file->getClientOriginalName(),
+                    'image_type' => $imageType,
+                    'file_size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                    'uploaded_at' => now()->toISOString(),
+                    'session_id' => session()->getId()
+                ];
+    
+                // Store in session with type as key for easy replacement
+                $sessionData[$imageType] = $tempImageData;
+                session()->put($sessionKey, $sessionData);
+    
+                $uploadedFiles[] = [
+                    'id' => $tempId, // This should match temp_id
+                    'temp_id' => $tempId, // Explicit temp_id
+                    'name' => ucfirst($imageType) . ' Image',
+                    'file_name' => $file->getClientOriginalName(),
+                    'category' => $imageType,
+                    'type' => $imageType,
+                    'url' => Storage::disk('public')->url($tempPath),
+                    'size' => $this->formatFileSize($file->getSize()),
+                    'temp_path' => $tempPath,
+                    'is_temp' => true, // Mark as temporary file
+                    'created_at' => now()->format('M j, Y H:i')
+                ];
+            }
+    
+            \Log::info('Temp files uploaded', [
+                'files' => $uploadedFiles,
+                'session_key' => $sessionKey
+            ]);
+    
+            return response()->json([
+                'success' => true,
+                'message' => count($uploadedFiles) === 1 
+                    ? 'Image uploaded successfully!' 
+                    : count($uploadedFiles) . ' images uploaded successfully!',
+                'files' => $uploadedFiles
+            ]);
+    
+        } catch (\Exception $e) {
+            \Log::error('Temporary image upload failed: ' . $e->getMessage());
+    
+            return response()->json([
+                'success' => false,
+                'message' => 'Upload failed: ' . $e->getMessage()
+            ], 500);
         }
-
-        // Save updated session data
-        session()->put($sessionKey, $sessionData);
-
-        \Log::info('Temp images uploaded and stored in session', [
-            'session_key' => $sessionKey,
-            'uploaded_files' => count($uploadedFiles),
-            'session_data' => $sessionData
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => count($uploadedFiles) === 1 
-                ? 'Image uploaded successfully!' 
-                : count($uploadedFiles) . ' images uploaded successfully!',
-            'files' => $uploadedFiles
-        ]);
-
-    } catch (\Exception $e) {
-        \Log::error('Temporary image upload failed: ' . $e->getMessage());
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Upload failed: ' . $e->getMessage()
-        ], 500);
     }
-}
 
     /**
      * Delete temporary image
      */
     public function deleteTempImage(Request $request)
+{
+    try {
+        // Log the incoming request for debugging
+        \Log::info('Delete temp image request received', [
+            'method' => $request->method(),
+            'content_type' => $request->header('Content-Type'),
+            'raw_content' => $request->getContent(),
+            'all_input' => $request->all(),
+            'json_input' => $request->json()->all() ?? null
+        ]);
+
+        // Handle both JSON and form data
+        $input = [];
+        
+        if ($request->isJson()) {
+            $input = $request->json()->all();
+        } else {
+            $input = $request->all();
+        }
+        
+        // Try to get temp_id from various sources
+        $tempId = $input['temp_id'] ?? 
+                  $input['id'] ?? 
+                  $request->input('temp_id') ?? 
+                  $request->input('id') ?? 
+                  $request->getContent();
+        
+        // If content is JSON string, try to decode it
+        if (empty($tempId) && $request->getContent()) {
+            $rawContent = $request->getContent();
+            if (is_string($rawContent)) {
+                $decoded = json_decode($rawContent, true);
+                if (is_array($decoded)) {
+                    $tempId = $decoded['temp_id'] ?? $decoded['id'] ?? null;
+                } else {
+                    // Might be just the temp_id as plain text
+                    $tempId = trim($rawContent, '"');
+                }
+            }
+        }
+        
+        \Log::info('Extracted temp_id', ['temp_id' => $tempId]);
+
+        if (empty($tempId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Missing temp file identifier',
+                'debug' => [
+                    'input' => $input,
+                    'raw_content' => $request->getContent(),
+                    'method' => $request->method()
+                ]
+            ], 400);
+        }
+
+        $sessionKey = 'banner_temp_files_' . session()->getId();
+        $sessionData = session()->get($sessionKey, []);
+
+        \Log::info('Session data for temp files', [
+            'session_key' => $sessionKey,
+            'session_data' => $sessionData
+        ]);
+
+        // Find the temp file by ID
+        $tempFileData = null;
+        $imageType = null;
+        
+        foreach ($sessionData as $type => $data) {
+            if (isset($data['temp_id']) && $data['temp_id'] === $tempId) {
+                $tempFileData = $data;
+                $imageType = $type;
+                break;
+            }
+        }
+
+        if (!$tempFileData) {
+            \Log::warning('Temporary file not found', [
+                'temp_id' => $tempId,
+                'available_temp_ids' => array_map(function($data) {
+                    return $data['temp_id'] ?? 'no_temp_id';
+                }, $sessionData)
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Temporary file not found',
+                'debug' => [
+                    'temp_id' => $tempId,
+                    'available_files' => array_keys($sessionData)
+                ]
+            ], 404);
+        }
+
+        // Delete physical file
+        if (Storage::disk('public')->exists($tempFileData['temp_path'])) {
+            Storage::disk('public')->delete($tempFileData['temp_path']);
+        }
+
+        // Remove from session
+        unset($sessionData[$imageType]);
+        session()->put($sessionKey, $sessionData);
+
+        \Log::info('Temporary file deleted successfully', [
+            'temp_id' => $tempId,
+            'image_type' => $imageType,
+            'session_id' => session()->getId()
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => ucfirst($imageType) . ' image deleted successfully!'
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Temporary image deletion failed: ' . $e->getMessage(), [
+            'request_data' => $request->all(),
+            'raw_content' => $request->getContent(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to delete temporary image: ' . $e->getMessage()
+        ], 500);
+    }
+}
+    public function getTempFiles(Request $request)
     {
         try {
-            $tempPath = $request->input('temp_path');
-            $imageType = $request->input('image_type');
-            $sessionKey = 'temp_banner_images_' . session()->getId();
-
-            if (!$tempPath || !$imageType) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Missing required parameters'
-                ], 400);
-            }
-
-            // Delete physical file
-            if (Storage::disk('public')->exists($tempPath)) {
-                Storage::disk('public')->delete($tempPath);
-            }
-
-            // Remove from session
+            $sessionKey = 'banner_temp_files_' . session()->getId();
             $sessionData = session()->get($sessionKey, []);
-            unset($sessionData[$imageType]);
+            
+            $files = [];
+            foreach ($sessionData as $imageType => $data) {
+                // Verify file still exists
+                if (Storage::disk('public')->exists($data['temp_path'])) {
+                    $files[] = [
+                        'id' => $data['temp_id'],
+                        'name' => ucfirst($imageType) . ' Image',
+                        'file_name' => $data['original_name'],
+                        'category' => $imageType,
+                        'type' => $imageType,
+                        'url' => Storage::disk('public')->url($data['temp_path']),
+                        'size' => $this->formatFileSize($data['file_size']),
+                        'temp_id' => $data['temp_id'],
+                        'is_temp' => true,
+                        'created_at' => \Carbon\Carbon::parse($data['uploaded_at'])->format('M j, Y H:i')
+                    ];
+                } else {
+                    // Clean up broken reference
+                    unset($sessionData[$imageType]);
+                }
+            }
+            
+            // Update session with cleaned data
             session()->put($sessionKey, $sessionData);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Temporary image deleted successfully!'
+                'files' => $files
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Temporary image deletion failed: ' . $e->getMessage());
-
+            \Log::error('Failed to get temp files: ' . $e->getMessage());
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete temporary image'
+                'message' => 'Failed to get temporary files'
             ], 500);
         }
     }
+
     protected function handleTempImages(Banner $banner)
 {
     $sessionKey = 'temp_banner_images_' . session()->getId();
@@ -346,51 +482,88 @@ class BannerController extends Controller
      * Move temporary image to permanent location
      */
     protected function moveTempImageToPermanent(array $tempImageData, Banner $banner, string $imageType)
-{
-    try {
-        $tempPath = $tempImageData['temp_path'];
-        
-        if (!Storage::disk('public')->exists($tempPath)) {
-            \Log::warning('Temporary file not found: ' . $tempPath);
+    {
+        try {
+            $tempPath = $tempImageData['temp_path'];
+            
+            if (!Storage::disk('public')->exists($tempPath)) {
+                throw new \Exception('Temporary file not found: ' . $tempPath);
+            }
+
+            // Generate permanent filename
+            $extension = pathinfo($tempImageData['original_name'], PATHINFO_EXTENSION);
+            $filename = $this->generateImageFilename(
+                $tempImageData['original_name'], 
+                $imageType, 
+                $banner->id, 
+                $extension
+            );
+            $directory = "banners/{$banner->id}";
+            $permanentPath = $directory . '/' . $filename;
+
+            // Ensure directory exists
+            Storage::disk('public')->makeDirectory($directory);
+
+            // Move file from temp to permanent location
+            if (Storage::disk('public')->move($tempPath, $permanentPath)) {
+                // Update banner with new image path
+                $this->assignImageToBanner($banner, $permanentPath, $imageType);
+                
+                \Log::info('Temporary image moved to permanent location', [
+                    'banner_id' => $banner->id,
+                    'image_type' => $imageType,
+                    'from' => $tempPath,
+                    'to' => $permanentPath,
+                    'original_name' => $tempImageData['original_name']
+                ]);
+                
+                return $permanentPath;
+            } else {
+                throw new \Exception('Failed to move file from temp to permanent location');
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Error moving temporary image: ' . $e->getMessage(), [
+                'banner_id' => $banner->id,
+                'image_type' => $imageType,
+                'temp_data' => $tempImageData
+            ]);
+            throw $e;
+        }
+    }
+protected function processTempImagesFromSession(Banner $banner)
+    {
+        $sessionKey = 'banner_temp_files_' . session()->getId();
+        $sessionData = session()->get($sessionKey, []);
+
+        if (empty($sessionData)) {
             return;
         }
 
-        // Generate permanent filename
-        $extension = pathinfo($tempImageData['original_name'], PATHINFO_EXTENSION);
-        $filename = $this->generateImageFilename($tempImageData['original_name'], $imageType, $banner->id, $extension);
-        $directory = "banners/{$banner->id}";
-        $permanentPath = $directory . '/' . $filename;
+        foreach ($sessionData as $imageType => $tempImageData) {
+            try {
+                if (!Storage::disk('public')->exists($tempImageData['temp_path'])) {
+                    \Log::warning('Temporary file not found during processing: ' . $tempImageData['temp_path']);
+                    continue;
+                }
 
-        // Ensure directory exists
-        Storage::disk('public')->makeDirectory($directory);
-
-        // Move file from temp to permanent location
-        if (Storage::disk('public')->move($tempPath, $permanentPath)) {
-            // Update banner with new image path
-            $this->assignImageToBanner($banner, $permanentPath, $imageType);
-            
-            \Log::info('Temporary image moved to permanent location', [
-                'banner_id' => $banner->id,
-                'image_type' => $imageType,
-                'from' => $tempPath,
-                'to' => $permanentPath
-            ]);
-        } else {
-            \Log::error('Failed to move temporary image', [
-                'banner_id' => $banner->id,
-                'image_type' => $imageType,
-                'temp_path' => $tempPath
-            ]);
+                $this->moveTempImageToPermanent($tempImageData, $banner, $imageType);
+                
+            } catch (\Exception $e) {
+                \Log::error('Failed to process temp image: ' . $e->getMessage(), [
+                    'banner_id' => $banner->id,
+                    'image_type' => $imageType,
+                    'temp_data' => $tempImageData
+                ]);
+            }
         }
 
-    } catch (\Exception $e) {
-        \Log::error('Error moving temporary image: ' . $e->getMessage(), [
-            'banner_id' => $banner->id,
-            'image_type' => $imageType,
-            'temp_data' => $tempImageData
-        ]);
+        // Clear processed temporary images from session
+        session()->forget($sessionKey);
+        
+        // Also cleanup any physical temp files for this session
+        $this->cleanupSessionTempFiles(session()->getId());
     }
-}
 
     /**
      * Process and assign image directly (for traditional uploads)
@@ -430,7 +603,7 @@ class BannerController extends Controller
     {
         try {
             $tempDir = 'temp/banners';
-            $cutoffTime = now()->subHours(2); // Clean files older than 2 hours
+            $cutoffTime = now()->subHours(2);
             $deletedCount = 0;
 
             if (Storage::disk('public')->exists($tempDir)) {
@@ -445,6 +618,9 @@ class BannerController extends Controller
                     }
                 }
             }
+
+            // Also cleanup old session data (optional - be careful with this)
+            // This would require custom session cleanup logic
 
             \Log::info("Cleaned up {$deletedCount} temporary banner files");
 
@@ -461,6 +637,37 @@ class BannerController extends Controller
                 'success' => false,
                 'message' => 'Cleanup failed: ' . $e->getMessage()
             ], 500);
+        }
+    }
+    protected function cleanupSessionTempFiles(string $sessionId)
+    {
+        try {
+            $tempDir = 'temp/banners';
+            
+            if (!Storage::disk('public')->exists($tempDir)) {
+                return;
+            }
+
+            $files = Storage::disk('public')->files($tempDir);
+            $deletedCount = 0;
+
+            foreach ($files as $file) {
+                // Check if file belongs to this session (contains session ID or is old)
+                $filename = basename($file);
+                if (str_contains($filename, $sessionId) || 
+                    Storage::disk('public')->lastModified($file) < now()->subHours(1)->timestamp) {
+                    
+                    Storage::disk('public')->delete($file);
+                    $deletedCount++;
+                }
+            }
+
+            if ($deletedCount > 0) {
+                \Log::info("Cleaned up {$deletedCount} session temporary files for session: {$sessionId}");
+            }
+
+        } catch (\Exception $e) {
+            \Log::warning('Failed to cleanup session temp files: ' . $e->getMessage());
         }
     }
 
