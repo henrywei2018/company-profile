@@ -133,95 +133,79 @@
 
                     <x-admin.table-cell>
                         <div class="flex items-center space-x-2">
-                            <!-- View Button -->
-                            <div class="relative group">
-                                <a href="{{ route('admin.certifications.show', $certification) }}"
-                                    class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors dark:text-neutral-400 dark:hover:text-blue-400 dark:hover:bg-blue-900/30">
+                            <!-- Toggle Status: always visible -->
+                            <form action="{{ route('admin.certifications.toggle-active', $certification) }}" method="POST" class="inline">
+                                @csrf
+                                <button type="submit"
+                                    class="inline-flex items-center justify-center rounded p-2 transition focus:outline-none
+                                        {{ $certification->is_active
+                                            ? 'text-amber-700 hover:text-amber-200'
+                                            : 'text-gray-500 hover:text-gray-200' }}"
+                                    title="{{ $certification->is_active ? 'Deactivate' : 'Activate' }}">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                </a>
-                                <!-- Tooltip -->
-                                <div
-                                    class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 text-xs font-medium text-white bg-gray-900 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap z-50 dark:bg-gray-700">
-                                    View Certification
-                                    <div
-                                        class="absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45 dark:bg-gray-700">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Edit Button -->
-                            <div class="relative group">
-                                <a href="{{ route('admin.certifications.edit', $certification) }}"
-                                    class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors dark:text-neutral-400 dark:hover:text-green-400 dark:hover:bg-green-900/30">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                </a>
-                                <!-- Tooltip -->
-                                <div
-                                    class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 text-xs font-medium text-white bg-gray-900 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap z-50 dark:bg-gray-700">
-                                    Edit Certification
-                                    <div
-                                        class="absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45 dark:bg-gray-700">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Toggle Status Button -->
-                            <div class="relative group">
-                                <form action="{{ route('admin.certifications.toggle-active', $certification) }}" method="POST"
-                                    class="inline">
-                                    @csrf
-                                    <button type="submit"
-                                        class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors dark:text-neutral-400 dark:hover:text-amber-400 dark:hover:bg-amber-900/30">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        @if($certification->is_active)
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="{{ $certification->is_active ? 'M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21' : 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z' }}" />
-                                        </svg>
-                                    </button>
-                                </form>
-                                <!-- Tooltip -->
-                                <div
-                                    class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 text-xs font-medium text-white bg-gray-900 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap z-50 dark:bg-gray-700">
-                                    {{ $certification->is_active ? 'Deactivate' : 'Activate' }}
-                                    <div
-                                        class="absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45 dark:bg-gray-700">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Delete Button -->
-                            <div class="relative group">
-                                <form action="{{ route('admin.certifications.destroy', $certification) }}" method="POST"
-                                    class="inline"
-                                    onsubmit="return confirm('Are you sure you want to delete this certification? This action cannot be undone.')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit"
-                                        class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors dark:text-neutral-400 dark:hover:text-red-400 dark:hover:bg-red-900/30">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
+                                                  d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                                        @else
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
-                                </form>
-                                <!-- Tooltip -->
-                                <div
-                                    class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 text-xs font-medium text-white bg-gray-900 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap z-50 dark:bg-gray-700">
-                                    Delete Certification
-                                    <div
-                                        class="absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45 dark:bg-gray-700">
+                                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        @endif
+                                    </svg>
+                                </button>
+                            </form>
+                        
+                            <!-- Dropdown for View, Edit, Delete -->
+                            <div class="relative inline-block text-left" x-data="{ open: false }">
+                                <button @click="open = !open"
+                                    class="inline-flex items-center justify-center rounded p-2 text-gray-400 hover:text-gray-200 transition focus:outline-none"
+                                    title="More actions">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
+                                    </svg>
+                                </button>
+                                <div x-show="open" @click.away="open = false"
+                                    class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                                    <div class="py-1">
+                                        <!-- View Certification -->
+                                        <a href="{{ route('admin.certifications.show', $certification) }}"
+                                           class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                            View
+                                        </a>
+                                        <!-- Edit Certification -->
+                                        <a href="{{ route('admin.certifications.edit', $certification) }}"
+                                           class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                            Edit
+                                        </a>
+                                        <div class="border-t border-gray-100 dark:border-gray-700"></div>
+                                        <!-- Delete Certification -->
+                                        <form action="{{ route('admin.certifications.destroy', $certification) }}" method="POST"
+                                              onsubmit="return confirm('Are you sure you want to delete this certification? This action cannot be undone.')" class="inline w-full">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                class="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 text-left">
+                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                                Delete
+                                            </button>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        
                     </x-admin.table-cell>
                 </x-admin.table-row>
             @empty

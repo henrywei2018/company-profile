@@ -126,7 +126,7 @@
     <div class="relative inline-block text-left">
         <div>
             <button type="button" 
-                    class="inline-flex items-center justify-center w-8 h-8 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-neutral-800 dark:border-neutral-700 dark:hover:bg-neutral-700"
+                    class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                     onclick="toggleDropdown('dropdown-user-{{ $user->id }}')">
                 <svg class="w-4 h-4 text-gray-600 dark:text-neutral-400" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>

@@ -16,15 +16,15 @@ return new class extends Migration
             $table->string('email')->nullable();
             $table->string('phone')->nullable();
             $table->string('linkedin')->nullable();
-            $table->string('image')->nullable();
+            $table->string('photo')->nullable();
             $table->boolean('is_active')->default(true);
             $table->integer('sort_order')->default(0);
             $table->string('slug')->unique();
             $table->foreignId('department_id')->nullable()->constrained('team_member_departments')->nullOnDelete();
-            $table->boolean('is_featured')->default(false);
-            $table->string('social_facebook')->nullable();
-            $table->string('social_twitter')->nullable();
-            $table->string('social_instagram')->nullable();
+            $table->boolean('featured')->default(false);
+            $table->string('facebook')->nullable();
+            $table->string('twitter')->nullable();
+            $table->string('instagram')->nullable();
             $table->timestamps();
             
             $table->index(['is_active', 'is_featured']);

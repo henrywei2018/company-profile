@@ -188,55 +188,73 @@
                         </x-admin.table-cell>
 
                         <x-admin.table-cell>
-                            <div class="flex items-center space-x-2" onclick="event.stopPropagation()">
-                                <x-admin.icon-button 
-                                    href="{{ route('admin.messages.show', $message) }}"
-                                    tooltip="View Message"
-                                    color="primary"
-                                    size="sm"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-4 h-4">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                </x-admin.icon-button>
-
-                                <form action="{{ route('admin.messages.toggle-read', $message) }}" method="POST" class="inline">
-                                    @csrf
-                                    <x-admin.icon-button 
-                                        type="submit"
-                                        tooltip="{{ $message->is_read ? 'Mark as Unread' : 'Mark as Read' }}"
-                                        color="{{ $message->is_read ? 'warning' : 'success' }}"
-                                        size="sm"
-                                    >
-                                        @if ($message->is_read)
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-4 h-4">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                            </svg>
-                                        @else
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-4 h-4">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                        @endif
-                                    </x-admin.icon-button>
-                                </form>
-
-                                <form action="{{ route('admin.messages.destroy', $message) }}" method="POST" class="inline"
-                                    onsubmit="return confirm('Are you sure you want to delete this message?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <x-admin.icon-button 
-                                        type="submit"
-                                        tooltip="Delete Message"
-                                        color="danger"
-                                        size="sm"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-4 h-4">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            <div class="flex items-center justify-center" onclick="event.stopPropagation()">
+                                <div class="relative" x-data="{ open: false }">
+                                    <!-- Dropdown Trigger -->
+                                    <button @click="open = !open"
+                                            class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition focus:outline-none"
+                                            title="More actions">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
                                         </svg>
-                                    </x-admin.icon-button>
-                                </form>
+                                    </button>
+                                    <!-- Dropdown -->
+                                    <div x-show="open" @click.away="open = false"
+                                        x-transition
+                                        class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                                        <div class="py-1">
+                                            <!-- View Message -->
+                                            <a href="{{ route('admin.messages.show', $message) }}"
+                                               class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 group"
+                                               title="View Message">
+                                                <svg class="w-4 h-4 mr-2 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                                View Message
+                                            </a>
+                                            <!-- Toggle Read/Unread -->
+                                            <form action="{{ route('admin.messages.toggle-read', $message) }}" method="POST" class="w-full">
+                                                @csrf
+                                                <button type="submit"
+                                                        class="flex items-center w-full px-4 py-2 text-sm text-left group 
+                                                            {{ $message->is_read ? 'text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300' : 'text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300' }}"
+                                                        title="{{ $message->is_read ? 'Mark as Unread' : 'Mark as Read' }}">
+                                                    @if ($message->is_read)
+                                                        <!-- Mark as unread icon -->
+                                                        <svg class="w-4 h-4 mr-2 group-hover:text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                        </svg>
+                                                        Mark as Unread
+                                                    @else
+                                                        <!-- Mark as read icon -->
+                                                        <svg class="w-4 h-4 mr-2 group-hover:text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                        Mark as Read
+                                                    @endif
+                                                </button>
+                                            </form>
+                                            <div class="border-t border-gray-200 dark:border-gray-600 my-1"></div>
+                                            <!-- Delete Message -->
+                                            <form action="{{ route('admin.messages.destroy', $message) }}" method="POST" class="w-full"
+                                                onsubmit="return confirm('Are you sure you want to delete this message?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit"
+                                                    class="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 text-left group"
+                                                    title="Delete Message">
+                                                    <svg class="w-4 h-4 mr-2 group-hover:text-red-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+                            
                         </x-admin.table-cell>
                     </tr>
                 @endforeach

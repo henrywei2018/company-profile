@@ -249,7 +249,7 @@
                         <!-- Universal File Uploader for Photo Upload -->
                         <x-universal-file-uploader 
                             :id="'team-photo-uploader-' . $teamMember->id" 
-                            name="team_photo" 
+                            name="temp_photo" 
                             :multiple="false" 
                             :maxFiles="1"
                             maxFileSize="5MB" 

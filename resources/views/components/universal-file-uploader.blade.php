@@ -108,9 +108,9 @@
                     <div class="relative mx-auto w-20 h-20">
                         <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full opacity-20 group-hover:opacity-30 transition-opacity"></div>
                         <div class="relative w-full h-full flex items-center justify-center">
-                            <svg class="w-10 h-10 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 12l2 2 4-4"/>
-                            </svg>
+                            <img src="{{ asset('storage/images/logo_v2.png') }}"
+                                alt="Logo" 
+                                class="w-10 h-10 opacity-60 group-hover:opacity-100 transition-opacity">
                         </div>
                     </div>
                     <div>

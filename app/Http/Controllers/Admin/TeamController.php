@@ -11,6 +11,7 @@ use App\Services\FileUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class TeamController extends Controller
 {
@@ -50,7 +51,7 @@ class TeamController extends Controller
                 return $query->where('is_active', $request->status === 'active' || $request->status === '1');
             })
             ->when($request->filled('featured'), function ($query) use ($request) {
-                return $query->where('featured', $request->is_featured === '1');
+                return $query->where('is_featured', $request->is_featured === '1');
             });
 
         $teamMembers = $query->ordered()->paginate(10)->withQueryString();
@@ -76,30 +77,59 @@ class TeamController extends Controller
      */
     public function store(StoreTeamRequest $request)
     {
-        // Create the team member
-        $teamData = $request->validated();
+        try {
+            DB::transaction(function () use ($request, &$teamMember) {
+                // Create the team member
+                $teamData = $request->validated();
 
-        // Generate slug if not provided
-        if (empty($teamData['slug'])) {
-            $teamData['slug'] = Str::slug($teamData['name']);
-        }
+                // Generate slug if not provided
+                if (empty($teamData['slug'])) {
+                    $teamData['slug'] = Str::slug($teamData['name']);
+                }
 
-        $teamMember = TeamMember::create($teamData);
+                $teamMember = TeamMember::create($teamData);
 
-        // Handle photo upload from temp files
-        $this->processTempFiles($teamMember);
+                // Process temporary images
+                $this->processTempImagesFromSession($teamMember);
+            });
 
-        // Handle SEO
-        if ($request->filled('meta_title') || $request->filled('meta_description') || $request->filled('meta_keywords')) {
-            $teamMember->updateSeo([
-                'title' => $request->meta_title,
-                'description' => $request->meta_description,
-                'keywords' => $request->meta_keywords,
+            // Handle SEO
+            if ($request->filled('meta_title') || $request->filled('meta_description') || $request->filled('meta_keywords')) {
+                $teamMember->updateSeo([
+                    'title' => $request->meta_title,
+                    'description' => $request->meta_description,
+                    'keywords' => $request->meta_keywords,
+                ]);
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Team member created successfully!',
+                    'team_member' => $teamMember->fresh()->load('department'),
+                    'redirect' => route('admin.team.edit', $teamMember)
+                ]);
+            }
+
+            return redirect()->route('admin.team.index')
+                ->with('success', 'Team member created successfully!');
+
+        } catch (\Exception $e) {
+            \Log::error('Team member creation failed: ' . $e->getMessage(), [
+                'validated_data' => $request->validated()
             ]);
-        }
 
-        return redirect()->route('admin.team.index')
-            ->with('success', 'Team member created successfully!');
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create team member: ' . $e->getMessage()
+                ], 422);
+            }
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to create team member. Please try again.');
+        }
     }
 
     /**
@@ -128,28 +158,57 @@ class TeamController extends Controller
      */
     public function update(UpdateTeamRequest $request, TeamMember $teamMember)
     {
-        // Update team member
-        $teamData = $request->validated();
+        try {
+            DB::transaction(function () use ($request, $teamMember) {
+                // Update team member
+                $teamData = $request->validated();
 
-        // Generate slug if not provided
-        if (empty($teamData['slug'])) {
-            $teamData['slug'] = Str::slug($teamData['name']);
+                // Generate slug if not provided
+                if (empty($teamData['slug'])) {
+                    $teamData['slug'] = Str::slug($teamData['name']);
+                }
+
+                $teamMember->update($teamData);
+
+                // Process temporary images
+                $this->processTempImagesFromSession($teamMember);
+            });
+
+            // Handle SEO
+            $teamMember->updateSeo([
+                'title' => $request->meta_title,
+                'description' => $request->meta_description,
+                'keywords' => $request->meta_keywords,
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Team member updated successfully!',
+                    'team_member' => $teamMember->fresh()->load('department')
+                ]);
+            }
+
+            return redirect()->route('admin.team.index')
+                ->with('success', 'Team member updated successfully!');
+
+        } catch (\Exception $e) {
+            \Log::error('Team member update failed: ' . $e->getMessage(), [
+                'team_member_id' => $teamMember->id,
+                'validated_data' => $request->validated()
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update team member: ' . $e->getMessage()
+                ], 422);
+            }
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to update team member. Please try again.');
         }
-
-        $teamMember->update($teamData);
-
-        // Handle photo upload from temp files
-        $this->processTempFiles($teamMember);
-
-        // Handle SEO
-        $teamMember->updateSeo([
-            'title' => $request->meta_title,
-            'description' => $request->meta_description,
-            'keywords' => $request->meta_keywords,
-        ]);
-
-        return redirect()->route('admin.team.index')
-            ->with('success', 'Team member updated successfully!');
     }
 
     /**
@@ -157,16 +216,26 @@ class TeamController extends Controller
      */
     public function destroy(TeamMember $teamMember)
     {
-        // Delete photo
-        if ($teamMember->photo) {
-            Storage::disk('public')->delete($teamMember->photo);
+        try {
+            // Delete photo
+            if ($teamMember->photo) {
+                Storage::disk('public')->delete($teamMember->photo);
+            }
+
+            // Delete team member
+            $teamMember->delete();
+
+            return redirect()->route('admin.team.index')
+                ->with('success', 'Team member deleted successfully!');
+
+        } catch (\Exception $e) {
+            \Log::error('Team member deletion failed: ' . $e->getMessage(), [
+                'team_member_id' => $teamMember->id
+            ]);
+
+            return redirect()->route('admin.team.index')
+                ->with('error', 'Failed to delete team member. Please try again.');
         }
-
-        // Delete team member
-        $teamMember->delete();
-
-        return redirect()->route('admin.team.index')
-            ->with('success', 'Team member deleted successfully!');
     }
 
     /**
@@ -188,7 +257,7 @@ class TeamController extends Controller
     public function toggleFeatured(TeamMember $teamMember)
     {
         $teamMember->update([
-            'featured' => !$teamMember->featured
+            'featured' => !$teamMember->is_featured
         ]);
 
         return redirect()->back()
@@ -211,56 +280,118 @@ class TeamController extends Controller
 
         return response()->json(['success' => true]);
     }
-
-    /**
-     * Temporary image upload for photo
-     */
+  
     public function uploadTempImages(Request $request)
     {
-        $request->validate([
-            'temp_images' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB
-            'category' => 'sometimes|string|in:photo'
-        ]);
-
         try {
-            $file = $request->file('temp_images');
+            // Log the incoming request for debugging
+            \Log::info('Team photo upload request received', [
+                'files' => array_keys($request->allFiles()),
+                'data' => $request->except(['files']),
+                'content_type' => $request->header('Content-Type')
+            ]);
+            
+            // Support multiple possible field names from Universal File Uploader
+            $fieldName = null;
+            $file = null;
+            
+            // Check different possible field names that Universal File Uploader might use
+            $possibleFields = ['temp_photo', 'temp_images', 'team_photo', 'files'];
+            
+            foreach ($possibleFields as $field) {
+                if ($request->hasFile($field)) {
+                    $fieldName = $field;
+                    $file = $request->file($field);
+                    \Log::info('Found file in field: ' . $field);
+                    break;
+                }
+            }
+            
+            if (!$file) {
+                \Log::error('No file found in request', [
+                    'expected_fields' => $possibleFields,
+                    'actual_files' => array_keys($request->allFiles()),
+                    'all_input' => $request->all()
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No file uploaded. Expected one of: ' . implode(', ', $possibleFields),
+                    'debug' => [
+                        'request_files' => array_keys($request->allFiles()),
+                        'request_data' => $request->except(['files'])
+                    ]
+                ], 400);
+            }
+            
+            // Validate the file
+            $validator = \Validator::make($request->all(), [
+                $fieldName => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB
+                'category' => 'sometimes|string|in:photo'
+            ]);
+            
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed: ' . $validator->errors()->first()
+                ], 422);
+            }
+
             $category = $request->get('category', 'photo');
             
-            // Store temp file
-            $tempPath = $file->store('temp/team', 'public');
-            
-            // Store in session for later processing
-            $sessionKey = 'team_temp_files';
-            $tempFiles = session()->get($sessionKey, []);
-            
-            $tempFile = [
-                'id' => uniqid(),
-                'temp_id' => uniqid(),
-                'path' => $tempPath,
-                'name' => $file->getClientOriginalName(),
-                'size' => $file->getSize(),
-                'type' => $file->getMimeType(),
-                'category' => $category,
-                'url' => Storage::url($tempPath),
-                'is_temp' => true,
-                'uploaded_at' => now()->toISOString()
+            // Consistent session key format similar to banner
+            $sessionKey = 'team_temp_files_' . session()->getId();
+            $sessionData = session()->get($sessionKey, []);
+
+            // Generate unique temp identifier
+            $tempId = 'temp_' . $category . '_' . uniqid() . '_' . time();
+            $tempFilename = $tempId . '.' . $file->getClientOriginalExtension();
+            $tempPath = $file->storeAs('temp/team', $tempFilename, 'public');
+
+            // Enhanced temp file metadata
+            $tempImageData = [
+                'temp_id' => $tempId,
+                'temp_path' => $tempPath,
+                'original_name' => $file->getClientOriginalName(),
+                'image_type' => $category,
+                'file_size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+                'uploaded_at' => now()->toISOString(),
+                'session_id' => session()->getId()
             ];
-            
-            // Replace existing file for same category (single photo mode)
-            $tempFiles = array_filter($tempFiles, function ($existing) use ($category) {
-                return $existing['category'] !== $category;
-            });
-            
-            $tempFiles[] = $tempFile;
-            session()->put($sessionKey, $tempFiles);
+
+            // Store in session with type as key for easy replacement
+            $sessionData[$category] = $tempImageData;
+            session()->put($sessionKey, $sessionData);
+
+            $uploadedFile = [
+                'id' => $tempId,
+                'temp_id' => $tempId,
+                'name' => ucfirst($category) . ' Photo',
+                'file_name' => $file->getClientOriginalName(),
+                'category' => $category,
+                'type' => $category,
+                'url' => Storage::disk('public')->url($tempPath),
+                'size' => $this->formatFileSize($file->getSize()),
+                'temp_path' => $tempPath,
+                'is_temp' => true,
+                'created_at' => now()->format('M j, Y H:i')
+            ];
+
+            \Log::info('Temp team photo uploaded', [
+                'file' => $uploadedFile,
+                'session_key' => $sessionKey
+            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Photo uploaded successfully!',
-                'files' => [$tempFile]
+                'files' => [$uploadedFile]
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('Temporary team photo upload failed: ' . $e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Upload failed: ' . $e->getMessage()
@@ -269,50 +400,132 @@ class TeamController extends Controller
     }
 
     /**
-     * Delete temporary image
+     * Delete temporary image - Following BannerController pattern
      */
     public function deleteTempImage(Request $request)
     {
-        $request->validate([
-            'temp_id' => 'sometimes|string',
-            'id' => 'sometimes|string',
-            'image_type' => 'sometimes|string'
-        ]);
-
         try {
-            $tempId = $request->get('temp_id') ?: $request->get('id');
-            $imageType = $request->get('image_type', 'photo');
+            // Log the incoming request for debugging
+            \Log::info('Delete temp team photo request received', [
+                'method' => $request->method(),
+                'content_type' => $request->header('Content-Type'),
+                'raw_content' => $request->getContent(),
+                'all_input' => $request->all(),
+                'json_input' => $request->json()->all() ?? null
+            ]);
+
+            // Handle both JSON and form data
+            $input = [];
             
-            $sessionKey = 'team_temp_files';
-            $tempFiles = session()->get($sessionKey, []);
+            if ($request->isJson()) {
+                $input = $request->json()->all();
+            } else {
+                $input = $request->all();
+            }
             
-            $updatedFiles = [];
-            $deletedFile = null;
+            // Try to get temp_id from various sources
+            $tempId = $input['temp_id'] ?? 
+                      $input['id'] ?? 
+                      $request->input('temp_id') ?? 
+                      $request->input('id') ?? 
+                      $request->getContent();
             
-            foreach ($tempFiles as $file) {
-                if (($file['temp_id'] === $tempId || $file['id'] === $tempId) || 
-                    ($file['category'] === $imageType)) {
-                    $deletedFile = $file;
-                    // Delete physical file
-                    if (isset($file['path'])) {
-                        Storage::disk('public')->delete($file['path']);
+            // If content is JSON string, try to decode it
+            if (empty($tempId) && $request->getContent()) {
+                $rawContent = $request->getContent();
+                if (is_string($rawContent)) {
+                    $decoded = json_decode($rawContent, true);
+                    if (is_array($decoded)) {
+                        $tempId = $decoded['temp_id'] ?? $decoded['id'] ?? null;
+                    } else {
+                        // Might be just the temp_id as plain text
+                        $tempId = trim($rawContent, '"');
                     }
-                } else {
-                    $updatedFiles[] = $file;
                 }
             }
             
-            session()->put($sessionKey, $updatedFiles);
+            \Log::info('Extracted temp_id', ['temp_id' => $tempId]);
+
+            if (empty($tempId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Missing temp file identifier',
+                    'debug' => [
+                        'input' => $input,
+                        'raw_content' => $request->getContent(),
+                        'method' => $request->method()
+                    ]
+                ], 400);
+            }
+
+            $sessionKey = 'team_temp_files_' . session()->getId();
+            $sessionData = session()->get($sessionKey, []);
+
+            \Log::info('Session data for temp team files', [
+                'session_key' => $sessionKey,
+                'session_data' => $sessionData
+            ]);
+
+            // Find the temp file by ID
+            $tempFileData = null;
+            $imageType = null;
+            
+            foreach ($sessionData as $type => $data) {
+                if (isset($data['temp_id']) && $data['temp_id'] === $tempId) {
+                    $tempFileData = $data;
+                    $imageType = $type;
+                    break;
+                }
+            }
+
+            if (!$tempFileData) {
+                \Log::warning('Temporary team photo not found', [
+                    'temp_id' => $tempId,
+                    'available_temp_ids' => array_map(function($data) {
+                        return $data['temp_id'] ?? 'no_temp_id';
+                    }, $sessionData)
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Temporary file not found',
+                    'debug' => [
+                        'temp_id' => $tempId,
+                        'available_files' => array_keys($sessionData)
+                    ]
+                ], 404);
+            }
+
+            // Delete physical file
+            if (Storage::disk('public')->exists($tempFileData['temp_path'])) {
+                Storage::disk('public')->delete($tempFileData['temp_path']);
+            }
+
+            // Remove from session
+            unset($sessionData[$imageType]);
+            session()->put($sessionKey, $sessionData);
+
+            \Log::info('Temporary team photo deleted successfully', [
+                'temp_id' => $tempId,
+                'image_type' => $imageType,
+                'session_id' => session()->getId()
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Photo deleted successfully!'
+                'message' => ucfirst($imageType) . ' photo deleted successfully!'
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('Temporary team photo deletion failed: ' . $e->getMessage(), [
+                'request_data' => $request->all(),
+                'raw_content' => $request->getContent(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Delete failed: ' . $e->getMessage()
+                'message' => 'Failed to delete temporary photo: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -320,21 +533,49 @@ class TeamController extends Controller
     /**
      * Get current temp files
      */
-    public function getTempFiles()
+    public function getTempFiles(Request $request)
     {
         try {
-            $tempFiles = session()->get('team_temp_files', []);
+            $sessionKey = 'team_temp_files_' . session()->getId();
+            $sessionData = session()->get($sessionKey, []);
             
+            $files = [];
+            foreach ($sessionData as $imageType => $data) {
+                // Verify file still exists
+                if (Storage::disk('public')->exists($data['temp_path'])) {
+                    $files[] = [
+                        'id' => $data['temp_id'],
+                        'name' => ucfirst($imageType) . ' Photo',
+                        'file_name' => $data['original_name'],
+                        'category' => $imageType,
+                        'type' => $imageType,
+                        'url' => Storage::disk('public')->url($data['temp_path']),
+                        'size' => $this->formatFileSize($data['file_size']),
+                        'temp_id' => $data['temp_id'],
+                        'is_temp' => true,
+                        'created_at' => \Carbon\Carbon::parse($data['uploaded_at'])->format('M j, Y H:i')
+                    ];
+                } else {
+                    // Clean up broken reference
+                    unset($sessionData[$imageType]);
+                }
+            }
+            
+            // Update session with cleaned data
+            session()->put($sessionKey, $sessionData);
+
             return response()->json([
                 'success' => true,
-                'files' => $tempFiles
+                'files' => $files
             ]);
+
         } catch (\Exception $e) {
+            \Log::error('Failed to get temp team files: ' . $e->getMessage());
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get temp files',
-                'files' => []
-            ]);
+                'message' => 'Failed to get temporary files'
+            ], 500);
         }
     }
 
@@ -485,41 +726,246 @@ class TeamController extends Controller
     }
 
     /**
-     * Process temporary files and move them to permanent storage
+     * Process temporary files and move them to permanent storage - Following BannerController pattern
      */
-    protected function processTempFiles(TeamMember $teamMember)
+    protected function processTempImagesFromSession(TeamMember $teamMember)
     {
-        $sessionKey = 'team_temp_files';
-        $tempFiles = session()->get($sessionKey, []);
-        
-        if (empty($tempFiles)) {
+        $sessionKey = 'team_temp_files_' . session()->getId();
+        $sessionData = session()->get($sessionKey, []);
+
+        if (empty($sessionData)) {
             return;
         }
 
-        foreach ($tempFiles as $tempFile) {
-            if ($tempFile['category'] === 'photo') {
-                // Delete old photo if exists
-                if ($teamMember->photo) {
-                    Storage::disk('public')->delete($teamMember->photo);
+        foreach ($sessionData as $imageType => $tempImageData) {
+            try {
+                if (!Storage::disk('public')->exists($tempImageData['temp_path'])) {
+                    \Log::warning('Temporary team photo not found during processing: ' . $tempImageData['temp_path']);
+                    continue;
                 }
 
-                // Move temp file to permanent location
-                $newPath = $this->fileUploadService->uploadImage(
-                    new \Illuminate\Http\File(Storage::disk('public')->path($tempFile['path'])),
-                    'team/photos',
-                    null,
-                    600,
-                    600
-                );
-
-                $teamMember->update(['photo' => $newPath]);
-
-                // Delete temp file
-                Storage::disk('public')->delete($tempFile['path']);
+                $this->moveTempImageToPermanent($tempImageData, $teamMember, $imageType);
+                
+            } catch (\Exception $e) {
+                \Log::error('Failed to process temp team photo: ' . $e->getMessage(), [
+                    'team_member_id' => $teamMember->id,
+                    'image_type' => $imageType,
+                    'temp_data' => $tempImageData
+                ]);
             }
         }
 
-        // Clear session
+        // Clear processed temporary images from session
         session()->forget($sessionKey);
+        
+        // Also cleanup any physical temp files for this session
+        $this->cleanupSessionTempFiles(session()->getId());
+    }
+
+    /**
+     * Move temporary image to permanent location - Following BannerController pattern
+     */
+    protected function moveTempImageToPermanent(array $tempImageData, TeamMember $teamMember, string $imageType)
+    {
+        try {
+            $tempPath = $tempImageData['temp_path'];
+            
+            if (!Storage::disk('public')->exists($tempPath)) {
+                throw new \Exception('Temporary file not found: ' . $tempPath);
+            }
+
+            // Generate permanent filename
+            $extension = pathinfo($tempImageData['original_name'], PATHINFO_EXTENSION);
+            $filename = $this->generateImageFilename(
+                $tempImageData['original_name'], 
+                $imageType, 
+                $teamMember->id, 
+                $extension
+            );
+            $directory = "team/{$teamMember->id}";
+            $permanentPath = $directory . '/' . $filename;
+
+            // Ensure directory exists
+            Storage::disk('public')->makeDirectory($directory);
+
+            // Move file from temp to permanent location
+            if (Storage::disk('public')->move($tempPath, $permanentPath)) {
+                // Update team member with new image path
+                $this->assignImageToTeamMember($teamMember, $permanentPath, $imageType);
+                
+                \Log::info('Temporary team photo moved to permanent location', [
+                    'team_member_id' => $teamMember->id,
+                    'image_type' => $imageType,
+                    'from' => $tempPath,
+                    'to' => $permanentPath,
+                    'original_name' => $tempImageData['original_name']
+                ]);
+                
+                return $permanentPath;
+            } else {
+                throw new \Exception('Failed to move file from temp to permanent location');
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Error moving temporary team photo: ' . $e->getMessage(), [
+                'team_member_id' => $teamMember->id,
+                'image_type' => $imageType,
+                'temp_data' => $tempImageData
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Generate image filename with extension parameter
+     */
+    protected function generateImageFilename($originalName, string $imageType, int $teamMemberId, string $extension = null)
+    {
+        if (!$extension) {
+            $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+        }
+        
+        $timestamp = now()->format('YmdHis');
+        $random = Str::random(6);
+        
+        return "team_{$teamMemberId}_{$imageType}_{$timestamp}_{$random}.{$extension}";
+    }
+
+    /**
+     * Assign image to team member based on type
+     */
+    protected function assignImageToTeamMember(TeamMember $teamMember, string $imagePath, string $imageType)
+    {
+        // Delete old photo if exists
+        if ($teamMember->photo) {
+            Storage::disk('public')->delete($teamMember->photo);
+        }
+        
+        $teamMember->update(['photo' => $imagePath]);
+    }
+
+    /**
+     * Cleanup old temporary files (run via scheduler)
+     */
+    public function cleanupTempFiles()
+    {
+        try {
+            $tempDir = 'temp/team';
+            $cutoffTime = now()->subHours(2);
+            $deletedCount = 0;
+
+            if (Storage::disk('public')->exists($tempDir)) {
+                $files = Storage::disk('public')->files($tempDir);
+
+                foreach ($files as $file) {
+                    $lastModified = Storage::disk('public')->lastModified($file);
+                    
+                    if ($lastModified < $cutoffTime->timestamp) {
+                        Storage::disk('public')->delete($file);
+                        $deletedCount++;
+                    }
+                }
+            }
+
+            \Log::info("Cleaned up {$deletedCount} temporary team files");
+
+            return response()->json([
+                'success' => true,
+                'message' => "Cleaned up {$deletedCount} temporary files",
+                'deleted_count' => $deletedCount
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Temporary team files cleanup failed: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Cleanup failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Cleanup session temp files
+     */
+    protected function cleanupSessionTempFiles(string $sessionId)
+    {
+        try {
+            $tempDir = 'temp/team';
+            
+            if (!Storage::disk('public')->exists($tempDir)) {
+                return;
+            }
+
+            $files = Storage::disk('public')->files($tempDir);
+            $deletedCount = 0;
+
+            foreach ($files as $file) {
+                // Check if file belongs to this session (contains session ID or is old)
+                $filename = basename($file);
+                if (str_contains($filename, $sessionId) || 
+                    Storage::disk('public')->lastModified($file) < now()->subHours(1)->timestamp) {
+                    
+                    Storage::disk('public')->delete($file);
+                    $deletedCount++;
+                }
+            }
+
+            if ($deletedCount > 0) {
+                \Log::info("Cleaned up {$deletedCount} session temporary team files for session: {$sessionId}");
+            }
+
+        } catch (\Exception $e) {
+            \Log::warning('Failed to cleanup session temp team files: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Format file size in human readable format
+     */
+    protected function formatFileSize(int $bytes, int $precision = 2): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+        
+        return round($bytes, $precision) . ' ' . $units[$i];
+    }
+
+    /**
+     * Get file type category
+     */
+    public function getFileCategory(string $mimeType): string
+    {
+        if (str_starts_with($mimeType, 'image/')) {
+            return 'image';
+        }
+
+        return 'other';
+    }
+
+    /**
+     * Generate unique filename ensuring no conflicts
+     */
+    public function generateUniqueFilename(string $originalName, string $directory, string $disk = 'public'): string
+    {
+        $pathInfo = pathinfo($originalName);
+        $basename = Str::slug($pathInfo['filename'] ?? 'file');
+        $extension = isset($pathInfo['extension']) ? '.' . $pathInfo['extension'] : '';
+        
+        $filename = $basename . $extension;
+        $path = $directory . '/' . $filename;
+        $counter = 1;
+
+        // Keep trying until we find a unique filename
+        while (Storage::disk($disk)->exists($path)) {
+            $filename = $basename . '_' . $counter . $extension;
+            $path = $directory . '/' . $filename;
+            $counter++;
+        }
+
+        return $filename;
     }
 }

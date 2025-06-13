@@ -97,45 +97,63 @@
                     
                     <x-admin.table-cell>
                         <div class="flex items-center justify-center gap-1">
-                            <x-admin.dropdown placement="bottom-left">
-                                <x-slot name="trigger">
-                                    <x-admin.icon-button size="sm" color="light">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
-                                        </svg>
-                                    </x-admin.icon-button>
-                                </x-slot>
-
-                                <x-admin.dropdown-item 
-                                    href="{{ route('admin.post-categories.edit', $category) }}"
-                                    icon='<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>'
-                                >
-                                    Edit
-                                </x-admin.dropdown-item>
-
-                                @if($category->posts_count > 0)
-                                    <x-admin.dropdown-item 
-                                        href="{{ route('admin.posts.index', ['category' => $category->id]) }}"
-                                        icon='<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>'
-                                    >
-                                        View Posts ({{ $category->posts_count }})
-                                    </x-admin.dropdown-item>
-                                @endif
-
-                                <div class="border-t border-gray-200 dark:border-gray-600 my-1"></div>
-
-                                <x-admin.dropdown-item 
-                                    type="form"
-                                    :action="route('admin.post-categories.destroy', $category)"
-                                    method="DELETE"
-                                    :confirm="true"
-                                    :confirmMessage="$category->posts_count > 0 ? 'This category has ' . $category->posts_count . ' posts. Are you sure you want to delete it?' : 'Are you sure you want to delete this category?'"
-                                    icon='<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>'
-                                >
-                                    Delete
-                                </x-admin.dropdown-item>
-                            </x-admin.dropdown>
+                            <div class="relative" x-data="{ open: false }">
+                                <!-- Trigger Button -->
+                                <button @click="open = !open"
+                                        class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition focus:outline-none"
+                                        title="More actions">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                    </svg>
+                                </button>
+                                <!-- Dropdown -->
+                                <div x-show="open" @click.away="open = false"
+                                     class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                                    <div class="py-1">
+                                        <!-- Edit -->
+                                        <a href="{{ route('admin.post-categories.edit', $category) }}"
+                                           class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 group">
+                                            <svg class="w-4 h-4 mr-2 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                            Edit
+                                        </a>
+                                        @if($category->posts_count > 0)
+                                            <!-- View Posts -->
+                                            <a href="{{ route('admin.posts.index', ['category' => $category->id]) }}"
+                                               class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 group">
+                                                <svg class="w-4 h-4 mr-2 group-hover:text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                </svg>
+                                                View Posts ({{ $category->posts_count }})
+                                            </a>
+                                        @endif
+                        
+                                        <div class="border-t border-gray-200 dark:border-gray-600 my-1"></div>
+                        
+                                        <!-- Delete -->
+                                        <form action="{{ route('admin.post-categories.destroy', $category) }}" method="POST"
+                                              onsubmit="return confirm('{{ $category->posts_count > 0 
+                                                  ? 'This category has ' . $category->posts_count . ' posts. Are you sure you want to delete it?' 
+                                                  : 'Are you sure you want to delete this category?' }}')"
+                                              class="w-full">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                    class="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 text-left group">
+                                                <svg class="w-4 h-4 mr-2 group-hover:text-red-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+                        
                     </x-admin.table-cell>
                 </x-admin.table-row>
             @empty
