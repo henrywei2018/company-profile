@@ -15,41 +15,49 @@ use App\Http\Controllers\Client\{
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\UnifiedProfileController;
 
-Route::prefix('client')->name('client.')->middleware(['auth', 'role:client'])->group(function () {
+Route::prefix('client')->name('client.')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/realtime-stats', [ClientDashboardController::class, 'getRealtimeStats'])->name('dashboard.realtime-stats');
     Route::get('/dashboard/chart-data', [ClientDashboardController::class, 'getChartData'])->name('dashboard.chart-data');
     Route::get('/dashboard/performance-metrics', [ClientDashboardController::class, 'getPerformanceMetrics'])->name('dashboard.performance-metrics');
     Route::get('/dashboard/upcoming-deadlines', [ClientDashboardController::class, 'getUpcomingDeadlines'])->name('dashboard.upcoming-deadlines');
     Route::get('/dashboard/recent-activities', [ClientDashboardController::class, 'getRecentActivities'])->name('dashboard.recent-activities');
-    Route::get('/dashboard/notifications', [ClientDashboardController::class, 'getNotifications'])->name('dashboard.notifications');
-    Route::post('/dashboard/mark-notification-read', [ClientDashboardController::class, 'markNotificationRead'])->name('dashboard.mark-notification-read');
-    Route::post('/dashboard/test-notification', [ClientDashboardController::class, 'testNotification'])->name('dashboard.test-notification');
     Route::post('/dashboard/clear-cache', [ClientDashboardController::class, 'clearCache'])->name('dashboard.clear-cache');
 
     Route::prefix('notifications')->name('notifications.')->group(function () {
-        // Main views
+        
+        // Main Views
         Route::get('/', [NotificationController::class, 'index'])->name('index');
         Route::get('/preferences', [NotificationController::class, 'preferences'])->name('preferences');
         Route::put('/preferences', [NotificationController::class, 'updatePreferences'])->name('preferences.update');
-        
-        // API endpoints for AJAX calls
-        Route::get('/recent', [NotificationController::class, 'getRecent'])->name('recent');
-        Route::get('/summary', [NotificationController::class, 'getSummary'])->name('summary');
-        Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
-        
-        // Individual notification actions
-        Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('mark-as-read');
-        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
-        Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
-        Route::delete('/clear-read', [NotificationController::class, 'clearRead'])->name('clear-read');
-        Route::post('/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('bulk-delete');
-        
-        // Individual notification view
+        Route::get('/recent', [NotificationController::class, 'getRecent'])
+            ->middleware('throttle:60,1')
+            ->name('recent');
+        Route::get('/summary', [NotificationController::class, 'getSummary'])
+            ->middleware('throttle:30,1')
+            ->name('summary');
+        Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])
+            ->middleware('throttle:120,1')
+            ->name('unread-count');
+        Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])
+            ->middleware('throttle:60,1')
+            ->name('mark-as-read');
+        Route::delete('/{notification}', [NotificationController::class, 'destroy'])
+            ->middleware('throttle:30,1')
+            ->name('destroy');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])
+            ->middleware('throttle:10,1')
+            ->name('mark-all-read');
+        Route::post('/bulk-mark-as-read', [NotificationController::class, 'bulkMarkAsRead'])
+            ->middleware('throttle:20,1')
+            ->name('bulk-mark-as-read');
+        Route::post('/bulk-delete', [NotificationController::class, 'bulkDelete'])
+            ->middleware('throttle:10,1')
+            ->name('bulk-delete');
+        Route::delete('/clear-read', [NotificationController::class, 'clearRead'])
+            ->middleware('throttle:5,1')
+            ->name('clear-read');
         Route::get('/{notification}', [NotificationController::class, 'show'])->name('show');
-        
-        // Export functionality
-        Route::get('/export', [NotificationController::class, 'export'])->name('export');
     });
 
     Route::prefix('projects')->name('projects.')->group(function () {
@@ -113,36 +121,6 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'role:client'])->g
         Route::get('/history', [ChatController::class, 'history'])->name('history');
         Route::get('/{chatSession}', [ChatController::class, 'show'])->name('show');
     });
-
-    // Route::prefix('profile')->group(function () {
-    //     Route::get('', [UnifiedProfileController::class, 'show'])->name('show');
-    //     Route::get('/edit', [UnifiedProfileController::class, 'edit'])->name('edit');
-    //     Route::patch('', [UnifiedProfileController::class, 'update'])->name('update');
-        
-    //     // Password Management
-    //     Route::get('/change-password', [UnifiedProfileController::class, 'showChangePasswordForm'])->name('change-password');
-    //     Route::patch('/password', [UnifiedProfileController::class, 'updatePassword'])->name('password.update');
-        
-    //     // Notification Preferences
-    //     Route::get('/preferences', [UnifiedProfileController::class, 'preferences'])->name('preferences');
-    //     Route::patch('/preferences', [UnifiedProfileController::class, 'updatePreferences'])->name('preferences.update');
-        
-    //     // Profile Completion
-    //     Route::get('/completion', [UnifiedProfileController::class, 'completion'])->name('completion');
-        
-    //     // Data Export (GDPR)
-    //     Route::get('/export', [UnifiedProfileController::class, 'export'])->name('export');
-        
-    //     // Account Deletion
-    //     Route::get('/delete', [UnifiedProfileController::class, 'showDeleteForm'])->name('delete');
-    //     Route::delete('', [UnifiedProfileController::class, 'destroy'])->name('destroy');
-        
-    //     // AJAX Endpoints
-    //     Route::get('/completion-status', [UnifiedProfileController::class, 'completionStatus'])->name('completion-status');
-    //     Route::get('/activity-summary', [UnifiedProfileController::class, 'activitySummary'])->name('activity-summary');
-    //     Route::post('/test-notification', [UnifiedProfileController::class, 'testNotification'])->name('test-notification');
-    // });
-
 
     Route::prefix('api')->name('api.')->group(function () {
         Route::get('/dashboard/stats', [ClientDashboardController::class, 'getRealtimeStats'])->name('dashboard.stats');

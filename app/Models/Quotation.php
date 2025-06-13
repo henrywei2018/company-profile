@@ -573,7 +573,7 @@ class Quotation extends Model
     /**
      * Estimate project completion date
      */
-    public function estimateCompletionDate(): ?\Carbon\Carbon
+    public function estimateCompletionDate(): ?Carbon
     {
         if ($this->start_date) {
             // Estimate based on project type or default to 3 months
