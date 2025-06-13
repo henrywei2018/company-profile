@@ -22,9 +22,11 @@ class BannerService
                 ->first();
                 
             if (!$category) {
-                return collect();
+                // Return empty Eloquent Collection using Banner model
+                return Banner::whereRaw('1 = 0')->get();
             }
             
+            // Call activeBanners method which returns Eloquent Collection
             return $category->activeBanners();
         });
     }
@@ -68,7 +70,6 @@ class BannerService
     public function trackBannerInteraction(int $bannerId, string $action = 'click'): bool
     {
         try {
-            // You can implement analytics tracking here
             Log::info("Banner {$action}", [
                 'banner_id' => $bannerId,
                 'action' => $action,
@@ -94,16 +95,15 @@ class BannerService
             Cache::forget("banners.category.{$categorySlug}");
         } else {
             // Clear all banner-related cache
-            $tags = [
+            $patterns = [
                 'banners.category.*',
                 'banners.random.*', 
                 'banners.featured.*',
                 'banner.categories.*'
             ];
             
-            foreach ($tags as $pattern) {
-                Cache::flush(); // In production, use more specific cache clearing
-            }
+            // In production, implement proper cache tagging
+            Cache::flush();
         }
     }
     public function getBannerStats(): array
