@@ -221,7 +221,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // Chat
     Route::prefix('chat')->name('chat.')->group(function () {
         // Main chat management
-        Route::get('/', [ChatController::class, 'index'])->name('index');
+        Route::get('/', [ChatController::class, 'adminindex'])->name('index');
         Route::get('/settings', [ChatController::class, 'settings'])->name('settings');
         Route::post('/settings', [ChatController::class, 'updateSettings'])->name('settings.update');
         Route::get('/reports', [ChatController::class, 'reports'])->name('reports');

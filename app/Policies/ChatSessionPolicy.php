@@ -75,6 +75,6 @@ class ChatSessionPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['admin', 'operator']);
+        return $user->hasRole(['admin', 'operator','super-admin']);
     }
 }
