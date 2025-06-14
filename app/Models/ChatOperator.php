@@ -16,38 +16,41 @@ class ChatOperator extends Model
         'is_online',
         'is_available',
         'max_concurrent_chats',
-        'last_activity_at',
-        'auto_assignment',
-        'notification_preferences',
-        'signature',
-        'department'
+        'current_chats_count',
+        'last_seen_at',
+        'settings' // JSON field
     ];
 
     protected $casts = [
         'is_online' => 'boolean',
         'is_available' => 'boolean',
-        'auto_assignment' => 'boolean',
-        'last_activity_at' => 'datetime',
-        'notification_preferences' => 'json'
+        'last_seen_at' => 'datetime',
+        'settings' => 'array'
     ];
 
-    // Relationships
+    // =======================
+    // RELATIONSHIPS
+    // =======================
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function assignedSessions(): HasMany
+    public function chatSessions(): HasMany
     {
         return $this->hasMany(ChatSession::class, 'assigned_operator_id', 'user_id');
     }
 
     public function activeSessions(): HasMany
     {
-        return $this->assignedSessions()->where('status', 'active');
+        return $this->chatSessions()->where('status', 'active');
     }
 
-    // Scopes
+    // =======================
+    // SCOPES - UNTUK ADMIN DASHBOARD
+    // =======================
+
     public function scopeOnline($query)
     {
         return $query->where('is_online', true);
@@ -60,81 +63,89 @@ class ChatOperator extends Model
 
     public function scopeWithCapacity($query)
     {
-        return $query->whereHas('activeSessions', function($q) {
-            $q->havingRaw('COUNT(*) < max_concurrent_chats');
-        });
+        return $query->whereColumn('current_chats_count', '<', 'max_concurrent_chats');
     }
 
-    // Accessors
+    // =======================
+    // ESSENTIAL METHODS
+    // =======================
+
     public function getStatusText(): string
     {
         if (!$this->is_online) {
             return 'Offline';
         }
-
         return $this->is_available ? 'Online' : 'Away';
     }
 
     public function getStatusClass(): string
     {
         if (!$this->is_online) {
-            return 'status-offline';
+            return 'text-gray-500';
         }
-
-        return $this->is_available ? 'status-online' : 'status-away';
+        return $this->is_available ? 'text-green-500' : 'text-yellow-500';
     }
 
     public function getCurrentLoad(): int
     {
-        return $this->activeSessions()->count();
+        return $this->current_chats_count;
     }
 
     public function getLoadPercentage(): float
     {
-        $current = $this->getCurrentLoad();
-        $max = $this->max_concurrent_chats ?: 1;
-        
-        return round(($current / $max) * 100, 1);
+        if ($this->max_concurrent_chats <= 0) {
+            return 0;
+        }
+        return round(($this->current_chats_count / $this->max_concurrent_chats) * 100, 1);
     }
 
-    // Helper methods
-    public function hasCapacity(): bool
+    public function canAcceptNewChat(): bool
     {
-        return $this->getCurrentLoad() < $this->max_concurrent_chats;
+        return $this->is_online 
+            && $this->is_available 
+            && $this->current_chats_count < $this->max_concurrent_chats;
     }
 
-    public function canTakeNewChat(): bool
+    public function updateChatCount(): void
     {
-        return $this->is_online && $this->is_available && $this->hasCapacity();
+        $activeCount = $this->activeSessions()->count();
+        $this->update(['current_chats_count' => $activeCount]);
     }
 
-    public function updateActivity(): void
-    {
-        $this->update(['last_activity_at' => now()]);
-    }
-
-    public function goOnline(): void
+    public function setOnline(bool $online = true): void
     {
         $this->update([
-            'is_online' => true,
-            'is_available' => true,
-            'last_activity_at' => now()
+            'is_online' => $online,
+            'last_seen_at' => now()
         ]);
     }
 
-    public function goOffline(): void
+    public function setAvailable(bool $available = true): void
     {
         $this->update([
-            'is_online' => false,
-            'is_available' => false
+            'is_available' => $available,
+            'last_seen_at' => now()
         ]);
     }
 
-    public function setAway(): void
+    // =======================
+    // UNTUK API RESPONSE
+    // =======================
+
+    public function toApiArray(): array
     {
-        $this->update([
-            'is_online' => true,
-            'is_available' => false
-        ]);
+        return [
+            'id' => $this->user_id,
+            'name' => $this->user->name,
+            'avatar' => $this->user->avatar_url,
+            'status' => $this->getStatusText(),
+            'status_class' => $this->getStatusClass(),
+            'is_online' => $this->is_online,
+            'is_available' => $this->is_available,
+            'current_load' => $this->getCurrentLoad(),
+            'max_chats' => $this->max_concurrent_chats,
+            'load_percentage' => $this->getLoadPercentage(),
+            'last_seen' => $this->last_seen_at?->diffForHumans()
+        ];
     }
 }

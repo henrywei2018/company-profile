@@ -1,6 +1,9 @@
 <?php
 
-// File: app/Models/ChatSession.php - Fixed Version dengan Safe Broadcasting
+// =======================
+// COMPLETE CLEAN CHAT MODELS
+// Berdasarkan kebutuhan chat widget + admin dashboard
+// =======================
 
 namespace App\Models;
 
@@ -9,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
+// =======================
+// ChatSession Model
+// =======================
 class ChatSession extends Model
 {
     use HasFactory;
@@ -16,37 +22,30 @@ class ChatSession extends Model
     protected $fillable = [
         'session_id',
         'user_id',
-        'visitor_name',
-        'visitor_email',
-        'visitor_phone',
+        'visitor_info', // JSON field
         'status',
-        'priority',
         'assigned_operator_id',
+        'priority',
+        'source',
         'started_at',
-        'assigned_at',
-        'closed_at',
-        'closed_by',
-        'close_reason',
-        'rating',
-        'feedback',
-        'notes',
-        'user_agent',
-        'ip_address',
-        'referrer_url',
-        'current_url',
-        'transferred_at',
-        'transfer_reason'
+        'last_activity_at',
+        'ended_at',
+        'summary',
+        'metadata' // JSON field
     ];
 
     protected $casts = [
+        'visitor_info' => 'array',
+        'metadata' => 'array',
         'started_at' => 'datetime',
-        'assigned_at' => 'datetime',
-        'closed_at' => 'datetime',
-        'transferred_at' => 'datetime',
-        'rating' => 'integer'
+        'last_activity_at' => 'datetime',
+        'ended_at' => 'datetime'
     ];
 
-    // Relationships
+    // =======================
+    // RELATIONSHIPS
+    // =======================
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -54,7 +53,7 @@ class ChatSession extends Model
 
     public function assignedOperator(): BelongsTo
     {
-        return $this->belongsTo(ChatOperator::class, 'assigned_operator_id', 'user_id');
+        return $this->belongsTo(User::class, 'assigned_operator_id');
     }
 
     public function messages(): HasMany
@@ -62,29 +61,19 @@ class ChatSession extends Model
         return $this->hasMany(ChatMessage::class);
     }
 
-    public function closedBy(): BelongsTo
+    public function latestMessage(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'closed_by');
+        return $this->belongsTo(ChatMessage::class, 'id', 'chat_session_id')
+            ->latest();
     }
 
-    // Scopes
-    public function scopeByStatus($query, string $status)
-    {
-        return $query->where('status', $status);
-    }
+    // =======================
+    // SCOPES - UNTUK ADMIN DASHBOARD
+    // =======================
 
-    public function scopeByPriority($query, string $direction = 'asc')
+    public function scopeActive($query)
     {
-        $priorities = ['low' => 1, 'normal' => 2, 'high' => 3, 'urgent' => 4];
-        
-        return $query->orderByRaw(
-            "CASE priority " .
-            "WHEN 'urgent' THEN 4 " .
-            "WHEN 'high' THEN 3 " .
-            "WHEN 'normal' THEN 2 " .
-            "WHEN 'low' THEN 1 " .
-            "ELSE 2 END " . $direction
-        );
+        return $query->where('status', 'active');
     }
 
     public function scopeWaiting($query)
@@ -92,9 +81,9 @@ class ChatSession extends Model
         return $query->where('status', 'waiting');
     }
 
-    public function scopeActive($query)
+    public function scopeClosed($query)
     {
-        return $query->where('status', 'active');
+        return $query->where('status', 'closed');
     }
 
     public function scopeAssignedTo($query, int $operatorId)
@@ -102,57 +91,82 @@ class ChatSession extends Model
         return $query->where('assigned_operator_id', $operatorId);
     }
 
-    // Accessors & Mutators
+    public function scopeUnassigned($query)
+    {
+        return $query->whereNull('assigned_operator_id');
+    }
+
+    public function scopeByPriority($query, string $direction = 'desc')
+    {
+        $order = match($direction) {
+            'asc' => "CASE priority WHEN 'low' THEN 1 WHEN 'normal' THEN 2 WHEN 'high' THEN 3 WHEN 'urgent' THEN 4 ELSE 2 END ASC",
+            default => "CASE priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 WHEN 'low' THEN 4 ELSE 3 END ASC"
+        };
+        
+        return $query->orderByRaw($order);
+    }
+
+    // =======================
+    // ESSENTIAL METHODS - UNTUK WIDGET & ADMIN
+    // =======================
+
     public function getVisitorName(): string
     {
-        return $this->visitor_name ?: ($this->user ? $this->user->name : 'Anonymous');
+        if ($this->user_id && $this->user) {
+            return $this->user->name;
+        }
+        return $this->visitor_info['name'] ?? 'Guest';
     }
 
     public function getVisitorEmail(): ?string
     {
-        return $this->visitor_email ?: ($this->user ? $this->user->email : null);
-    }
-
-    public function getDurationInMinutes(): ?int
-    {
-        if (!$this->started_at || !$this->closed_at) {
-            return null;
+        if ($this->user_id && $this->user) {
+            return $this->user->email;
         }
-
-        return $this->started_at->diffInMinutes($this->closed_at);
+        return $this->visitor_info['email'] ?? null;
     }
+
+    // =======================
+    // ADMIN DASHBOARD METHODS
+    // =======================
 
     public function getWaitingTimeInMinutes(): int
     {
         if ($this->status !== 'waiting') {
             return 0;
         }
+        return $this->started_at->diffInMinutes(now());
+    }
 
-        return $this->created_at->diffInMinutes(now());
+    public function getDurationInMinutes(): ?int
+    {
+        if (!$this->started_at || !$this->ended_at) {
+            return null;
+        }
+        return $this->started_at->diffInMinutes($this->ended_at);
     }
 
     public function getStatusBadgeClass(): string
     {
         return match($this->status) {
-            'waiting' => 'bg-warning',
-            'active' => 'bg-success',
-            'closed' => 'bg-secondary',
-            default => 'bg-light'
+            'waiting' => 'bg-yellow-100 text-yellow-800',
+            'active' => 'bg-green-100 text-green-800',
+            'closed' => 'bg-gray-100 text-gray-800',
+            default => 'bg-gray-100 text-gray-800'
         };
     }
 
     public function getPriorityBadgeClass(): string
     {
         return match($this->priority) {
-            'low' => 'bg-info',
-            'normal' => 'bg-secondary',
-            'high' => 'bg-warning',
-            'urgent' => 'bg-danger',
-            default => 'bg-secondary'
+            'low' => 'bg-blue-100 text-blue-800',
+            'normal' => 'bg-gray-100 text-gray-800',
+            'high' => 'bg-orange-100 text-orange-800',
+            'urgent' => 'bg-red-100 text-red-800',
+            default => 'bg-gray-100 text-gray-800'
         };
     }
 
-    // Helper methods
     public function canBeAssigned(): bool
     {
         return in_array($this->status, ['waiting', 'active']) && !$this->assigned_operator_id;
@@ -171,7 +185,7 @@ class ChatSession extends Model
     public function hasUnreadMessages(): bool
     {
         return $this->messages()
-            ->where('sender_type', 'client')
+            ->where('sender_type', 'visitor')
             ->where('is_read', false)
             ->exists();
     }
@@ -179,8 +193,19 @@ class ChatSession extends Model
     public function getUnreadMessagesCount(): int
     {
         return $this->messages()
-            ->where('sender_type', 'client')
+            ->where('sender_type', 'visitor')
             ->where('is_read', false)
             ->count();
+    }
+
+    public function getQueuePosition(): int
+    {
+        if ($this->status !== 'waiting') {
+            return 0;
+        }
+
+        return static::where('status', 'waiting')
+            ->where('started_at', '<', $this->started_at)
+            ->count() + 1;
     }
 }

@@ -3,47 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\ChatSession;
-use App\Models\User;
-use App\Services\ChatService;
 use App\Models\ChatOperator;
-use App\Models\ChatTemplate;
 use App\Models\ChatMessage;
+use App\Models\ChatTemplate;
 use App\Facades\Notifications;
 use App\Events\ChatMessageSent;
 use App\Events\ChatSessionStatusChanged;
-use App\Events\ChatOperatorStatusChanged;
-use App\Events\ChatUserTyping;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
 class ChatController extends Controller
 {
-    protected ChatService $chatService;
-
-    public function __construct(ChatService $chatService)
-    {
-        $this->chatService = $chatService;
-    }
-
-    // =======================
-    // CLIENT METHODS
-    // =======================
-
-    /**
-     * Get current user's active session
-     */
-    public function startSession(Request $request): JsonResponse
+    
+    public function start(Request $request): JsonResponse
     {
         try {
             $user = auth()->user();
             
             // Check for existing active session
             $existingSession = ChatSession::where('user_id', $user->id)
-                ->whereIn('status', ['active', 'waiting'])
+                ->whereIn('status', ['active', 'waiting', 'queued'])
                 ->first();
 
             if ($existingSession) {
@@ -55,33 +36,41 @@ class ChatController extends Controller
                 ]);
             }
 
+            // Create visitor info
+            $visitorInfo = [
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? null,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ];
+
             // Create new session
             $session = ChatSession::create([
                 'session_id' => 'chat_' . uniqid() . '_' . time(),
                 'user_id' => $user->id,
+                'visitor_info' => $visitorInfo,
                 'status' => 'waiting',
+                'priority' => 'normal',
+                'source' => 'website',
                 'started_at' => now(),
-                'visitor_name' => $user->name,
-                'visitor_email' => $user->email,
-                'visitor_ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
+                'last_activity_at' => now(),
             ]);
 
             // Send welcome message
-            if (config('chat.auto_welcome_message', true)) {
-                ChatMessage::create([
-                    'chat_session_id' => $session->id,
-                    'sender_type' => 'system',
-                    'message' => config('chat.welcome_message', 'Hello! How can we help you today?'),
-                    'message_type' => 'text'
-                ]);
+            ChatMessage::create([
+                'chat_session_id' => $session->id,
+                'sender_type' => 'system',
+                'message' => config('chat.welcome_message', 'Hello! How can we help you today?'),
+                'message_type' => 'system'
+            ]);
+
+            // Try to notify operators (with error handling)
+            try {
+                Notifications::send('chat.session_started', $session);
+            } catch (\Exception $e) {
+                Log::warning('Failed to send session start notification: ' . $e->getMessage());
             }
-
-            // Notify operators
-            Notifications::send('chat.session_started', $session);
-
-            // Broadcast session started
-            broadcast(new ChatSessionStatusChanged($session))->toOthers();
 
             return response()->json([
                 'success' => true,
@@ -98,14 +87,15 @@ class ChatController extends Controller
             ], 500);
         }
     }
+
     public function getSession(Request $request): JsonResponse
     {
         try {
             $user = auth()->user();
             
             $session = ChatSession::where('user_id', $user->id)
-                ->whereIn('status', ['active', 'waiting'])
-                ->with(['assignedOperator.user'])
+                ->whereIn('status', ['active', 'waiting', 'queued'])
+                ->with(['assignedOperator'])
                 ->first();
 
             if (!$session) {
@@ -120,11 +110,11 @@ class ChatController extends Controller
                 'session_id' => $session->session_id,
                 'status' => $session->status,
                 'operator' => $session->assignedOperator ? [
-                    'name' => $session->assignedOperator->user->name,
-                    'avatar' => $session->assignedOperator->user->avatar_url ?? null
+                    'name' => $session->assignedOperator->name,
+                    'avatar' => $session->assignedOperator->avatar_url ?? null
                 ] : null,
                 'started_at' => $session->started_at,
-                'queue_position' => $this->getQueuePosition($session)
+                'queue_position' => $session->getQueuePosition()
             ]);
 
         } catch (\Exception $e) {
@@ -136,9 +126,6 @@ class ChatController extends Controller
         }
     }
 
-    /**
-     * Send message from client
-     */
     public function sendMessage(Request $request): JsonResponse
     {
         $request->validate([
@@ -167,34 +154,44 @@ class ChatController extends Controller
 
             $message = ChatMessage::create([
                 'chat_session_id' => $session->id,
-                'sender_type' => 'visitor', // Sesuai dengan chat.js
+                'sender_type' => 'visitor',
                 'sender_id' => auth()->id(),
                 'message' => $request->message,
                 'message_type' => 'text'
             ]);
 
             // Update session activity
-            $session->touch();
+            $session->update(['last_activity_at' => now()]);
 
-            // Auto-assign to available operator if not assigned
+            // Auto-assign operator if not assigned
             if (!$session->assigned_operator_id) {
                 $this->autoAssignOperator($session);
             }
 
-            // Send notifications
-            if ($session->assigned_operator_id) {
-                Notifications::send('chat.message_received', $session, $session->assignedOperator->user);
-            } else {
-                // Notify all available operators
-                Notifications::send('chat.message_received', $session);
+            // Send notifications (with error handling)
+            try {
+                if ($session->assigned_operator_id) {
+                    $operator = ChatOperator::with('user')->where('user_id', $session->assigned_operator_id)->first();
+                    if ($operator && $operator->user) {
+                        Notifications::send('chat.message_received', $session, $operator->user);
+                    }
+                } else {
+                    Notifications::send('chat.message_received', $session);
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to send message notification: ' . $e->getMessage());
             }
 
-            // Broadcast message
-            broadcast(new ChatMessageSent($message))->toOthers();
+            // Broadcast message (with error handling)
+            try {
+                broadcast(new ChatMessageSent($message))->toOthers();
+            } catch (\Exception $e) {
+                Log::warning('Failed to broadcast message: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => $this->formatMessage($message)
+                'message' => $message->toApiArray()
             ]);
 
         } catch (\Exception $e) {
@@ -206,9 +203,58 @@ class ChatController extends Controller
         }
     }
 
-    /**
-     * Send typing indicator from client
-     */
+   
+    public function getMessages(Request $request): JsonResponse
+    {
+        $request->validate([
+            'session_id' => 'required|string',
+            'since' => 'nullable|integer'
+        ]);
+
+        try {
+            $session = ChatSession::where('session_id', $request->session_id)
+                ->where('user_id', auth()->id())
+                ->first();
+
+            if (!$session) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Session not found'
+                ], 404);
+            }
+
+            $query = ChatMessage::where('chat_session_id', $session->id)
+                ->orderBy('created_at', 'asc');
+
+            if ($request->since) {
+                $query->where('created_at', '>', Carbon::createFromTimestamp($request->since));
+            }
+
+            $messages = $query->get();
+
+            // Mark messages as read
+            ChatMessage::where('chat_session_id', $session->id)
+                ->where('sender_type', '!=', 'visitor')
+                ->where('is_read', false)
+                ->update(['is_read' => true, 'read_at' => now()]);
+
+            return response()->json([
+                'success' => true,
+                'messages' => $messages->map(fn($m) => $m->toApiArray())->toArray(),
+                'session_status' => $session->status,
+                'last_message_time' => $messages->last()?->created_at?->timestamp
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get messages: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get messages'
+            ], 500);
+        }
+    }
+
+
     public function sendTyping(Request $request): JsonResponse
     {
         $request->validate([
@@ -228,13 +274,41 @@ class ChatController extends Controller
                 ], 404);
             }
 
-            // Broadcast typing indicator
-            broadcast(new ChatUserTyping(
-                $session->session_id,
-                auth()->user()->name,
-                'visitor',
-                $request->is_typing
-            ))->toOthers();
+            // Broadcast typing indicator (with error handling)
+            try {
+                broadcast(new class($session->session_id, auth()->user()->name, 'visitor', $request->is_typing) implements \Illuminate\Contracts\Broadcasting\ShouldBroadcast {
+                    use \Illuminate\Broadcasting\InteractsWithSockets, \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
+                    
+                    public function __construct(
+                        public string $sessionId,
+                        public string $userName,
+                        public string $userType,
+                        public bool $isTyping
+                    ) {}
+                    
+                    public function broadcastOn(): array
+                    {
+                        return [new \Illuminate\Broadcasting\Channel('chat-session.' . $this->sessionId)];
+                    }
+                    
+                    public function broadcastAs(): string
+                    {
+                        return 'user.typing';
+                    }
+                    
+                    public function broadcastWith(): array
+                    {
+                        return [
+                            'session_id' => $this->sessionId,
+                            'user_name' => $this->userName,
+                            'user_type' => $this->userType,
+                            'is_typing' => $this->isTyping,
+                        ];
+                    }
+                })->toOthers();
+            } catch (\Exception $e) {
+                Log::warning('Failed to broadcast typing indicator: ' . $e->getMessage());
+            }
 
             return response()->json(['success' => true]);
 
@@ -247,286 +321,6 @@ class ChatController extends Controller
         }
     }
 
-    /**
-     * Rate completed session
-     */
-    public function rateSession(ChatSession $chatSession, Request $request): JsonResponse
-    {
-        $this->authorize('participate', $chatSession);
-
-        if ($chatSession->status !== 'closed') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Can only rate closed sessions'
-            ], 400);
-        }
-
-        $request->validate([
-            'rating' => 'required|integer|min:1|max:5',
-            'feedback' => 'nullable|string|max:500'
-        ]);
-
-        try {
-            $chatSession->update([
-                'rating' => $request->rating,
-                'feedback' => $request->feedback
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Thank you for your feedback!'
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to save session rating: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to save rating'
-            ], 500);
-        }
-    }
-
-    // =======================
-    // ADMIN METHODS
-    // =======================
-
-    /**
-     * Admin dashboard view
-     */
-    public function adminIndex()
-    {
-        $stats = $this->chatService->getRealTimeMetrics();
-        
-        return view('admin.chat.index', compact('stats'));
-    }
-
-    /**
-     * Get sessions for admin dashboard
-     */
-    public function getAdminSessions(Request $request): JsonResponse
-    {
-        $filter = $request->query('filter', 'all');
-        $perPage = $request->query('per_page', 50);
-
-        $query = ChatSession::with(['user', 'assignedOperator.user'])
-            ->withCount(['messages as unread_count' => function($q) {
-                $q->where('sender_type', 'client')->where('is_read', false);
-            }]);
-
-        // Apply filters
-        switch ($filter) {
-            case 'waiting':
-                $query->where('status', 'waiting');
-                break;
-            case 'active':
-                $query->where('status', 'active');
-                break;
-            case 'my_chats':
-                $query->where('assigned_operator_id', auth()->id())
-                      ->where('status', 'active');
-                break;
-            case 'unassigned':
-                $query->whereNull('assigned_operator_id')
-                      ->whereIn('status', ['waiting', 'active']);
-                break;
-        }
-
-        $sessions = $query->orderByRaw("
-            CASE status 
-                WHEN 'waiting' THEN 1 
-                WHEN 'active' THEN 2 
-                ELSE 3 
-            END
-        ")
-        ->orderBy('created_at', 'desc')
-        ->paginate($perPage);
-
-        $formattedSessions = $sessions->map(function ($session) {
-            return [
-                'id' => $session->id,
-                'session_id' => $session->session_id,
-                'visitor_name' => $session->getVisitorName(),
-                'visitor_email' => $session->getVisitorEmail(),
-                'status' => $session->status,
-                'priority' => $session->priority,
-                'unread_count' => $session->unread_count,
-                'assigned_operator' => $session->assignedOperator ? [
-                    'id' => $session->assignedOperator->user->id,
-                    'name' => $session->assignedOperator->user->name,
-                    'avatar' => $session->assignedOperator->user->avatar_url
-                ] : null,
-                'waiting_time_minutes' => $session->status === 'waiting' 
-                    ? now()->diffInMinutes($session->created_at) 
-                    : null,
-                'waiting_time_human' => $session->created_at->diffForHumans(),
-                'created_at' => $session->created_at,
-                'updated_at' => $session->updated_at
-            ];
-        });
-
-        return response()->json([
-            'success' => true,
-            'sessions' => $formattedSessions,
-            'pagination' => [
-                'current_page' => $sessions->currentPage(),
-                'last_page' => $sessions->lastPage(),
-                'total' => $sessions->total()
-            ]
-        ]);
-    }
-
-    /**
-     * Get real-time statistics
-     */
-    public function getStatistics(): JsonResponse
-    {
-        $stats = $this->chatService->getRealTimeMetrics();
-        
-        // Additional stats for admin
-        $todayStats = [
-            'sessions_today' => ChatSession::whereDate('created_at', today())->count(),
-            'avg_response_time' => $this->chatService->getAverageResponseTime(),
-            'satisfaction_rate' => $this->chatService->getSatisfactionRate(),
-            'busiest_hour' => $this->chatService->getBusiestHour()
-        ];
-
-        return response()->json([
-            'success' => true,
-            'stats' => array_merge($stats, $todayStats)
-        ]);
-    }
-
-    /**
-     * Reply to chat as admin/operator
-     */
-    public function adminReply(ChatSession $chatSession, Request $request): JsonResponse
-    {
-        $this->authorize('manage', $chatSession);
-
-        $request->validate([
-            'message' => 'required|string|max:2000'
-        ]);
-
-        try {
-            // Auto-assign if not assigned and operator is available
-            if (!$chatSession->assigned_operator_id) {
-                $operator = ChatOperator::where('user_id', auth()->id())->first();
-                if ($operator && $operator->is_available) {
-                    $chatSession->update([
-                        'assigned_operator_id' => auth()->id(),
-                        'status' => 'active'
-                    ]);
-                }
-            }
-
-            $message = ChatMessage::create([
-                'chat_session_id' => $chatSession->id,
-                'sender_type' => 'operator',
-                'sender_id' => auth()->id(),
-                'message' => $request->message,
-                'message_type' => $request->input('message_type', 'text')
-            ]);
-
-            // Update session activity
-            $chatSession->touch();
-
-            // Send notification to client
-            Notifications::send('chat.message_received', $chatSession, $chatSession->user);
-
-            // Broadcast to real-time listeners
-            broadcast(new ChatMessageSent($message))->toOthers();
-
-            return response()->json([
-                'success' => true,
-                'message' => $this->formatMessage($message)
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to send admin reply: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send message'
-            ], 500);
-        }
-    }
-
-    /**
-     * Assign session to current operator
-     */
-    public function assignToMe(ChatSession $chatSession): JsonResponse
-    {
-        $this->authorize('manage', $chatSession);
-
-        try {
-            $operator = ChatOperator::where('user_id', auth()->id())->first();
-            
-            if (!$operator) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Operator profile not found'
-                ], 404);
-            }
-
-            if (!$operator->is_available) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You are not available for new chats'
-                ], 400);
-            }
-
-            // Check concurrent chat limit
-            $activeSessions = ChatSession::where('assigned_operator_id', auth()->id())
-                ->where('status', 'active')
-                ->count();
-
-            if ($activeSessions >= $operator->max_concurrent_chats) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You have reached your maximum concurrent chat limit'
-                ], 400);
-            }
-
-            $chatSession->update([
-                'assigned_operator_id' => auth()->id(),
-                'status' => 'active',
-                'assigned_at' => now()
-            ]);
-
-            // Send system message
-            ChatMessage::create([
-                'chat_session_id' => $chatSession->id,
-                'sender_type' => 'system',
-                'message' => auth()->user()->name . ' has joined the chat.',
-                'message_type' => 'system'
-            ]);
-
-            // Notify client
-            Notifications::send('chat.operator_joined', $chatSession, $chatSession->user);
-
-            // Broadcast status change
-            broadcast(new ChatSessionStatusChanged($chatSession))->toOthers();
-
-            return response()->json([
-                'success' => true,
-                'operator' => [
-                    'id' => auth()->id(),
-                    'name' => auth()->user()->name,
-                    'avatar' => auth()->user()->avatar_url
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to assign session: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to assign session'
-            ], 500);
-        }
-    }
-
-    /**
-     * Close chat session
-     */
     public function close(Request $request): JsonResponse
     {
         $request->validate([
@@ -547,12 +341,15 @@ class ChatController extends Controller
 
             $session->update([
                 'status' => 'closed',
-                'ended_at' => now(),
-                'closed_by' => 'client'
+                'ended_at' => now()
             ]);
 
-            // Broadcast session closed
-            broadcast(new ChatSessionStatusChanged($session))->toOthers();
+            // Broadcast session closed (with error handling)
+            try {
+                broadcast(new ChatSessionStatusChanged($session))->toOthers();
+            } catch (\Exception $e) {
+                Log::warning('Failed to broadcast session close: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'success' => true,
@@ -568,280 +365,326 @@ class ChatController extends Controller
         }
     }
 
-    /**
-     * Transfer session to another operator
-     */
-    public function transferSession(ChatSession $chatSession, Request $request): JsonResponse
+    public function onlineStatus(): JsonResponse
+    {
+        try {
+            $onlineOperators = ChatOperator::available()->count();
+            $queueLength = ChatSession::waiting()->count();
+
+            return response()->json([
+                'success' => true,
+                'online' => $onlineOperators > 0,
+                'operators_online' => $onlineOperators,
+                'queue_length' => $queueLength,
+                'estimated_wait_time' => $queueLength * 2 // 2 minutes per person in queue
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get online status: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'online' => false,
+                'operators_online' => 0,
+                'queue_length' => 0,
+                'estimated_wait_time' => 0
+            ]);
+        }
+    }
+
+    public function adminIndex()
+    {
+        $this->authorize('viewAny', ChatSession::class);
+        
+        $stats = [
+            'waiting_sessions' => ChatSession::waiting()->count(),
+            'active_sessions' => ChatSession::active()->count(),
+            'online_operators' => ChatOperator::online()->count(),
+            'total_sessions_today' => ChatSession::whereDate('started_at', today())->count(),
+        ];
+        
+        return view('admin.chat.index', compact('stats'));
+    }
+
+    public function getAdminSessions(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', ChatSession::class);
+
+        $filter = $request->query('filter', 'all');
+        $perPage = min($request->query('per_page', 50), 100); // Max 100 per page
+
+        $query = ChatSession::with(['user', 'assignedOperator'])
+            ->withCount(['messages as unread_count' => function($q) {
+                $q->fromVisitor()->unread();
+            }]);
+
+        // Apply filters
+        match($filter) {
+            'waiting' => $query->waiting(),
+            'active' => $query->active(),
+            'my_chats' => $query->assignedTo(auth()->id())->active(),
+            'unassigned' => $query->unassigned()->whereIn('status', ['waiting', 'active']),
+            default => null
+        };
+
+        $sessions = $query
+            ->byPriority() // Order by priority
+            ->orderBy('started_at', 'desc')
+            ->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'sessions' => $sessions->map(function ($session) {
+                return [
+                    'id' => $session->id,
+                    'session_id' => $session->session_id,
+                    'visitor_name' => $session->getVisitorName(),
+                    'visitor_email' => $session->getVisitorEmail(),
+                    'status' => $session->status,
+                    'priority' => $session->priority,
+                    'unread_count' => $session->unread_count,
+                    'assigned_operator' => $session->assignedOperator ? [
+                        'id' => $session->assignedOperator->id,
+                        'name' => $session->assignedOperator->name,
+                        'avatar' => $session->assignedOperator->avatar_url
+                    ] : null,
+                    'waiting_time_minutes' => $session->getWaitingTimeInMinutes(),
+                    'queue_position' => $session->getQueuePosition(),
+                    'status_badge_class' => $session->getStatusBadgeClass(),
+                    'priority_badge_class' => $session->getPriorityBadgeClass(),
+                    'can_be_assigned' => $session->canBeAssigned(),
+                    'can_be_closed' => $session->canBeClosed(),
+                    'created_at' => $session->created_at,
+                    'updated_at' => $session->updated_at
+                ];
+            }),
+            'pagination' => [
+                'current_page' => $sessions->currentPage(),
+                'last_page' => $sessions->lastPage(),
+                'total' => $sessions->total()
+            ]
+        ]);
+    }
+
+    public function getStatistics(): JsonResponse
+    {
+        $this->authorize('viewAny', ChatSession::class);
+
+        return response()->json([
+            'success' => true,
+            'stats' => [
+                'waiting_sessions' => ChatSession::waiting()->count(),
+                'active_sessions' => ChatSession::active()->count(),
+                'online_operators' => ChatOperator::online()->count(),
+                'available_operators' => ChatOperator::available()->count(),
+                'sessions_today' => ChatSession::whereDate('started_at', today())->count(),
+                'avg_wait_time' => $this->getAverageWaitTime(),
+                'queue_length' => ChatSession::waiting()->count(),
+            ]
+        ]);
+    }
+
+    public function adminReply(ChatSession $chatSession, Request $request): JsonResponse
     {
         $this->authorize('manage', $chatSession);
 
         $request->validate([
-            'operator_id' => 'required|exists:users,id',
-            'reason' => 'nullable|string|max:255'
+            'message' => 'required|string|max:2000'
         ]);
 
         try {
-            $newOperator = User::findOrFail($request->operator_id);
-            $operatorProfile = ChatOperator::where('user_id', $newOperator->id)->first();
+            // Auto-assign if not assigned
+            if (!$chatSession->assigned_operator_id) {
+                $operator = ChatOperator::where('user_id', auth()->id())->first();
+                if ($operator && $operator->canAcceptNewChat()) {
+                    $chatSession->update([
+                        'assigned_operator_id' => auth()->id(),
+                        'status' => 'active'
+                    ]);
+                    $operator->updateChatCount();
+                }
+            }
 
-            if (!$operatorProfile || !$operatorProfile->is_available) {
+            $message = ChatMessage::create([
+                'chat_session_id' => $chatSession->id,
+                'sender_type' => 'operator',
+                'sender_id' => auth()->id(),
+                'message' => $request->message,
+                'message_type' => 'text'
+            ]);
+
+            // Update session activity
+            $chatSession->update(['last_activity_at' => now()]);
+
+            // Send notifications (with error handling)
+            try {
+                if ($chatSession->user) {
+                    Notifications::send('chat.message_received', $chatSession, $chatSession->user);
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to send admin reply notification: ' . $e->getMessage());
+            }
+
+            // Broadcast message (with error handling)
+            try {
+                broadcast(new ChatMessageSent($message))->toOthers();
+            } catch (\Exception $e) {
+                Log::warning('Failed to broadcast admin reply: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message->toApiArray()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send admin reply: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send message'
+            ], 500);
+        }
+    }
+
+    public function assignToMe(ChatSession $chatSession): JsonResponse
+    {
+        $this->authorize('assign', ChatSession::class);
+
+        try {
+            $operator = ChatOperator::where('user_id', auth()->id())->first();
+            
+            if (!$operator) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Selected operator is not available'
+                    'message' => 'Operator profile not found'
+                ], 404);
+            }
+
+            if (!$operator->canAcceptNewChat()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot accept new chats at this time'
                 ], 400);
             }
 
-            $oldOperatorName = auth()->user()->name;
-            
             $chatSession->update([
-                'assigned_operator_id' => $newOperator->id,
-                'transferred_at' => now(),
-                'transfer_reason' => $request->reason
+                'assigned_operator_id' => auth()->id(),
+                'status' => 'active'
             ]);
+
+            $operator->updateChatCount();
 
             // Send system message
             ChatMessage::create([
                 'chat_session_id' => $chatSession->id,
                 'sender_type' => 'system',
-                'message' => "Chat transferred from {$oldOperatorName} to {$newOperator->name}",
+                'message' => auth()->user()->name . ' has joined the chat.',
                 'message_type' => 'system'
             ]);
 
-            // Notify new operator
-            Notifications::send('chat.session_transferred', $chatSession, $newOperator);
-
-            // Notify client
-            Notifications::send('chat.operator_changed', $chatSession, $chatSession->user);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Session transferred successfully'
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to transfer session: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to transfer session'
-            ], 500);
-        }
-    }
-
-    /**
-     * Update session priority
-     */
-    public function updatePriority(ChatSession $chatSession, Request $request): JsonResponse
-    {
-        $this->authorize('manage', $chatSession);
-
-        $request->validate([
-            'priority' => 'required|in:low,normal,high,urgent'
-        ]);
-
-        try {
-            $chatSession->update(['priority' => $request->priority]);
+            // Notify client (with error handling)
+            try {
+                if ($chatSession->user) {
+                    Notifications::send('chat.operator_joined', $chatSession, $chatSession->user);
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to send operator join notification: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Priority updated successfully'
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to update priority: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update priority'
-            ], 500);
-        }
-    }
-
-    /**
-     * Set operator status (online/offline/away)
-     */
-    public function setOperatorStatus(Request $request): JsonResponse
-    {
-        $request->validate([
-            'status' => 'required|in:online,offline,away'
-        ]);
-
-        try {
-            $operator = ChatOperator::firstOrCreate(
-                ['user_id' => auth()->id()],
-                [
-                    'is_online' => false,
-                    'is_available' => false,
-                    'max_concurrent_chats' => 5
+                'operator' => [
+                    'id' => auth()->id(),
+                    'name' => auth()->user()->name,
+                    'avatar' => auth()->user()->avatar_url
                 ]
-            );
-
-            $statusMap = [
-                'online' => ['is_online' => true, 'is_available' => true],
-                'away' => ['is_online' => true, 'is_available' => false],
-                'offline' => ['is_online' => false, 'is_available' => false]
-            ];
-
-            $operator->update($statusMap[$request->status]);
-
-            // Broadcast status change
-            broadcast(new ChatOperatorStatusChanged($operator))->toOthers();
-
-            return response()->json([
-                'success' => true,
-                'status' => $request->status
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to update operator status: ' . $e->getMessage());
+            Log::error('Failed to assign session: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update status'
+                'message' => 'Failed to assign session'
+            ], 500);
+        }
+    }
+    public function closeSession(ChatSession $chatSession, Request $request): JsonResponse
+    {
+        $this->authorize('close', $chatSession);
+
+        try {
+            $chatSession->update([
+                'status' => 'closed',
+                'ended_at' => now(),
+                'summary' => $request->input('summary')
+            ]);
+
+            // Update operator chat count
+            if ($chatSession->assigned_operator_id) {
+                $operator = ChatOperator::where('user_id', $chatSession->assigned_operator_id)->first();
+                if ($operator) {
+                    $operator->updateChatCount();
+                }
+            }
+
+            // Send system message
+            ChatMessage::create([
+                'chat_session_id' => $chatSession->id,
+                'sender_type' => 'system',
+                'message' => 'Chat session has been closed by ' . auth()->user()->name,
+                'message_type' => 'system'
+            ]);
+
+            // Notify client (with error handling)
+            try {
+                if ($chatSession->user) {
+                    Notifications::send('chat.session_closed', $chatSession, $chatSession->user);
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to send session close notification: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Session closed successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to close session: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to close session'
             ], 500);
         }
     }
 
-    /**
-     * Get current operator status
-     */
-    public function getOperatorStatus(): JsonResponse
+    public function getChatMessages(ChatSession $chatSession, Request $request): JsonResponse
     {
-        $operator = ChatOperator::where('user_id', auth()->id())->first();
-        
-        if (!$operator) {
-            return response()->json([
-                'success' => true,
-                'status' => 'offline'
-            ]);
-        }
+        $this->authorize('view', $chatSession);
 
-        $status = 'offline';
-        if ($operator->is_online) {
-            $status = $operator->is_available ? 'online' : 'away';
-        }
-
-        return response()->json([
-            'success' => true,
-            'status' => $status,
-            'active_sessions' => ChatSession::where('assigned_operator_id', auth()->id())
-                ->where('status', 'active')
-                ->count()
-        ]);
-    }
-
-    /**
-     * Mark messages as read
-     */
-    public function markMessagesAsRead(ChatSession $chatSession): JsonResponse
-    {
         try {
+            $perPage = min($request->query('per_page', 50), 100);
+            
+            $messages = ChatMessage::where('chat_session_id', $chatSession->id)
+                ->orderBy('created_at', 'desc')
+                ->paginate($perPage);
+
+            // Mark messages as read by operator
             ChatMessage::where('chat_session_id', $chatSession->id)
-                ->where('sender_type', 'client')
-                ->where('is_read', false)
-                ->update(['is_read' => true, 'read_at' => now()]);
-
-            return response()->json(['success' => true]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to mark messages as read: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to mark messages as read'
-            ], 500);
-        }
-    }
-    public function onlineStatus(): JsonResponse
-    {
-        $onlineOperators = ChatOperator::where('is_online', true)
-            ->where('is_available', true)
-            ->count();
-
-        $queueLength = ChatSession::where('status', 'waiting')->count();
-
-        return response()->json([
-            'success' => true,
-            'online' => $onlineOperators > 0,
-            'operators_online' => $onlineOperators,
-            'queue_length' => $queueLength,
-            'estimated_wait_time' => $this->calculateEstimatedWaitTime($queueLength)
-        ]);
-    }
-    private function autoAssignOperator(ChatSession $session): void
-    {
-        $availableOperator = ChatOperator::where('is_online', true)
-            ->where('is_available', true)
-            ->orderBy('last_active_at', 'desc')
-            ->first();
-
-        if ($availableOperator) {
-            $session->update([
-                'assigned_operator_id' => $availableOperator->id,
-                'status' => 'active',
-                'assigned_at' => now()
-            ]);
-
-            // Notify operator
-            Notifications::send('chat.session_assigned', $session, $availableOperator->user);
-        }
-    }
-    private function getQueuePosition(ChatSession $session): int
-    {
-        if ($session->status !== 'waiting') {
-            return 0;
-        }
-
-        return ChatSession::where('status', 'waiting')
-            ->where('started_at', '<', $session->started_at)
-            ->count() + 1;
-    }
-
-    private function calculateEstimatedWaitTime(int $queueLength): int
-    {
-        // Estimasi 2 menit per session dalam queue
-        return $queueLength * 2;
-    }
-    public function getMessages(Request $request): JsonResponse
-    {
-        $request->validate([
-            'session_id' => 'required|string',
-            'since' => 'nullable|integer' // timestamp untuk polling
-        ]);
-
-        try {
-            $session = ChatSession::where('session_id', $request->session_id)
-                ->where('user_id', auth()->id())
-                ->first();
-
-            if (!$session) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Session not found'
-                ], 404);
-            }
-
-            $query = ChatMessage::where('chat_session_id', $session->id)
-                ->orderBy('created_at', 'asc');
-
-            // Jika ada parameter 'since', ambil pesan setelah timestamp tersebut
-            if ($request->since) {
-                $query->where('created_at', '>', Carbon::createFromTimestamp($request->since));
-            }
-
-            $messages = $query->get();
-
-            // Mark messages as read
-            ChatMessage::where('chat_session_id', $session->id)
-                ->where('sender_type', '!=', 'visitor')
-                ->where('is_read', false)
+                ->fromVisitor()
+                ->unread()
                 ->update(['is_read' => true, 'read_at' => now()]);
 
             return response()->json([
                 'success' => true,
-                'messages' => $this->formatMessages($messages),
-                'session_status' => $session->status,
-                'last_message_time' => $messages->last()?->created_at?->timestamp
+                'messages' => $messages->map(fn($m) => $m->toApiArray())->reverse()->values(),
+                'pagination' => [
+                    'current_page' => $messages->currentPage(),
+                    'last_page' => $messages->lastPage(),
+                    'total' => $messages->total()
+                ]
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to get messages: ' . $e->getMessage());
+            Log::error('Failed to get chat messages: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to get messages'
@@ -849,101 +692,115 @@ class ChatController extends Controller
         }
     }
 
-    /**
-     * Get chat templates
-     */
-    public function getTemplates(): JsonResponse
+    public function setOperatorStatus(Request $request): JsonResponse
     {
-        $templates = ChatTemplate::where('is_active', true)
-            ->orderBy('category')
-            ->orderBy('name')
-            ->get()
-            ->groupBy('category');
-
-        return response()->json([
-            'success' => true,
-            'templates' => $templates
-        ]);
-    }
-
-    /**
-     * Use predefined template
-     */
-    public function useTemplate(ChatSession $chatSession, Request $request): JsonResponse
-    {
-        $this->authorize('manage', $chatSession);
-
         $request->validate([
-            'template_id' => 'required|exists:chat_templates,id'
+            'status' => 'required|in:online,away,offline'
         ]);
 
         try {
-            $template = ChatTemplate::findOrFail($request->template_id);
-            
-            $message = ChatMessage::create([
-                'chat_session_id' => $chatSession->id,
-                'sender_type' => 'operator',
-                'sender_id' => auth()->id(),
-                'message' => $template->content,
-                'message_type' => 'text',
-                'template_id' => $template->id
-            ]);
+            $operator = ChatOperator::firstOrCreate(
+                ['user_id' => auth()->id()],
+                ['max_concurrent_chats' => 3]
+            );
 
-            // Update template usage count
-            $template->increment('usage_count');
-
-            // Notify client
-            Notifications::send('chat.message_received', $chatSession, $chatSession->user);
-
-            // Broadcast message
-            broadcast(new ChatMessageSent($message))->toOthers();
+            match($request->status) {
+                'online' => $operator->setOnline(true)->setAvailable(true),
+                'away' => $operator->setOnline(true)->setAvailable(false),
+                'offline' => $operator->setOnline(false)->setAvailable(false),
+            };
 
             return response()->json([
                 'success' => true,
-                'message' => $this->formatMessage($message)
+                'status' => $request->status,
+                'operator' => $operator->toApiArray()
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to use template: ' . $e->getMessage());
+            Log::error('Failed to set operator status: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send template message'
+                'message' => 'Failed to update status'
             ], 500);
         }
     }
 
-    // =======================
-    // UTILITY METHODS
-    // =======================
-
-    /**
-     * Format single message for API response
-     */
-    private function formatMessage(ChatMessage $message): array
+    public function getOperatorStatus(): JsonResponse
     {
-        return [
-            'id' => $message->id,
-            'message' => $message->message,
-            'sender_type' => $message->sender_type,
-            'sender_id' => $message->sender_id,
-            'sender_name' => $message->getSenderName(),
-            'message_type' => $message->message_type,
-            'file_path' => $message->file_path,
-            'file_type' => $message->file_type,
-            'is_read' => $message->is_read,
-            'created_at' => $message->created_at,
-            'formatted_time' => $message->created_at->format('H:i'), // Sesuai chat.js
-            'timestamp' => $message->created_at->timestamp
-        ];
+        try {
+            $operator = ChatOperator::where('user_id', auth()->id())->first();
+            
+            if (!$operator) {
+                return response()->json([
+                    'success' => true,
+                    'status' => 'offline',
+                    'operator' => null
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'status' => $operator->getStatusText(),
+                'operator' => $operator->toApiArray()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get operator status: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get status'
+            ], 500);
+        }
     }
 
-    /**
-     * Format multiple messages
-     */
-    private function formatMessages($messages): array
+    private function autoAssignOperator(ChatSession $session): void
     {
-        return $messages->map(function ($message) {
-            return $this->formatMessage($message);
-        })->toArray();
+        try {
+            $availableOperator = ChatOperator::available()
+                ->withCapacity()
+                ->orderBy('last_seen_at', 'desc')
+                ->first();
+
+            if ($availableOperator) {
+                $session->update([
+                    'assigned_operator_id' => $availableOperator->user_id,
+                    'status' => 'active'
+                ]);
+
+                $availableOperator->updateChatCount();
+
+                try {
+                    Notifications::send('chat.session_assigned', $session, $availableOperator->user);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to notify operator assignment: ' . $e->getMessage());
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to auto-assign operator: ' . $e->getMessage());
+        }
+    }
+
+    private function getAverageWaitTime(): float
+    {
+        try {
+            $completedSessions = ChatSession::where('status', 'closed')
+                ->whereNotNull('started_at')
+                ->whereNotNull('ended_at')
+                ->whereDate('started_at', today())
+                ->get();
+
+            if ($completedSessions->isEmpty()) {
+                return 0;
+            }
+
+            $totalWaitTime = $completedSessions->sum(function ($session) {
+                return $session->started_at->diffInMinutes($session->ended_at);
+            });
+
+            return round($totalWaitTime / $completedSessions->count(), 1);
+        } catch (\Exception $e) {
+            Log::error('Failed to calculate average wait time: ' . $e->getMessage());
+            return 0;
+        }
     }
 }
