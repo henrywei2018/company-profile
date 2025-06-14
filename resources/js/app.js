@@ -5,45 +5,33 @@ import Alpine from "alpinejs";
 
 // Preline UI v2 import
 import "preline/dist/preline.js";
+import ChatSystem from './chat/chat-system.js';
 
+window.ChatSystem = ChatSystem;
 window.Alpine = Alpine;
 window.authUserId = document.querySelector('meta[name="auth-user-id"]')?.getAttribute('content');
 window.isAdmin = document.querySelector('meta[name="is-admin"]')?.getAttribute('content') === 'true';
 
+
 Alpine.start();
 
-
-window.WebSocketUtils = {
-    // Send notification test
-    sendTestNotification() {
-        fetch('/client/dashboard/test-notification', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log('✅ Test notification sent');
-            }
-        })
-        .catch(error => {
-            console.error('❌ Failed to send test notification:', error);
-        });
-    },
-
-    // Get connection status
-    getConnectionStatus() {
-        return window.Echo.connector.pusher.connection.state;
-    },
-
-    // Force reconnect
-    reconnect() {
-        window.Echo.connector.pusher.connect();
-    }
-};
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-initialize chat widgets
+    const chatWidgets = document.querySelectorAll('[data-chat-widget]');
+    chatWidgets.forEach(widget => {
+        if (!widget.chatSystemInstance) {
+            const config = {
+                baseUrl: widget.dataset.apiUrl || '/api/chat',
+                userId: widget.dataset.userId,
+                userType: widget.dataset.userType || 'visitor',
+                userName: widget.dataset.userName,
+                theme: widget.dataset.theme || 'blue'
+            };
+            
+            widget.chatSystemInstance = new ChatSystem(config);
+        }
+    });
+});
 
 // Auto-reconnect on page visibility change
 document.addEventListener('visibilitychange', function() {

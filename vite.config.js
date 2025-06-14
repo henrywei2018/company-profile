@@ -33,6 +33,8 @@ export default defineConfig({
             output: {
                 manualChunks: {
                     echo: ['laravel-echo', 'pusher-js'],
+                    chat: ['./resources/js/chat/chat-system.js'],
+                    vendor: ['alpinejs', 'axios']
                 },
             },
         },

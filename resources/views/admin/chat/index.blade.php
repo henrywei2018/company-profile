@@ -24,17 +24,10 @@
         </div>
     </div>
    
-    <!-- Operator Status Panel -->
-    <div class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-4">
-        <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Your Operator Status</h2>
-            <x-admin.operator-toggle :isOnline="$isOperatorOnline" />
-        </div>
-    </div>
 
 
     <!-- Chat Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    {{-- <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <x-admin.stat-card title="Active Sessions" :value="$statistics['active_sessions'] ?? 0" id="active-sessions-stat"
             icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>'
             iconColor="text-green-500" iconBg="bg-green-100 dark:bg-green-800/30" />
@@ -50,97 +43,100 @@
         <x-admin.stat-card title="Messages Today" :value="$statistics['messages_today'] ?? 0" id="messages-today-stat"
             icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>'
             iconColor="text-purple-500" iconBg="bg-purple-100 dark:bg-purple-800/30" />
-    </div>
-
-    <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-
-        <!-- Waiting Sessions -->
-        <div class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl">
-            <div class="p-3 border-b border-gray-200 dark:border-neutral-700">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Waiting Queue</h2>
-                    <x-admin.badge id="waiting-count-badge" type="warning"
-                        size="sm">{{ count($waitingSessions) }}</x-admin.badge>
-                </div>
-            </div>
-            <div class="p-3">
-                <div id="waiting-sessions-container" class="space-y-4">
-                    @forelse($waitingSessions as $session)
-                        <x-admin.waiting-session :session="$session" />
-                    @empty
-                        <div id="no-waiting-sessions" class="text-center py-8">
-                            <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No waiting sessions</h3>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">All sessions are being handled or
-                                no new requests.</p>
-                        </div>
-                    @endforelse
-                </div>
-            </div>
-        </div>
-
+    </div> --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <!-- Active Sessions -->
-        <div class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl">
-            <div class="p-3 border-b border-gray-200 dark:border-neutral-700">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Active Chats</h2>
-                    <x-admin.badge id="active-count-badge" type="success"
-                        size="sm">{{ count($activeSessions) }}</x-admin.badge>
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Active Chats</dt>
+                            <dd class="text-lg font-medium text-gray-900 dark:text-white" id="active-count">
+                                {{ $stats['active'] ?? 0 }}
+                            </dd>
+                        </dl>
+                    </div>
                 </div>
             </div>
-            <div class="p-3">
-                <div id="active-sessions-container" class="space-y-4">
-                    @forelse($activeSessions as $session)
-                        <x-admin.active-session :session="$session" />
-                    @empty
-                        <div id="no-active-sessions" class="text-center py-8">
-                            <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </div>
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-orange-500 rounded-md flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No active sessions</h3>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">No ongoing chat sessions at the
-                                moment.</p>
                         </div>
-                    @endforelse
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Waiting Queue</dt>
+                            <dd class="text-lg font-medium text-gray-900 dark:text-white" id="waiting-count">
+                                {{ $stats['waiting'] ?? 0 }}
+                            </dd>
+                        </dl>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Recent Closed Sessions -->
-        <div class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl">
-            <div class="p-3 border-b border-gray-200 dark:border-neutral-700">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Recent Closed</h2>
-                    <x-admin.badge type="info" size="sm">{{ count($recentClosedSessions) }}</x-admin.badge>
+        <!-- Today's Sessions -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Today's Total</dt>
+                            <dd class="text-lg font-medium text-gray-900 dark:text-white" id="today-count">
+                                {{ $stats['today'] ?? 0 }}
+                            </dd>
+                        </dl>
+                    </div>
                 </div>
             </div>
-            <div class="p-3">
-                <div class="space-y-4">
-                    @forelse($recentClosedSessions as $session)
-                        <x-admin.closed-session :session="$session" />
-                    @empty
-                        <div class="text-center py-8">
-                            <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </div>
+
+        <!-- Average Response Time -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                             </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No recent sessions</h3>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">No recently closed chat sessions.
-                            </p>
                         </div>
-                    @endforelse
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Avg Response</dt>
+                            <dd class="text-lg font-medium text-gray-900 dark:text-white" id="avg-response">
+                                {{ $stats['avgResponse'] ?? '-' }}
+                            </dd>
+                        </dl>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+    <!-- Main Content Grid -->
+    <x-admin-chat-dashboard />
 
     <!-- Quick Actions Panel -->
     <div class="mt-8 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-6">

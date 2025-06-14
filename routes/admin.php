@@ -219,35 +219,76 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::resource('project-categories', ProjectCategoryController::class);
     Route::patch('/project-categories/{projectCategory}/toggle-active', [ProjectCategoryController::class, 'toggleActive'])->name('project-categories.toggle-active');
     // Chat
-    Route::prefix('chat')->name('chat.')->middleware(['auth', 'admin'])->group(function () {
-    // Dashboard
-    Route::get('/', [ChatController::class, 'adminIndex'])->name('index');
-    Route::get('/settings', [ChatController::class, 'settings'])->name('settings');
-    Route::post('/settings', [ChatController::class, 'updateSettings'])->name('settings.update');
-    
-    // API Routes for admin interface
-    Route::prefix('api')->name('api.')->group(function () {
-        Route::get('/sessions', [ChatController::class, 'getAdminSessions'])->name('sessions');
-        Route::get('/statistics', [ChatController::class, 'getStatistics'])->name('statistics');
-        Route::get('/{chatSession}/messages', [ChatController::class, 'getChatMessages'])->name('messages');
-        Route::post('/{chatSession}/reply', [ChatController::class, 'adminReply'])->name('reply');
-        Route::post('/{chatSession}/assign', [ChatController::class, 'assignToMe'])->name('assign');
-        Route::post('/{chatSession}/close', [ChatController::class, 'closeSession'])->name('close');
-        Route::post('/{chatSession}/transfer', [ChatController::class, 'transferSession'])->name('transfer');
-        Route::post('/{chatSession}/priority', [ChatController::class, 'updatePriority'])->name('priority');
-        Route::post('/{chatSession}/notes', [ChatController::class, 'updateNotes'])->name('notes');
-        Route::post('/operator/status', [ChatController::class, 'setOperatorStatus'])->name('operator.status');
-        Route::get('/operator/status', [ChatController::class, 'getOperatorStatus'])->name('operator.status.get');
-        Route::post('/{chatSession}/mark-read', [ChatController::class, 'markMessagesAsRead'])->name('mark-read');
-        Route::get('/templates', [ChatController::class, 'getTemplates'])->name('templates');
-        Route::post('/{chatSession}/use-template', [ChatController::class, 'useTemplate'])->name('use-template');
+    Route::prefix('chat')->name('chat.')->group(function () {
+        // Main chat management
+        Route::get('/', [ChatController::class, 'index'])->name('index');
+        Route::get('/settings', [ChatController::class, 'settings'])->name('settings');
+        Route::post('/settings', [ChatController::class, 'updateSettings'])->name('settings.update');
+        Route::get('/reports', [ChatController::class, 'reports'])->name('reports');
+        Route::get('/reports/export', [ChatController::class, 'exportReport'])->name('reports.export');
+        Route::get('/reports/detailed', [ChatController::class, 'detailedReports'])->name('reports.detailed');
+        Route::post('/reports/generate', [ChatController::class, 'generateReport'])->name('reports.generate');
+        
+        Route::prefix('api')->name('api.')->group(function () {
+            Route::get('/sessions', [ChatController::class, 'getAdminSessions'])->name('sessions');
+            Route::get('/statistics', [ChatController::class, 'getStatistics'])->name('statistics');
+            Route::get('/{chatSession}/messages', [ChatController::class, 'getChatMessages'])->name('messages');
+            Route::post('/{chatSession}/reply', [ChatController::class, 'adminReply'])->name('reply');
+            Route::post('/{chatSession}/assign', [ChatController::class, 'assignToMe'])->name('assign');
+            Route::post('/{chatSession}/close', [ChatController::class, 'closeSession'])->name('close');
+            Route::post('/{chatSession}/transfer', [ChatController::class, 'transferSession'])->name('transfer');
+            Route::post('/{chatSession}/priority', [ChatController::class, 'updatePriority'])->name('priority');
+            Route::post('/{chatSession}/notes', [ChatController::class, 'updateNotes'])->name('notes');
+            Route::post('/operator/status', [ChatController::class, 'setOperatorStatus'])->name('operator.status');
+            Route::get('/operator/status', [ChatController::class, 'getOperatorStatus'])->name('operator.status.get');
+            Route::post('/{chatSession}/mark-read', [ChatController::class, 'markMessagesAsRead'])->name('mark-read');
+            Route::get('/templates', [ChatController::class, 'getTemplates'])->name('templates');
+            Route::post('/{chatSession}/use-template', [ChatController::class, 'useTemplate'])->name('use-template');
+        });
+        
+        // Operator management
+        Route::post('/operator/online', [ChatController::class, 'goOnline'])->name('operator.online');
+        Route::post('/operator/offline', [ChatController::class, 'goOffline'])->name('operator.offline');
+        Route::get('/operator/status', [ChatController::class, 'getOperatorStatus'])->name('operator.status');
+        Route::post('/operator/availability', [ChatController::class, 'updateAvailability'])->name('operator.availability');
+        Route::get('/operators/available', [ChatController::class, 'getAvailableOperators'])->name('operators.available');
+        
+        // Quick templates for chat usage (different from full template management)
+        Route::get('/quick-templates', [ChatController::class, 'getQuickTemplates'])->name('quick-templates');
+        Route::get('/search-templates', [ChatController::class, 'searchTemplates'])->name('search-templates');
+        
+        // Bulk operations
+        Route::post('/bulk-update', [ChatController::class, 'bulkUpdate'])->name('bulk-update');
+        Route::post('/archive-old', [ChatController::class, 'archiveOldSessions'])->name('archive-old');
+        
+        
+        // Chat Templates Management (Full CRUD)
+        Route::prefix('templates')->name('templates.')->group(function () {
+            // Standard CRUD routes
+            Route::get('/', [ChatTemplateController::class, 'index'])->name('index');
+            Route::get('/create', [ChatTemplateController::class, 'create'])->name('create');
+            Route::post('/', [ChatTemplateController::class, 'store'])->name('store');
+            Route::get('/{template}', [ChatTemplateController::class, 'show'])->name('show');
+            Route::get('/{template}/edit', [ChatTemplateController::class, 'edit'])->name('edit');
+            Route::put('/{template}', [ChatTemplateController::class, 'update'])->name('update');
+            Route::delete('/{template}', [ChatTemplateController::class, 'destroy'])->name('destroy');
+            
+            // Template actions
+            Route::post('/{template}/toggle-active', [ChatTemplateController::class, 'toggleActive'])->name('toggle-active');
+            Route::post('/{template}/duplicate', [ChatTemplateController::class, 'duplicate'])->name('duplicate');
+            Route::post('/{template}/increment-usage', [ChatTemplateController::class, 'incrementUsage'])->name('increment-usage');
+            
+            // Bulk operations
+            Route::post('/bulk-update', [ChatTemplateController::class, 'bulkUpdate'])->name('bulk-update');
+            Route::get('/export', [ChatTemplateController::class, 'export'])->name('export');
+            Route::post('/import', [ChatTemplateController::class, 'import'])->name('import');
+            
+            // API endpoints for templates
+            Route::get('/api/by-type', [ChatTemplateController::class, 'getByType'])->name('api.by-type');
+            Route::get('/api/search', [ChatTemplateController::class, 'search'])->name('api.search');
+            Route::get('/api/statistics', [ChatTemplateController::class, 'getStatistics'])->name('api.statistics');
+        });
     });
-    
-    // Reports
-    Route::get('/reports', [ChatController::class, 'reports'])->name('reports');
-    Route::post('/reports/generate', [ChatController::class, 'generateReport'])->name('reports.generate');
-    Route::get('/reports/export', [ChatController::class, 'exportReport'])->name('reports.export');
-});
 
     // Quotations
     Route::resource('quotations', QuotationController::class);
