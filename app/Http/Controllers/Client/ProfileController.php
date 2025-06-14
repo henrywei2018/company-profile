@@ -50,7 +50,7 @@ class ProfileController extends Controller
         $dashboardData = $this->dashboardService->getDashboardData($user);
         $statistics = $dashboardData['statistics'] ?? [];
         
-        return view('client.profile.show', compact('user', 'profileCompletion', 'statistics'));
+        return view('profile.show', compact('user', 'profileCompletion', 'statistics'));
     }
     
     /**
@@ -60,7 +60,7 @@ class ProfileController extends Controller
     {
         $user = auth()->user();
         
-        return view('client.profile.edit', compact('user'));
+        return view('profile.show', compact('user'));
     }
     
     /**
@@ -99,7 +99,7 @@ class ProfileController extends Controller
                 try {
                     Notifications::send('user.email_verification_required', $updatedUser, $updatedUser);
                     
-                    return redirect()->route('client.profile.show')
+                    return redirect()->route('profile.show')
                         ->with('success', 'Profile updated successfully! Please verify your new email address.');
                 } catch (\Exception $e) {
                     Log::warning('Failed to send email verification notification', [
@@ -109,7 +109,7 @@ class ProfileController extends Controller
                 }
             }
             
-            return redirect()->route('client.profile.show')
+            return redirect()->route('profile.show')
                 ->with('success', 'Profile updated successfully!');
                 
         } catch (\Exception $e) {
@@ -129,7 +129,7 @@ class ProfileController extends Controller
      */
     public function showChangePasswordForm()
     {
-        return view('client.profile.change-password');
+        return view('profile.change-password');
     }
     
     /**
@@ -151,7 +151,7 @@ class ProfileController extends Controller
             // Clear dashboard cache
             $this->dashboardService->clearCache($user);
             
-            return redirect()->route('client.profile.show')
+            return redirect()->route('profile.show')
                 ->with('success', 'Password changed successfully!');
                 
         } catch (\Exception $e) {
@@ -186,7 +186,7 @@ class ProfileController extends Controller
             'items_per_page' => $user->items_per_page ?? 20,
         ];
         
-        return view('client.profile.preferences', compact('notificationPreferences', 'userPreferences'));
+        return view('profile.preferences', compact('notificationPreferences', 'userPreferences'));
     }
 
     /**
@@ -243,7 +243,7 @@ class ProfileController extends Controller
             // Clear dashboard cache
             $this->dashboardService->clearCache($user);
             
-            return redirect()->route('client.profile.preferences')
+            return redirect()->route('profile.preferences')
                 ->with('success', 'Preferences updated successfully!');
                 
         } catch (\Exception $e) {
@@ -264,7 +264,7 @@ class ProfileController extends Controller
     {
         $user = auth()->user();
         
-        return view('client.profile.privacy', compact('user'));
+        return view('profile.privacy', compact('user'));
     }
 
     /**
@@ -299,7 +299,7 @@ class ProfileController extends Controller
                 'privacy_updated_at' => now(),
             ]);
             
-            return redirect()->route('client.profile.privacy')
+            return redirect()->route('profile.privacy')
                 ->with('success', 'Privacy settings updated successfully!');
                 
         } catch (\Exception $e) {
@@ -329,7 +329,7 @@ class ProfileController extends Controller
             'security_events' => $this->getSecurityEvents($user),
         ];
         
-        return view('client.profile.security', compact('user', 'securityInfo'));
+        return view('profile.security', compact('user', 'securityInfo'));
     }
 
     /**
@@ -366,7 +366,7 @@ class ProfileController extends Controller
                 ]);
             }
             
-            return redirect()->route('client.profile.security')
+            return redirect()->route('profile.security')
                 ->with('success', 'Security settings updated successfully!');
                 
         } catch (\Exception $e) {
@@ -397,7 +397,7 @@ class ProfileController extends Controller
             })->count(),
         ];
         
-        return view('client.profile.delete', compact('user', 'dataSummary'));
+        return view('profile.delete', compact('user', 'dataSummary'));
     }
 
     /**
@@ -522,7 +522,7 @@ class ProfileController extends Controller
             'last_page' => ceil($total / $perPage),
         ];
         
-        return view('client.profile.activity', compact('activities', 'pagination'));
+        return view('profile.activity', compact('activities', 'pagination'));
     }
 
     /**

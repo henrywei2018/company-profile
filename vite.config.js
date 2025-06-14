@@ -18,6 +18,7 @@ export default defineConfig({
         alias: {
             // Allow clean imports like "@/components/..." from resources/js
             '@': path.resolve(__dirname, 'resources/js'),
+            
         },
     },
     server: {

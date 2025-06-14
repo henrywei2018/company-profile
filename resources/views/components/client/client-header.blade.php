@@ -60,168 +60,14 @@
             </button>
 
             <!-- FIXED: Notification Dropdown -->
-            <div class="hs-dropdown relative inline-flex">
-    <button type="button" 
-        id="notification-dropdown-toggle"
-        class="hs-dropdown-toggle relative size-[38px] inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700"
-        aria-haspopup="menu" 
-        aria-expanded="false" 
-        aria-label="Notifications">
-        
-        <!-- Bell Icon -->
-        <svg class="flex-shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
-            <path d="m13.73 21a2 2 0 0 1-3.46 0"></path>
-        </svg>
-        
-        <!-- Badge (will be created by JavaScript if needed) -->
-        <span class="sr-only">Notifications</span>
-    </button>
-
-    <!-- Enhanced Dropdown Panel -->
-    <div class="hs-dropdown-menu notification-dropdown hidden z-50 mt-2 w-96 bg-white shadow-lg rounded-lg border dark:bg-neutral-800 dark:border-neutral-700"
-        aria-labelledby="notification-dropdown-toggle">
-        
-        <!-- Header with Quick Actions -->
-        <div class="px-4 py-3 border-b border-gray-200 dark:border-neutral-700">
-            <div class="flex items-center justify-between">
-                <h3 class="text-sm font-medium text-gray-800 dark:text-white">Notifications</h3>
-                <div class="flex items-center gap-2">
-                    <!-- Bulk Actions Toggle -->
-                    <button type="button" 
-                        id="bulk-actions-toggle"
-                        onclick="toggleBulkActions()"
-                        class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hidden transition-colors">
-                        <svg class="size-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Select
-                    </button>
-                    
-                    <!-- Quick Mark All Read -->
-                    <button type="button" 
-                        id="mark-all-read-btn"
-                        onclick="markAllNotificationsAsRead()"
-                        class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
-                        Mark all read
-                    </button>
-                    
-                    <!-- View All Link -->
-                    <a href="{{ route('client.notifications.index') }}" 
-                       class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors">
-                        View all
-                    </a>
-                </div>
-            </div>
-            
-            <!-- Bulk Actions Bar (Hidden by default) -->
-            <div id="bulk-actions-bar" class="hidden mt-3 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg transition-all duration-300">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <button type="button" 
-                            onclick="selectAllNotifications()"
-                            class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
-                            Select all
-                        </button>
-                        <button type="button" 
-                            onclick="deselectAllNotifications()"
-                            class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-                            Deselect all
-                        </button>
-                        <span id="selection-count" class="text-xs text-gray-500 dark:text-gray-400">
-                            0 selected
-                        </span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button" 
-                            onclick="bulkMarkAsRead()"
-                            class="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors">
-                            Mark read
-                        </button>
-                        <button type="button" 
-                            onclick="bulkDelete()"
-                            class="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition-colors">
-                            Delete
-                        </button>
-                        <button type="button" 
-                            onclick="toggleBulkActions()"
-                            class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Filter Controls -->
-        <div class="notification-filters px-4 py-2 border-b border-gray-100 dark:border-neutral-600">
-            <div class="flex items-center gap-2">
-                <select id="notification-filter" onchange="filterNotifications()" 
-                    class="text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
-                    <option value="unread">Unread only</option>
-                    <option value="all">All notifications</option>
-                    <option value="read">Read only</option>
-                </select>
-                
-                <select id="notification-category" onchange="filterNotifications()" 
-                    class="text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
-                    <option value="">All categories</option>
-                    <option value="project">Projects</option>
-                    <option value="quotation">Quotations</option>
-                    <option value="message">Messages</option>
-                    <option value="chat">Chat</option>
-                    <option value="user">Account</option>
-                    <option value="system">System</option>
-                </select>
-                
-                <button type="button" onclick="refreshNotifications()" 
-                    class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 ml-auto p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors">
-                    <svg class="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Notification List Container -->
-        <div class="max-h-80 overflow-y-auto" id="notification-list">
-            <!-- Loading State -->
-            <div id="notification-loading" class="px-4 py-8 text-center">
-                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Loading notifications...</p>
-            </div>
-            
-            <!-- Notification Content (populated by JavaScript) -->
-            <div id="notification-content">
-                <!-- Content will be loaded here -->
-            </div>
-        </div>
-
-        <!-- Footer with Summary and Actions -->
-        <div class="px-4 py-3 border-t border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-700/50">
-            <div class="flex items-center justify-between">
-                <div class="text-xs text-gray-500 dark:text-gray-400">
-                    <span id="notification-summary">Loading...</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button type="button" 
-                        onclick="openNotificationSettings()"
-                        class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors">
-                        <svg class="size-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Settings
-                    </button>
-                    <a href="{{ route('client.notifications.index') }}" 
-                       class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors">
-                        View all →
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+            <x-notification.enhanced-dropdown
+                :notifications="collect()" {{-- (not used, JS handles loading) --}}
+                :unread-count="$unreadNotificationsCount ?? 0"
+                variant="client"
+                :max-display="10"
+                :show-filters="true"
+                :show-bulk-actions="true"
+            />
 
             <!-- User Dropdown -->
             <div class="hs-dropdown relative inline-block" data-hs-dropdown data-hs-dropdown-placement="bottom-end">
@@ -286,400 +132,168 @@
 </header>
 
 @push('scripts')
+<script src="{{ asset('js/enhanced-notifications.js') }}"></script>
 <script>
-// Include all the functions from enhanced_notification_js artifact
-{!! file_get_contents(resource_path('js/enhanced-notifications.js')) !!}
+// === CONFIG ===
+const CONTENT_ID = 'client-notification-content';
+const BADGE_ID = 'client-notification-badge';
+const LOADING_ID = 'notification-loading';
+const FILTER_ID = 'client-notification-filter';
+const CATEGORY_ID = 'client-notification-category';
 
-// Additional helper functions specific to this implementation
-function getNotificationIconSvg(icon, color) {
+// === GLOBAL DATA ===
+let allNotifications = [];
+let unreadCount = 0;
+
+// === ICONS ===
+function getIconSvg(icon, color) {
+    const colorClass = color ? `text-${color}-500 dark:text-${color}-400` : 'text-blue-500';
     const icons = {
-        'bell': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5-5M9 7l6 6-6 6" />',
-        'folder': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />',
-        'document-text': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />',
-        'mail': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />',
-        'chat-bubble-left': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />',
-        'user': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />'
+        bell: `<svg class="w-5 h-5 ${colorClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="m13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
+        folder: `<svg class="w-5 h-5 ${colorClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>`,
+        chat: `<svg class="w-5 h-5 ${colorClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>`,
+        user: `<svg class="w-5 h-5 ${colorClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>`,
     };
-    
-    const iconPath = icons[icon] || icons['bell'];
-    
-    return `
-        <svg class="size-4 text-${color}-600 dark:text-${color}-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            ${iconPath}
-        </svg>
-    `;
+    return icons[icon] || icons['bell'];
 }
 
-function handleNotificationClick(notificationId, url, event) {
-    // Don't navigate if we're in bulk mode or clicking on checkbox/buttons
-    if (notificationState.bulkMode || 
-        event.target.type === 'checkbox' || 
-        event.target.closest('button') ||
-        event.target.closest('.notification-checkbox')) {
-        return;
-    }
-    
-    // Mark as read if it's not already read
-    if (notificationId) {
-        const notification = notificationState.allNotifications.find(n => n.id === notificationId);
-        if (notification && !notification.is_read) {
-            markNotificationAsRead(notificationId);
-        }
-    }
-    
-    // Navigate to URL if provided and valid
-    if (url && url !== '#' && url !== 'undefined' && url !== '') {
-        setTimeout(() => {
-            window.location.href = url;
-        }, 100);
-    }
-}
-
-function quickDelete(notificationId, event) {
-    event.stopPropagation();
-    
-    if (!confirm('Are you sure you want to delete this notification?')) {
-        return;
-    }
-    
-    deleteNotification(notificationId);
-}
-
-function deleteNotification(notificationId) {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]');
-    if (!csrfToken) {
-        showToast('Security token not found', 'error');
-        return;
-    }
-    
-    fetch(`/client/notifications/${notificationId}`, {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken.getAttribute('content')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Remove from UI with animation
-            const notificationElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
-            if (notificationElement) {
-                notificationElement.style.transition = 'all 0.3s ease';
-                notificationElement.style.opacity = '0';
-                notificationElement.style.transform = 'translateX(-100%)';
-                setTimeout(() => {
-                    notificationElement.remove();
-                    
-                    // Update state arrays
-                    notificationState.allNotifications = notificationState.allNotifications.filter(n => n.id !== notificationId);
-                    notificationState.unreadNotifications = notificationState.unreadNotifications.filter(n => n.id !== notificationId);
-                    
-                    // Update badge
-                    notificationState.unreadCount = notificationState.unreadNotifications.length;
-                    renderBadge(notificationState.unreadCount);
-                    
-                    // Check if list is empty
-                    if (notificationState.allNotifications.length === 0) {
-                        renderNotifications([]);
-                    }
-                }, 300);
-            }
-            
-            showToast('Notification deleted', 'success');
-        } else {
-            showToast('Failed to delete notification', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error deleting notification:', error);
-        showToast('Error deleting notification', 'error');
-    });
-}
-
-function openNotificationSettings() {
-    window.location.href = '{{ route("client.notifications.preferences") }}';
-}
-
-function refreshNotifications() {
-    const refreshBtn = document.querySelector('button[onclick="refreshNotifications()"]');
-    if (refreshBtn) {
-        const originalContent = refreshBtn.innerHTML;
-        refreshBtn.innerHTML = '<svg class="size-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
-        refreshBtn.disabled = true;
-        
-        // Update badge count first
-        updateNotificationBadge();
-        
-        // Then reload notifications
-        loadNotifications().finally(() => {
-            refreshBtn.innerHTML = originalContent;
-            refreshBtn.disabled = false;
-        });
+// === UI UPDATE FUNCTIONS ===
+function updateBadge(count) {
+    const badge = document.getElementById(BADGE_ID);
+    if (!badge) return;
+    if (count > 0) {
+        badge.innerText = count > 99 ? "99+" : count;
+        badge.style.display = "inline-flex";
     } else {
-        updateNotificationBadge();
-        loadNotifications();
+        badge.style.display = "none";
     }
 }
 
-// Bulk action functions (implementation from enhanced_notification_js)
-function toggleBulkActions() {
-    notificationState.bulkMode = !notificationState.bulkMode;
-    
-    const bulkActionsBar = document.getElementById('bulk-actions-bar');
-    const bulkToggleBtn = document.getElementById('bulk-actions-toggle');
-    const contentEl = document.getElementById('notification-content');
-    
-    if (notificationState.bulkMode) {
-        bulkActionsBar.classList.remove('hidden');
-        bulkActionsBar.classList.add('fade-in');
-        bulkToggleBtn.textContent = 'Cancel';
-        contentEl.classList.add('bulk-mode');
+function renderNotifications() {
+    const container = document.getElementById(CONTENT_ID);
+    if (!container) return;
+    // Remove loading spinner if present
+    const loading = document.getElementById(LOADING_ID);
+    if (loading) loading.remove();
+
+    // Filters
+    const filter = document.getElementById(FILTER_ID)?.value || 'unread';
+    const category = document.getElementById(CATEGORY_ID)?.value || '';
+    let filtered = allNotifications;
+    if (filter === 'unread') filtered = filtered.filter(n => !n.is_read);
+    else if (filter === 'read') filtered = filtered.filter(n => n.is_read);
+    if (category) filtered = filtered.filter(n => n.category === category);
+
+    if (filtered.length) {
+        container.innerHTML = filtered.map(n => {
+            const isUnread = !n.is_read;
+            return `
+            <div class="flex gap-3 p-3 rounded-md mb-2 border transition
+                ${isUnread ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-300 dark:border-blue-800 shadow-sm' : 'bg-white dark:bg-neutral-900 border-gray-200 dark:border-gray-700'}
+                hover:bg-blue-100/40 dark:hover:bg-blue-900/70">
+                <div class="flex-shrink-0 flex items-center">
+                    ${getIconSvg(n.icon, n.color)}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center gap-2 mb-0.5">
+                        <span class="font-medium text-gray-900 dark:text-white text-sm">${n.title || '(No Title)'}</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap" title="${n.formatted_date || n.created_at}">${n.formatted_time || ''}</span>
+                    </div>
+                    <div class="text-xs text-gray-700 dark:text-gray-200">${n.message || ''}</div>
+                    ${n.action_url ? `<a href="${n.action_url}" class="inline-block mt-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline transition">View</a>` : ''}
+                </div>
+            </div>
+            `;
+        }).join('');
     } else {
-        bulkActionsBar.classList.add('hidden');
-        bulkToggleBtn.textContent = 'Select';
-        contentEl.classList.remove('bulk-mode');
-        // Clear selections
-        notificationState.selectedNotifications.clear();
-        updateSelectionUI();
-    }
-    
-    updateBulkActionsVisibility();
-}
-
-function updateBulkActionsVisibility() {
-    const toggleBtn = document.getElementById('bulk-actions-toggle');
-    if (toggleBtn) {
-        if (notificationState.allNotifications && notificationState.allNotifications.length > 0) {
-            toggleBtn.classList.remove('hidden');
-        } else {
-            toggleBtn.classList.add('hidden');
-        }
+        container.innerHTML = `<div class="p-6 text-center text-gray-400 dark:text-gray-500 text-sm">No notifications</div>`;
     }
 }
 
-function selectAllNotifications() {
-    notificationState.allNotifications.forEach(notification => {
-        notificationState.selectedNotifications.add(notification.id);
-    });
-    updateSelectionUI();
+function applyFilters() {
+    renderNotifications();
 }
 
-function deselectAllNotifications() {
-    notificationState.selectedNotifications.clear();
-    updateSelectionUI();
-}
-
-function toggleNotificationSelection(notificationId) {
-    if (notificationState.selectedNotifications.has(notificationId)) {
-        notificationState.selectedNotifications.delete(notificationId);
-    } else {
-        notificationState.selectedNotifications.add(notificationId);
+// === FETCH AND RENDER ===
+function loadNotifications() {
+    const container = document.getElementById(CONTENT_ID);
+    if (container) {
+        container.innerHTML = `
+            <div id="${LOADING_ID}" class="px-4 py-8 text-center">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Loading notifications...</p>
+            </div>
+        `;
     }
-    updateSelectionCount();
-}
-
-function updateSelectionUI() {
-    // Update checkboxes
-    document.querySelectorAll('.notification-item input[type="checkbox"]').forEach(checkbox => {
-        const notificationId = checkbox.closest('.notification-item').dataset.notificationId;
-        checkbox.checked = notificationState.selectedNotifications.has(notificationId);
-        
-        // Update visual selection
-        const item = checkbox.closest('.notification-item');
-        if (checkbox.checked) {
-            item.classList.add('selected');
-        } else {
-            item.classList.remove('selected');
-        }
-    });
-    
-    updateSelectionCount();
-}
-
-function updateSelectionCount() {
-    const countEl = document.getElementById('selection-count');
-    const count = notificationState.selectedNotifications.size;
-    if (countEl) {
-        countEl.textContent = `${count} selected`;
-    }
-}
-
-function bulkMarkAsRead() {
-    const selectedIds = Array.from(notificationState.selectedNotifications);
-    if (selectedIds.length === 0) {
-        showToast('No notifications selected', 'warning');
-        return;
-    }
-    
-    const unreadIds = selectedIds.filter(id => {
-        const notification = notificationState.allNotifications.find(n => n.id === id);
-        return notification && !notification.is_read;
-    });
-    
-    if (unreadIds.length === 0) {
-        showToast('All selected notifications are already read', 'info');
-        return;
-    }
-    
-    performBulkAction('/client/notifications/bulk-mark-as-read', { notification_ids: unreadIds }, 'Marking as read...')
-        .then(() => {
-            showToast(`${unreadIds.length} notifications marked as read`, 'success');
-            loadNotifications();
-            notificationState.selectedNotifications.clear();
+    fetch('/client/notifications/recent')
+        .then(r => r.json())
+        .then(data => {
+            allNotifications = data.notifications || [];
+            unreadCount = data.unread_count || 0;
+            updateBadge(unreadCount);
+            renderNotifications();
+        })
+        .catch(() => {
+            if (container) container.innerHTML = "<div style='padding:16px;text-align:center;color:red;'>Error loading notifications</div>";
         });
 }
 
-function bulkDelete() {
-    const selectedIds = Array.from(notificationState.selectedNotifications);
-    if (selectedIds.length === 0) {
-        showToast('No notifications selected', 'warning');
-        return;
+// === "MARK ALL AS READ" HANDLER ===
+window.markAllNotificationsAsRead = function() {
+    const btn = document.getElementById('mark-all-read-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Marking...';
     }
-    
-    if (!confirm(`Are you sure you want to delete ${selectedIds.length} notifications? This action cannot be undone.`)) {
-        return;
-    }
-    
-    performBulkAction('/client/notifications/bulk-delete', { notification_ids: selectedIds }, 'Deleting...')
-        .then(() => {
-            showToast(`${selectedIds.length} notifications deleted`, 'success');
-            loadNotifications();
-            notificationState.selectedNotifications.clear();
-        });
-}
 
-function performBulkAction(url, data, loadingMessage) {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]');
-    if (!csrfToken) {
-        showToast('Security token not found', 'error');
-        return Promise.reject('CSRF token missing');
-    }
-    
-    showToast(loadingMessage, 'info');
-    
-    return fetch(url, {
+    fetch('/client/notifications/mark-all-read', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken.getAttribute('content')
-        },
-        body: JSON.stringify(data)
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+        }
     })
-    .then(response => response.json())
-    .then(data => {
-        if (!data.success) {
-            throw new Error(data.message || 'Operation failed');
+    .then(async r => {
+        const text = await r.text();
+        let data;
+        try { data = JSON.parse(text); } catch (e) { data = null; }
+        if (r.ok && data && data.success) {
+            allNotifications = allNotifications.map(n => Object.assign({}, n, { is_read: true }));
+            unreadCount = 0;
+            updateBadge(0);
+            renderNotifications();
+        } else {
+            alert("Backend error: " + (data && data.message ? data.message : text));
         }
-        return data;
     })
-    .catch(error => {
-        console.error('Bulk action failed:', error);
-        showToast('Operation failed: ' + error.message, 'error');
-        throw error;
-    });
-}
-
-function setupKeyboardShortcuts() {
-    document.addEventListener('keydown', function(e) {
-        // Only work when notification dropdown is open
-        const dropdown = document.querySelector('.hs-dropdown-menu:not(.hidden)');
-        if (!dropdown) return;
-        
-        // Ctrl+A - Select all
-        if (e.ctrlKey && e.key === 'a' && notificationState.bulkMode) {
-            e.preventDefault();
-            selectAllNotifications();
-        }
-        
-        // Escape - Exit bulk mode or close dropdown
-        if (e.key === 'Escape') {
-            if (notificationState.bulkMode) {
-                toggleBulkActions();
-            }
-        }
-        
-        // Delete - Delete selected notifications
-        if (e.key === 'Delete' && notificationState.bulkMode && notificationState.selectedNotifications.size > 0) {
-            bulkDelete();
-        }
-        
-        // Enter - Mark selected as read
-        if (e.key === 'Enter' && notificationState.bulkMode && notificationState.selectedNotifications.size > 0) {
-            e.preventDefault();
-            bulkMarkAsRead();
+    .catch((err) => {
+        alert("Fetch failed: " + (err && err.message ? err.message : err));
+    })
+    .finally(() => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = 'Mark all read';
         }
     });
-}
+};
 
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
-}
+// === FILTERS, REFRESH, INITIALIZATION ===
+document.addEventListener('DOMContentLoaded', function () {
+    // Initial load
+    loadNotifications();
 
-// Toast notification system
-function showToast(message, type = 'info', duration = 3000) {
-    // Remove existing toast
-    const existingToast = document.getElementById('notification-toast');
-    if (existingToast) {
-        existingToast.remove();
-    }
-    
-    const colors = {
-        success: 'bg-green-500 text-white',
-        error: 'bg-red-500 text-white',
-        warning: 'bg-yellow-500 text-black',
-        info: 'bg-blue-500 text-white'
-    };
-    
-    const icons = {
-        success: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />',
-        error: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />',
-        warning: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.732 15.5c-.77.833.192 2.5 1.732 2.5z" />',
-        info: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />'
-    };
-    
-    const toast = document.createElement('div');
-    toast.id = 'notification-toast';
-    toast.className = `fixed top-4 right-4 z-50 flex items-center p-4 rounded-lg shadow-lg ${colors[type]} transform transition-all duration-300 translate-x-full`;
-    toast.innerHTML = `
-        <svg class="size-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            ${icons[type]}
-        </svg>
-        <span class="text-sm font-medium">${escapeHtml(message)}</span>
-        <button onclick="this.parentElement.remove()" class="ml-4 text-current hover:text-opacity-75">
-            <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-        </button>
-    `;
-    
-    document.body.appendChild(toast);
-    
-    // Animate in
-    setTimeout(() => {
-        toast.classList.remove('translate-x-full');
-    }, 10);
-    
-    // Auto remove
-    setTimeout(() => {
-        toast.classList.add('translate-x-full');
-        setTimeout(() => {
-            if (toast.parentElement) {
-                toast.remove();
-            }
-        }, 300);
-    }, duration);
-}
+    // Attach filter event handlers
+    const filterEl = document.getElementById(FILTER_ID);
+    const catEl = document.getElementById(CATEGORY_ID);
+    if (filterEl) filterEl.addEventListener('change', applyFilters);
+    if (catEl) catEl.addEventListener('change', applyFilters);
 
+    // Add refreshNotifications to window for refresh button
+    window.refreshNotifications = loadNotifications;
+});
 </script>
-    @endpush
+@endpush
+
     <style>
         .notification-dropdown {
             width: 384px;

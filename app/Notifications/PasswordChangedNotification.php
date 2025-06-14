@@ -31,7 +31,7 @@ class PasswordChangedNotification extends Notification implements ShouldQueue
             ->subject('Password Changed Successfully')
             ->line('Your password has been changed successfully.')
             ->line('If you did not make this change, please contact us immediately.')
-            ->action('Secure Account', route('client.profile.edit'));
+            ->action('Secure Account', route('profile.show'));
     }
 
     public function toArray($notifiable): array

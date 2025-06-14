@@ -530,7 +530,7 @@ protected function getMessageStatus($message): array
             ['label' => 'Request Quotation', 'url' => route('quotation.create'), 'icon' => 'plus'],
             ['label' => 'My Projects', 'url' => route('client.projects.index'), 'icon' => 'folder'],
             ['label' => 'Messages', 'url' => route('client.messages.index'), 'icon' => 'mail'],
-            ['label' => 'Profile', 'url' => route('client.profile.edit'), 'icon' => 'user'],
+            ['label' => 'Profile', 'url' => route('profile.show'), 'icon' => 'user'],
         ];
     }
 

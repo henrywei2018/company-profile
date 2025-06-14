@@ -30,7 +30,7 @@ class ProfileIncompleteNotification extends Notification implements ShouldQueue
             'type' => 'user.profile_incomplete',
             'title' => 'Complete Your Profile',
             'message' => 'Please complete your profile to access all features.',
-            'action_url' => route('client.profile.edit'),
+            'action_url' => route('profile.edit'),
             'action_text' => 'Complete Profile',
             'priority' => 'normal',
         ];
