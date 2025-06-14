@@ -1,28 +1,19 @@
 <?php
 
-// =======================
-// COMPLETE CLEAN CHAT MODELS
-// Berdasarkan kebutuhan chat widget + admin dashboard
-// =======================
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
-// =======================
-// ChatSession Model
-// =======================
 class ChatSession extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'session_id',
         'user_id',
-        'visitor_info', // JSON field
+        'visitor_info',
         'status',
         'assigned_operator_id',
         'priority',
@@ -31,7 +22,7 @@ class ChatSession extends Model
         'last_activity_at',
         'ended_at',
         'summary',
-        'metadata' // JSON field
+        'metadata',
     ];
 
     protected $casts = [
@@ -39,38 +30,82 @@ class ChatSession extends Model
         'metadata' => 'array',
         'started_at' => 'datetime',
         'last_activity_at' => 'datetime',
-        'ended_at' => 'datetime'
+        'ended_at' => 'datetime',
     ];
 
-    // =======================
-    // RELATIONSHIPS
-    // =======================
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($model) {
+            if (empty($model->session_id)) {
+                $model->session_id = Str::uuid();
+            }
+            if (empty($model->started_at)) {
+                $model->started_at = now();
+            }
+            $model->last_activity_at = now();
+        });
 
+        // Broadcast when session is created
+        static::created(function ($model) {
+            try {
+                broadcast(new \App\Events\ChatSessionStarted($model))->toOthers();
+                \Log::info('ChatSession created broadcast sent', ['session_id' => $model->session_id]);
+            } catch (\Exception $e) {
+                \Log::error('Failed to broadcast ChatSession created', [
+                    'session_id' => $model->session_id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        });
+
+        // Broadcast when session status changes
+        static::updated(function ($model) {
+            try {
+                if ($model->isDirty('status')) {
+                    if ($model->status === 'closed') {
+                        broadcast(new \App\Events\ChatSessionClosed($model))->toOthers();
+                        \Log::info('ChatSession closed broadcast sent', ['session_id' => $model->session_id]);
+                    } else {
+                        broadcast(new \App\Events\ChatSessionUpdated($model))->toOthers();
+                        \Log::info('ChatSession updated broadcast sent', [
+                            'session_id' => $model->session_id,
+                            'status' => $model->status
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to broadcast ChatSession updated', [
+                    'session_id' => $model->session_id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        });
+    }
+
+    // Relationships
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function assignedOperator(): BelongsTo
+    public function operator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_operator_id');
     }
 
     public function messages(): HasMany
     {
-        return $this->hasMany(ChatMessage::class);
+        return $this->hasMany(ChatMessage::class)->orderBy('created_at');
     }
 
-    public function latestMessage(): BelongsTo
+    public function latestMessage(): HasOne
     {
-        return $this->belongsTo(ChatMessage::class, 'id', 'chat_session_id')
-            ->latest();
+        return $this->hasOne(ChatMessage::class)->latestOfMany();
     }
 
-    // =======================
-    // SCOPES - UNTUK ADMIN DASHBOARD
-    // =======================
-
+    // Scopes
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
@@ -81,131 +116,97 @@ class ChatSession extends Model
         return $query->where('status', 'waiting');
     }
 
-    public function scopeClosed($query)
+    public function scopeByPriority($query, $priority = 'desc')
     {
-        return $query->where('status', 'closed');
+        return $query->orderByRaw("CASE priority " .
+            "WHEN 'urgent' THEN 4 " .
+            "WHEN 'high' THEN 3 " .
+            "WHEN 'normal' THEN 2 " .
+            "WHEN 'low' THEN 1 END " . $priority);
     }
 
-    public function scopeAssignedTo($query, int $operatorId)
-    {
-        return $query->where('assigned_operator_id', $operatorId);
-    }
-
-    public function scopeUnassigned($query)
-    {
-        return $query->whereNull('assigned_operator_id');
-    }
-
-    public function scopeByPriority($query, string $direction = 'desc')
-    {
-        $order = match($direction) {
-            'asc' => "CASE priority WHEN 'low' THEN 1 WHEN 'normal' THEN 2 WHEN 'high' THEN 3 WHEN 'urgent' THEN 4 ELSE 2 END ASC",
-            default => "CASE priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 WHEN 'low' THEN 4 ELSE 3 END ASC"
-        };
-        
-        return $query->orderByRaw($order);
-    }
-
-    // =======================
-    // ESSENTIAL METHODS - UNTUK WIDGET & ADMIN
-    // =======================
-
+    // Helper methods
     public function getVisitorName(): string
     {
-        if ($this->user_id && $this->user) {
+        if ($this->user) {
             return $this->user->name;
         }
-        return $this->visitor_info['name'] ?? 'Guest';
+        
+        return $this->visitor_info['name'] ?? 'Anonymous Visitor';
     }
 
     public function getVisitorEmail(): ?string
     {
-        if ($this->user_id && $this->user) {
+        if ($this->user) {
             return $this->user->email;
         }
+        
         return $this->visitor_info['email'] ?? null;
     }
 
-    // =======================
-    // ADMIN DASHBOARD METHODS
-    // =======================
-
-    public function getWaitingTimeInMinutes(): int
+    public function isActive(): bool
     {
-        if ($this->status !== 'waiting') {
-            return 0;
-        }
-        return $this->started_at->diffInMinutes(now());
+        return $this->status === 'active';
     }
 
-    public function getDurationInMinutes(): ?int
+    public function close(): void
     {
-        if (!$this->started_at || !$this->ended_at) {
+        $this->update([
+            'status' => 'closed',
+            'ended_at' => now(),
+        ]);
+    }
+
+    public function updateActivity(): void
+    {
+        $this->update(['last_activity_at' => now()]);
+    }
+
+    public function assignOperator(User $operator): void
+    {
+        $this->update([
+            'assigned_operator_id' => $operator->id,
+            'status' => 'active',
+        ]);
+    }
+
+    public function getDuration(): ?int
+    {
+        if (!$this->ended_at) {
             return null;
         }
+        
         return $this->started_at->diffInMinutes($this->ended_at);
     }
 
-    public function getStatusBadgeClass(): string
+    // WebSocket channel name
+    public function getChannelName(): string
     {
-        return match($this->status) {
-            'waiting' => 'bg-yellow-100 text-yellow-800',
-            'active' => 'bg-green-100 text-green-800',
-            'closed' => 'bg-gray-100 text-gray-800',
-            default => 'bg-gray-100 text-gray-800'
-        };
+        return "chat-session.{$this->session_id}";
     }
 
-    public function getPriorityBadgeClass(): string
+    // Get admin channel name for this session
+    public function getAdminChannelName(): string
     {
-        return match($this->priority) {
-            'low' => 'bg-blue-100 text-blue-800',
-            'normal' => 'bg-gray-100 text-gray-800',
-            'high' => 'bg-orange-100 text-orange-800',
-            'urgent' => 'bg-red-100 text-red-800',
-            default => 'bg-gray-100 text-gray-800'
-        };
+        return "admin-chat-session.{$this->session_id}";
     }
 
-    public function canBeAssigned(): bool
+    // Broadcast to all relevant channels
+    public function broadcastToAllChannels($event, $data = [])
     {
-        return in_array($this->status, ['waiting', 'active']) && !$this->assigned_operator_id;
-    }
-
-    public function canBeClosed(): bool
-    {
-        return in_array($this->status, ['waiting', 'active']);
-    }
-
-    public function isAssignedTo(int $operatorId): bool
-    {
-        return $this->assigned_operator_id === $operatorId;
-    }
-
-    public function hasUnreadMessages(): bool
-    {
-        return $this->messages()
-            ->where('sender_type', 'visitor')
-            ->where('is_read', false)
-            ->exists();
-    }
-
-    public function getUnreadMessagesCount(): int
-    {
-        return $this->messages()
-            ->where('sender_type', 'visitor')
-            ->where('is_read', false)
-            ->count();
-    }
-
-    public function getQueuePosition(): int
-    {
-        if ($this->status !== 'waiting') {
-            return 0;
+        try {
+            // Let the event handle the channel routing
+            broadcast($event)->toOthers();
+            
+            \Log::info('Broadcast sent for session', [
+                'session_id' => $this->session_id,
+                'event' => get_class($event)
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to broadcast session event', [
+                'session_id' => $this->session_id,
+                'error' => $e->getMessage()
+            ]);
         }
-
-        return static::where('status', 'waiting')
-            ->where('started_at', '<', $this->started_at)
-            ->count() + 1;
     }
 }

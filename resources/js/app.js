@@ -5,32 +5,45 @@ import Alpine from "alpinejs";
 
 // Preline UI v2 import
 import "preline/dist/preline.js";
-import ChatSystem from './chat/chat-system.js';
 
-window.ChatSystem = ChatSystem;
 window.Alpine = Alpine;
 window.authUserId = document.querySelector('meta[name="auth-user-id"]')?.getAttribute('content');
 window.isAdmin = document.querySelector('meta[name="is-admin"]')?.getAttribute('content') === 'true';
 
 Alpine.start();
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-initialize chat widgets
-    const chatWidgets = document.querySelectorAll('[data-chat-widget]');
-    chatWidgets.forEach(widget => {
-        if (!widget.chatSystemInstance) {
-            const config = {
-                baseUrl: widget.dataset.apiUrl || '/api/chat',
-                userId: widget.dataset.userId,
-                userType: widget.dataset.userType || 'visitor',
-                userName: widget.dataset.userName,
-                theme: widget.dataset.theme || 'blue'
-            };
-            
-            widget.chatSystemInstance = new ChatSystem(config);
-        }
-    });
-});
+
+window.WebSocketUtils = {
+    // Send notification test
+    sendTestNotification() {
+        fetch('/client/dashboard/test-notification', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('✅ Test notification sent');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Failed to send test notification:', error);
+        });
+    },
+
+    // Get connection status
+    getConnectionStatus() {
+        return window.Echo.connector.pusher.connection.state;
+    },
+
+    // Force reconnect
+    reconnect() {
+        window.Echo.connector.pusher.connect();
+    }
+};
 
 // Auto-reconnect on page visibility change
 document.addEventListener('visibilitychange', function() {
@@ -39,7 +52,6 @@ document.addEventListener('visibilitychange', function() {
         window.WebSocketUtils.reconnect();
     }
 });
-
 // Initialize Preline and dark mode once DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
     initializeTheme();         // Setup dark/light mode toggle
@@ -58,77 +70,77 @@ function initializePreline() {
             window.HSStaticMethods.autoInit();
         } else {
             console.warn("⚠️ Preline autoInit not found. Using manual fallback.");
-            
-            // Manual fallback initialization for common components
-            if (typeof window.HSDropdown !== "undefined") window.HSDropdown.autoInit();
-            if (typeof window.HSCollapse !== "undefined") window.HSCollapse.autoInit();
-            if (typeof window.HSOverlay !== "undefined") window.HSOverlay.autoInit();
-            if (typeof window.HSNavbar !== "undefined") window.HSNavbar.autoInit();
-            if (typeof window.HSAccordion !== "undefined") window.HSAccordion.autoInit();
-            if (typeof window.HSCarousel !== "undefined") window.HSCarousel.autoInit();
-            if (typeof window.HSTab !== "undefined") window.HSTab.autoInit();
-            if (typeof window.HSModal !== "undefined") window.HSModal.autoInit();
-            if (typeof window.HSTooltip !== "undefined") window.HSTooltip.autoInit();
+            initializePrelineManually();
         }
-        
-        console.log("✅ Preline components initialized");
     } catch (error) {
-        console.error("❌ Preline initialization failed:", error);
+        console.error("❌ Error initializing Preline:", error);
+        initializePrelineManually();
     }
 }
 
-// === THEME MANAGEMENT ===
+function initializePrelineManually() {
+    const components = [
+        { name: "HSDropdown", selector: "[data-hs-dropdown]" },
+        { name: "HSAccordion", selector: "[data-hs-accordion]" },
+        { name: "HSTooltip", selector: "[data-hs-tooltip]" },
+        { name: "HSTab", selector: "[data-hs-tab]" },
+        { name: "HSOverlay", selector: "[data-hs-overlay]" },
+    ];
+
+    components.forEach(({ name, selector }) => {
+        const Constructor = window[name];
+        if (Constructor) {
+            document.querySelectorAll(selector).forEach(el => {
+                try {
+                    new Constructor(el);
+                } catch (e) {
+                    console.error(`Failed to init ${name} on`, el, e);
+                }
+            });
+        }
+    });
+}
+
+// === THEME TOGGLING (LIGHT / DARK) ===
 
 function initializeTheme() {
-    try {
-        const themeToggle = document.getElementById("theme-toggle");
-        
-        if (themeToggle) {
-            themeToggle.addEventListener("click", toggleTheme);
-        }
+    const theme = localStorage.getItem("hs_theme") || "auto";
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-        // Apply initial theme
-        applyStoredTheme();
-        
-        console.log("✅ Theme system initialized");
-    } catch (error) {
-        console.error("❌ Theme initialization failed:", error);
-    }
-}
-
-function toggleTheme() {
-    const currentTheme = localStorage.getItem("hs_theme") || "auto";
-    
-    const newTheme = currentTheme === "dark" ? "light" : 
-                    currentTheme === "light" ? "auto" : "dark";
-    
-    localStorage.setItem("hs_theme", newTheme);
-    applyTheme(newTheme);
-}
-
-function applyStoredTheme() {
-    const storedTheme = localStorage.getItem("hs_theme") || "auto";
-    applyTheme(storedTheme);
-}
-
-function applyTheme(theme) {
-    const html = document.documentElement;
-    
-    if (theme === "auto") {
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        html.classList.toggle("dark", prefersDark);
-        html.classList.toggle("light", !prefersDark);
+    if (theme === "dark" || (theme === "auto" && prefersDark)) {
+        document.documentElement.classList.add("dark");
+        document.documentElement.classList.remove("light");
     } else {
-        html.classList.toggle("dark", theme === "dark");
-        html.classList.toggle("light", theme === "light");
+        document.documentElement.classList.remove("dark");
+        document.documentElement.classList.add("light");
     }
-}
 
-// Listen to system preference changes
-if (window.matchMedia) {
+    const themeToggle = document.getElementById("theme-toggle");
+    if (themeToggle) {
+        themeToggle.addEventListener("click", () => {
+            const isDark = document.documentElement.classList.contains("dark");
+            if (isDark) {
+                document.documentElement.classList.remove("dark");
+                document.documentElement.classList.add("light");
+                localStorage.setItem("hs_theme", "light");
+            } else {
+                document.documentElement.classList.remove("light");
+                document.documentElement.classList.add("dark");
+                localStorage.setItem("hs_theme", "dark");
+            }
+        });
+    }
+
+    // Listen to system preference change
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => {
         if ((localStorage.getItem("hs_theme") || "auto") === "auto") {
-            applyTheme("auto");
+            if (e.matches) {
+                document.documentElement.classList.add("dark");
+                document.documentElement.classList.remove("light");
+            } else {
+                document.documentElement.classList.remove("dark");
+                document.documentElement.classList.add("light");
+            }
         }
     });
 }
@@ -140,10 +152,6 @@ window.refreshPreline = function () {
     }, 100);
 };
 
-// =======================
-// CHAT WIDGET - UPDATED FOR CLEAN ROUTES
-// =======================
-
 window.chatWidget = function() {
     return {
         // State
@@ -151,8 +159,6 @@ window.chatWidget = function() {
         isOnline: false,
         isTyping: false,
         isConnected: false,
-        isLoading: false,
-        isSending: false,
         unreadCount: 0,
         currentMessage: '',
         messages: [],
@@ -162,20 +168,6 @@ window.chatWidget = function() {
         operatorName: 'Support Team',
         typingUser: '',
         typingTimer: null,
-        pollingTimer: null,
-        pollingInterval: 2000,
-        lastMessageTime: null,
-        
-        // API Endpoints - UPDATED FOR CLEAN ROUTES
-        endpoints: {
-            start: '/api/chat/start',                    // ✅ Updated
-            session: '/api/chat/session',                // ✅ Updated  
-            sendMessage: '/api/chat/send-message',       // ✅ Already correct
-            getMessages: '/api/chat/messages',           // ✅ Already correct
-            typing: '/api/chat/typing',                  // ✅ Already correct
-            close: '/api/chat/close',                    // ✅ Updated
-            onlineStatus: '/api/chat/online-status'      // ✅ Already correct
-        },
         
         // Initialize with error handling
         init() {
@@ -246,281 +238,7 @@ window.chatWidget = function() {
             }
         },
 
-        // UPDATED: Check online status
-        async checkOnlineStatus() {
-            try {
-                const response = await fetch(this.endpoints.onlineStatus);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        this.isOnline = data.online;
-                    }
-                }
-            } catch (error) {
-                console.warn('⚠️ Failed to check online status:', error);
-                this.isOnline = false;
-            }
-        },
-
-        // UPDATED: Load existing session
-        async loadExistingSession() {
-            try {
-                const response = await fetch(this.endpoints.session);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        this.sessionId = data.session_id;
-                        this.sessionStatus = data.status;
-                        
-                        if (data.operator) {
-                            this.operatorName = data.operator.name;
-                        }
-                        
-                        // Load messages for this session
-                        await this.loadMessages();
-                        
-                        // Start listening to this session
-                        this.listenToSession(`chat-session.${data.session_id}`);
-                        console.log('📂 Loaded existing session:', data.session_id);
-                    }
-                }
-            } catch (error) {
-                // Silent fail - no existing session is fine
-                console.log('ℹ️ No existing chat session found');
-            }
-        },
-
-        // UPDATED: Start chat session
-        async startChatSession() {
-            try {
-                console.log('🔄 Starting chat session...');
-                this.isLoading = true;
-                
-                const response = await fetch(this.endpoints.start, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    this.sessionId = data.session_id;
-                    this.sessionStatus = data.status;
-                    
-                    // Load welcome messages
-                    await this.loadMessages();
-                    
-                    // Start listening to this session
-                    this.listenToSession(`chat-session.${data.session_id}`);
-                    
-                    this.scrollToBottom();
-                    console.log('✅ Chat session started:', data.session_id);
-                } else {
-                    throw new Error(data.message || 'Failed to start chat session');
-                }
-            } catch (error) {
-                console.error('❌ Failed to start chat session:', error);
-                this.showError('Unable to start chat session. Please try again.');
-            } finally {
-                this.isLoading = false;
-            }
-        },
-
-        // UPDATED: Send message
-        async sendMessage() {
-            if (!this.currentMessage.trim() || !this.sessionId || this.isSending) return;
-
-            const message = this.currentMessage.trim();
-            this.currentMessage = '';
-            this.isSending = true;
-
-            // Optimistic UI update
-            const optimisticMessage = {
-                id: `temp-${Date.now()}`,
-                message: message,
-                sender_type: 'visitor',
-                sender_name: 'You',
-                created_at: new Date().toISOString(),
-                formatted_time: new Date().toLocaleTimeString('en-US', { 
-                    hour: '2-digit', 
-                    minute: '2-digit', 
-                    hour12: false 
-                }),
-                status: 'sending'
-            };
-            
-            this.messages.push(optimisticMessage);
-            this.scrollToBottom();
-
-            try {
-                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                
-                if (!csrfToken) {
-                    throw new Error('CSRF token not found');
-                }
-
-                const response = await fetch(this.endpoints.sendMessage, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken
-                    },
-                    body: JSON.stringify({
-                        session_id: this.sessionId,
-                        message: message
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error(`HTTP ${response.status}:`, errorText);
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Remove optimistic message
-                    const optimisticIndex = this.messages.findIndex(m => m.id === optimisticMessage.id);
-                    if (optimisticIndex !== -1) {
-                        this.messages.splice(optimisticIndex, 1);
-                    }
-
-                    // Add real message
-                    this.messages.push(data.message);
-                    this.scrollToBottom();
-                    
-                    console.log('✅ Message sent successfully');
-                } else {
-                    throw new Error(data.message || 'Server returned success: false');
-                }
-            } catch (error) {
-                console.error('❌ Failed to send message:', error);
-                
-                // Update optimistic message status
-                const optimisticIndex = this.messages.findIndex(m => m.id === optimisticMessage.id);
-                if (optimisticIndex !== -1) {
-                    this.messages[optimisticIndex].status = 'failed';
-                    this.messages[optimisticIndex].retry = () => {
-                        this.currentMessage = message;
-                        this.messages.splice(optimisticIndex, 1);
-                        this.sendMessage();
-                    };
-                }
-                
-                // Show user-friendly error
-                if (error.message.includes('HTTP 419')) {
-                    this.showError('Session expired. Please refresh the page.');
-                } else if (error.message.includes('HTTP 422')) {
-                    this.showError('Invalid message format.');
-                } else if (error.message.includes('HTTP 401')) {
-                    this.showError('Authentication required. Please login again.');
-                } else {
-                    this.showError('Failed to send message. Please try again.');
-                }
-            } finally {
-                this.isSending = false;
-            }
-        },
-
-        // UPDATED: Load messages  
-        async loadMessages() {
-            if (!this.sessionId) return;
-
-            try {
-                const url = new URL(this.endpoints.getMessages, window.location.origin);
-                url.searchParams.append('session_id', this.sessionId);
-                
-                if (this.lastMessageTime) {
-                    url.searchParams.append('since', Math.floor(this.lastMessageTime / 1000));
-                }
-
-                const response = await fetch(url);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        if (this.lastMessageTime) {
-                            // Append new messages
-                            this.messages.push(...data.messages);
-                        } else {
-                            // Initial load
-                            this.messages = data.messages;
-                        }
-                        
-                        this.sessionStatus = data.session_status;
-                        this.lastMessageTime = data.last_message_time;
-                        this.scrollToBottom();
-                    }
-                }
-            } catch (error) {
-                console.warn('⚠️ Failed to load messages:', error);
-            }
-        },
-
-        // UPDATED: Send typing indicator
-        async sendTypingIndicator(isTyping) {
-            if (!this.sessionId) return;
-
-            try {
-                await fetch(this.endpoints.typing, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-                    },
-                    body: JSON.stringify({
-                        session_id: this.sessionId,
-                        is_typing: isTyping
-                    })
-                });
-            } catch (error) {
-                // Silent fail for typing indicators
-                console.warn('⚠️ Failed to send typing indicator:', error);
-            }
-        },
-
-        // UPDATED: Close session
-        async closeSession() {
-            if (!this.sessionId) return;
-
-            try {
-                const response = await fetch(this.endpoints.close, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-                    },
-                    body: JSON.stringify({
-                        session_id: this.sessionId
-                    })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        this.sessionStatus = 'closed';
-                        console.log('✅ Chat session closed');
-                    }
-                }
-            } catch (error) {
-                console.warn('⚠️ Failed to close session:', error);
-            }
-        },
-
-        // Open chat interface
+        // Chat Session Management with improved error handling
         async openChat() {
             try {
                 this.isOpen = true;
@@ -541,13 +259,75 @@ window.chatWidget = function() {
             }
         },
 
-        // Close chat interface
         closeChat() {
             this.isOpen = false;
             console.log('💬 Chat closed');
         },
 
-        // Listen to WebSocket channel
+        async startChatSession() {
+            try {
+                console.log('🔄 Starting chat session...');
+                
+                const response = await fetch('/api/chat/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.sessionId = data.session_id;
+                    this.sessionStatus = data.status;
+                    this.messages = data.messages || [];
+                    
+                    // Start listening to this session
+                    this.listenToSession(`chat-session.${data.session_id}`);
+                    
+                    this.scrollToBottom();
+                    console.log('✅ Chat session started:', data.session_id);
+                } else {
+                    throw new Error(data.message || 'Failed to start chat session');
+                }
+            } catch (error) {
+                console.error('❌ Failed to start chat session:', error);
+                this.showError('Unable to start chat session. Please try again.');
+            }
+        },
+
+        async loadExistingSession() {
+            try {
+                const response = await fetch('/api/chat/session');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.sessionId = data.session_id;
+                        this.sessionStatus = data.status;
+                        this.messages = data.messages || [];
+                        
+                        if (data.operator) {
+                            this.operatorName = data.operator.name;
+                        }
+                        
+                        // Start listening to this session
+                        this.listenToSession(`chat-session.${data.session_id}`);
+                        console.log('📂 Loaded existing session:', data.session_id);
+                    }
+                }
+            } catch (error) {
+                // Silent fail - no existing session is fine
+                console.log('ℹ️ No existing chat session found');
+            }
+        },
+
         listenToSession(channel) {
             if (!window.Echo || !channel) {
                 console.warn('⚠️ Cannot listen to session - Echo or channel unavailable');
@@ -560,76 +340,117 @@ window.chatWidget = function() {
                 window.Echo.channel(channel)
                     .listen('.message.sent', (e) => {
                         console.log('📨 New message received:', e);
-                        if (e.message && e.message.sender_type !== 'visitor') {
-                            this.messages.push(e.message);
-                            this.scrollToBottom();
-                            
-                            if (!this.isOpen) {
-                                this.unreadCount++;
-                                this.showNotification('New message received');
-                            }
-                        }
+                        this.handleNewMessage(e);
                     })
-                    .listen('.user.typing', (e) => {
-                        if (e.user_type === 'operator' && e.is_typing) {
-                            this.typingUser = e.user_name;
-                            this.isTyping = true;
-                            
-                            clearTimeout(this.typingTimer);
-                            this.typingTimer = setTimeout(() => {
-                                this.isTyping = false;
-                                this.typingUser = '';
-                            }, 3000);
-                        } else if (e.user_type === 'operator') {
-                            this.isTyping = false;
-                            this.typingUser = '';
-                        }
+                    .listen('.typing.indicator', (e) => {
+                        this.handleTypingIndicator(e);
                     })
-                    .listen('.session.status.changed', (e) => {
-                        if (e.session && e.session.session_id === this.sessionId) {
-                            this.sessionStatus = e.session.status;
-                            
-                            if (e.session.assigned_operator) {
-                                this.operatorName = e.session.assigned_operator.name;
-                            }
-                        }
+                    .listen('.session.closed', (e) => {
+                        console.log('🔒 Session closed:', e);
+                        this.handleSessionClosed(e);
+                    })
+                    .error((error) => {
+                        console.error('❌ Channel listening error:', error);
                     });
                     
             } catch (error) {
-                console.error('❌ Failed to listen to session:', error);
+                this.handleError(error, 'Session Listening');
             }
         },
 
-        // Handle typing events
-        handleTyping() {
-            if (!this.sessionId) return;
-            this.sendTypingIndicator(true);
-            
-            if (this.typingTimer) {
-                clearTimeout(this.typingTimer);
+        // Message Handling
+        async sendMessage() {
+            if (!this.currentMessage.trim() || !this.sessionId) return;
+
+            const message = this.currentMessage.trim();
+            this.currentMessage = '';
+            this.stopTyping();
+
+            try {
+                const response = await fetch('/api/chat/send-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        session_id: this.sessionId,
+                        message: message
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Message will be added via WebSocket
+                    this.scrollToBottom();
+                    console.log('📤 Message sent successfully');
+                } else {
+                    throw new Error(data.message || 'Failed to send message');
+                }
+            } catch (error) {
+                console.error('❌ Failed to send message:', error);
+                this.showError('Failed to send message');
+                this.currentMessage = message; // Restore message
             }
-            
-            this.typingTimer = setTimeout(() => {
-                this.sendTypingIndicator(false);
-            }, 3000);
         },
 
-        // Start new session
-        async startNewSession() {
-            this.sessionId = null;
-            this.sessionStatus = null;
-            this.messages = [];
-            this.lastMessageTime = null;
-            await this.startChatSession();
+        handleNewMessage(event) {
+            try {
+                // Add message if not already in list
+                if (!this.messages.find(m => m.id === event.id)) {
+                    this.messages.push(event);
+                    this.scrollToBottom();
+                    
+                    // Show notification if chat is closed and message is from operator
+                    if (!this.isOpen && event.sender_type === 'operator') {
+                        this.unreadCount++;
+                        this.playNotificationSound();
+                    }
+                }
+            } catch (error) {
+                this.handleError(error, 'Handle New Message');
+            }
         },
 
-        // Send quick message
-        async sendQuickMessage(message) {
-            this.currentMessage = message;
-            await this.sendMessage();
+        handleTypingIndicator(event) {
+            try {
+                if (event.user_id !== parseInt(window.authUserId || 0)) {
+                    this.isTyping = event.is_typing;
+                    this.typingUser = event.user_name;
+                    
+                    if (event.is_typing) {
+                        this.scrollToBottom();
+                    }
+                }
+            } catch (error) {
+                this.handleError(error, 'Typing Indicator');
+            }
         },
 
-        // Scroll to bottom
+        handleSessionClosed(event) {
+            this.sessionStatus = 'closed';
+            this.showInfo('Chat session has been closed');
+        },
+
+        // Utility Methods
+        async checkOnlineStatus() {
+            try {
+                const response = await fetch('/api/chat/online-status');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.isOnline = data.is_online;
+                }
+            } catch (error) {
+                // Silent fail for status checks
+                this.isOnline = false;
+            }
+        },
+
         scrollToBottom() {
             this.$nextTick(() => {
                 const container = this.$refs.messagesContainer;
@@ -639,11 +460,63 @@ window.chatWidget = function() {
             });
         },
 
-        // Show notification
-        showNotification(message, type = 'info') {
+        formatMessage(message) {
+            if (!message) return '';
+            // Simple URL detection and linking
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            return message.replace(urlRegex, '<a href="$1" target="_blank" class="underline">$1</a>');
+        },
+
+        formatTime(timestamp) {
+            try {
+                const date = new Date(timestamp);
+                const now = new Date();
+                const diff = now - date;
+
+                if (diff < 60000) return 'now';
+                if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+                if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+                return date.toLocaleDateString();
+            } catch (error) {
+                return 'now';
+            }
+        },
+
+        getConnectionStatusText() {
+            switch (this.connectionStatus) {
+                case 'connecting': return 'Connecting...';
+                case 'connected': return 'Connected';
+                case 'disconnected': return 'Disconnected';
+                case 'unavailable': return 'WebSocket unavailable';
+                case 'error': return 'Connection error';
+                default: return 'Connecting...';
+            }
+        },
+
+        playNotificationSound() {
+            try {
+                if (this.$el?.dataset?.enableSound === 'true') {
+                    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvGUeBT2U2fPGdSYELYHM89yJOQcZZ7zs5Z9NEAxPqOTvt2MdBjiR2O/NeSsFJHfI8N+QQAoUXrPq66hWFAlFnt/xvWYfBT2U2/PHdSUELYDL89uKOQgZZ7vs5qBOEAxOpuPwuGQdBTiP2PDPeSsFJHbH8OCSQgoTXbPq7KlXFAlFnt/wvmcfBTyU3PLIdCUELYDK89uLOggZZrvr56BOEQxOpuLvuWUdBTiP2fDQeSoFJHbH8OGTRQ==');
+                    audio.volume = 0.3;
+                    audio.play().catch(() => {});
+                }
+            } catch (error) {
+                // Silent fail for audio
+            }
+        },
+
+        showError(message) {
+            this.showNotification('error', message);
+        },
+
+        showInfo(message) {
+            this.showNotification('info', message);
+        },
+
+        showNotification(type, message) {
             try {
                 const notification = document.createElement('div');
-                notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg text-white ${
+                notification.className = `fixed top-4 right-4 z-50 p-3 rounded-lg shadow-lg text-white max-w-sm ${
                     type === 'error' ? 'bg-red-500' : 'bg-blue-500'
                 }`;
                 notification.textContent = message;
@@ -658,15 +531,58 @@ window.chatWidget = function() {
             }
         },
 
-        // Show error
-        showError(message) {
-            this.showNotification(message, 'error');
-        },
-
-        // Handle errors
         handleError(error, context = 'Unknown') {
             console.error(`❌ Chat Error in ${context}:`, error);
             // Could implement more sophisticated error handling here
+        },
+
+        async startNewSession() {
+            this.sessionId = null;
+            this.sessionStatus = null;
+            this.messages = [];
+            await this.startChatSession();
+        },
+
+        // Typing indicators and other methods remain the same...
+        handleTyping() {
+            if (!this.sessionId) return;
+            this.sendTypingIndicator(true);
+            
+            if (this.typingTimer) {
+                clearTimeout(this.typingTimer);
+            }
+            
+            this.typingTimer = setTimeout(() => {
+                this.stopTyping();
+            }, 3000);
+        },
+
+        stopTyping() {
+            if (this.typingTimer) {
+                clearTimeout(this.typingTimer);
+                this.typingTimer = null;
+            }
+            this.sendTypingIndicator(false);
+        },
+
+        async sendTypingIndicator(isTyping) {
+            if (!this.sessionId) return;
+
+            try {
+                await fetch('/api/chat/typing', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        session_id: this.sessionId,
+                        is_typing: isTyping
+                    })
+                });
+            } catch (error) {
+                // Silent fail for typing indicators
+            }
         }
     }
 };

@@ -115,17 +115,13 @@
             {{ $slot }}
         </div>
     </div>
-    @auth
-    <!-- Include chat widget only for authenticated users -->
+    <!-- Chat Widget -->
     <x-chat-widget 
-            :auto-open="false"
-            theme="primary"
-            position="bottom-right"
-            :enable-sound="true"
-            :show-online-status="true"
-            :polling-interval="2000"
-        />
-    @endauth
+        size="compact"
+        theme="client"
+        :show-online-status="true"
+        welcome-message="Halo! Ada yang bisa kami bantu?"
+        operator-name="Customer Support" />
     
     <!-- ========== END MAIN CONTENT ========== -->
 <script>

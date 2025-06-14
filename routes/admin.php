@@ -221,7 +221,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // Chat
     Route::prefix('chat')->name('chat.')->group(function () {
         // Main chat management
-        Route::get('/', [ChatController::class, 'adminindex'])->name('index');
+        Route::get('/', [ChatController::class, 'index'])->name('index');
         Route::get('/settings', [ChatController::class, 'settings'])->name('settings');
         Route::post('/settings', [ChatController::class, 'updateSettings'])->name('settings.update');
         Route::get('/reports', [ChatController::class, 'reports'])->name('reports');
@@ -229,10 +229,41 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::get('/reports/detailed', [ChatController::class, 'detailedReports'])->name('reports.detailed');
         Route::post('/reports/generate', [ChatController::class, 'generateReport'])->name('reports.generate');
         
+        // Individual chat session management
+        Route::get('/{chatSession}', [ChatController::class, 'show'])->name('show');
+        Route::post('/{chatSession}/reply', [ChatController::class, 'reply'])->middleware('throttle:30,1')->name('reply');
+        Route::post('/{chatSession}/close-session', [ChatController::class, 'closeSession'])->name('close');
+        Route::post('/{chatSession}/assign', [ChatController::class, 'assignToMe'])->name('assign');
+        Route::post('/{chatSession}/assign-to-me', [ChatController::class, 'assignToMe'])->name('assign-to-me');
+        Route::post('/{chatSession}/take-over', [ChatController::class, 'takeOverSession'])->name('take-over');
+        Route::post('/{chatSession}/priority', [ChatController::class, 'updatePriority'])->name('priority');
+        Route::post('/{chatSession}/notes', [ChatController::class, 'updateNotes'])->name('notes');
+        Route::post('/{chatSession}/typing', [ChatController::class, 'typing'])->name('typing');
+        Route::post('/{chatSession}/transfer', [ChatController::class, 'transferSession'])->name('transfer');
+        Route::post('/{chatSession}/use-template', [ChatController::class, 'useTemplate'])->name('use-template');
+        Route::get('/{chatSession}/poll-messages', [ChatController::class, 'pollMessages'])->name('poll-messages');
+        Route::post('/{chatSession}/mark-messages-read', [ChatController::class, 'markMessagesRead'])->name('mark-messages-read');
+        Route::get('/{chatSession}/messages', [ChatController::class, 'getChatMessages'])->name('messages');
+        
+        // Operator management
+        Route::post('/operator/online', [ChatController::class, 'goOnline'])->name('operator.online');
+        Route::post('/operator/offline', [ChatController::class, 'goOffline'])->name('operator.offline');
+        Route::get('/operator/status', [ChatController::class, 'getOperatorStatus'])->name('operator.status');
+        Route::post('/operator/availability', [ChatController::class, 'updateAvailability'])->name('operator.availability');
+        Route::get('/operators/available', [ChatController::class, 'getAvailableOperators'])->name('operators.available');
         
         // Quick templates for chat usage (different from full template management)
         Route::get('/quick-templates', [ChatController::class, 'getQuickTemplates'])->name('quick-templates');
         Route::get('/search-templates', [ChatController::class, 'searchTemplates'])->name('search-templates');
+        
+        // Bulk operations
+        Route::post('/bulk-update', [ChatController::class, 'bulkUpdate'])->name('bulk-update');
+        Route::post('/archive-old', [ChatController::class, 'archiveOldSessions'])->name('archive-old');
+        
+        // API endpoints
+        Route::get('/api/statistics', [ChatController::class, 'statistics'])->name('statistics');
+        Route::get('/api/dashboard-metrics', [ChatController::class, 'getDashboardMetrics'])->name('api.dashboard-metrics');
+        Route::get('/api/sessions', [ChatController::class, 'getAdminSessions'])->name('api.sessions');
         
         // Chat Templates Management (Full CRUD)
         Route::prefix('templates')->name('templates.')->group(function () {

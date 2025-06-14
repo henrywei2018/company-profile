@@ -686,132 +686,63 @@ function chatWidget() {
         },
 
         // Message Handling
-        // Perbaikan fungsi sendMessage di chat widget
-async sendMessage() {
-    if (!this.currentMessage.trim() || !this.sessionId || this.isSending) return;
+        async sendMessage() {
+            if (!this.currentMessage.trim() || !this.sessionId || this.isSending) return;
 
-    const message = this.currentMessage.trim();
-    this.currentMessage = '';
-    this.isSending = true;
+            const message = this.currentMessage.trim();
+            this.currentMessage = '';
+            this.isSending = true;
+            this.stopTyping();
 
-    // Optimistic UI update - tambahkan pesan sementara
-    const optimisticMessage = {
-        id: `temp-${Date.now()}`,
-        message: message,
-        sender_type: 'visitor',
-        sender_name: 'You',
-        created_at: new Date().toISOString(),
-        formatted_time: new Date().toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            hour12: false 
-        }),
-        status: 'sending'
-    };
-    
-    this.messages.push(optimisticMessage);
-    this.scrollToBottom();
-
-    try {
-        // Get fresh CSRF token
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        
-        if (!csrfToken) {
-            throw new Error('CSRF token not found');
-        }
-
-        const response = await fetch('/api/chat/send-message', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                // Tambahkan Authorization header jika menggunakan Sanctum
-                ...(window.authToken && { 'Authorization': `Bearer ${window.authToken}` })
-            },
-            body: JSON.stringify({
-                session_id: this.sessionId,
-                message: message
-            })
-        });
-
-        // Cek status response secara detail
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`HTTP ${response.status}:`, errorText);
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        
-        // Pastikan response sukses
-        if (data.success) {
-            // Remove optimistic message dan replace dengan data real
-            const optimisticIndex = this.messages.findIndex(m => m.id === optimisticMessage.id);
-            if (optimisticIndex !== -1) {
-                this.messages.splice(optimisticIndex, 1);
-            }
-
-            // Process real messages dari server
-            if (data.messages && data.messages.length > 0) {
-                this.processNewMessages(data.messages);
-            }
-            
-            console.log('✅ Message sent successfully');
-            
-            // Trigger immediate poll untuk response
-            setTimeout(() => this.pollMessages(), 100);
-        } else {
-            throw new Error(data.message || 'Server returned success: false');
-        }
-    } catch (error) {
-        console.error('❌ Failed to send message:', error);
-        
-        // Update optimistic message status
-        const optimisticIndex = this.messages.findIndex(m => m.id === optimisticMessage.id);
-        if (optimisticIndex !== -1) {
-            this.messages[optimisticIndex].status = 'failed';
-            this.messages[optimisticIndex].retry = () => {
-                this.currentMessage = message;
-                this.messages.splice(optimisticIndex, 1);
-                this.sendMessage();
+            // Add optimistic message
+            const optimisticMessage = {
+                id: Date.now(), // Temporary ID
+                message: message,
+                sender_type: 'visitor',
+                sender_name: 'You',
+                created_at: new Date().toISOString(),
+                status: 'sending',
+                isOptimistic: true
             };
-        }
-        
-        // Show error dengan informasi lebih detail
-        if (error.message.includes('HTTP 419')) {
-            this.showError('Session expired. Please refresh the page.');
-        } else if (error.message.includes('HTTP 422')) {
-            this.showError('Invalid message format.');
-        } else if (error.message.includes('HTTP 401')) {
-            this.showError('Authentication required. Please login again.');
-        } else {
-            this.showError('Failed to send message. Please try again.');
-        }
-        
-        // Restore message in input for retry
-        this.currentMessage = message;
-    } finally {
-        this.isSending = false;
-    }
-},
+            
+            this.messages.push(optimisticMessage);
+            this.scrollToBottom();
 
-// Fungsi helper untuk process messages
-processNewMessages(messages) {
-    if (!Array.isArray(messages)) return;
-    
-    messages.forEach(message => {
-        // Cek apakah message sudah ada
-        const exists = this.messages.find(m => m.id === message.id);
-        if (!exists) {
-            this.messages.push(message);
-        }
-    });
-    
-    // Sort messages by created_at
-    this.messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-    this.scrollToBottom();
-},
+            try {
+                const response = await fetch('/api/chat/send-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        session_id: this.sessionId,
+                        message: message
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Remove optimistic message and add real messages
+                    this.messages = this.messages.filter(m => !m.isOptimistic);
+                    if (data.messages) {
+                        this.processNewMessages(data.messages);
+                    }
+                    
+                    // Trigger immediate poll for response
+                    setTimeout(() => this.pollMessages(), 100);
+                    this.adaptivePolling(true);
+                } else {
+                    this.handleSendError(optimisticMessage, message);
+                }
+            } catch (error) {
+                console.error('Failed to send message:', error);
+                this.handleSendError(optimisticMessage, message);
+            } finally {
+                this.isSending = false;
+            }
+        },
 
         handleSendError(optimisticMessage, originalMessage) {
             // Update optimistic message to show error

@@ -1,19 +1,24 @@
 /**
- * Clean ChatSystem Class
- * Compatible with Clean Routes & Controller
- * Laravel 12 + Alpine.js + Echo integration
+ * Enhanced Chat System for Laravel 12
+ * Supports both visitor and admin chat functionality
+ * Fixed for proper authentication and API routing
  */
-
 class ChatSystem {
     constructor(config = {}) {
+        // Default configuration
         this.config = {
-            baseUrl: config.baseUrl || '/api/chat',
-            adminBaseUrl: config.adminBaseUrl || '/api/admin/chat',
-            userId: config.userId || null,
-            userType: config.userType || 'visitor', // 'visitor', 'operator', 'admin'
-            userName: config.userName || 'Anonymous',
-            csrfToken: config.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
-            debug: config.debug || false,
+            baseUrl: '/api/chat',
+            adminBaseUrl: '/api/admin/chat',
+            userId: null,
+            userType: 'visitor', // 'visitor', 'user', 'admin'
+            userName: 'Guest',
+            csrfToken: null,
+            authToken: null,
+            debug: false,
+            autoReconnect: true,
+            maxReconnectAttempts: 5,
+            reconnectInterval: 3000,
+            heartbeatInterval: 30000,
             ...config
         };
 
@@ -22,17 +27,28 @@ class ChatSystem {
         this.messages = [];
         this.isConnected = false;
         this.connectionState = 'disconnected';
-        this.eventListeners = new Map();
-        
-        // Timers
-        this.typingTimer = null;
-        this.pollTimer = null;
-        this.reconnectTimer = null;
-        
-        // Settings
-        this.pollingInterval = 3000; // 3 seconds
-        this.maxReconnectAttempts = 5;
         this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = this.config.maxReconnectAttempts;
+
+        // Event system
+        this.eventListeners = {};
+        this.echo = null;
+        this.channel = null;
+
+        // Timers
+        this.reconnectTimer = null;
+        this.heartbeatTimer = null;
+        this.pollTimer = null;
+
+        // Auto-initialize CSRF token if not provided
+        if (!this.config.csrfToken) {
+            this.config.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        }
+
+        // Auto-initialize user info
+        if (!this.config.userId) {
+            this.config.userId = document.querySelector('meta[name="auth-user-id"]')?.getAttribute('content');
+        }
 
         // Initialize
         this.init();
@@ -46,33 +62,72 @@ class ChatSystem {
         try {
             this.log('🚀 Initializing ChatSystem...');
             
-            this.setupEcho();
+            // Setup Echo if available
+            if (typeof window.Echo !== 'undefined') {
+                this.echo = window.Echo;
+                this.setupEchoListeners();
+            } else {
+                this.logWarn('⚠️ Laravel Echo not available - using polling fallback');
+            }
+
+            // Setup global listeners
             this.setupGlobalListeners();
-            await this.loadExistingSession();
-            
+
+            // Auto-restore session if exists
+            const storedSession = this.getStoredSession();
+            if (storedSession) {
+                this.log('🔄 Restoring previous session...');
+                await this.loadExistingSession();
+            }
+
             this.log('✅ ChatSystem initialized successfully');
-            this.emit('initialized');
+            this.emit('init:complete');
+
         } catch (error) {
-            this.logError('❌ ChatSystem initialization failed:', error);
-            this.emit('error', { type: 'initialization', error });
+            this.logError('❌ Failed to initialize ChatSystem:', error);
+            this.emit('init:error', error);
         }
     }
 
-    setupEcho() {
-        if (window.Echo) {
-            this.echo = window.Echo;
-            this.setupEchoListeners();
-            this.log('📡 Echo integration ready');
+    // =======================
+    // EVENT SYSTEM
+    // =======================
+
+    on(event, callback) {
+        if (!this.eventListeners[event]) {
+            this.eventListeners[event] = [];
+        }
+        this.eventListeners[event].push(callback);
+    }
+
+    off(event, callback = null) {
+        if (!this.eventListeners[event]) return;
+        
+        if (callback) {
+            this.eventListeners[event] = this.eventListeners[event].filter(cb => cb !== callback);
         } else {
-            this.logWarn('⚠️ Echo not available - using polling fallback');
+            delete this.eventListeners[event];
         }
     }
+
+    emit(event, data = null) {
+        if (this.eventListeners[event]) {
+            this.eventListeners[event].forEach(callback => {
+                try {
+                    callback(data);
+                } catch (error) {
+                    this.logError(`Error in event listener for ${event}:`, error);
+                }
+            });
+        }
+    }
+
+    // =======================
+    // REALTIME CONNECTION
+    // =======================
 
     setupEchoListeners() {
-        if (!this.echo) return;
-
         try {
-            // Global connection status
             this.echo.connector.pusher.connection.bind('connected', () => {
                 this.connectionState = 'connected';
                 this.isConnected = true;
@@ -160,52 +215,92 @@ class ChatSystem {
             // Try to get session from server first
             const response = await this.apiCall('GET', '/session');
             
-            if (response.success) {
-                this.session = {
-                    session_id: response.session_id,
-                    status: response.status,
-                    operator: response.operator || null,
-                    queue_position: response.queue_position || 0
-                };
-                
-                this.storeSession();
+            if (response.success && response.session) {
+                this.session = response.session;
+                this.messages = response.messages || [];
                 this.setupSessionListeners();
-                await this.loadMessages();
                 
-                this.log('📂 Loaded existing session:', response.session_id);
-                this.emit('session:loaded', this.session);
+                this.log('✅ Existing session loaded:', response.session.session_id);
+                this.emit('session:restored', this.session);
                 
                 return this.session;
+            } else {
+                // Clear invalid stored session
+                this.clearStoredSession();
+                return null;
             }
         } catch (error) {
-            // Silent fail - no existing session is fine
-            this.log('ℹ️ No existing session found');
+            this.logWarn('⚠️ Could not load existing session:', error.message);
+            this.clearStoredSession();
+            return null;
         }
-        
-        // Fallback: try localStorage
-        const stored = this.getStoredSession();
-        if (stored && stored.session_id) {
-            this.session = stored;
-            this.log('📱 Restored session from storage');
-        }
-        
-        return null;
+    }
+
+    setupSessionListeners() {
+        if (!this.session || !this.echo) return;
+
+        const channelName = `chat-session.${this.session.session_id}`;
+        this.channel = this.echo.channel(channelName);
+
+        this.channel
+            .listen('.message.sent', (e) => {
+                this.log('📨 New message received:', e);
+                if (e.message) {
+                    this.messages.push(e.message);
+                    this.emit('message:received', e.message);
+                }
+            })
+            .listen('.user.typing', (e) => {
+                this.log('⌨️ User typing:', e);
+                this.emit('typing:indicator', e);
+            })
+            .listen('.session.status.changed', (e) => {
+                this.log('📊 Session status changed:', e);
+                if (this.session) {
+                    this.session.status = e.status;
+                    this.storeSession();
+                }
+                this.emit('session:status:changed', e);
+            })
+            .listen('.operator.assigned', (e) => {
+                this.log('👤 Operator assigned:', e);
+                if (this.session) {
+                    this.session.operator = e.operator;
+                    this.storeSession();
+                }
+                this.emit('operator:assigned', e.operator);
+            });
+
+        this.log(`👂 Listening to channel: ${channelName}`);
     }
 
     async closeSession() {
-        if (!this.session?.session_id) return;
-
         try {
-            await this.apiCall('POST', '/close', {
+            if (!this.session) {
+                this.logWarn('⚠️ No session to close');
+                return;
+            }
+
+            this.log('🔴 Closing chat session...');
+            
+            const response = await this.apiCall('POST', '/close', {
                 session_id: this.session.session_id
             });
-            
+
+            if (response.success) {
+                this.session.status = 'closed';
+                this.emit('session:closed', this.session);
+                this.log('✅ Session closed successfully');
+            }
+
+            // Cleanup regardless of API response
             this.cleanup();
-            this.log('✅ Session closed');
-            this.emit('session:closed');
+
         } catch (error) {
             this.logError('❌ Failed to close session:', error);
             this.emit('error', { type: 'close_session', error });
+            // Still cleanup locally
+            this.cleanup();
         }
     }
 
@@ -213,34 +308,32 @@ class ChatSystem {
     // MESSAGE HANDLING
     // =======================
 
-    async sendMessage(content, type = 'text') {
-        if (!content.trim()) {
-            throw new Error('Message cannot be empty');
-        }
-
-        if (!this.session?.session_id) {
-            throw new Error('No active session');
-        }
-
+    async sendMessage(content, type = 'text', attachments = null) {
         try {
-            const endpoint = this.config.userType === 'admin' || this.config.userType === 'operator' 
-                ? `/${this.session.session_id}/reply` 
-                : '/send-message';
+            if (!this.session) {
+                throw new Error('No active chat session');
+            }
+
+            this.log(`📤 Sending message: ${content}`);
             
-            const baseUrl = this.config.userType === 'admin' || this.config.userType === 'operator'
-                ? this.config.adminBaseUrl
-                : this.config.baseUrl;
+            const messageData = {
+                session_id: this.session.session_id,
+                content: content,
+                type: type
+            };
 
-            const payload = this.config.userType === 'admin' || this.config.userType === 'operator'
-                ? { message: content }
-                : { session_id: this.session.session_id, message: content };
+            if (attachments) {
+                messageData.attachments = attachments;
+            }
 
-            const response = await this.apiCall('POST', endpoint, payload, baseUrl);
+            // FIXED: Use correct endpoint
+            const response = await this.apiCall('POST', '/messages', messageData);
             
             if (response.success) {
-                this.addMessage(response.message);
+                this.messages.push(response.message);
                 this.log('✅ Message sent successfully');
                 this.emit('message:sent', response.message);
+                
                 return response.message;
             } else {
                 throw new Error(response.message || 'Failed to send message');
@@ -252,184 +345,73 @@ class ChatSystem {
         }
     }
 
-    async loadMessages(since = null) {
-        if (!this.session?.session_id) return [];
-
+    async getMessages() {
         try {
-            const endpoint = this.config.userType === 'admin' || this.config.userType === 'operator'
-                ? `/${this.session.session_id}/messages`
-                : '/messages';
-            
-            const baseUrl = this.config.userType === 'admin' || this.config.userType === 'operator'
-                ? this.config.adminBaseUrl
-                : this.config.baseUrl;
-
-            const params = new URLSearchParams();
-            
-            if (this.config.userType === 'visitor') {
-                params.append('session_id', this.session.session_id);
-            }
-            
-            if (since) {
-                params.append('since', since);
+            if (!this.session) {
+                return [];
             }
 
-            const url = `${endpoint}?${params.toString()}`;
-            const response = await this.apiCall('GET', url, null, baseUrl);
+            const response = await this.apiCall('GET', `/messages/${this.session.session_id}`);
             
             if (response.success) {
-                if (since) {
-                    // Append new messages
-                    response.messages.forEach(msg => this.addMessage(msg));
-                } else {
-                    // Replace all messages
-                    this.messages = response.messages || [];
-                }
-                
+                this.messages = response.messages || [];
                 this.emit('messages:loaded', this.messages);
-                return response.messages || [];
+                return this.messages;
+            } else {
+                throw new Error(response.message || 'Failed to get messages');
             }
         } catch (error) {
-            this.logError('❌ Failed to load messages:', error);
-            this.emit('error', { type: 'load_messages', error });
-        }
-        
-        return [];
-    }
-
-    addMessage(message) {
-        if (!message || !message.id) return;
-
-        // Check for duplicates
-        const existingIndex = this.messages.findIndex(m => m.id === message.id);
-        
-        if (existingIndex >= 0) {
-            // Update existing message
-            this.messages[existingIndex] = { ...this.messages[existingIndex], ...message };
-        } else {
-            // Add new message
-            this.messages.push(message);
-            
-            // Sort by timestamp
-            this.messages.sort((a, b) => {
-                const timeA = new Date(a.created_at || 0).getTime();
-                const timeB = new Date(b.created_at || 0).getTime();
-                return timeA - timeB;
-            });
-        }
-        
-        this.emit('message:added', message);
-        this.emit('messages:updated', this.messages);
-    }
-
-    // =======================
-    // TYPING INDICATORS
-    // =======================
-
-    sendTypingIndicator(isTyping = true) {
-        if (!this.session?.session_id) return;
-
-        // Clear existing timer
-        clearTimeout(this.typingTimer);
-
-        // Send typing indicator via API
-        this.apiCall('POST', '/typing', {
-            session_id: this.session.session_id,
-            is_typing: isTyping
-        }).catch(error => {
-            // Silent fail for typing indicators
-            this.log('⚠️ Typing indicator failed:', error.message);
-        });
-
-        // Auto-stop typing after 3 seconds
-        if (isTyping) {
-            this.typingTimer = setTimeout(() => {
-                this.sendTypingIndicator(false);
-            }, 3000);
+            this.logError('❌ Failed to get messages:', error);
+            return this.messages; // Return cached messages
         }
     }
 
-    // =======================
-    // REAL-TIME LISTENERS
-    // =======================
-
-    setupSessionListeners() {
-        if (!this.echo || !this.session?.session_id) return;
-
+    async sendTypingIndicator(isTyping = true) {
         try {
-            const channelName = `chat-session.${this.session.session_id}`;
-            this.channel = this.echo.channel(channelName);
-            
-            this.channel
-                .listen('.message.sent', (e) => {
-                    this.log('📨 Real-time message received:', e);
-                    if (e.message) {
-                        this.addMessage(e.message);
-                        this.emit('message:received', e.message);
-                    }
-                })
-                .listen('.user.typing', (e) => {
-                    this.log('⌨️ Typing indicator:', e);
-                    this.emit('typing:indicator', e);
-                })
-                .listen('.session.status.changed', (e) => {
-                    this.log('🔄 Session status changed:', e);
-                    if (e.session && this.session) {
-                        this.session.status = e.session.status;
-                        this.session.operator = e.session.assigned_operator || null;
-                        this.storeSession();
-                        this.emit('session:updated', this.session);
-                    }
-                });
+            if (!this.session) return;
 
-            this.log('👂 Listening to channel:', channelName);
-            this.emit('channel:joined', channelName);
-            
+            await this.apiCall('POST', '/typing', {
+                session_id: this.session.session_id,
+                is_typing: isTyping
+            });
+
+            this.log(`⌨️ Typing indicator sent: ${isTyping}`);
         } catch (error) {
-            this.logError('❌ Failed to setup session listeners:', error);
+            // Silent fail for typing indicators
+            this.logWarn('⚠️ Failed to send typing indicator:', error.message);
         }
     }
 
     // =======================
-    // ADMIN-SPECIFIC METHODS
+    // ADMIN METHODS
     // =======================
 
-    async getAdminSessions(filter = 'all', page = 1) {
-        if (this.config.userType !== 'admin' && this.config.userType !== 'operator') {
-            throw new Error('Admin access required');
-        }
-
+    async getAdminSessions(filter = 'all') {
         try {
-            const params = new URLSearchParams({
-                filter,
-                page: page.toString(),
-                per_page: '50'
-            });
-
-            const response = await this.apiCall('GET', `/sessions?${params}`, null, this.config.adminBaseUrl);
+            const response = await this.apiCall('GET', '/sessions', null, this.config.adminBaseUrl);
             
             if (response.success) {
-                this.emit('admin:sessions:loaded', response.sessions);
-                return response;
+                return response.sessions || [];
+            } else {
+                throw new Error(response.message || 'Failed to get sessions');
             }
         } catch (error) {
-            this.logError('❌ Failed to load admin sessions:', error);
-            this.emit('error', { type: 'load_admin_sessions', error });
+            this.logError('❌ Failed to get admin sessions:', error);
+            this.emit('error', { type: 'admin_sessions', error });
             throw error;
         }
     }
 
     async assignSessionToMe(sessionId) {
-        if (this.config.userType !== 'admin' && this.config.userType !== 'operator') {
-            throw new Error('Admin access required');
-        }
-
         try {
-            const response = await this.apiCall('POST', `/${sessionId}/assign`, {}, this.config.adminBaseUrl);
+            const response = await this.apiCall('POST', `/${sessionId}/assign`, null, this.config.adminBaseUrl);
             
             if (response.success) {
-                this.emit('admin:session:assigned', response.operator);
-                return response.operator;
+                this.log('✅ Session assigned successfully');
+                this.emit('admin:session:assigned', response);
+                return response;
+            } else {
+                throw new Error(response.message || 'Failed to assign session');
             }
         } catch (error) {
             this.logError('❌ Failed to assign session:', error);
@@ -439,14 +421,11 @@ class ChatSystem {
     }
 
     async setOperatorStatus(status) {
-        if (this.config.userType !== 'admin' && this.config.userType !== 'operator') {
-            throw new Error('Admin access required');
-        }
-
         try {
             const response = await this.apiCall('POST', '/operator/status', { status }, this.config.adminBaseUrl);
             
             if (response.success) {
+                this.log(`✅ Operator status set to: ${status}`);
                 this.emit('admin:status:updated', response.operator);
                 return response.operator;
             }
@@ -465,16 +444,24 @@ class ChatSystem {
         const baseUrl = customBaseUrl || this.config.baseUrl;
         const url = `${baseUrl}${endpoint}`;
         
+        // FIXED: Proper session-based authentication
         const options = {
             method,
+            credentials: 'same-origin', // CRITICAL for session auth
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'X-CSRF-TOKEN': this.config.csrfToken
+                'X-Requested-With': 'XMLHttpRequest', // Required for Laravel
             }
         };
 
-        // Add authentication header if needed
+        // Add CSRF token for Laravel
+        const csrfToken = this.config.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            options.headers['X-CSRF-TOKEN'] = csrfToken;
+        }
+
+        // Add authentication header if using token auth (fallback)
         if (this.config.authToken) {
             options.headers['Authorization'] = `Bearer ${this.config.authToken}`;
         }
@@ -485,18 +472,40 @@ class ChatSystem {
 
         this.log(`🌐 API Call: ${method} ${url}`, data);
 
-        const response = await fetch(url, options);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            this.logError(`HTTP ${response.status}:`, errorText);
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+        try {
+            const response = await fetch(url, options);
+            
+            if (!response.ok) {
+                let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                
+                try {
+                    const errorText = await response.text();
+                    this.logError(`${errorMessage}:`, errorText);
+                    
+                    // Try to parse JSON error
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        if (errorJson.message) {
+                            errorMessage = errorJson.message;
+                        }
+                    } catch (e) {
+                        // Keep original error message
+                    }
+                } catch (e) {
+                    this.logError('Failed to read error response:', e.message);
+                }
+                
+                throw new Error(errorMessage);
+            }
 
-        const result = await response.json();
-        this.log(`✅ API Response:`, result);
-        
-        return result;
+            const result = await response.json();
+            this.log(`✅ API Response:`, result);
+            
+            return result;
+        } catch (error) {
+            this.logError('API Call Failed:', error.message);
+            throw error;
+        }
     }
 
     // =======================
@@ -577,47 +586,12 @@ class ChatSystem {
     }
 
     handleOffline() {
-        this.log('📵 Gone offline');
+        this.log('📴 Network offline');
         this.emit('network:offline');
     }
 
     // =======================
-    // EVENT SYSTEM
-    // =======================
-
-    on(event, callback) {
-        if (!this.eventListeners.has(event)) {
-            this.eventListeners.set(event, []);
-        }
-        this.eventListeners.get(event).push(callback);
-    }
-
-    off(event, callback) {
-        if (this.eventListeners.has(event)) {
-            const listeners = this.eventListeners.get(event);
-            const index = listeners.indexOf(callback);
-            if (index > -1) {
-                listeners.splice(index, 1);
-            }
-        }
-    }
-
-    emit(event, data = null) {
-        this.log(`📢 Event: ${event}`, data);
-        
-        if (this.eventListeners.has(event)) {
-            this.eventListeners.get(event).forEach(callback => {
-                try {
-                    callback(data);
-                } catch (error) {
-                    this.logError(`❌ Event callback error for ${event}:`, error);
-                }
-            });
-        }
-    }
-
-    // =======================
-    // UTILITIES
+    // UTILITY METHODS
     // =======================
 
     getSession() {
@@ -637,16 +611,73 @@ class ChatSystem {
     }
 
     // =======================
+    // DEBUGGING METHODS
+    // =======================
+
+    debugAuth() {
+        console.group('🔍 Chat System Auth Debug');
+        
+        // Check CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        console.log('CSRF Token:', csrfToken ? `${csrfToken.substring(0, 10)}...` : 'NOT FOUND');
+        
+        // Check user data
+        const userId = this.config.userId || document.querySelector('meta[name="auth-user-id"]')?.getAttribute('content');
+        console.log('User ID:', userId || 'NOT FOUND');
+        
+        // Check if user is authenticated
+        console.log('Is Admin:', window.isAdmin || 'UNKNOWN');
+        
+        // Test API endpoint
+        fetch('/api/chat/online-status', {
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('API Test Status:', response.status, response.statusText);
+            return response.json();
+        })
+        .then(data => {
+            console.log('API Test Response:', data);
+        })
+        .catch(error => {
+            console.error('API Test Failed:', error);
+        });
+        
+        console.groupEnd();
+    }
+
+    async testAuth() {
+        console.log('🧪 Testing Chat Authentication...');
+        
+        try {
+            // Test 1: Check online status (should work)
+            const statusResponse = await this.apiCall('GET', '/online-status');
+            console.log('✅ Online Status Test:', statusResponse);
+            
+            // Test 2: Try to start session (requires auth)
+            const sessionResponse = await this.apiCall('POST', '/start');
+            console.log('✅ Start Session Test:', sessionResponse);
+            
+            return true;
+        } catch (error) {
+            console.error('❌ Auth Test Failed:', error);
+            return false;
+        }
+    }
+
+    // =======================
     // CLEANUP
     // =======================
 
     cleanup() {
-        this.log('🧹 Cleaning up ChatSystem...');
-        
         // Clear timers
-        clearTimeout(this.typingTimer);
-        clearTimeout(this.pollTimer);
         clearTimeout(this.reconnectTimer);
+        clearTimeout(this.heartbeatTimer);
+        clearTimeout(this.pollTimer);
         
         // Leave channels
         if (this.channel && this.echo) {

@@ -130,14 +130,6 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'admin'])->group(f
         Route::get('/quotations/stats', [QuotationController::class, 'getStatistics'])->name('quotations.stats');
     });
 });
-Route::prefix('chat')->name('chat.')->middleware(['auth', 'admin'])->group(function () {
-        // Widget endpoints
-        Route::post('/start', [ChatController::class, 'start'])->name('start');
-        Route::post('/{chatSession}/message', [ChatController::class, 'sendMessage'])->name('message');
-        Route::get('/{chatSession}/messages', [ChatController::class, 'getMessages'])->name('messages');
-        Route::post('/{chatSession}/upload', [ChatController::class, 'uploadFile'])->name('upload');
-        Route::post('/{chatSession}/typing', [ChatController::class, 'clientTyping'])->name('typing');
-        Route::get('/session', [ChatController::class, 'getCurrentSession'])->name('session');
-        Route::get('/queue/position/{chatSession}', [ChatController::class, 'getQueuePosition'])->name('queue.position');
-        Route::post('/{chatSession}/rate', [ChatController::class, 'rateSession'])->name('rate');
-    });
+
+Route::post('/dashboard/mark-notification-read', [ClientDashboardController::class, 'markNotificationRead'])->name('dashboard.mark-notification-read');
+Route::post('/dashboard/test-notification', [ClientDashboardController::class, 'testNotification'])->name('dashboard.test-notification');
