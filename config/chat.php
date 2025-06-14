@@ -3,60 +3,92 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | Chat Queue Configuration
+    | Chat System Configuration
     |--------------------------------------------------------------------------
     */
+
+    'enabled' => env('CHAT_ENABLED', true),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Queue Settings
+    |--------------------------------------------------------------------------
+    */
+
     'queue' => [
-        'auto_assign_enabled' => env('CHAT_AUTO_ASSIGN_ENABLED', true),
-        'max_wait_time_minutes' => env('CHAT_MAX_WAIT_TIME', 30),
-        'priority_boost_after_minutes' => env('CHAT_PRIORITY_BOOST_AFTER', 10),
-        'urgent_priority_after_minutes' => env('CHAT_URGENT_PRIORITY_AFTER', 20),
-        'max_concurrent_sessions_per_operator' => env('CHAT_MAX_CONCURRENT_SESSIONS', 5),
+        'connection' => env('CHAT_QUEUE_CONNECTION', 'redis'),
+        'name' => env('CHAT_QUEUE_NAME', 'chat'),
+        'auto_process' => env('CHAT_AUTO_PROCESS_QUEUE', true),
+        'process_interval' => env('CHAT_QUEUE_PROCESS_INTERVAL', 30), // seconds
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Chat Operator Configuration
+    | Session Settings
     |--------------------------------------------------------------------------
     */
+
+    'session' => [
+        'timeout_minutes' => env('CHAT_SESSION_TIMEOUT', 30),
+        'max_waiting_time' => env('CHAT_MAX_WAITING_TIME', 60), // minutes
+        'auto_assignment' => env('CHAT_AUTO_ASSIGNMENT', true),
+        'rating_enabled' => env('CHAT_RATING_ENABLED', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Operator Settings
+    |--------------------------------------------------------------------------
+    */
+
     'operators' => [
-        'auto_offline_after_minutes' => env('CHAT_AUTO_OFFLINE_AFTER', 15),
-        'max_inactive_time_minutes' => env('CHAT_MAX_INACTIVE_TIME', 10),
-        'default_availability' => env('CHAT_DEFAULT_AVAILABILITY', true),
+        'max_concurrent_chats' => env('CHAT_MAX_CONCURRENT_CHATS', 5),
+        'auto_away_minutes' => env('CHAT_AUTO_AWAY_MINUTES', 10),
+        'notification_channels' => ['database', 'mail'],
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Chat Session Configuration
+    | File Upload Settings
     |--------------------------------------------------------------------------
     */
-    'sessions' => [
-        'archive_after_days' => env('CHAT_ARCHIVE_AFTER_DAYS', 30),
-        'cleanup_archived_after_days' => env('CHAT_CLEANUP_ARCHIVED_AFTER_DAYS', 90),
-        'max_session_duration_hours' => env('CHAT_MAX_SESSION_DURATION', 4),
+
+    'files' => [
+        'enabled' => env('CHAT_FILES_ENABLED', true),
+        'max_size' => env('CHAT_MAX_FILE_SIZE', 10240), // KB
+        'allowed_types' => [
+            'image/jpeg', 'image/png', 'image/gif',
+            'application/pdf', 'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ],
+        'storage_disk' => env('CHAT_FILES_DISK', 'public'),
+        'storage_path' => 'chat-files',
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Chat Monitoring & Alerts
+    | Widget Settings
     |--------------------------------------------------------------------------
     */
-    'monitoring' => [
-        'queue_alert_threshold' => env('CHAT_QUEUE_ALERT_THRESHOLD', 10),
-        'response_time_alert_threshold' => env('CHAT_RESPONSE_TIME_ALERT', 5), // minutes
-        'enable_performance_monitoring' => env('CHAT_ENABLE_MONITORING', true),
-        'metrics_retention_days' => env('CHAT_METRICS_RETENTION_DAYS', 30),
-    ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Chat Widget Configuration
-    |--------------------------------------------------------------------------
-    */
     'widget' => [
-        'polling_interval_ms' => env('CHAT_WIDGET_POLLING_INTERVAL', 1000),
-        'max_polling_interval_ms' => env('CHAT_WIDGET_MAX_POLLING_INTERVAL', 5000),
-        'show_queue_position' => env('CHAT_SHOW_QUEUE_POSITION', true),
-        'show_estimated_wait' => env('CHAT_SHOW_ESTIMATED_WAIT', true),
+        'enabled' => env('CHAT_WIDGET_ENABLED', true),
+        'theme' => env('CHAT_WIDGET_THEME', 'blue'),
+        'position' => env('CHAT_WIDGET_POSITION', 'bottom-right'),
+        'auto_open' => env('CHAT_WIDGET_AUTO_OPEN', false),
+        'show_online_status' => env('CHAT_WIDGET_SHOW_STATUS', true),
+        'enable_sound' => env('CHAT_WIDGET_SOUND', true),
+        'polling_interval' => env('CHAT_WIDGET_POLLING_INTERVAL', 2000), // ms
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Broadcasting Settings
+    |--------------------------------------------------------------------------
+    */
+
+    'broadcasting' => [
+        'enabled' => env('CHAT_BROADCASTING_ENABLED', true),
+        'driver' => env('BROADCAST_DRIVER', 'pusher'),
     ],
 ];

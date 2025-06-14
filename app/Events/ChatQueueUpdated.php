@@ -12,29 +12,31 @@ class ChatQueueUpdated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $queueData;
+    public array $metrics;
 
-    public function __construct(array $queueData)
+    public function __construct(array $metrics)
     {
-        $this->queueData = $queueData;
+        $this->metrics = $metrics;
     }
 
     public function broadcastOn(): array
     {
         return [
-            new Channel('public-chat-status'),
-        ];
-    }
-
-    public function broadcastWith(): array
-    {
-        return [
-            'queue' => $this->queueData
+            new Channel('admin-chat'),
+            new Channel('chat-widget'),
         ];
     }
 
     public function broadcastAs(): string
     {
         return 'queue.updated';
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'metrics' => $this->metrics,
+            'timestamp' => now()->toISOString()
+        ];
     }
 }

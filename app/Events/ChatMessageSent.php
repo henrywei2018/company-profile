@@ -3,11 +3,9 @@
 namespace App\Events;
 
 use App\Models\ChatMessage;
-use App\Models\ChatSession;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
-use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -16,59 +14,38 @@ class ChatMessageSent implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $message;
-    public $session;
+    public ChatMessage $message;
 
-    public function __construct(ChatMessage $message, ChatSession $session)
+    public function __construct(ChatMessage $message)
     {
         $this->message = $message;
-        $this->session = $session;
     }
 
-    /**
-     * Get the channels the event should broadcast on.
-     */
     public function broadcastOn(): array
     {
-        $channels = [];
-
-        // 1. Session channel (for chat participants)
-        $channels[] = new PrivateChannel($this->session->getChannelName());
-
-        // 2. Admin notifications channel (if message from visitor)
-        if ($this->message->sender_type === 'visitor') {
-            $channels[] = new PrivateChannel('admin-chat-notifications');
-        }
-
-        // 3. User channel (if message from operator to authenticated user)
-        if ($this->message->sender_type === 'operator' && $this->session->user) {
-            $channels[] = new PrivateChannel("user.{$this->session->user->id}");
-        }
-
-        return $channels;
-    }
-
-    /**
-     * Get the data to broadcast.
-     */
-    public function broadcastWith(): array
-    {
         return [
-            'message' => $this->message->toWebSocketArray(),
-            'session' => [
-                'id' => $this->session->id,
-                'session_id' => $this->session->session_id,
-                'status' => $this->session->status,
-                'visitor_name' => $this->session->getVisitorName(),
-            ]
+            new Channel('chat-session.' . $this->message->chatSession->session_id),
+            new Channel('admin-chat'),
         ];
     }
 
-    /**
-     * The event's broadcast name.
-     */
     public function broadcastAs(): string
     {
         return 'message.sent';
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'message' => [
+                'id' => $this->message->id,
+                'message' => $this->message->message,
+                'sender_type' => $this->message->sender_type,
+                'sender_name' => $this->message->getSenderName(),
+                'message_type' => $this->message->message_type,
+                'created_at' => $this->message->created_at,
+                'session_id' => $this->message->chatSession->session_id
+            ]
+        ];
     }
 }

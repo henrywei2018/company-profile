@@ -2,11 +2,9 @@
 
 namespace App\Events;
 
-use App\Models\User;
+use App\Models\ChatOperator;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
-use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -15,47 +13,35 @@ class ChatOperatorStatusChanged implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $operator;
-    public $totalOnlineOperators;
+    public ChatOperator $operator;
 
-    public function __construct(User $operator, int $totalOnlineOperators)
+    public function __construct(ChatOperator $operator)
     {
         $this->operator = $operator;
-        $this->totalOnlineOperators = $totalOnlineOperators;
     }
 
-    /**
-     * Get the channels the event should broadcast on.
-     */
     public function broadcastOn(): array
     {
         return [
-            new Channel('public-chat-status'), // Public channel untuk widget
-            new PrivateChannel('admin-chat-notifications'),
+            new Channel('admin-chat'),
+            new Channel('chat-operators'),
         ];
     }
 
-    /**
-     * Get the data to broadcast.
-     */
+    public function broadcastAs(): string
+    {
+        return 'operator.status.changed';
+    }
+
     public function broadcastWith(): array
     {
         return [
             'operator' => [
-                'id' => $this->operator->id,
-                'name' => $this->operator->name,
-                'is_online' => $this->operator->chatOperator?->is_online ?? false,
-                'is_available' => $this->operator->chatOperator?->is_available ?? false,
-            ],
-            'total_online_operators' => $this->totalOnlineOperators,
+                'id' => $this->operator->user->id,
+                'name' => $this->operator->user->name,
+                'is_online' => $this->operator->is_online,
+                'is_available' => $this->operator->is_available
+            ]
         ];
-    }
-
-    /**
-     * The event's broadcast name.
-     */
-    public function broadcastAs(): string
-    {
-        return 'operator.status.changed';
     }
 }

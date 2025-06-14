@@ -8,6 +8,9 @@ use App\Models\ChatSession;
 use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ChatService
 {
@@ -28,6 +31,97 @@ class ChatService
                 ->orderBy('ended_at', 'desc')
                 ->limit(10)
                 ->get(),
+        ];
+    }
+    public function closeInactiveSessions(): array
+    {
+        $inactiveThreshold = now()->subMinutes(30);
+        $closed = [];
+
+        // Close sessions with no activity for 30 minutes
+        $inactiveSessions = ChatSession::where('status', 'active')
+            ->where('updated_at', '<', $inactiveThreshold)
+            ->get();
+
+        foreach ($inactiveSessions as $session) {
+            $session->update([
+                'status' => 'closed',
+                'closed_at' => now(),
+                'close_reason' => 'inactive'
+            ]);
+
+            // Send system message
+            ChatMessage::create([
+                'chat_session_id' => $session->id,
+                'sender_type' => 'system',
+                'message' => 'Session closed due to inactivity.',
+                'message_type' => 'system'
+            ]);
+
+            $closed[] = $session->id;
+        }
+
+        return $closed;
+    }
+
+    /**
+     * Get chat analytics for reports
+     */
+    public function getChatAnalytics(Carbon $startDate, Carbon $endDate): array
+    {
+        $sessions = ChatSession::whereBetween('created_at', [$startDate, $endDate]);
+
+        $totalSessions = $sessions->count();
+        $completedSessions = $sessions->where('status', 'closed')->count();
+        $avgRating = $sessions->whereNotNull('rating')->avg('rating') ?: 0;
+        $avgDuration = $sessions->where('status', 'closed')
+            ->whereNotNull('closed_at')
+            ->selectRaw('AVG(TIMESTAMPDIFF(MINUTE, started_at, closed_at)) as avg_duration')
+            ->value('avg_duration') ?: 0;
+
+        // Sessions by hour
+        $sessionsByHour = ChatSession::whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as count')
+            ->groupBy('hour')
+            ->orderBy('hour')
+            ->pluck('count', 'hour')
+            ->toArray();
+
+        // Sessions by day
+        $sessionsByDay = ChatSession::whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->pluck('count', 'date')
+            ->toArray();
+
+        // Top operators by sessions handled
+        $topOperators = ChatSession::whereBetween('created_at', [$startDate, $endDate])
+            ->whereNotNull('assigned_operator_id')
+            ->with('assignedOperator.user')
+            ->get()
+            ->groupBy('assigned_operator_id')
+            ->map(function ($sessions, $operatorId) {
+                $operator = $sessions->first()->assignedOperator;
+                return [
+                    'name' => $operator->user->name,
+                    'sessions_count' => $sessions->count(),
+                    'avg_rating' => $sessions->whereNotNull('rating')->avg('rating') ?: 0,
+                ];
+            })
+            ->sortByDesc('sessions_count')
+            ->take(10)
+            ->values();
+
+        return [
+            'total_sessions' => $totalSessions,
+            'completed_sessions' => $completedSessions,
+            'completion_rate' => $totalSessions > 0 ? round(($completedSessions / $totalSessions) * 100, 1) : 0,
+            'avg_rating' => round($avgRating, 1),
+            'avg_duration_minutes' => round($avgDuration, 1),
+            'sessions_by_hour' => $sessionsByHour,
+            'sessions_by_day' => $sessionsByDay,
+            'top_operators' => $topOperators,
         ];
     }
     
@@ -82,7 +176,7 @@ class ChatService
         ->count();
     }
 
-    public function getSessionsNeedingAttention(): \Illuminate\Database\Eloquent\Collection
+    public function getSessionsNeedingAttention(): Collection
     {
         $now = now();
         
@@ -341,6 +435,58 @@ class ChatService
             'needs_attention' => $this->getSessionsNeedingAttention()->count(),
         ];
     }
+    public function exportChatData(Carbon $startDate, Carbon $endDate, string $format = 'csv'): string
+    {
+        $sessions = ChatSession::with(['user', 'assignedOperator.user', 'messages'])
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->get();
+
+        $data = $sessions->map(function ($session) {
+            return [
+                'session_id' => $session->session_id,
+                'visitor_name' => $session->getVisitorName(),
+                'visitor_email' => $session->getVisitorEmail(),
+                'status' => $session->status,
+                'priority' => $session->priority,
+                'assigned_operator' => $session->assignedOperator ? $session->assignedOperator->user->name : 'N/A',
+                'started_at' => $session->started_at?->format('Y-m-d H:i:s'),
+                'closed_at' => $session->closed_at?->format('Y-m-d H:i:s'),
+                'duration_minutes' => $session->getDurationInMinutes(),
+                'message_count' => $session->messages->count(),
+                'rating' => $session->rating ?: 'N/A',
+                'feedback' => $session->feedback ?: '',
+                'close_reason' => $session->close_reason ?: ''
+            ];
+        });
+
+        if ($format === 'csv') {
+            return $this->generateCsv($data->toArray());
+        }
+
+        return json_encode($data, JSON_PRETTY_PRINT);
+    }
+    private function generateCsv(array $data): string
+    {
+        if (empty($data)) {
+            return '';
+        }
+
+        $output = fopen('php://temp', 'r+');
+        
+        // Write headers
+        fputcsv($output, array_keys($data[0]));
+        
+        // Write data rows
+        foreach ($data as $row) {
+            fputcsv($output, $row);
+        }
+        
+        rewind($output);
+        $csv = stream_get_contents($output);
+        fclose($output);
+        
+        return $csv;
+    }
 
     /**
      * Export chat sessions to CSV
@@ -499,14 +645,99 @@ class ChatService
      */
     public function startSession(User $user): ChatSession
     {
-        return ChatSession::create([
+        // Check if user already has an active session
+        $existingSession = ChatSession::where('user_id', $user->id)
+            ->whereIn('status', ['active', 'waiting'])
+            ->first();
+
+        if ($existingSession) {
+            return $existingSession;
+        }
+
+        // Create new session
+        $session = ChatSession::create([
+            'session_id' => $this->generateSessionId(),
             'user_id' => $user->id,
-            'session_id' => Str::uuid(),
+            'visitor_name' => $user->name,
+            'visitor_email' => $user->email,
             'status' => 'waiting',
             'started_at' => now(),
-            'last_activity_at' => now(),
             'priority' => 'normal',
+            'user_agent' => request()->userAgent(),
+            'ip_address' => request()->ip(),
+            'referrer_url' => request()->header('referer'),
+            'current_url' => request()->fullUrl()
         ]);
+
+        // Try to auto-assign to available operator
+        $this->attemptAutoAssignment($session);
+
+        return $session;
+    }
+    private function generateSessionId(): string
+    {
+        do {
+            $sessionId = 'chat_' . Str::random(12);
+        } while (ChatSession::where('session_id', $sessionId)->exists());
+
+        return $sessionId;
+    }
+
+    /**
+     * Attempt to auto-assign session to available operator
+     */
+    public function attemptAutoAssignment(ChatSession $session): bool
+    {
+        $availableOperator = $this->findAvailableOperator();
+        
+        if ($availableOperator) {
+            $session->update([
+                'assigned_operator_id' => $availableOperator->user_id,
+                'status' => 'active',
+                'assigned_at' => now()
+            ]);
+
+            // Send welcome message
+            ChatMessage::create([
+                'chat_session_id' => $session->id,
+                'sender_type' => 'system',
+                'message' => "Welcome! {$availableOperator->user->name} will assist you shortly.",
+                'message_type' => 'system'
+            ]);
+
+            return true;
+        }
+
+        return false;
+    }
+    public function findAvailableOperator(): ?ChatOperator
+    {
+        return ChatOperator::where('is_online', true)
+            ->where('is_available', true)
+            ->whereHas('user')
+            ->withCount(['activeSessions'])
+            ->having('active_sessions_count', '<', DB::raw('max_concurrent_chats'))
+            ->orderBy('active_sessions_count', 'asc')
+            ->orderBy('last_activity_at', 'asc')
+            ->first();
+    }
+    public function processQueue(): array
+    {
+        $processed = [];
+        
+        $waitingSessions = ChatSession::where('status', 'waiting')
+            ->orderBy('priority', 'desc')
+            ->orderBy('created_at', 'asc')
+            ->limit(10)
+            ->get();
+
+        foreach ($waitingSessions as $session) {
+            if ($this->attemptAutoAssignment($session)) {
+                $processed[] = $session->id;
+            }
+        }
+
+        return $processed;
     }
 
     /**
@@ -573,7 +804,7 @@ class ChatService
     /**
      * Get messages for a session
      */
-    public function getMessages(ChatSession $session, int $limit = null): \Illuminate\Database\Eloquent\Collection
+    public function getMessages(ChatSession $session, int $limit = null): Collection
     {
         $query = $session->messages()->with('sender')->orderBy('created_at');
         
@@ -863,7 +1094,7 @@ class ChatService
     /**
      * Get active sessions for operator
      */
-    public function getOperatorActiveSessions(User $operator): \Illuminate\Database\Eloquent\Collection
+    public function getOperatorActiveSessions(User $operator): Collection
     {
         return ChatSession::where('assigned_operator_id', $operator->id)
             ->whereIn('status', ['active', 'waiting'])
@@ -909,5 +1140,74 @@ class ChatService
                 Notifications::send('chat.session_timeout', $session);
             }
         }
+    }
+    public function getAverageSessionDuration(): float
+    {
+        $avgDuration = ChatSession::where('status', 'closed')
+            ->whereNotNull('closed_at')
+            ->whereDate('created_at', '>=', now()->subDays(7))
+            ->selectRaw('AVG(TIMESTAMPDIFF(MINUTE, started_at, closed_at)) as avg_duration')
+            ->value('avg_duration');
+
+        return $avgDuration ?: 15; // Default 15 minutes if no data
+    }
+
+    /**
+     * Get average response time for operators
+     */
+    public function getAverageResponseTime(): float
+    {
+        // Complex query to calculate response times between client messages and operator replies
+        $avgResponseTime = DB::table('chat_messages as client_msg')
+            ->join('chat_messages as operator_msg', function($join) {
+                $join->on('client_msg.chat_session_id', '=', 'operator_msg.chat_session_id')
+                     ->where('operator_msg.sender_type', 'operator')
+                     ->whereRaw('operator_msg.created_at > client_msg.created_at');
+            })
+            ->where('client_msg.sender_type', 'client')
+            ->whereDate('client_msg.created_at', '>=', now()->subDays(7))
+            ->selectRaw('AVG(TIMESTAMPDIFF(SECOND, client_msg.created_at, operator_msg.created_at)) as avg_response')
+            ->value('avg_response');
+
+        return $avgResponseTime ? round($avgResponseTime / 60, 1) : 0; // Convert to minutes
+    }
+
+    /**
+     * Get customer satisfaction rate
+     */
+    public function getSatisfactionRate(): float
+    {
+        $totalRated = ChatSession::whereNotNull('rating')
+            ->whereDate('created_at', '>=', now()->subDays(30))
+            ->count();
+
+        if ($totalRated === 0) {
+            return 0;
+        }
+
+        $satisfiedCount = ChatSession::where('rating', '>=', 4)
+            ->whereDate('created_at', '>=', now()->subDays(30))
+            ->count();
+
+        return round(($satisfiedCount / $totalRated) * 100, 1);
+    }
+
+    /**
+     * Get busiest hour of the day
+     */
+    public function getBusiestHour(): string
+    {
+        $busiestHour = ChatSession::whereDate('created_at', '>=', now()->subDays(30))
+            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as session_count')
+            ->groupBy('hour')
+            ->orderBy('session_count', 'desc')
+            ->first();
+
+        if (!$busiestHour) {
+            return 'N/A';
+        }
+
+        $hour = $busiestHour->hour;
+        return sprintf('%02d:00 - %02d:00', $hour, ($hour + 1) % 24);
     }
 }
