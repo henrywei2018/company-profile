@@ -1,6 +1,6 @@
 /**
- * Centralized Chat System JavaScript
- * Dapat digunakan untuk client dan admin interface
+ * Clean ChatSystem Class
+ * Compatible with Clean Routes & Controller
  * Laravel 12 + Alpine.js + Echo integration
  */
 
@@ -8,470 +8,101 @@ class ChatSystem {
     constructor(config = {}) {
         this.config = {
             baseUrl: config.baseUrl || '/api/chat',
-            echo: config.echo || null,
+            adminBaseUrl: config.adminBaseUrl || '/api/admin/chat',
             userId: config.userId || null,
             userType: config.userType || 'visitor', // 'visitor', 'operator', 'admin'
+            userName: config.userName || 'Anonymous',
             csrfToken: config.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
-            pusherConfig: config.pusherConfig || {},
+            debug: config.debug || false,
             ...config
         };
 
-        this.session = null;
-        this.messages = [];
-        this.isConnected = false;
-        this.isTyping = false;
-        this.typingTimer = null;
-        this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 5;
-        this.eventListeners = new Map();
-        this.messageQueue = [];
-        this.connectionState = 'disconnected'; // 'disconnected', 'connecting', 'connected'
-
-        this.init();
-    }
-
-    /**
-     * Initialize chat system
-     */
-    async init() {
-        try {
-            await this.setupEcho();
-            await this.loadSession();
-            this.setupGlobalListeners();
-            this.bindEvents();
-            
-            console.log('Chat system initialized successfully');
-        } catch (error) {
-            console.error('Failed to initialize chat system:', error);
-            this.emit('error', { type: 'initialization', error });
-        }
-    }
-
-    /**
-     * Setup Laravel Echo for real-time communication
-     */
-    async setupEcho() {
-        if (!window.Echo && this.config.pusherConfig.key) {
-            try {
-                // Dynamic import untuk Echo jika belum ada
-                if (typeof window.Pusher === 'undefined') {
-                    await this.loadScript('https://js.pusher.com/8.2.0/pusher.min.js');
-                }
-
-                const { default: Echo } = await import('laravel-echo');
-                
-                window.Echo = new Echo({
-                    broadcaster: 'pusher',
-                    key: this.config.pusherConfig.key,
-                    cluster: this.config.pusherConfig.cluster,
-                    forceTLS: true,
-                    encrypted: true,
-                    auth: {
-                        headers: {
-                            'X-CSRF-TOKEN': this.config.csrfToken,
-                        },
-                    },
-                });
-
-                this.echo = window.Echo;
-            } catch (error) {
-                console.warn('Echo setup failed, using polling fallback:', error);
-                this.setupPolling();
-            }
-        } else {
-            this.echo = window.Echo || this.config.echo;
-        }
-    }
-
-    /**
-     * Load external script dinamically
-     */
-    loadScript(src) {
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = src;
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-        });
-    }
-
-    /**
-     * Setup polling sebagai fallback jika Echo gagal
-     */
-    setupPolling() {
-        this.pollingInterval = setInterval(() => {
-            if (this.session?.session_id) {
-                this.pollMessages();
-            }
-        }, 3000);
-    }
-
-    /**
-     * Load atau create chat session
-     */
-    async loadSession() {
-        try {
-            let sessionData = this.getStoredSession();
-            
-            if (!sessionData || this.isSessionExpired(sessionData)) {
-                sessionData = await this.createSession();
-            }
-
-            this.session = sessionData;
-            await this.subscribeToChannel();
-            
-            // Load existing messages
-            if (this.session.session_id) {
-                await this.loadMessages();
-            }
-
-            this.emit('session:loaded', this.session);
-        } catch (error) {
-            console.error('Failed to load session:', error);
-            this.emit('error', { type: 'session_load', error });
-        }
-    }
-
-    /**
-     * Create new chat session
-     */
-    async createSession() {
-        const response = await this.apiCall('POST', '/session', {
-            user_type: this.config.userType,
-            user_id: this.config.userId,
-            visitor_info: this.getVisitorInfo()
-        });
-
-        if (response.success) {
-            this.storeSession(response.data);
-            return response.data;
-        }
-
-        throw new Error('Failed to create session');
-    }
-
-    /**
-     * Get visitor information
-     */
-    getVisitorInfo() {
-        return {
-            user_agent: navigator.userAgent,
-            screen_resolution: `${screen.width}x${screen.height}`,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            language: navigator.language,
-            referrer: document.referrer,
-            current_url: window.location.href
-        };
-    }
-
-    /**
-     * Subscribe to real-time channel
-     */
-    async subscribeToChannel() {
-        if (!this.echo || !this.session?.session_id) return;
-
-        try {
-            const channelName = `chat.${this.session.session_id}`;
-            this.channel = this.echo.private(channelName);
-
-            this.channel
-                .listen('MessageSent', (e) => {
-                    this.handleIncomingMessage(e.message);
-                })
-                .listen('OperatorJoined', (e) => {
-                    this.handleOperatorJoined(e.operator);
-                })
-                .listen('OperatorLeft', (e) => {
-                    this.handleOperatorLeft(e.operator);
-                })
-                .listen('TypingIndicator', (e) => {
-                    this.handleTypingIndicator(e);
-                })
-                .listen('SessionClosed', (e) => {
-                    this.handleSessionClosed(e);
-                });
-
-            this.connectionState = 'connected';
-            this.isConnected = true;
-            this.emit('connection:established');
-
-        } catch (error) {
-            console.error('Failed to subscribe to channel:', error);
-            this.setupPolling();
-        }
-    }
-
-    /**
-     * Send message
-     */
-    async sendMessage(content, type = 'text', attachments = null) {
-        if (!content.trim() && !attachments) return false;
-
-        const message = {
-            content: content.trim(),
-            type,
-            attachments,
-            session_id: this.session?.session_id,
-            timestamp: new Date().toISOString()
-        };
-
-        // Add to local messages immediately (optimistic update)
-        const localMessage = {
-            ...message,
-            id: 'temp_' + Date.now(),
-            sender_type: this.config.userType,
-            sender_name: this.config.userName || 'You',
-            status: 'sending',
-            is_temp: true
-        };
-
-        this.addMessage(localMessage);
-        this.emit('message:sending', localMessage);
-
-        try {
-            const response = await this.apiCall('POST', '/messages', message);
-            
-            if (response.success) {
-                // Replace temporary message dengan yang sebenarnya
-                this.updateMessage(localMessage.id, {
-                    ...response.data,
-                    status: 'sent',
-                    is_temp: false
-                });
-                
-                this.emit('message:sent', response.data);
-                return response.data;
-            }
-        } catch (error) {
-            console.error('Failed to send message:', error);
-            this.updateMessage(localMessage.id, { status: 'failed' });
-            this.emit('message:failed', { message: localMessage, error });
-        }
-
-        return false;
-    }
-
-    /**
-     * Upload file attachment
-     */
-    async uploadFile(file) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('session_id', this.session?.session_id);
-
-        try {
-            const response = await fetch(`${this.config.baseUrl}/upload`, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRF-TOKEN': this.config.csrfToken,
-                    'Accept': 'application/json'
-                }
-            });
-
-            const data = await response.json();
-            
-            if (data.success) {
-                return data.data;
-            }
-            
-            throw new Error(data.message || 'Upload failed');
-        } catch (error) {
-            console.error('File upload error:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Handle incoming message dari real-time
-     */
-    handleIncomingMessage(message) {
-        // Jangan tambahkan jika message sudah ada (avoid duplicates)
-        if (!this.messages.find(m => m.id === message.id)) {
-            this.addMessage(message);
-            this.emit('message:received', message);
-            
-            // Play notification sound jika bukan dari user sendiri
-            if (message.sender_type !== this.config.userType) {
-                this.playNotificationSound();
-            }
-        }
-    }
-
-    /**
-     * Handle operator joined
-     */
-    handleOperatorJoined(operator) {
-        this.session.operator = operator;
-        this.emit('operator:joined', operator);
-    }
-
-    /**
-     * Handle operator left
-     */
-    handleOperatorLeft(operator) {
-        this.session.operator = null;
-        this.emit('operator:left', operator);
-    }
-
-    /**
-     * Handle typing indicator
-     */
-    handleTypingIndicator(data) {
-        if (data.user_type !== this.config.userType) {
-            this.emit('typing:indicator', data);
-        }
-    }
-
-    /**
-     * Send typing indicator
-     */
-    sendTypingIndicator(isTyping = true) {
-        if (!this.echo || !this.channel) return;
-
-        clearTimeout(this.typingTimer);
-        
-        if (isTyping) {
-            this.channel.whisper('typing', {
-                user_type: this.config.userType,
-                user_name: this.config.userName,
-                is_typing: true
-            });
-
-            // Auto stop typing after 3 seconds
-            this.typingTimer = setTimeout(() => {
-                this.sendTypingIndicator(false);
-            }, 3000);
-        } else {
-            this.channel.whisper('typing', {
-                user_type: this.config.userType,
-                user_name: this.config.userName,
-                is_typing: false
-            });
-        }
-    }
-
-    /**
-     * Load messages from server
-     */
-    async loadMessages(page = 1) {
-        if (!this.session?.session_id) return;
-
-        try {
-            const response = await this.apiCall('GET', `/messages/${this.session.session_id}?page=${page}`);
-            
-            if (response.success) {
-                if (page === 1) {
-                    this.messages = response.data.data || [];
-                } else {
-                    this.messages = [...(response.data.data || []), ...this.messages];
-                }
-                
-                this.emit('messages:loaded', this.messages);
-                return response.data;
-            }
-        } catch (error) {
-            console.error('Failed to load messages:', error);
-            this.emit('error', { type: 'load_messages', error });
-        }
-    }
-
-    /**
-     * Poll messages (fallback method)
-     */
-    async pollMessages() {
-        if (!this.session?.session_id) return;
-
-        try {
-            const lastMessageId = this.messages.length > 0 ? 
-                Math.max(...this.messages.map(m => parseInt(m.id) || 0)) : 0;
-
-            const response = await this.apiCall('GET', 
-                `/messages/${this.session.session_id}?since=${lastMessageId}`);
-            
-            if (response.success && response.data.data) {
-                response.data.data.forEach(message => {
-                    this.handleIncomingMessage(message);
-                });
-            }
-        } catch (error) {
-            console.error('Polling error:', error);
-        }
-    }
-
-    /**
-     * Add message to local collection
-     */
-    addMessage(message) {
-        // Cek duplicate
-        const existingIndex = this.messages.findIndex(m => m.id === message.id);
-        
-        if (existingIndex >= 0) {
-            this.messages[existingIndex] = message;
-        } else {
-            this.messages.push(message);
-            // Sort by timestamp
-            this.messages.sort((a, b) => new Date(a.created_at || a.timestamp) - new Date(b.created_at || b.timestamp));
-        }
-        
-        this.emit('messages:updated', this.messages);
-    }
-
-    /**
-     * Update existing message
-     */
-    updateMessage(messageId, updates) {
-        const index = this.messages.findIndex(m => m.id === messageId);
-        if (index >= 0) {
-            this.messages[index] = { ...this.messages[index], ...updates };
-            this.emit('message:updated', this.messages[index]);
-            this.emit('messages:updated', this.messages);
-        }
-    }
-
-    /**
-     * Close chat session
-     */
-    async closeSession() {
-        if (!this.session?.session_id) return;
-
-        try {
-            await this.apiCall('POST', `/session/${this.session.session_id}/close`);
-            this.cleanup();
-            this.emit('session:closed');
-        } catch (error) {
-            console.error('Failed to close session:', error);
-            this.emit('error', { type: 'close_session', error });
-        }
-    }
-
-    /**
-     * Cleanup resources
-     */
-    cleanup() {
-        if (this.channel) {
-            this.echo?.leave(`chat.${this.session?.session_id}`);
-        }
-        
-        if (this.pollingInterval) {
-            clearInterval(this.pollingInterval);
-        }
-        
-        clearTimeout(this.typingTimer);
-        this.clearStoredSession();
-        
+        // State management
         this.session = null;
         this.messages = [];
         this.isConnected = false;
         this.connectionState = 'disconnected';
+        this.eventListeners = new Map();
+        
+        // Timers
+        this.typingTimer = null;
+        this.pollTimer = null;
+        this.reconnectTimer = null;
+        
+        // Settings
+        this.pollingInterval = 3000; // 3 seconds
+        this.maxReconnectAttempts = 5;
+        this.reconnectAttempts = 0;
+
+        // Initialize
+        this.init();
     }
 
-    /**
-     * Setup global event listeners
-     */
+    // =======================
+    // INITIALIZATION
+    // =======================
+
+    async init() {
+        try {
+            this.log('🚀 Initializing ChatSystem...');
+            
+            this.setupEcho();
+            this.setupGlobalListeners();
+            await this.loadExistingSession();
+            
+            this.log('✅ ChatSystem initialized successfully');
+            this.emit('initialized');
+        } catch (error) {
+            this.logError('❌ ChatSystem initialization failed:', error);
+            this.emit('error', { type: 'initialization', error });
+        }
+    }
+
+    setupEcho() {
+        if (window.Echo) {
+            this.echo = window.Echo;
+            this.setupEchoListeners();
+            this.log('📡 Echo integration ready');
+        } else {
+            this.logWarn('⚠️ Echo not available - using polling fallback');
+        }
+    }
+
+    setupEchoListeners() {
+        if (!this.echo) return;
+
+        try {
+            // Global connection status
+            this.echo.connector.pusher.connection.bind('connected', () => {
+                this.connectionState = 'connected';
+                this.isConnected = true;
+                this.reconnectAttempts = 0;
+                this.log('🟢 WebSocket Connected');
+                this.emit('connection:established');
+            });
+
+            this.echo.connector.pusher.connection.bind('disconnected', () => {
+                this.connectionState = 'disconnected';
+                this.isConnected = false;
+                this.log('🔴 WebSocket Disconnected');
+                this.emit('connection:lost');
+                this.handleReconnect();
+            });
+
+            this.echo.connector.pusher.connection.bind('error', (error) => {
+                this.connectionState = 'error';
+                this.isConnected = false;
+                this.logError('❌ WebSocket Error:', error);
+                this.emit('connection:error', error);
+            });
+
+        } catch (error) {
+            this.logError('❌ Echo listeners setup failed:', error);
+        }
+    }
+
     setupGlobalListeners() {
-        // Handle page visibility
+        // Page visibility handling
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 this.handlePageHidden();
@@ -480,26 +111,360 @@ class ChatSystem {
             }
         });
 
-        // Handle before unload
-        window.addEventListener('beforeunload', () => {
-            this.cleanup();
-        });
-
-        // Handle online/offline
-        window.addEventListener('online', () => {
-            this.handleOnline();
-        });
-
-        window.addEventListener('offline', () => {
-            this.handleOffline();
-        });
+        // Network status
+        window.addEventListener('online', () => this.handleOnline());
+        window.addEventListener('offline', () => this.handleOffline());
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => this.cleanup());
     }
 
-    /**
-     * Generic API call method
-     */
-    async apiCall(method, endpoint, data = null) {
-        const url = `${this.config.baseUrl}${endpoint}`;
+    // =======================
+    // SESSION MANAGEMENT  
+    // =======================
+
+    async startSession() {
+        try {
+            this.log('🔄 Starting chat session...');
+            
+            const endpoint = this.config.userType === 'visitor' ? '/start' : '/start';
+            const response = await this.apiCall('POST', endpoint);
+            
+            if (response.success) {
+                this.session = {
+                    session_id: response.session_id,
+                    status: response.status,
+                    started_at: new Date(),
+                    operator: null
+                };
+                
+                this.storeSession();
+                this.setupSessionListeners();
+                
+                this.log('✅ Session started:', response.session_id);
+                this.emit('session:started', this.session);
+                
+                return this.session;
+            } else {
+                throw new Error(response.message || 'Failed to start session');
+            }
+        } catch (error) {
+            this.logError('❌ Failed to start session:', error);
+            this.emit('error', { type: 'start_session', error });
+            throw error;
+        }
+    }
+
+    async loadExistingSession() {
+        try {
+            // Try to get session from server first
+            const response = await this.apiCall('GET', '/session');
+            
+            if (response.success) {
+                this.session = {
+                    session_id: response.session_id,
+                    status: response.status,
+                    operator: response.operator || null,
+                    queue_position: response.queue_position || 0
+                };
+                
+                this.storeSession();
+                this.setupSessionListeners();
+                await this.loadMessages();
+                
+                this.log('📂 Loaded existing session:', response.session_id);
+                this.emit('session:loaded', this.session);
+                
+                return this.session;
+            }
+        } catch (error) {
+            // Silent fail - no existing session is fine
+            this.log('ℹ️ No existing session found');
+        }
+        
+        // Fallback: try localStorage
+        const stored = this.getStoredSession();
+        if (stored && stored.session_id) {
+            this.session = stored;
+            this.log('📱 Restored session from storage');
+        }
+        
+        return null;
+    }
+
+    async closeSession() {
+        if (!this.session?.session_id) return;
+
+        try {
+            await this.apiCall('POST', '/close', {
+                session_id: this.session.session_id
+            });
+            
+            this.cleanup();
+            this.log('✅ Session closed');
+            this.emit('session:closed');
+        } catch (error) {
+            this.logError('❌ Failed to close session:', error);
+            this.emit('error', { type: 'close_session', error });
+        }
+    }
+
+    // =======================
+    // MESSAGE HANDLING
+    // =======================
+
+    async sendMessage(content, type = 'text') {
+        if (!content.trim()) {
+            throw new Error('Message cannot be empty');
+        }
+
+        if (!this.session?.session_id) {
+            throw new Error('No active session');
+        }
+
+        try {
+            const endpoint = this.config.userType === 'admin' || this.config.userType === 'operator' 
+                ? `/${this.session.session_id}/reply` 
+                : '/send-message';
+            
+            const baseUrl = this.config.userType === 'admin' || this.config.userType === 'operator'
+                ? this.config.adminBaseUrl
+                : this.config.baseUrl;
+
+            const payload = this.config.userType === 'admin' || this.config.userType === 'operator'
+                ? { message: content }
+                : { session_id: this.session.session_id, message: content };
+
+            const response = await this.apiCall('POST', endpoint, payload, baseUrl);
+            
+            if (response.success) {
+                this.addMessage(response.message);
+                this.log('✅ Message sent successfully');
+                this.emit('message:sent', response.message);
+                return response.message;
+            } else {
+                throw new Error(response.message || 'Failed to send message');
+            }
+        } catch (error) {
+            this.logError('❌ Failed to send message:', error);
+            this.emit('error', { type: 'send_message', error });
+            throw error;
+        }
+    }
+
+    async loadMessages(since = null) {
+        if (!this.session?.session_id) return [];
+
+        try {
+            const endpoint = this.config.userType === 'admin' || this.config.userType === 'operator'
+                ? `/${this.session.session_id}/messages`
+                : '/messages';
+            
+            const baseUrl = this.config.userType === 'admin' || this.config.userType === 'operator'
+                ? this.config.adminBaseUrl
+                : this.config.baseUrl;
+
+            const params = new URLSearchParams();
+            
+            if (this.config.userType === 'visitor') {
+                params.append('session_id', this.session.session_id);
+            }
+            
+            if (since) {
+                params.append('since', since);
+            }
+
+            const url = `${endpoint}?${params.toString()}`;
+            const response = await this.apiCall('GET', url, null, baseUrl);
+            
+            if (response.success) {
+                if (since) {
+                    // Append new messages
+                    response.messages.forEach(msg => this.addMessage(msg));
+                } else {
+                    // Replace all messages
+                    this.messages = response.messages || [];
+                }
+                
+                this.emit('messages:loaded', this.messages);
+                return response.messages || [];
+            }
+        } catch (error) {
+            this.logError('❌ Failed to load messages:', error);
+            this.emit('error', { type: 'load_messages', error });
+        }
+        
+        return [];
+    }
+
+    addMessage(message) {
+        if (!message || !message.id) return;
+
+        // Check for duplicates
+        const existingIndex = this.messages.findIndex(m => m.id === message.id);
+        
+        if (existingIndex >= 0) {
+            // Update existing message
+            this.messages[existingIndex] = { ...this.messages[existingIndex], ...message };
+        } else {
+            // Add new message
+            this.messages.push(message);
+            
+            // Sort by timestamp
+            this.messages.sort((a, b) => {
+                const timeA = new Date(a.created_at || 0).getTime();
+                const timeB = new Date(b.created_at || 0).getTime();
+                return timeA - timeB;
+            });
+        }
+        
+        this.emit('message:added', message);
+        this.emit('messages:updated', this.messages);
+    }
+
+    // =======================
+    // TYPING INDICATORS
+    // =======================
+
+    sendTypingIndicator(isTyping = true) {
+        if (!this.session?.session_id) return;
+
+        // Clear existing timer
+        clearTimeout(this.typingTimer);
+
+        // Send typing indicator via API
+        this.apiCall('POST', '/typing', {
+            session_id: this.session.session_id,
+            is_typing: isTyping
+        }).catch(error => {
+            // Silent fail for typing indicators
+            this.log('⚠️ Typing indicator failed:', error.message);
+        });
+
+        // Auto-stop typing after 3 seconds
+        if (isTyping) {
+            this.typingTimer = setTimeout(() => {
+                this.sendTypingIndicator(false);
+            }, 3000);
+        }
+    }
+
+    // =======================
+    // REAL-TIME LISTENERS
+    // =======================
+
+    setupSessionListeners() {
+        if (!this.echo || !this.session?.session_id) return;
+
+        try {
+            const channelName = `chat-session.${this.session.session_id}`;
+            this.channel = this.echo.channel(channelName);
+            
+            this.channel
+                .listen('.message.sent', (e) => {
+                    this.log('📨 Real-time message received:', e);
+                    if (e.message) {
+                        this.addMessage(e.message);
+                        this.emit('message:received', e.message);
+                    }
+                })
+                .listen('.user.typing', (e) => {
+                    this.log('⌨️ Typing indicator:', e);
+                    this.emit('typing:indicator', e);
+                })
+                .listen('.session.status.changed', (e) => {
+                    this.log('🔄 Session status changed:', e);
+                    if (e.session && this.session) {
+                        this.session.status = e.session.status;
+                        this.session.operator = e.session.assigned_operator || null;
+                        this.storeSession();
+                        this.emit('session:updated', this.session);
+                    }
+                });
+
+            this.log('👂 Listening to channel:', channelName);
+            this.emit('channel:joined', channelName);
+            
+        } catch (error) {
+            this.logError('❌ Failed to setup session listeners:', error);
+        }
+    }
+
+    // =======================
+    // ADMIN-SPECIFIC METHODS
+    // =======================
+
+    async getAdminSessions(filter = 'all', page = 1) {
+        if (this.config.userType !== 'admin' && this.config.userType !== 'operator') {
+            throw new Error('Admin access required');
+        }
+
+        try {
+            const params = new URLSearchParams({
+                filter,
+                page: page.toString(),
+                per_page: '50'
+            });
+
+            const response = await this.apiCall('GET', `/sessions?${params}`, null, this.config.adminBaseUrl);
+            
+            if (response.success) {
+                this.emit('admin:sessions:loaded', response.sessions);
+                return response;
+            }
+        } catch (error) {
+            this.logError('❌ Failed to load admin sessions:', error);
+            this.emit('error', { type: 'load_admin_sessions', error });
+            throw error;
+        }
+    }
+
+    async assignSessionToMe(sessionId) {
+        if (this.config.userType !== 'admin' && this.config.userType !== 'operator') {
+            throw new Error('Admin access required');
+        }
+
+        try {
+            const response = await this.apiCall('POST', `/${sessionId}/assign`, {}, this.config.adminBaseUrl);
+            
+            if (response.success) {
+                this.emit('admin:session:assigned', response.operator);
+                return response.operator;
+            }
+        } catch (error) {
+            this.logError('❌ Failed to assign session:', error);
+            this.emit('error', { type: 'assign_session', error });
+            throw error;
+        }
+    }
+
+    async setOperatorStatus(status) {
+        if (this.config.userType !== 'admin' && this.config.userType !== 'operator') {
+            throw new Error('Admin access required');
+        }
+
+        try {
+            const response = await this.apiCall('POST', '/operator/status', { status }, this.config.adminBaseUrl);
+            
+            if (response.success) {
+                this.emit('admin:status:updated', response.operator);
+                return response.operator;
+            }
+        } catch (error) {
+            this.logError('❌ Failed to set operator status:', error);
+            this.emit('error', { type: 'operator_status', error });
+            throw error;
+        }
+    }
+
+    // =======================
+    // API UTILITIES
+    // =======================
+
+    async apiCall(method, endpoint, data = null, customBaseUrl = null) {
+        const baseUrl = customBaseUrl || this.config.baseUrl;
+        const url = `${baseUrl}${endpoint}`;
+        
         const options = {
             method,
             headers: {
@@ -509,37 +474,52 @@ class ChatSystem {
             }
         };
 
+        // Add authentication header if needed
+        if (this.config.authToken) {
+            options.headers['Authorization'] = `Bearer ${this.config.authToken}`;
+        }
+
         if (data && ['POST', 'PUT', 'PATCH'].includes(method)) {
             options.body = JSON.stringify(data);
         }
 
+        this.log(`🌐 API Call: ${method} ${url}`, data);
+
         const response = await fetch(url, options);
         
         if (!response.ok) {
+            const errorText = await response.text();
+            this.logError(`HTTP ${response.status}:`, errorText);
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
-        return await response.json();
+        const result = await response.json();
+        this.log(`✅ API Response:`, result);
+        
+        return result;
     }
 
-    /**
-     * Session storage management
-     */
+    // =======================
+    // SESSION STORAGE
+    // =======================
+
+    storeSession() {
+        if (this.session) {
+            try {
+                localStorage.setItem('chat_session', JSON.stringify(this.session));
+            } catch (error) {
+                this.logWarn('⚠️ Failed to store session:', error.message);
+            }
+        }
+    }
+
     getStoredSession() {
         try {
             const stored = localStorage.getItem('chat_session');
             return stored ? JSON.parse(stored) : null;
         } catch (error) {
-            console.error('Failed to get stored session:', error);
+            this.logWarn('⚠️ Failed to parse stored session:', error.message);
             return null;
-        }
-    }
-
-    storeSession(session) {
-        try {
-            localStorage.setItem('chat_session', JSON.stringify(session));
-        } catch (error) {
-            console.error('Failed to store session:', error);
         }
     }
 
@@ -547,18 +527,64 @@ class ChatSystem {
         try {
             localStorage.removeItem('chat_session');
         } catch (error) {
-            console.error('Failed to clear stored session:', error);
+            this.logWarn('⚠️ Failed to clear stored session:', error.message);
         }
     }
 
-    isSessionExpired(session) {
-        if (!session.expires_at) return false;
-        return new Date(session.expires_at) < new Date();
+    // =======================
+    // CONNECTION MANAGEMENT
+    // =======================
+
+    handleReconnect() {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            this.logError('❌ Max reconnection attempts reached');
+            this.emit('connection:failed');
+            return;
+        }
+
+        this.reconnectAttempts++;
+        const delay = Math.min(1000 * this.reconnectAttempts, 10000); // Max 10 seconds
+
+        this.log(`🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+        
+        this.reconnectTimer = setTimeout(() => {
+            if (this.echo) {
+                this.echo.connector.pusher.connect();
+            }
+        }, delay);
     }
 
-    /**
-     * Event system
-     */
+    handlePageHidden() {
+        this.log('📴 Page hidden - pausing activity');
+        clearTimeout(this.pollTimer);
+        this.emit('page:hidden');
+    }
+
+    handlePageVisible() {
+        this.log('📱 Page visible - resuming activity');
+        if (!this.isConnected) {
+            this.handleReconnect();
+        }
+        this.emit('page:visible');
+    }
+
+    handleOnline() {
+        this.log('🌐 Back online');
+        if (!this.isConnected && this.echo) {
+            this.echo.connector.pusher.connect();
+        }
+        this.emit('network:online');
+    }
+
+    handleOffline() {
+        this.log('📵 Gone offline');
+        this.emit('network:offline');
+    }
+
+    // =======================
+    // EVENT SYSTEM
+    // =======================
+
     on(event, callback) {
         if (!this.eventListeners.has(event)) {
             this.eventListeners.set(event, []);
@@ -577,106 +603,90 @@ class ChatSystem {
     }
 
     emit(event, data = null) {
+        this.log(`📢 Event: ${event}`, data);
+        
         if (this.eventListeners.has(event)) {
             this.eventListeners.get(event).forEach(callback => {
                 try {
                     callback(data);
                 } catch (error) {
-                    console.error(`Error in event listener for ${event}:`, error);
+                    this.logError(`❌ Event callback error for ${event}:`, error);
                 }
             });
         }
     }
 
-    /**
-     * Utility methods
-     */
-    playNotificationSound() {
-        if ('Audio' in window) {
-            try {
-                const audio = new Audio('/sounds/notification.mp3');
-                audio.volume = 0.3;
-                audio.play().catch(() => {
-                    // Ignore errors if autoplay is blocked
-                });
-            } catch (error) {
-                // Ignore audio errors
-            }
-        }
-    }
+    // =======================
+    // UTILITIES
+    // =======================
 
-    handlePageHidden() {
-        this.emit('page:hidden');
-    }
-
-    handlePageVisible() {
-        this.emit('page:visible');
-        // Reconnect jika perlu
-        if (!this.isConnected && this.session) {
-            this.reconnect();
-        }
-    }
-
-    handleOnline() {
-        this.emit('connection:online');
-        this.reconnect();
-    }
-
-    handleOffline() {
-        this.emit('connection:offline');
-        this.isConnected = false;
-    }
-
-    async reconnect() {
-        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            this.emit('connection:failed');
-            return;
-        }
-
-        this.reconnectAttempts++;
-        this.emit('connection:reconnecting', this.reconnectAttempts);
-
-        try {
-            await this.subscribeToChannel();
-            this.reconnectAttempts = 0;
-            this.emit('connection:reconnected');
-        } catch (error) {
-            console.error('Reconnection failed:', error);
-            setTimeout(() => this.reconnect(), 5000 * this.reconnectAttempts);
-        }
-    }
-
-    /**
-     * Get session info
-     */
     getSession() {
         return this.session;
     }
 
-    /**
-     * Get messages
-     */
     getMessages() {
         return this.messages;
     }
 
-    /**
-     * Get connection state
-     */
+    isConnectedToRealtime() {
+        return this.isConnected;
+    }
+
     getConnectionState() {
         return this.connectionState;
     }
 
-    /**
-     * Check if connected
-     */
-    isConnectedToRealtime() {
-        return this.isConnected;
+    // =======================
+    // CLEANUP
+    // =======================
+
+    cleanup() {
+        this.log('🧹 Cleaning up ChatSystem...');
+        
+        // Clear timers
+        clearTimeout(this.typingTimer);
+        clearTimeout(this.pollTimer);
+        clearTimeout(this.reconnectTimer);
+        
+        // Leave channels
+        if (this.channel && this.echo) {
+            this.echo.leave(`chat-session.${this.session?.session_id}`);
+        }
+        
+        // Clear state
+        this.session = null;
+        this.messages = [];
+        this.isConnected = false;
+        this.connectionState = 'disconnected';
+        
+        // Clear storage
+        this.clearStoredSession();
+        
+        this.emit('cleanup:complete');
+    }
+
+    // =======================
+    // LOGGING
+    // =======================
+
+    log(message, data = null) {
+        if (this.config.debug) {
+            console.log(`[ChatSystem] ${message}`, data || '');
+        }
+    }
+
+    logWarn(message, data = null) {
+        console.warn(`[ChatSystem] ${message}`, data || '');
+    }
+
+    logError(message, data = null) {
+        console.error(`[ChatSystem] ${message}`, data || '');
     }
 }
 
-// Export untuk digunakan global
-window.ChatSystem = ChatSystem;
+// =======================
+// ALPINE.JS INTEGRATION
+// =======================
 
 // Auto-initialize untuk Alpine.js integration
 document.addEventListener('alpine:init', () => {
@@ -688,14 +698,15 @@ document.addEventListener('alpine:init', () => {
             try {
                 this.chatSystem = new ChatSystem({
                     baseUrl: this.$el.dataset.apiUrl || '/api/chat',
+                    adminBaseUrl: this.$el.dataset.adminApiUrl || '/api/admin/chat',
                     userId: this.$el.dataset.userId,
                     userType: this.$el.dataset.userType || 'visitor',
                     userName: this.$el.dataset.userName,
                     csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                    debug: this.$el.dataset.debug === 'true',
                     ...config
                 });
 
-                await this.chatSystem.init();
                 this.isInitialized = true;
                 
                 // Setup event listeners
@@ -707,16 +718,24 @@ document.addEventListener('alpine:init', () => {
         },
 
         setupEventListeners() {
-            // Override ini di component masing-masing
+            // Override this in specific components
         },
 
-        // Wrapper methods
-        async sendMessage(content, type = 'text', attachments = null) {
-            return await this.chatSystem.sendMessage(content, type, attachments);
+        // Wrapper methods for easy Alpine.js usage
+        async sendMessage(content, type = 'text') {
+            return await this.chatSystem.sendMessage(content, type);
         },
 
-        async uploadFile(file) {
-            return await this.chatSystem.uploadFile(file);
+        async startSession() {
+            return await this.chatSystem.startSession();
+        },
+
+        async closeSession() {
+            return await this.chatSystem.closeSession();
+        },
+
+        sendTyping(isTyping = true) {
+            this.chatSystem.sendTypingIndicator(isTyping);
         },
 
         getMessages() {
@@ -729,6 +748,19 @@ document.addEventListener('alpine:init', () => {
 
         isConnected() {
             return this.chatSystem.isConnectedToRealtime();
+        },
+
+        // Admin methods
+        async getAdminSessions(filter = 'all') {
+            return await this.chatSystem.getAdminSessions(filter);
+        },
+
+        async assignToMe(sessionId) {
+            return await this.chatSystem.assignSessionToMe(sessionId);
+        },
+
+        async setStatus(status) {
+            return await this.chatSystem.setOperatorStatus(status);
         }
     }));
 });

@@ -137,6 +137,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'client' => \App\Http\Middleware\ClientMiddleware::class,
             'validate.filepond' => \App\Http\Middleware\ValidateFilePondUpload::class,
+            'admin.chat' => \App\Http\Middleware\AdminChatMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

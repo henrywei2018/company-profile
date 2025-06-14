@@ -88,43 +88,69 @@ class ChatController extends Controller
         }
     }
 
-    public function getSession(Request $request): JsonResponse
-    {
-        try {
-            $user = auth()->user();
+    public function getCurrentSession(Request $request)
+{
+    try {
+        // Ambil session aktif untuk admin yang sedang login
+        $adminId = auth()->id();
+        
+        $currentSession = ChatSession::where('assigned_to', $adminId)
+            ->where('status', 'active')
+            ->with(['messages', 'visitor'])
+            ->first();
             
-            $session = ChatSession::where('user_id', $user->id)
-                ->whereIn('status', ['active', 'waiting', 'queued'])
-                ->with(['assignedOperator'])
-                ->first();
-
-            if (!$session) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No active session found'
-                ]);
-            }
-
-            return response()->json([
-                'success' => true,
-                'session_id' => $session->session_id,
-                'status' => $session->status,
-                'operator' => $session->assignedOperator ? [
-                    'name' => $session->assignedOperator->name,
-                    'avatar' => $session->assignedOperator->avatar_url ?? null
-                ] : null,
-                'started_at' => $session->started_at,
-                'queue_position' => $session->getQueuePosition()
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to get session: ' . $e->getMessage());
+        if (!$currentSession) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get session'
-            ], 500);
+                'message' => 'No active session found',
+                'data' => null
+            ], 404);
         }
+        
+        return response()->json([
+            'success' => true,
+            'data' => $currentSession
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error fetching session: ' . $e->getMessage()
+        ], 500);
     }
+}
+
+public function getSession(Request $request, $sessionId)
+{
+    try {
+        $session = ChatSession::with(['messages', 'visitor'])
+            ->findOrFail($sessionId);
+            
+        // Pastikan admin bisa mengakses session ini
+        if (!auth()->user()->hasRole(['admin', 'super-admin'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access'
+            ], 403);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'data' => $session
+        ]);
+        
+    } catch (ModelNotFoundException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Session not found'
+        ], 404);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error fetching session: ' . $e->getMessage()
+        ], 500);
+    }
+}
 
     public function sendMessage(Request $request): JsonResponse
     {

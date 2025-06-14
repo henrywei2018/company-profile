@@ -621,7 +621,7 @@ document.addEventListener('alpine:init', () => {
 
         async loadStats() {
             try {
-                const response = await this.apiCall('GET', '/stats');
+                const response = await this.apiCall('GET', '/statistics');
                 if (response.success) {
                     this.stats = response.data;
                 }
@@ -978,12 +978,12 @@ document.addEventListener('alpine:init', () => {
         async apiCall(method, endpoint, data = null) {
             const url = `${this.$el.dataset.apiUrl}${endpoint}`;
             const options = {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-                }
+        method,
+        headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                },
+                credentials: 'same-origin' // ✅ FOR SESSION AUTH
             };
 
             if (data && ['POST', 'PUT', 'PATCH'].includes(method)) {

@@ -229,38 +229,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::get('/reports/detailed', [ChatController::class, 'detailedReports'])->name('reports.detailed');
         Route::post('/reports/generate', [ChatController::class, 'generateReport'])->name('reports.generate');
         
-        Route::prefix('api')->name('api.')->group(function () {
-            Route::get('/sessions', [ChatController::class, 'getAdminSessions'])->name('sessions');
-            Route::get('/statistics', [ChatController::class, 'getStatistics'])->name('statistics');
-            Route::get('/{chatSession}/messages', [ChatController::class, 'getChatMessages'])->name('messages');
-            Route::post('/{chatSession}/reply', [ChatController::class, 'adminReply'])->name('reply');
-            Route::post('/{chatSession}/assign', [ChatController::class, 'assignToMe'])->name('assign');
-            Route::post('/{chatSession}/close', [ChatController::class, 'closeSession'])->name('close');
-            Route::post('/{chatSession}/transfer', [ChatController::class, 'transferSession'])->name('transfer');
-            Route::post('/{chatSession}/priority', [ChatController::class, 'updatePriority'])->name('priority');
-            Route::post('/{chatSession}/notes', [ChatController::class, 'updateNotes'])->name('notes');
-            Route::post('/operator/status', [ChatController::class, 'setOperatorStatus'])->name('operator.status');
-            Route::get('/operator/status', [ChatController::class, 'getOperatorStatus'])->name('operator.status.get');
-            Route::post('/{chatSession}/mark-read', [ChatController::class, 'markMessagesAsRead'])->name('mark-read');
-            Route::get('/templates', [ChatController::class, 'getTemplates'])->name('templates');
-            Route::post('/{chatSession}/use-template', [ChatController::class, 'useTemplate'])->name('use-template');
-        });
-        
-        // Operator management
-        Route::post('/operator/online', [ChatController::class, 'goOnline'])->name('operator.online');
-        Route::post('/operator/offline', [ChatController::class, 'goOffline'])->name('operator.offline');
-        Route::get('/operator/status', [ChatController::class, 'getOperatorStatus'])->name('operator.status');
-        Route::post('/operator/availability', [ChatController::class, 'updateAvailability'])->name('operator.availability');
-        Route::get('/operators/available', [ChatController::class, 'getAvailableOperators'])->name('operators.available');
         
         // Quick templates for chat usage (different from full template management)
         Route::get('/quick-templates', [ChatController::class, 'getQuickTemplates'])->name('quick-templates');
         Route::get('/search-templates', [ChatController::class, 'searchTemplates'])->name('search-templates');
-        
-        // Bulk operations
-        Route::post('/bulk-update', [ChatController::class, 'bulkUpdate'])->name('bulk-update');
-        Route::post('/archive-old', [ChatController::class, 'archiveOldSessions'])->name('archive-old');
-        
         
         // Chat Templates Management (Full CRUD)
         Route::prefix('templates')->name('templates.')->group(function () {

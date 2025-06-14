@@ -94,10 +94,6 @@ Route::post('/messages', [MessageController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('messages.store');
 
-Route::prefix('api/chat')->group(function () {
-    Route::get('/online-status', [App\Http\Controllers\ChatController::class, 'onlineStatus'])->name('api.chat.public-online-status');
-    Route::get('/status', [App\Http\Controllers\ChatController::class, 'onlineStatus'])->name('api.chat.public-status');
-});
 
 /*
 |--------------------------------------------------------------------------
@@ -142,61 +138,6 @@ Route::middleware('auth','admin')->group(function () {
         
     });
     
-
-    Route::get('/chat/notifications', function () {
-        $user = auth()->user();
-        
-        if ($user->hasAdminAccess()) {
-            // Get chat notifications for operators
-            $notifications = $user->notifications()
-                ->where('type', 'like', '%Chat%')
-                ->whereNull('read_at')
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get();
-        } else {
-            // Get chat notifications for clients
-            $notifications = $user->notifications()
-                ->where('type', 'like', '%chat%')
-                ->whereNull('read_at')
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get();
-        }
-        
-        return response()->json([
-            'success' => true,
-            'notifications' => $notifications,
-            'unread_count' => $notifications->count()
-        ]);
-    })->name('chat.notifications');
-
-    Route::post('/api/analytics/track', fn() => response()->json(['success' => true]))
-        ->name('api.analytics.track');
-
-    Route::get('/chat/websocket-auth', function () {
-        return response()->json([
-            'auth' => auth()->check(),
-            'user_id' => auth()->id(),
-            'is_admin' => auth()->check() && auth()->user()->hasAdminAccess(),
-        ]);
-    })->name('chat.websocket-auth');
-    
-    Route::prefix('api/chat')->group(function () {
-        Route::post('/start', [App\Http\Controllers\ChatController::class, 'start'])->name('api.chat.start');
-        Route::get('/session', [App\Http\Controllers\ChatController::class, 'getSession'])->name('api.chat.session');
-        Route::post('/close', [App\Http\Controllers\ChatController::class, 'close'])->name('api.chat.close');
-        Route::post('/send-message', [App\Http\Controllers\ChatController::class, 'sendMessage'])
-            ->middleware('throttle:30,1')
-            ->name('api.chat.send-message');
-        Route::post('/typing', [App\Http\Controllers\ChatController::class, 'sendTyping'])
-            ->middleware('throttle:60,1')
-            ->name('api.chat.typing');
-        Route::get('/messages', [App\Http\Controllers\ChatController::class, 'getMessages'])->name('api.chat.messages');
-        Route::post('/update-info', [App\Http\Controllers\ChatController::class, 'updateClientInfo'])->name('api.chat.update-info');
-        Route::get('/history', [App\Http\Controllers\ChatController::class, 'history'])->name('api.chat.history');
-        Route::get('/online-status', [App\Http\Controllers\ChatController::class, 'onlineStatus'])->name('api.chat.online-status');
-    });
 });
 
 Route::get('/robots.txt', [RobotsController::class, 'robots'])->name('robots');

@@ -42,15 +42,6 @@ Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
     Route::post('clear-cache', [NotificationController::class, 'clearCache']);
 });
 
-/*
-|--------------------------------------------------------------------------
-| Public APIs
-|--------------------------------------------------------------------------
-*/
-Route::prefix('chat')->group(function () {
-    Route::get('/online-status', [ChatController::class, 'onlineStatus'])->name('api.chat.online-status');
-    Route::get('/status', [ChatController::class, 'onlineStatus'])->name('api.chat.status');
-});
 
 // Project
 Route::prefix('projects')->name('api.projects.')->group(function () {
@@ -86,39 +77,39 @@ Route::prefix('posts')->name('api.posts.')->group(function () {
 Route::post('/contact', [ContactController::class, 'store'])->name('api.contact');
 Route::post('/quotation', [QuotationController::class, 'store'])->name('api.quotation');
 
-// Public Chat API
 Route::prefix('chat')->group(function () {
-    Route::get('/status', [ChatController::class, 'onlineStatus'])->name('api.chat.public-status');
+    Route::get('/online-status', [ChatController::class, 'onlineStatus'])->name('api.chat.online-status');
 });
 
-/*
-|--------------------------------------------------------------------------
-| Client Authenticated Chat API
-|--------------------------------------------------------------------------
-*/
-Route::prefix('api/chat')->group(function () {
-    Route::post('/start-session', [ChatController::class, 'startSession']);
-    Route::post('/send-message', [ChatController::class, 'sendMessage']);
-    Route::get('/messages/{sessionId}', [ChatController::class, 'getMessages']);
-    Route::get('/status', [ChatController::class, 'getStatus']);
-    Route::post('/typing', [ChatController::class, 'sendTyping']);
-    Route::post('/close-session', [ChatController::class, 'closeSession']);
+Route::prefix('chat')->middleware(['auth'])->group(function () {
+    Route::post('/start', [ChatController::class, 'start'])->name('api.chat.start');
+    Route::get('/session', [ChatController::class, 'getSession'])->name('api.chat.session');
+    Route::post('/send-message', [ChatController::class, 'sendMessage'])
+        ->middleware('throttle:30,1')
+        ->name('api.chat.send-message');
+    Route::get('/messages', [ChatController::class, 'getMessages'])->name('api.chat.messages');
+    Route::post('/typing', [ChatController::class, 'sendTyping'])
+        ->middleware('throttle:60,1')
+        ->name('api.chat.typing');
+    Route::post('/close', [ChatController::class, 'close'])->name('api.chat.close');
+    Route::get('/online-status', [ChatController::class, 'onlineStatus'])->name('api.chat.online-status');
 });
-
-/*
-|--------------------------------------------------------------------------
-| Admin Chat API
-|--------------------------------------------------------------------------
-*/
-Route::prefix('admin/chat')->middleware(['auth:sanctum', 'role:admin|super-admin'])->name('api.admin.chat.')->group(function () {
-    Route::get('/sessions', [ChatController::class, 'getAdminSessions'])->name('sessions');
-    Route::get('/statistics', [ChatController::class, 'getStatistics'])->name('statistics');
-    Route::post('/{chatSession}/reply', [ChatController::class, 'reply'])->middleware('throttle:60,1')->name('reply');
-    Route::post('/{chatSession}/assign', [ChatController::class, 'assignToMe'])->name('assign');
-    Route::post('/{chatSession}/close', [ChatController::class, 'closeSession'])->name('close');
-    Route::post('/{chatSession}/typing', [ChatController::class, 'operatorTyping'])->middleware('throttle:60,1')->name('typing');
-    Route::post('/operator/status', [ChatController::class, 'setOperatorStatus'])->name('operator-status');
-    Route::get('/operator/status', [ChatController::class, 'getOperatorStatus'])->name('get-operator-status');
-    Route::get('/operators/available', [ChatController::class, 'getAvailableOperators'])->name('operators.available');
-    Route::get('/{chatSession}/messages', [ChatController::class, 'getChatMessages'])->name('messages');
-});
+Route::prefix('admin/chat')
+    ->middleware(['auth:sanctum,web', 'admin']) // Support both Sanctum and Web auth
+    ->name('api.admin.chat.')
+    ->group(function () {
+        Route::get('/sessions', [ChatController::class, 'getAdminSessions'])->name('sessions');
+        Route::get('/statistics', [ChatController::class, 'getStatistics'])->name('statistics');
+        Route::post('/{chatSession}/reply', [ChatController::class, 'reply'])
+            ->middleware('throttle:60,1')
+            ->name('reply');
+        Route::post('/{chatSession}/assign', [ChatController::class, 'assignToMe'])->name('assign');
+        Route::post('/{chatSession}/close', [ChatController::class, 'closeSession'])->name('close');
+        Route::post('/{chatSession}/typing', [ChatController::class, 'operatorTyping'])
+            ->middleware('throttle:60,1')
+            ->name('typing');
+        Route::post('/operator/status', [ChatController::class, 'setOperatorStatus'])->name('operator-status');
+        Route::get('/operator/status', [ChatController::class, 'getOperatorStatus'])->name('get-operator-status');
+        Route::get('/operators/available', [ChatController::class, 'getAvailableOperators'])->name('operators.available');
+        Route::get('/{chatSession}/messages', [ChatController::class, 'getChatMessages'])->name('messages');
+    });
