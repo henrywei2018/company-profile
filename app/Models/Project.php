@@ -281,6 +281,11 @@ class Project extends Model
         return $this->hasMany(\App\Models\Testimonial::class);
     }
 
+    public function testimonial()
+    {
+        return $this->hasOne(\App\Models\Testimonial::class);
+    }
+
     /**
      * Get active testimonials for this project.
      */

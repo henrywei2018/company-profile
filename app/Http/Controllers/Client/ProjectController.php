@@ -124,7 +124,7 @@ class ProjectController extends Controller
             
         // Get related projects (client's other projects in same category)
         $relatedProjects = $this->clientAccessService->getClientProjects(auth()->user())
-            ->where('project_category_id', $project->project_category_id)
+            ->where('category_id', $project->category_id)
             ->where('id', '!=', $project->id)
             ->with(['category', 'images' => fn($q) => $q->where('is_featured', true)])
             ->limit(3)
