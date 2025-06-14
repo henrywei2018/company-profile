@@ -96,16 +96,13 @@ Route::prefix('chat')->group(function () {
 | Client Authenticated Chat API
 |--------------------------------------------------------------------------
 */
-Route::prefix('chat')->middleware(['auth:sanctum'])->group(function () {
-    Route::post('/start', [ChatController::class, 'start'])->name('api.chat.start');
-    Route::get('/session', [ChatController::class, 'getSession'])->name('api.chat.session');
-    Route::post('/close', [ChatController::class, 'close'])->name('api.chat.close');
-    Route::post('/send-message', [ChatController::class, 'sendMessage'])->middleware('throttle:30,1')->name('api.chat.send-message');
-    Route::post('/typing', [ChatController::class, 'sendTyping'])->middleware('throttle:60,1')->name('api.chat.typing');
-    Route::get('/messages', [ChatController::class, 'getMessages'])->name('api.chat.messages');
-    Route::post('/update-info', [ChatController::class, 'updateClientInfo'])->name('api.chat.update-info');
-    Route::get('/history', [ChatController::class, 'history'])->name('api.chat.history');
-    Route::get('/online-status', [ChatController::class, 'onlineStatus'])->name('api.chat.client-online-status');
+Route::prefix('api/chat')->group(function () {
+    Route::post('/start-session', [ChatController::class, 'startSession']);
+    Route::post('/send-message', [ChatController::class, 'sendMessage']);
+    Route::get('/messages/{sessionId}', [ChatController::class, 'getMessages']);
+    Route::get('/status', [ChatController::class, 'getStatus']);
+    Route::post('/typing', [ChatController::class, 'sendTyping']);
+    Route::post('/close-session', [ChatController::class, 'closeSession']);
 });
 
 /*
