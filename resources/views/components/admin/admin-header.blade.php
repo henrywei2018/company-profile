@@ -33,21 +33,7 @@
 
         <!-- Right: Actions -->
         <div class="flex items-center justify-end w-full gap-x-2">
-            <!-- Quick Stats Badges -->
-            @if ($pendingQuotationsCount > 0)
-                <a href="{{ route('admin.quotations.index', ['status' => 'pending']) }}"
-                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-amber-800 bg-amber-100 rounded-full hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400">
-                    {{ $pendingQuotationsCount }} pending quotes
-                </a>
-            @endif
-
-            @if ($waitingChatsCount > 0)
-                <a href="{{ route('admin.chat.index') }}"
-                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-red-800 bg-red-100 rounded-full hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 animate-pulse">
-                    {{ $waitingChatsCount }} waiting chats
-                </a>
-            @endif
-
+            
             <!-- Theme Toggle - FIXED -->
             <button id="theme-toggle"
                 class="size-8 flex justify-center items-center text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-neutral-700 rounded-full">
@@ -73,132 +59,14 @@
             </button>
 
             <!-- FIXED: Admin Notification Dropdown -->
-            <div class="hs-dropdown relative inline-block" data-hs-dropdown data-hs-dropdown-placement="bottom-end">
-                <button type="button"
-                    class="size-8 flex justify-center items-center text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-neutral-700 rounded-full relative"
-                    data-hs-dropdown-toggle id="admin-notification-dropdown-toggle">
-                    <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor"
-                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-                        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-                    </svg>
-                    @if ($unreadNotificationsCount > 0)
-                        <span
-                            class="absolute -top-1 -end-1 inline-flex items-center justify-center size-4 text-xs font-bold text-white bg-red-500 rounded-full animate-pulse"
-                            id="admin-notification-badge">
-                            {{ $unreadNotificationsCount > 99 ? '99+' : $unreadNotificationsCount }}
-                        </span>
-                    @endif
-                    <span class="sr-only">Admin Notifications</span>
-                </button>
-
-                <!-- FIXED: Admin Dropdown Panel -->
-                <div class="hs-dropdown-menu hidden z-50 mt-2 w-80 bg-white shadow-lg rounded-lg border dark:bg-neutral-800 dark:border-neutral-700"
-                    aria-labelledby="admin-notification-dropdown-toggle">
-
-                    <!-- Header -->
-                    <div
-                        class="px-4 py-3 border-b border-gray-200 dark:border-neutral-700 flex items-center justify-between">
-                        <h3 class="text-sm font-medium text-gray-800 dark:text-white">Admin Notifications</h3>
-                        <div class="flex items-center gap-2">
-                            @if ($unreadNotificationsCount > 0)
-                                <button type="button" onclick="markAllAdminNotificationsAsRead()"
-                                    class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
-                                    Mark all read
-                                </button>
-                            @endif
-                            <a href="{{ route('admin.notifications.index') }}"
-                                class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-                                View all
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- FIXED: Admin Notification List with Loading State -->
-                    <div class="max-h-80 overflow-y-auto" id="admin-notification-list">
-                        <!-- Loading State -->
-                        <div id="admin-notification-loading" class="px-4 py-8 text-center">
-                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Loading notifications...</p>
-                        </div>
-
-                        <!-- Initial Content (will be replaced by JS) -->
-                        <div id="admin-notification-content">
-                            @forelse($recentNotifications as $notification)
-                                <div class="px-4 py-3 border-b border-gray-100 dark:border-neutral-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-neutral-700 cursor-pointer {{ !$notification['is_read'] ? 'bg-blue-50 dark:bg-blue-900/10' : '' }}"
-                                    onclick="handleAdminNotificationClick('{{ $notification['id'] }}', '{{ $notification['url'] ?? '#' }}')"
-                                    data-notification-id="{{ $notification['id'] }}">
-                                    <div class="flex items-start space-x-3">
-                                        <div class="flex-shrink-0">
-                                            <x-notification.icon :type="$notification['icon']" :color="$notification['color']" size="sm" />
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <div class="flex items-center justify-between">
-                                                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                                    {{ $notification['title'] }}
-                                                </p>
-                                                <div class="flex items-center space-x-1">
-                                                    @if (!$notification['is_read'])
-                                                        <span
-                                                            class="flex-shrink-0 w-2 h-2 bg-red-600 rounded-full notification-unread-dot"></span>
-                                                    @endif
-                                                    <span
-                                                        class="text-xs text-gray-500 dark:text-neutral-400 whitespace-nowrap">
-                                                        {{ $notification['formatted_time'] }}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            @if (!empty($notification['message']))
-                                                <p
-                                                    class="mt-1 text-xs text-gray-600 dark:text-neutral-300 line-clamp-2">
-                                                    {{ $notification['message'] }}
-                                                </p>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            @empty
-                                <div class="px-4 py-8 text-center" id="admin-empty-state">
-                                    <svg class="mx-auto size-12 text-gray-400 dark:text-neutral-500" fill="none"
-                                        stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M15 17h5l-5 5v-5zM9 7h6m-6 4h6m-6 4h6M3 7h3m-3 4h3m-3 4h3" />
-                                    </svg>
-                                    <p class="text-sm text-gray-500 dark:text-neutral-400 mt-2">No new notifications
-                                    </p>
-                                    <p class="text-xs text-gray-400 dark:text-neutral-500">All systems running
-                                        smoothly!</p>
-                                </div>
-                            @endforelse
-                        </div>
-                    </div>
-
-                    <!-- Footer with Quick Actions -->
-                    <div
-                        class="px-4 py-3 border-t border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-700/50">
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="text-gray-500 dark:text-gray-400">
-                                {{ $unreadNotificationsCount }} unread
-                            </span>
-                            <div class="flex items-center gap-2">
-                                <button type="button" onclick="refreshAdminNotifications()"
-                                    class="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-                                    <svg class="size-3 inline mr-1" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                    </svg>
-                                    Refresh
-                                </button>
-                                <a href="{{ route('profile.preferences') }}"
-                                    class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
-                                    Settings
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <x-notification.enhanced-dropdown
+                :notifications="collect()" {{-- (not used, JS handles loading) --}}
+                :unread-count="$unreadNotificationsCount ?? 0"
+                variant="admin"
+                :max-display="10"
+                :show-filters="true"
+                :show-bulk-actions="true"
+            />
 
             <!-- Quick Actions Dropdown -->
             <div class="hs-dropdown relative inline-block" data-hs-dropdown data-hs-dropdown-placement="bottom-end">
@@ -332,229 +200,556 @@
         </div>
     </nav>
 </header>
-
 @push('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // FIXED: Admin Dark Mode Toggle Implementation
-            const adminThemeToggle = document.getElementById('admin-theme-toggle');
-            if (adminThemeToggle) {
-                adminThemeToggle.addEventListener('click', function() {
-                    const html = document.documentElement;
+<script src="{{ asset('js/enhanced-notifications.js') }}"></script>
+<script>
+// === CONFIG ===
+const CONTENT_ID = 'admin-notification-content';
+const BADGE_ID = 'admin-notification-badge';
+const LOADING_ID = 'notification-loading';
+const FILTER_ID = 'admin-notification-filter';
+const CATEGORY_ID = 'admin-notification-category';
 
-                    if (html.classList.contains('dark')) {
-                        html.classList.remove('dark');
-                        localStorage.setItem('hs_theme', 'light');
-                    } else {
-                        html.classList.add('dark');
-                        localStorage.setItem('hs_theme', 'dark');
-                    }
-                });
-            }
+// === GLOBAL DATA ===
+let allNotifications = [];
+let unreadCount = 0;
 
-            // Load admin notifications when page loads
-            loadAdminNotifications();
+// === ICONS ===
+function getIconSvg(icon, color) {
+    const colorClass = color ? `text-${color}-500 dark:text-${color}-400` : 'text-blue-500';
+    const icons = {
+        bell: `<svg class="w-5 h-5 ${colorClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="m13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
+        folder: `<svg class="w-5 h-5 ${colorClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>`,
+        chat: `<svg class="w-5 h-5 ${colorClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>`,
+        user: `<svg class="w-5 h-5 ${colorClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>`,
+    };
+    return icons[icon] || icons['bell'];
+}
 
-            // Auto-refresh every 30 seconds
-            setInterval(updateAdminNotificationCounts, 30000);
-        });
+// === UI UPDATE FUNCTIONS ===
+function updateBadge(count) {
+    const badge = document.getElementById(BADGE_ID);
+    if (!badge) return;
+    if (count > 0) {
+        badge.innerText = count > 99 ? "99+" : count;
+        badge.style.display = "inline-flex";
+    } else {
+        badge.style.display = "none";
+    }
+}
 
-        function loadAdminNotifications() {
-            const loadingEl = document.getElementById('admin-notification-loading');
-            const contentEl = document.getElementById('admin-notification-content');
+function renderNotifications() {
+    const container = document.getElementById(CONTENT_ID);
+    if (!container) return;
+    // Remove loading spinner if present
+    const loading = document.getElementById(LOADING_ID);
+    if (loading) loading.remove();
 
-            if (loadingEl) loadingEl.style.display = 'block';
-            if (contentEl) contentEl.style.display = 'none';
+    // Filters
+    const filter = document.getElementById(FILTER_ID)?.value || 'unread';
+    const category = document.getElementById(CATEGORY_ID)?.value || '';
+    let filtered = allNotifications;
+    if (filter === 'unread') filtered = filtered.filter(n => !n.is_read);
+    else if (filter === 'read') filtered = filtered.filter(n => n.is_read);
+    if (category) filtered = filtered.filter(n => n.category === category);
 
-            // Use admin notification route
-            fetch('{{ route('admin.notifications.recent') }}?limit=10')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        renderAdminNotifications(data.notifications);
-                        updateAdminNotificationBadge(data.unread_count);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading admin notifications:', error);
-                    showAdminNotificationError();
-                })
-                .finally(() => {
-                    if (loadingEl) loadingEl.style.display = 'none';
-                    if (contentEl) contentEl.style.display = 'block';
-                });
-        }
-
-        function renderAdminNotifications(notifications) {
-            const contentEl = document.getElementById('admin-notification-content');
-            if (!contentEl) return;
-
-            if (!notifications || notifications.length === 0) {
-                contentEl.innerHTML = `
-            <div class="px-4 py-8 text-center">
-                <svg class="mx-auto size-12 text-gray-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM9 7h6m-6 4h6m-6 4h6M3 7h3m-3 4h3m-3 4h3" />
-                </svg>
-                <p class="text-sm text-gray-500 dark:text-neutral-400 mt-2">No new notifications</p>
-                <p class="text-xs text-gray-400 dark:text-neutral-500">All systems running smoothly!</p>
-            </div>
-        `;
-                return;
-            }
-
-            // Render notifications
-            const html = notifications.map(notification => {
-                const unreadClass = !notification.is_read ? 'bg-blue-50 dark:bg-blue-900/10' : '';
-                const unreadDot = !notification.is_read ?
-                    '<span class="flex-shrink-0 w-2 h-2 bg-red-600 rounded-full notification-unread-dot"></span>' :
-                    '';
-
-                return `
-            <div class="px-4 py-3 border-b border-gray-100 dark:border-neutral-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-neutral-700 cursor-pointer transition-colors ${unreadClass}"
-                 onclick="handleAdminNotificationClick('${notification.id}', '${notification.action_url || notification.url || '#'}')"
-                 data-notification-id="${notification.id}">
-                <div class="flex items-start space-x-3">
-                    <div class="flex-shrink-0">
-                        <div class="size-8 bg-${notification.color}-100 dark:bg-${notification.color}-900/30 rounded-lg flex items-center justify-center">
-                            <svg class="size-4 text-${notification.color}-600 dark:text-${notification.color}-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM9 7h6m-6 4h6m-6 4h6M3 7h3m-3 4h3m-3 4h3" />
-                            </svg>
-                        </div>
+    if (filtered.length) {
+        container.innerHTML = filtered.map(n => {
+            const isUnread = !n.is_read;
+            return `
+            <div class="flex gap-3 p-3 rounded-md mb-2 border transition
+                ${isUnread ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-300 dark:border-blue-800 shadow-sm' : 'bg-white dark:bg-neutral-900 border-gray-200 dark:border-gray-700'}
+                hover:bg-blue-100/40 dark:hover:bg-blue-900/70">
+                <div class="flex-shrink-0 flex items-center">
+                    ${getIconSvg(n.icon, n.color)}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center gap-2 mb-0.5">
+                        <span class="font-medium text-gray-900 dark:text-white text-sm">${n.title || '(No Title)'}</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap" title="${n.formatted_date || n.created_at}">${n.formatted_time || ''}</span>
                     </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between">
-                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                ${notification.title}
-                            </p>
-                            <div class="flex items-center space-x-1">
-                                ${unreadDot}
-                                <span class="text-xs text-gray-500 dark:text-neutral-400 whitespace-nowrap">
-                                    ${notification.formatted_time}
-                                </span>
-                            </div>
-                        </div>
-                        ${notification.message ? `<p class="mt-1 text-xs text-gray-600 dark:text-neutral-300 line-clamp-2">${notification.message}</p>` : ''}
-                    </div>
+                    <div class="text-xs text-gray-700 dark:text-gray-200">${n.message || ''}</div>
+                    ${n.action_url ? `<a href="${n.action_url}" class="inline-block mt-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline transition">View</a>` : ''}
                 </div>
             </div>
-        `;
-            }).join('');
+            `;
+        }).join('');
+    } else {
+        container.innerHTML = `<div class="p-6 text-center text-gray-400 dark:text-gray-500 text-sm">No notifications</div>`;
+    }
+}
 
-            contentEl.innerHTML = html;
-        }
+function applyFilters() {
+    renderNotifications();
+}
 
-        function handleAdminNotificationClick(notificationId, url) {
-            // Mark as read using admin route
-            markAdminNotificationAsRead(notificationId);
-
-            // Navigate to URL if provided
-            if (url && url !== '#') {
-                setTimeout(() => {
-                    window.location.href = url;
-                }, 100);
-            }
-        }
-
-        function markAdminNotificationAsRead(notificationId) {
-            fetch(`{{ route('admin.notifications.mark-as-read', ':id') }}`.replace(':id', notificationId), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Update UI
-                        const notificationElement = document.querySelector(
-                        `[data-notification-id="${notificationId}"]`);
-                        if (notificationElement) {
-                            notificationElement.classList.remove('bg-blue-50', 'dark:bg-blue-900/10');
-                            const unreadDot = notificationElement.querySelector('.notification-unread-dot');
-                            if (unreadDot) {
-                                unreadDot.remove();
-                            }
-                        }
-
-                        updateAdminNotificationBadge(data.unread_count);
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        function markAllAdminNotificationsAsRead() {
-            fetch('{{ route('admin.notifications.mark-all-read') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Reload notifications
-                        loadAdminNotifications();
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        function updateAdminNotificationCounts() {
-            fetch('{{ route('admin.notifications.unread-count') }}')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        updateAdminNotificationBadge(data.count);
-                    }
-                })
-                .catch(error => console.error('Error updating admin notification counts:', error));
-        }
-
-        function updateAdminNotificationBadge(count) {
-            const badge = document.getElementById('admin-notification-badge');
-
-            if (count > 0) {
-                if (badge) {
-                    badge.textContent = count > 99 ? '99+' : count;
-                    badge.style.display = 'inline-flex';
-                } else {
-                    // Create badge if it doesn't exist
-                    const toggleBtn = document.getElementById('admin-notification-dropdown-toggle');
-                    if (toggleBtn) {
-                        const newBadge = document.createElement('span');
-                        newBadge.id = 'admin-notification-badge';
-                        newBadge.className =
-                            'absolute -top-1 -end-1 inline-flex items-center justify-center size-4 text-xs font-bold text-white bg-red-500 rounded-full animate-pulse';
-                        newBadge.textContent = count > 99 ? '99+' : count;
-                        toggleBtn.appendChild(newBadge);
-                    }
-                }
-            } else {
-                if (badge) {
-                    badge.style.display = 'none';
-                }
-            }
-        }
-
-        function refreshAdminNotifications() {
-            loadAdminNotifications();
-        }
-
-        function showAdminNotificationError() {
-            const contentEl = document.getElementById('admin-notification-content');
-            if (contentEl) {
-                contentEl.innerHTML = `
-            <div class="px-4 py-8 text-center">
-                <svg class="mx-auto size-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p class="text-sm text-red-600 mt-2">Failed to load notifications</p>
-                <button onclick="loadAdminNotifications()" class="text-xs text-blue-600 hover:underline mt-1">Try again</button>
+// === FETCH AND RENDER ===
+function loadNotifications() {
+    const container = document.getElementById(CONTENT_ID);
+    if (container) {
+        container.innerHTML = `
+            <div id="${LOADING_ID}" class="px-4 py-8 text-center">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Loading notifications...</p>
             </div>
         `;
+    }
+    fetch('/admin/notifications/recent')
+        .then(r => r.json())
+        .then(data => {
+            allNotifications = data.notifications || [];
+            unreadCount = data.unread_count || 0;
+            updateBadge(unreadCount);
+            renderNotifications();
+        })
+        .catch(() => {
+            if (container) container.innerHTML = "<div style='padding:16px;text-align:center;color:red;'>Error loading notifications</div>";
+        });
+}
+
+// === "MARK ALL AS READ" HANDLER ===
+window.markAllNotificationsAsRead = function() {
+    const btn = document.getElementById('mark-all-read-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Marking...';
+    }
+
+    fetch('/admin/notifications/mark-all-read', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+        }
+    })
+    .then(async r => {
+        const text = await r.text();
+        let data;
+        try { data = JSON.parse(text); } catch (e) { data = null; }
+        if (r.ok && data && data.success) {
+            allNotifications = allNotifications.map(n => Object.assign({}, n, { is_read: true }));
+            unreadCount = 0;
+            updateBadge(0);
+            renderNotifications();
+        } else {
+            alert("Backend error: " + (data && data.message ? data.message : text));
+        }
+    })
+    .catch((err) => {
+        alert("Fetch failed: " + (err && err.message ? err.message : err));
+    })
+    .finally(() => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = 'Mark all read';
+        }
+    });
+};
+
+// === FILTERS, REFRESH, INITIALIZATION ===
+document.addEventListener('DOMContentLoaded', function () {
+    // Initial load
+    loadNotifications();
+
+    // Attach filter event handlers
+    const filterEl = document.getElementById(FILTER_ID);
+    const catEl = document.getElementById(CATEGORY_ID);
+    if (filterEl) filterEl.addEventListener('change', applyFilters);
+    if (catEl) catEl.addEventListener('change', applyFilters);
+
+    // Add refreshNotifications to window for refresh button
+    window.refreshNotifications = loadNotifications;
+});
+</script>
+@endpush
+
+    <style>
+        .notification-dropdown {
+            width: 384px;
+            /* w-96 */
+            max-width: 90vw;
+            padding-left: 6px;
+            padding-right: 12px;
+        }
+
+        @media (max-width: 640px) {
+            .notification-dropdown {
+                width: 320px;
+                /* w-80 */
             }
         }
-    </script>
-@endpush
+
+        .notification-item {
+            transition: all 0.2s ease;
+            position: relative;
+            border-left: 3px solid transparent;
+        }
+
+        .notification-item:hover {
+            transform: translateX(2px);
+        }
+
+        .notification-item:hover .flex-shrink-0:last-child {
+            opacity: 1 !important;
+        }
+
+        /* Priority indicators */
+        .notification-item.priority-urgent {
+            border-left-color: #ef4444;
+        }
+
+        .notification-item.priority-high {
+            border-left-color: #f97316;
+        }
+
+        .notification-item.priority-normal {
+            border-left-color: transparent;
+        }
+
+        .notification-item.priority-low {
+            border-left-color: #10b981;
+        }
+
+        /* Selection states */
+        .notification-item.selected {
+            background-color: rgba(59, 130, 246, 0.1) !important;
+            border-left-color: #3b82f6 !important;
+        }
+
+        /* Bulk mode styles */
+        .notification-checkbox {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .bulk-mode .notification-checkbox {
+            opacity: 1;
+        }
+
+        .priority-badge {
+            font-size: 0.65rem;
+            line-height: 1;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .priority-badge.priority-urgent {
+            background-color: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .priority-badge.priority-high {
+            background-color: #fed7aa;
+            color: #ea580c;
+            border: 1px solid #fdba74;
+        }
+
+        .priority-badge.priority-low {
+            background-color: #d1fae5;
+            color: #059669;
+            border: 1px solid #a7f3d0;
+        }
+
+        /* Dark mode priority badges */
+        .dark .priority-badge.priority-urgent {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .dark .priority-badge.priority-high {
+            background-color: rgba(249, 115, 22, 0.2);
+            color: #fdba74;
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+
+        .dark .priority-badge.priority-low {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: #a7f3d0;
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-out {
+            animation: slideOut 0.3s ease forwards;
+        }
+
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+
+            to {
+                opacity: 0;
+                transform: translateX(-100%);
+            }
+        }
+
+        /* Loading shimmer effect */
+        .loading-shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        .dark .loading-shimmer {
+            background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+            background-size: 200% 100%;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
+        #notification-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #notification-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #notification-list::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 2px;
+        }
+
+        #notification-list::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        .dark #notification-list::-webkit-scrollbar-thumb {
+            background: #4b5563;
+        }
+
+        .dark #notification-list::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        /* Firefox scrollbar */
+        #notification-list {
+            scrollbar-width: thin;
+            scrollbar-color: #d1d5db transparent;
+        }
+
+        .dark #notification-list {
+            scrollbar-color: #4b5563 transparent;
+        }
+
+        #bulk-actions-bar {
+            transition: all 0.3s ease;
+            border-radius: 0.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        #bulk-actions-bar.hidden {
+            opacity: 0;
+            transform: translateY(-10px);
+            pointer-events: none;
+        }
+
+        .notification-filters select {
+            transition: all 0.2s ease;
+        }
+
+        .notification-filters select:focus {
+            outline: none;
+            ring: 2px;
+            ring-color: #3b82f6;
+            ring-opacity: 0.5;
+        }
+
+        .notification-item .flex-shrink-0:last-child {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .notification-item:hover .flex-shrink-0:last-child {
+            opacity: 1;
+        }
+
+        .notification-item .flex-shrink-0:last-child button {
+            transition: all 0.2s ease;
+            border-radius: 0.25rem;
+            padding: 0.25rem;
+        }
+
+        .notification-item .flex-shrink-0:last-child button:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            transform: scale(1.1);
+        }
+
+        .dark .notification-item .flex-shrink-0:last-child button:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        #notification-toast {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            backdrop-filter: blur(10px);
+        }
+
+        #notification-toast svg {
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 640px) {
+            .notification-dropdown {
+                left: 1rem !important;
+                right: 1rem !important;
+                width: auto !important;
+                margin-top: 0.5rem;
+            }
+
+            .notification-item {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            .notification-item .text-sm {
+                font-size: 0.8rem;
+            }
+
+            .notification-item .text-xs {
+                font-size: 0.7rem;
+            }
+
+            #bulk-actions-bar {
+                padding: 0.5rem;
+            }
+
+            #bulk-actions-bar .flex {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            #bulk-actions-bar .flex:first-child {
+                justify-content: center;
+            }
+        }
+
+        @media (prefers-contrast: high) {
+            .notification-item {
+                border: 1px solid currentColor;
+            }
+
+            .notification-item.selected {
+                border: 2px solid #3b82f6;
+            }
+
+            .priority-badge {
+                border-width: 2px;
+                font-weight: bold;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            .notification-item,
+            #bulk-actions-bar,
+            .notification-checkbox,
+            #notification-toast {
+                transition: none;
+            }
+
+            .fade-in,
+            .slide-out,
+            .loading-shimmer {
+                animation: none;
+            }
+
+            .notification-item:hover {
+                transform: none;
+            }
+        }
+
+        .notification-item:focus-within {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+
+        .notification-checkbox input[type="checkbox"]:focus {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        @media print {
+
+            .notification-dropdown,
+            #notification-toast,
+            #bulk-actions-bar {
+                display: none !important;
+            }
+        }
+
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .text-ellipsis {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Notification badge positioning */
+        .notification-badge-container {
+            position: relative;
+        }
+
+        .notification-badge-container .notification-badge {
+            position: absolute;
+            top: -0.25rem;
+            right: -0.25rem;
+            min-width: 1.25rem;
+            height: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            border-radius: 9999px;
+            border: 2px solid white;
+        }
+
+        .dark .notification-badge-container .notification-badge {
+            border-color: #1f2937;
+        }
+        
+    </style>

@@ -62,7 +62,7 @@
         aria-labelledby="{{ $toggleId }}">
 
         <!-- Header with Actions -->
-        <div class="px-4 py-3 border-b border-gray-200 dark:border-neutral-700">
+        <div class="px-1 py-2 border-b border-gray-200 dark:border-neutral-700">
             <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-gray-800 dark:text-white">Notifications</h3>
                 <div class="flex items-center gap-2">
@@ -131,7 +131,7 @@
 
         <!-- Filter Controls -->
         @if($showFilters)
-        <div class="notification-filters px-4 py-2 border-b border-gray-100 dark:border-neutral-600">
+        <div class="notification-filters py-2 border-b border-gray-100 dark:border-neutral-600">
             <div class="flex items-center gap-2">
                 <select id="{{ $filterId }}" onchange="filterNotifications()"
                     class="text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
