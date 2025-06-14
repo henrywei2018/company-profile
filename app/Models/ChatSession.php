@@ -1,5 +1,7 @@
 <?php
 
+// File: app/Models/ChatSession.php - Fixed Version dengan Safe Broadcasting
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -7,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class ChatSession extends Model
 {
@@ -23,6 +26,7 @@ class ChatSession extends Model
         'ended_at',
         'summary',
         'metadata',
+        'close_reason',
     ];
 
     protected $casts = [
@@ -47,36 +51,55 @@ class ChatSession extends Model
             $model->last_activity_at = now();
         });
 
-        // Broadcast when session is created
+        // PERBAIKAN: Safe broadcast when session is created
         static::created(function ($model) {
             try {
-                broadcast(new \App\Events\ChatSessionStarted($model))->toOthers();
-                \Log::info('ChatSession created broadcast sent', ['session_id' => $model->session_id]);
+                if (class_exists('\App\Events\ChatSessionStarted')) {
+                    broadcast(new \App\Events\ChatSessionStarted($model))->toOthers();
+                    Log::info('ChatSession created broadcast sent', ['session_id' => $model->session_id]);
+                } else {
+                    Log::info('ChatSession created (no broadcast)', [
+                        'session_id' => $model->session_id,
+                        'user_id' => $model->user_id,
+                        'status' => $model->status
+                    ]);
+                }
             } catch (\Exception $e) {
-                \Log::error('Failed to broadcast ChatSession created', [
+                Log::error('Failed to broadcast ChatSession created', [
                     'session_id' => $model->session_id,
                     'error' => $e->getMessage()
                 ]);
             }
         });
 
-        // Broadcast when session status changes
+        // PERBAIKAN: Safe broadcast when session status changes
         static::updated(function ($model) {
             try {
                 if ($model->isDirty('status')) {
                     if ($model->status === 'closed') {
-                        broadcast(new \App\Events\ChatSessionClosed($model))->toOthers();
-                        \Log::info('ChatSession closed broadcast sent', ['session_id' => $model->session_id]);
+                        if (class_exists('\App\Events\ChatSessionClosed')) {
+                            broadcast(new \App\Events\ChatSessionClosed($model))->toOthers();
+                            Log::info('ChatSession closed broadcast sent', ['session_id' => $model->session_id]);
+                        } else {
+                            Log::info('ChatSession closed (no broadcast)', ['session_id' => $model->session_id]);
+                        }
                     } else {
-                        broadcast(new \App\Events\ChatSessionUpdated($model))->toOthers();
-                        \Log::info('ChatSession updated broadcast sent', [
-                            'session_id' => $model->session_id,
-                            'status' => $model->status
-                        ]);
+                        if (class_exists('\App\Events\ChatSessionUpdated')) {
+                            broadcast(new \App\Events\ChatSessionUpdated($model))->toOthers();
+                            Log::info('ChatSession updated broadcast sent', [
+                                'session_id' => $model->session_id,
+                                'status' => $model->status
+                            ]);
+                        } else {
+                            Log::info('ChatSession updated (no broadcast)', [
+                                'session_id' => $model->session_id,
+                                'status' => $model->status
+                            ]);
+                        }
                     }
                 }
             } catch (\Exception $e) {
-                \Log::error('Failed to broadcast ChatSession updated', [
+                Log::error('Failed to broadcast ChatSession updated', [
                     'session_id' => $model->session_id,
                     'error' => $e->getMessage()
                 ]);
@@ -149,11 +172,12 @@ class ChatSession extends Model
         return $this->status === 'active';
     }
 
-    public function close(): void
+    public function close(string $reason = null): void
     {
         $this->update([
             'status' => 'closed',
             'ended_at' => now(),
+            'close_reason' => $reason,
         ]);
     }
 
@@ -191,19 +215,55 @@ class ChatSession extends Model
         return "admin-chat-session.{$this->session_id}";
     }
 
-    // Broadcast to all relevant channels
-    public function broadcastToAllChannels($event, $data = [])
+    // PERBAIKAN: Safe broadcast to all relevant channels
+    public function broadcastToAllChannels($event, $data = []): bool
     {
         try {
-            // Let the event handle the channel routing
+            // Check if we can broadcast
+            if (!$event || !method_exists($event, 'broadcastOn')) {
+                Log::warning('Invalid event for broadcasting', [
+                    'session_id' => $this->session_id,
+                    'event_class' => get_class($event)
+                ]);
+                return false;
+            }
+
             broadcast($event)->toOthers();
             
-            \Log::info('Broadcast sent for session', [
+            Log::info('Broadcast sent for session', [
                 'session_id' => $this->session_id,
                 'event' => get_class($event)
             ]);
+            
+            return true;
+            
         } catch (\Exception $e) {
-            \Log::error('Failed to broadcast session event', [
+            Log::error('Failed to broadcast session event', [
+                'session_id' => $this->session_id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return false;
+        }
+    }
+
+    // TAMBAHAN: Alternative notification method
+    public function notifyStatusChange(): void
+    {
+        try {
+            Log::info('Chat session status changed', [
+                'session_id' => $this->session_id,
+                'status' => $this->status,
+                'user_id' => $this->user_id,
+                'operator_id' => $this->assigned_operator_id,
+                'timestamp' => now()->toISOString()
+            ]);
+
+            // Add any alternative notification logic here
+            // e.g., database notifications, email notifications, etc.
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to notify status change', [
                 'session_id' => $this->session_id,
                 'error' => $e->getMessage()
             ]);
