@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use App\Models\ChatOperator;
 use Symfony\Component\HttpFoundation\Response;
 
 class ChatOperatorMiddleware
@@ -14,21 +15,17 @@ class ChatOperatorMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Check if user is authenticated
-        if (!auth()->check()) {
-            if ($request->expectsJson()) {
-                return response()->json(['error' => 'Authentication required'], 401);
-            }
-            return redirect()->route('login');
+        $user = auth()->user();
+        
+        if (!$user || !$user->hasRole(['admin', 'super-admin'])) {
+            abort(403, 'Access denied. Admin role required.');
         }
 
-        // Check if user has admin access for chat operations
-        if (!auth()->user()->hasAdminAccess()) {
-            if ($request->expectsJson()) {
-                return response()->json(['error' => 'Insufficient permissions'], 403);
-            }
-            abort(403, 'Access denied. Admin privileges required for chat operations.');
-        }
+        // Update operator's last seen timestamp
+        ChatOperator::updateOrCreate(
+            ['user_id' => $user->id],
+            ['last_seen_at' => now()]
+        );
 
         return $next($request);
     }
