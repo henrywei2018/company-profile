@@ -9,43 +9,12 @@ use App\Models\Message;
 use App\Models\Testimonial;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
+use Illuminate\Support\Collection;
 
 class ClientAccessService
 {
-    /**
-     * Get projects for a client with optional filters
-     */
-    public function getClientProjects(User $client, array $filters = []): Builder
-    {
-        /** @var \Illuminate\Database\Eloquent\Builder $query */
-        $query = Project::where('client_id', $client->id);
-
-        // Apply filters
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
-        }
-
-        if (!empty($filters['category'])) {
-            $query->where('project_category_id', $filters['category']);
-        }
-
-        if (!empty($filters['search'])) {
-            $query->where(function ($q) use ($filters) {
-                $q->where('title', 'like', "%{$filters['search']}%")
-                  ->orWhere('description', 'like', "%{$filters['search']}%");
-            });
-        }
-
-        if (!empty($filters['year'])) {
-            $query->whereYear('created_at', $filters['year']);
-        }
-
-        return $query;
-    }
-
-    /**
-     * Get quotations for a client with optional filters
-     */
+    
     public function getClientQuotations(User $client, array $filters = []): Builder
     {
         /** @var \Illuminate\Database\Eloquent\Builder $query */
@@ -118,27 +87,11 @@ class ClientAccessService
     }
 
     /**
-     * Check if client can access a specific project
-     */
-    public function canAccessProject(User $client, Project $project): bool
-    {
-        return $project->client_id === $client->id;
-    }
-
-    /**
      * Check if client can access a specific quotation
      */
     public function canAccessQuotation(User $client, Quotation $quotation): bool
     {
         return $quotation->client_id === $client->id;
-    }
-
-    /**
-     * Check if client can access a specific message
-     */
-    public function canAccessMessage(User $client, Message $message): bool
-    {
-        return $message->user_id === $client->id;
     }
 
     /**
@@ -398,4 +351,178 @@ class ClientAccessService
                 ->count(),
         ];
     }
+
+/**
+ * Check if client can access a specific message
+ */
+public function canAccessMessage(User $user, Message $message): bool
+{
+    return $message->user_id === $user->id || 
+           ($message->email === $user->email && $message->user_id === null);
+}
+
+/**
+ * Check if client can reply to a message
+ */
+public function canReplyToMessage(User $user, Message $message): bool
+{
+    if (!$this->canAccessMessage($user, $message)) {
+        return false;
+    }
+    
+    // Can reply to admin messages or support responses
+    return in_array($message->type, ['admin_to_client', 'support_response']);
+}
+
+/**
+ * Check if client can escalate message priority
+ */
+public function canEscalateMessage(User $user, Message $message): bool
+{
+    // Can only escalate own messages that aren't already urgent
+    return $message->user_id === $user->id && 
+           $message->priority !== 'urgent' &&
+           !$message->is_replied;
+}
+
+/**
+ * Get client's projects for message context
+ */
+public function getClientProjects(User $user): Builder
+{
+    return Project::query()
+        ->where(function ($query) use ($user) {
+            $query->where('client_id', $user->id)
+                  ->orWhere('user_id', $user->id);
+        });
+}
+
+/**
+ * Check if client can access a project
+ */
+public function canAccessProject(User $user, Project $project): bool
+{
+    return $project->client_id === $user->id || 
+           $project->user_id === $user->id;
+}
+
+/**
+ * Get message activity summary for client dashboard
+ */
+public function getMessageActivitySummary(User $user): array
+{
+    $query = $this->getClientMessages($user);
+    
+    return [
+        'total' => $query->count(),
+        'unread' => $query->where('is_read', false)->count(),
+        'urgent' => $query->where('priority', 'urgent')->count(),
+        'awaiting_reply' => $query->where('is_replied', false)
+            ->whereIn('type', ['general', 'support', 'project_inquiry', 'complaint'])
+            ->count(),
+        'recent_activity' => $query->where('created_at', '>=', now()->subDays(7))->count(),
+    ];
+}
+
+/**
+ * Get client's message filters and options
+ */
+public function getMessageFilters(User $user): array
+{
+    $query = $this->getClientMessages($user);
+    
+    return [
+        'types' => $query->select('type')
+            ->distinct()
+            ->whereNotNull('type')
+            ->pluck('type')
+            ->mapWithKeys(function($type) {
+                return [$type => ucfirst(str_replace('_', ' ', $type))];
+            })
+            ->toArray(),
+        
+        'priorities' => $query->select('priority')
+            ->distinct()
+            ->whereNotNull('priority')
+            ->pluck('priority')
+            ->mapWithKeys(function($priority) {
+                return [$priority => ucfirst($priority)];
+            })
+            ->toArray(),
+        
+        'projects' => $this->getClientProjects($user)
+            ->whereIn('id', $query->whereNotNull('project_id')->pluck('project_id'))
+            ->select('id', 'title')
+            ->get()
+            ->mapWithKeys(function($project) {
+                return [$project->id => $project->title];
+            })
+            ->toArray(),
+    ];
+}
+
+/**
+ * Check if client has any urgent messages
+ */
+public function hasUrgentMessages(User $user): bool
+{
+    return $this->getClientMessages($user)
+        ->where('priority', 'urgent')
+        ->where('is_replied', false)
+        ->exists();
+}
+
+/**
+ * Get client's conversation threads
+ */
+public function getConversationThreads(User $user): Collection
+{
+    // Get root messages (messages without parent_id) and their replies
+    return $this->getClientMessages($user)
+        ->whereNull('parent_id')
+        ->with(['replies' => function($query) {
+            $query->orderBy('created_at');
+        }])
+        ->withCount('replies')
+        ->orderBy('updated_at', 'desc')
+        ->get();
+}
+
+/**
+ * Get messages by project with access control
+ */
+public function getProjectMessages(User $user, int $projectId): Builder
+{
+    // Verify project access first
+    $project = Project::findOrFail($projectId);
+    if (!$this->canAccessProject($user, $project)) {
+        throw new \Illuminate\Auth\Access\AuthorizationException('Unauthorized access to project messages.');
+    }
+    
+    return $this->getClientMessages($user)->where('project_id', $projectId);
+}
+
+/**
+ * Get recent message notifications for client
+ */
+public function getRecentNotifications(User $user, int $limit = 5): array
+{
+    $recentMessages = $this->getClientMessages($user)
+        ->where('type', 'admin_to_client') // Only admin replies
+        ->where('is_read', false)
+        ->orderBy('created_at', 'desc')
+        ->limit($limit)
+        ->get();
+    
+    return $recentMessages->map(function($message) {
+        return [
+            'id' => $message->id,
+            'title' => $message->subject,
+            'message' => Str::limit($message->message, 100),
+            'url' => route('client.messages.show', $message),
+            'created_at' => $message->created_at,
+            'priority' => $message->priority,
+        ];
+    })->toArray();
+}
 }

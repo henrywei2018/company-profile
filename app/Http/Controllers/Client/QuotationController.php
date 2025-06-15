@@ -4,92 +4,69 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Quotation;
-use App\Models\Service;
 use App\Models\QuotationAttachment;
+use App\Models\Service;
 use App\Services\ClientAccessService;
 use App\Services\DashboardService;
-use App\Services\QuotationService;
-use App\Facades\Notifications;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
-use Illuminate\Validation\Rule;
-use Carbon\Carbon;
 
 class QuotationController extends Controller
 {
-    protected ClientAccessService $clientAccessService;
-    protected DashboardService $dashboardService;
-    protected QuotationService $quotationService;
+    protected $clientAccessService;
+    protected $dashboardService;
 
-    public function __construct(
-        ClientAccessService $clientAccessService,
-        DashboardService $dashboardService,
-        QuotationService $quotationService
-    ) {
+    public function __construct(ClientAccessService $clientAccessService, DashboardService $dashboardService)
+    {
         $this->clientAccessService = $clientAccessService;
         $this->dashboardService = $dashboardService;
-        $this->quotationService = $quotationService;
     }
 
     /**
-     * Display a listing of the client's quotations with advanced filtering
+     * Display a listing of quotations for the authenticated client
      */
     public function index(Request $request)
     {
-        $user = auth()->user();
-        
-        // Validate filters
-        $filters = $request->validate([
-            'status' => 'nullable|string|in:pending,reviewed,approved,rejected',
-            'service' => 'nullable|exists:services,id',
-            'search' => 'nullable|string|max:255',
-            'date_from' => 'nullable|date',
-            'date_to' => 'nullable|date|after_or_equal:date_from',
-            'sort' => 'nullable|string|in:created_at,updated_at,status,project_type,priority,start_date',
-            'direction' => 'nullable|string|in:asc,desc',
-            'priority' => 'nullable|string|in:low,normal,high,urgent',
-        ]);
+        $filters = [
+            'search' => $request->get('search'),
+            'status' => $request->get('status'),
+            'service' => $request->get('service'),
+            'priority' => $request->get('priority'),
+            'sort' => $request->get('sort', 'created_at'),
+            'direction' => $request->get('direction', 'desc'),
+        ];
 
-        $query = $user->quotations()->with(['service', 'attachments']);
+        $query = Quotation::where('client_id', auth()->id())
+            ->with(['service', 'attachments']);
 
         // Apply filters
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
-        }
-
-        if (!empty($filters['service'])) {
-            $query->where('service_id', $filters['service']);
-        }
-
-        if (!empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function ($q) use ($search) {
-                $q->where('project_type', 'like', "%{$search}%")
-                  ->orWhere('requirements', 'like', "%{$search}%")
-                  ->orWhere('quotation_number', 'like', "%{$search}%")
-                  ->orWhere('location', 'like', "%{$search}%");
+        if ($filters['search']) {
+            $query->where(function ($q) use ($filters) {
+                $q->where('project_type', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('requirements', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('quotation_number', 'like', '%' . $filters['search'] . '%');
             });
         }
 
-        if (!empty($filters['date_from'])) {
-            $query->whereDate('created_at', '>=', $filters['date_from']);
+        if ($filters['status']) {
+            $query->where('status', $filters['status']);
         }
 
-        if (!empty($filters['date_to'])) {
-            $query->whereDate('created_at', '<=', $filters['date_to']);
+        if ($filters['service']) {
+            $query->where('service_id', $filters['service']);
         }
 
-        if (!empty($filters['priority'])) {
+        if ($filters['priority']) {
             $query->where('priority', $filters['priority']);
         }
 
-        // Apply sorting
-        $sortBy = $filters['sort'] ?? 'created_at';
+        // Sorting
+        $sortBy = in_array($filters['sort'], ['created_at', 'project_type', 'status', 'priority']) 
+            ? $filters['sort'] 
+            : 'created_at';
         $sortDirection = $filters['direction'] ?? 'desc';
         $query->orderBy($sortBy, $sortDirection);
 
@@ -102,7 +79,7 @@ class QuotationController extends Controller
     }
 
     /**
-     * Show the form for creating a new quotation.
+     * Show the form for creating a new quotation
      */
     public function create()
     {
@@ -112,7 +89,7 @@ class QuotationController extends Controller
     }
 
     /**
-     * Store a newly created quotation - handles both web and AJAX requests
+     * Store a newly created quotation
      */
     public function store(Request $request)
     {
@@ -127,7 +104,6 @@ class QuotationController extends Controller
             'requirements' => 'required|string',
             'budget_range' => 'nullable|string|max:100',
             'start_date' => 'nullable|date',
-            'g-recaptcha-response' => 'sometimes|required', // For reCAPTCHA if enabled
         ]);
 
         try {
@@ -148,14 +124,11 @@ class QuotationController extends Controller
 
             DB::commit();
 
-            // Send notifications
+            // Send notifications (if available)
             try {
                 if (function_exists('settings') && settings('quotation_client_confirmation_enabled', true)) {
-                    Notifications::send('quotation.confirmation', $quotation, auth()->user());
-                }
-                
-                if (function_exists('settings') && settings('notify_admin_new_quotation', true)) {
-                    Notifications::send('quotation.created', $quotation);
+                    // Add notification logic here if available
+                    Log::info('Quotation created by client', ['quotation_id' => $quotation->id]);
                 }
             } catch (\Exception $e) {
                 Log::error('Failed to send quotation notifications: ' . $e->getMessage());
@@ -203,7 +176,7 @@ class QuotationController extends Controller
     }
 
     /**
-     * Display the specified quotation.
+     * Display the specified quotation
      */
     public function show(Quotation $quotation)
     {
@@ -218,7 +191,7 @@ class QuotationController extends Controller
     }
 
     /**
-     * Show the form for editing the specified quotation.
+     * Show the form for editing the specified quotation
      */
     public function edit(Quotation $quotation)
     {
@@ -240,7 +213,7 @@ class QuotationController extends Controller
     }
 
     /**
-     * Update the specified quotation.
+     * Update the specified quotation
      */
     public function update(Request $request, Quotation $quotation)
     {
@@ -467,9 +440,6 @@ class QuotationController extends Controller
             abort(404, 'File not found.');
         }
 
-        // Increment download count
-        $attachment->increment('download_count');
-
         return Response::download(
             Storage::disk('public')->path($attachment->file_path),
             $attachment->file_name
@@ -513,107 +483,16 @@ class QuotationController extends Controller
     }
 
     /**
-     * Get existing temporary files
+     * Get temporary files for current session
      */
-    public function getTempFiles()
+    public function getTempFiles(Request $request)
     {
         $tempFiles = session()->get('temp_quotation_files', []);
         
-        $formattedFiles = collect($tempFiles)->map(function ($file) {
-            return [
-                'temp_id' => $file['temp_id'],
-                'name' => $file['file_name'],
-                'size' => $this->formatBytes($file['file_size']),
-                'type' => $file['file_type'],
-                'is_temp' => true,
-                'uploaded_at' => \Carbon\Carbon::parse($file['uploaded_at'])->format('M j, Y H:i')
-            ];
-        });
-
         return response()->json([
             'success' => true,
-            'files' => $formattedFiles
+            'files' => $tempFiles
         ]);
-    }
-
-    /**
-     * Transfer temporary files to quotation (called after quotation creation)
-     */
-    public function transferTempFiles(Quotation $quotation)
-    {
-        $tempFiles = session()->get('temp_quotation_files', []);
-        $transferredCount = 0;
-
-        Log::info('Starting temp file transfer', [
-            'quotation_id' => $quotation->id,
-            'temp_files_count' => count($tempFiles),
-            'temp_files' => $tempFiles
-        ]);
-
-        if (empty($tempFiles)) {
-            Log::info('No temp files found in session');
-            return 0;
-        }
-
-        foreach ($tempFiles as $tempFile) {
-            try {
-                $tempPath = $tempFile['file_path'];
-                $newPath = 'quotation_attachments/' . $quotation->id . '/' . basename($tempPath);
-
-                Log::info('Processing temp file', [
-                    'temp_path' => $tempPath,
-                    'new_path' => $newPath,
-                    'file_exists' => Storage::disk('public')->exists($tempPath)
-                ]);
-
-                // Ensure directory exists
-                $directory = dirname($newPath);
-                if (!Storage::disk('public')->exists($directory)) {
-                    Storage::disk('public')->makeDirectory($directory);
-                    Log::info('Created directory: ' . $directory);
-                }
-
-                // Move file to quotation directory
-                if (Storage::disk('public')->exists($tempPath)) {
-                    Storage::disk('public')->move($tempPath, $newPath);
-
-                    // Create attachment record
-                    $attachment = QuotationAttachment::create([
-                        'quotation_id' => $quotation->id,
-                        'file_path' => $newPath,
-                        'file_name' => $tempFile['file_name'],
-                        'file_size' => $tempFile['file_size'],
-                        'file_type' => $tempFile['file_type'],
-                    ]);
-
-                    Log::info('File transferred successfully', [
-                        'attachment_id' => $attachment->id,
-                        'file_name' => $attachment->file_name
-                    ]);
-
-                    $transferredCount++;
-                } else {
-                    Log::warning('Temp file not found in storage', ['temp_path' => $tempPath]);
-                }
-            } catch (\Exception $e) {
-                Log::error('Failed to transfer temp file: ' . $e->getMessage(), [
-                    'temp_file' => $tempFile,
-                    'quotation_id' => $quotation->id,
-                    'error' => $e->getTraceAsString()
-                ]);
-            }
-        }
-
-        // Clear temp files from session
-        session()->forget('temp_quotation_files');
-        Log::info('Cleared temp files from session');
-
-        Log::info('Temp file transfer completed', [
-            'quotation_id' => $quotation->id,
-            'transferred_count' => $transferredCount
-        ]);
-
-        return $transferredCount;
     }
 
     /**
@@ -624,54 +503,44 @@ class QuotationController extends Controller
         if (!$this->clientAccessService->canAccessQuotation(auth()->user(), $quotation)) {
             abort(403, 'Unauthorized access to this quotation.');
         }
-        
+
         try {
             DB::beginTransaction();
-            
-            $newQuotationData = $quotation->toArray();
-            
-            // Remove fields that shouldn't be duplicated
-            unset($newQuotationData['id'], $newQuotationData['quotation_number'], 
-                  $newQuotationData['created_at'], $newQuotationData['updated_at'],
-                  $newQuotationData['status'], $newQuotationData['reviewed_at'],
-                  $newQuotationData['approved_at']);
-            
-            // Set new values
-            $newQuotationData['quotation_number'] = $this->generateQuotationNumber();
-            $newQuotationData['status'] = 'pending';
-            $newQuotationData['project_type'] = 'Copy of: ' . $newQuotationData['project_type'];
-            
-            $newQuotation = Quotation::create($newQuotationData);
-            
-            // Copy attachments
+
+            // Create new quotation with duplicated data
+            $newQuotation = $quotation->replicate();
+            $newQuotation->quotation_number = $this->generateQuotationNumber();
+            $newQuotation->status = 'pending';
+            $newQuotation->reviewed_at = null;
+            $newQuotation->approved_at = null;
+            $newQuotation->client_approved = null;
+            $newQuotation->client_approved_at = null;
+            $newQuotation->save();
+
+            // Duplicate attachments if any
             foreach ($quotation->attachments as $attachment) {
-                if (Storage::disk('public')->exists($attachment->file_path)) {
-                    $originalPath = $attachment->file_path;
-                    $newPath = 'quotation_attachments/' . $newQuotation->id . '/' . basename($originalPath);
-                    
-                    $directory = dirname($newPath);
-                    if (!Storage::disk('public')->exists($directory)) {
-                        Storage::disk('public')->makeDirectory($directory);
-                    }
-                    
-                    Storage::disk('public')->copy($originalPath, $newPath);
-                    
-                    $newQuotation->attachments()->create([
-                        'file_path' => $newPath,
-                        'file_name' => $attachment->file_name,
-                        'file_size' => $attachment->file_size,
-                        'file_type' => $attachment->file_type,
-                    ]);
+                $newAttachment = $attachment->replicate();
+                $newAttachment->quotation_id = $newQuotation->id;
+                
+                // Copy the file to new location
+                $oldPath = $attachment->file_path;
+                $extension = pathinfo($attachment->file_name, PATHINFO_EXTENSION);
+                $newFilename = time() . '_' . uniqid() . '.' . $extension;
+                $newPath = 'quotation_attachments/' . $newQuotation->id . '/' . $newFilename;
+                
+                if (Storage::disk('public')->exists($oldPath)) {
+                    Storage::disk('public')->copy($oldPath, $newPath);
+                    $newAttachment->file_path = $newPath;
                 }
+                
+                $newAttachment->save();
             }
-            
+
             DB::commit();
-            
-            $this->dashboardService->clearCache(auth()->user());
-            
+
             return redirect()->route('client.quotations.show', $newQuotation)
                 ->with('success', 'Quotation duplicated successfully!');
-                
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to duplicate quotation: ' . $e->getMessage());
@@ -689,29 +558,23 @@ class QuotationController extends Controller
         if (!$this->clientAccessService->canAccessQuotation(auth()->user(), $quotation)) {
             abort(403, 'Unauthorized access to this quotation.');
         }
-        
-        if ($quotation->status !== 'pending') {
-            return redirect()->route('client.quotations.show', $quotation)
-                ->with('error', 'Only pending quotations can be cancelled.');
+
+        if (!in_array($quotation->status, ['pending', 'reviewed'])) {
+            return redirect()->back()
+                ->with('error', 'Only pending or reviewed quotations can be cancelled.');
         }
-        
-        $validated = $request->validate([
-            'cancel_reason' => 'nullable|string|max:500',
-        ]);
-        
+
         try {
             $quotation->update([
                 'status' => 'rejected',
-                'client_decline_reason' => $validated['cancel_reason'] ?? 'Cancelled by client',
+                'client_decline_reason' => $request->input('reason', 'Cancelled by client'),
                 'client_approved' => false,
-                'client_approved_at' => null,
+                'client_approved_at' => now()
             ]);
-            
-            $this->dashboardService->clearCache(auth()->user());
-            
-            return redirect()->route('client.quotations.show', $quotation)
+
+            return redirect()->route('client.quotations.index')
                 ->with('success', 'Quotation cancelled successfully.');
-                
+
         } catch (\Exception $e) {
             Log::error('Failed to cancel quotation: ' . $e->getMessage());
             
@@ -721,69 +584,153 @@ class QuotationController extends Controller
     }
 
     /**
-     * Get quotation activity feed
+     * Get quotation activity/timeline
      */
-    public function getActivity(Quotation $quotation): JsonResponse
+    public function getActivity(Quotation $quotation)
     {
         if (!$this->clientAccessService->canAccessQuotation(auth()->user(), $quotation)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized access.'
-            ], 403);
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
-        
-        $dashboardData = $this->dashboardService->getDashboardData(auth()->user());
-        $allActivities = collect($dashboardData['recent_activities'] ?? []);
-        
-        $quotationActivities = $allActivities
-            ->where('quotation_id', $quotation->id)
-            ->take(20)
-            ->values();
-        
-        return response()->json([
-            'success' => true,
-            'data' => $quotationActivities
+
+        $activity = collect();
+
+        // Add creation event
+        $activity->push([
+            'type' => 'created',
+            'title' => 'Quotation Created',
+            'description' => 'Quotation request was submitted',
+            'timestamp' => $quotation->created_at,
+            'icon' => 'plus'
         ]);
+
+        // Add reviewed event
+        if ($quotation->reviewed_at) {
+            $activity->push([
+                'type' => 'reviewed',
+                'title' => 'Under Review',
+                'description' => 'Quotation is being reviewed by our team',
+                'timestamp' => $quotation->reviewed_at,
+                'icon' => 'eye'
+            ]);
+        }
+
+        // Add approved event
+        if ($quotation->approved_at) {
+            $activity->push([
+                'type' => 'approved',
+                'title' => 'Approved',
+                'description' => 'Quotation has been approved',
+                'timestamp' => $quotation->approved_at,
+                'icon' => 'check'
+            ]);
+        }
+
+        // Add client response events
+        if ($quotation->client_approved_at) {
+            $activity->push([
+                'type' => $quotation->client_approved ? 'accepted' : 'declined',
+                'title' => $quotation->client_approved ? 'Accepted' : 'Declined',
+                'description' => $quotation->client_approved 
+                    ? 'You accepted this quotation' 
+                    : 'You declined this quotation' . ($quotation->client_decline_reason ? ': ' . $quotation->client_decline_reason : ''),
+                'timestamp' => $quotation->client_approved_at,
+                'icon' => $quotation->client_approved ? 'thumb-up' : 'thumb-down'
+            ]);
+        }
+
+        // Sort by timestamp
+        $activity = $activity->sortBy('timestamp')->values();
+
+        return response()->json($activity);
     }
 
     /**
-     * Print quotation details
+     * Print quotation
      */
     public function print(Quotation $quotation)
     {
         if (!$this->clientAccessService->canAccessQuotation(auth()->user(), $quotation)) {
             abort(403, 'Unauthorized access to this quotation.');
         }
-        
+
         $quotation->load(['service', 'attachments']);
-        
+
         return view('client.quotations.print', compact('quotation'));
     }
 
     /**
-     * Generate quotation number
+     * Generate unique quotation number
      */
-    private function generateQuotationNumber(): string
+    private function generateQuotationNumber()
     {
-        $year = date('Y');
-        $month = date('m');
+        $prefix = 'QUO';
+        $year = now()->year;
+        $month = now()->format('m');
         
-        $lastQuotation = Quotation::whereYear('created_at', $year)
-            ->whereMonth('created_at', $month)
-            ->orderBy('id', 'desc')
+        // Get the last quotation number for this month
+        $lastQuotation = Quotation::where('quotation_number', 'like', $prefix . $year . $month . '%')
+            ->orderBy('quotation_number', 'desc')
             ->first();
         
-        $nextNumber = $lastQuotation ? (int) substr($lastQuotation->quotation_number, -4) + 1 : 1;
+        if ($lastQuotation) {
+            $lastNumber = (int) substr($lastQuotation->quotation_number, -4);
+            $newNumber = $lastNumber + 1;
+        } else {
+            $newNumber = 1;
+        }
         
-        return 'QT-' . $year . $month . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+        return $prefix . $year . $month . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
     }
 
     /**
-     * Format bytes to human readable format
+     * Transfer temporary files to quotation
+     */
+    private function transferTempFiles(Quotation $quotation)
+    {
+        $tempFiles = session()->get('temp_quotation_files', []);
+        $transferredFiles = [];
+
+        foreach ($tempFiles as $tempFile) {
+            try {
+                if (Storage::disk('public')->exists($tempFile['file_path'])) {
+                    // Create new filename and path
+                    $extension = pathinfo($tempFile['file_name'], PATHINFO_EXTENSION);
+                    $newFilename = time() . '_' . uniqid() . '.' . $extension;
+                    $newPath = 'quotation_attachments/' . $quotation->id . '/' . $newFilename;
+                    
+                    // Move file to permanent location
+                    Storage::disk('public')->move($tempFile['file_path'], $newPath);
+                    
+                    // Create attachment record
+                    $attachment = QuotationAttachment::create([
+                        'quotation_id' => $quotation->id,
+                        'file_path' => $newPath,
+                        'file_name' => $tempFile['file_name'],
+                        'file_type' => $tempFile['file_type'],
+                        'file_size' => $tempFile['file_size'],
+                    ]);
+                    
+                    $transferredFiles[] = $attachment;
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to transfer temp file: ' . $e->getMessage(), [
+                    'temp_file' => $tempFile
+                ]);
+            }
+        }
+
+        // Clear temp files from session
+        session()->forget('temp_quotation_files');
+
+        return $transferredFiles;
+    }
+
+    /**
+     * Format bytes into human readable format
      */
     private function formatBytes($bytes, $precision = 2)
     {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        $units = array('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB');
         
         for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
             $bytes /= 1024;

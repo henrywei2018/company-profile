@@ -9,6 +9,7 @@ use App\Facades\Notifications;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 class MessageService
 {
@@ -180,22 +181,6 @@ class MessageService
 
         return $message;
     }
-
-    public function bulkMarkAsRead(array $messageIds, User $user): int
-    {
-        $query = Message::whereIn('id', $messageIds);
-        
-        // Apply access control
-        if (!$user->hasAnyRole(['super-admin', 'admin', 'manager'])) {
-            $query->where('user_id', $user->id);
-        }
-        
-        return $query->update([
-            'is_read' => true,
-            'read_at' => now(),
-        ]);
-    }
-
     public function bulkSetPriority(array $messageIds, string $priority, User $user): int
     {
         $validPriorities = ['low', 'normal', 'high', 'urgent'];
@@ -253,29 +238,6 @@ class MessageService
         return $message;
     }
 
-    public function getMessageThread(Message $message): \Illuminate\Database\Eloquent\Collection
-    {
-        $rootMessage = $message->getRootMessage();
-        
-        return Message::where(function($query) use ($rootMessage) {
-            $query->where('id', $rootMessage->id)
-                  ->orWhere('parent_id', $rootMessage->id);
-        })
-        ->with(['attachments', 'sender'])
-        ->orderBy('created_at')
-        ->get();
-    }
-    
-    public function getUnreadCount(User $user): int
-    {
-        $query = Message::query();
-        
-        if (!$user->hasAnyRole(['super-admin', 'admin', 'manager'])) {
-            $query->where('user_id', $user->id);
-        }
-        
-        return $query->where('is_read', false)->count();
-    }
 
     public function getUrgentCount(): int
     {
@@ -311,44 +273,6 @@ class MessageService
         }
 
         return $sent;
-    }
-    
-    public function getMessageStatistics(User $user = null): array
-    {
-        $query = Message::query();
-        
-        if ($user && !$user->hasAnyRole(['super-admin', 'admin', 'manager'])) {
-            $query->where('user_id', $user->id);
-        }
-        
-        return [
-            'total' => (clone $query)->count(),
-            'unread' => (clone $query)->where('is_read', false)->count(),
-            'replied' => (clone $query)->where('is_replied', true)->count(),
-            'urgent' => (clone $query)->where('priority', 'urgent')->count(),
-            'overdue' => (clone $query)->where('requires_response', true)
-                ->where('is_replied', false)
-                ->where('response_deadline', '<', now())
-                ->whereNotNull('response_deadline')
-                ->count(),
-            'this_week' => (clone $query)->whereBetween('created_at', [
-                now()->startOfWeek(),
-                now()->endOfWeek()
-            ])->count(),
-            'this_month' => (clone $query)->whereMonth('created_at', now()->month)->count(),
-            'by_type' => (clone $query)
-                ->selectRaw('type, COUNT(*) as count')
-                ->groupBy('type')
-                ->pluck('count', 'type')
-                ->toArray(),
-            'by_priority' => (clone $query)
-                ->selectRaw('priority, COUNT(*) as count')
-                ->groupBy('priority')
-                ->pluck('count', 'priority')
-                ->toArray(),
-            'response_rate' => $this->calculateResponseRate($query),
-            'average_response_time' => $this->calculateAverageResponseTime($query),
-        ];
     }
 
     protected function sendMessageNotifications(Message $message): void
@@ -476,4 +400,223 @@ class MessageService
 
         return round($totalHours / $repliedMessages->count(), 1);
     }
+    /**
+ * Get message statistics for client dashboard
+ */
+public function getMessageStatistics(User $user): array
+{
+    $query = $this->getClientMessagesQuery($user);
+    
+    return [
+        'total' => $query->count(),
+        'unread' => $query->where('is_read', false)->count(),
+        'pending_replies' => $query->where('is_replied', false)
+            ->whereIn('type', ['general', 'support', 'project_inquiry', 'complaint'])
+            ->count(),
+        'urgent' => $query->where('priority', 'urgent')->count(),
+        'this_month' => $query->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)->count(),
+        'avg_response_time' => $this->getAverageResponseTime($user),
+        'by_type' => $query->select('type', \DB::raw('count(*) as count'))
+            ->groupBy('type')
+            ->pluck('count', 'type')
+            ->toArray(),
+        'by_priority' => $query->select('priority', \DB::raw('count(*) as count'))
+            ->groupBy('priority')
+            ->pluck('count', 'priority')
+            ->toArray(),
+    ];
+}
+
+/**
+ * Get unread count for client
+ */
+public function getUnreadCount(User $user): int
+{
+    return $this->getClientMessagesQuery($user)
+        ->where('is_read', false)
+        ->count();
+}
+
+/**
+ * Get message thread for conversation view
+ */
+public function getMessageThread(Message $message): \Illuminate\Database\Eloquent\Collection
+{
+    // Get root message
+    $rootMessage = $message->parent_id ? $message->parent : $message;
+    
+    // Get all messages in thread
+    return Message::where(function($query) use ($rootMessage) {
+        $query->where('id', $rootMessage->id)
+              ->orWhere('parent_id', $rootMessage->id);
+    })
+    ->with(['attachments', 'user'])
+    ->orderBy('created_at')
+    ->get();
+}
+
+/**
+ * Bulk mark messages as read
+ */
+public function bulkMarkAsRead(array $messageIds, User $user): int
+{
+    $count = $this->getClientMessagesQuery($user)
+        ->whereIn('id', $messageIds)
+        ->where('is_read', false)
+        ->update([
+            'is_read' => true,
+            'read_at' => now(),
+        ]);
+    
+    return $count;
+}
+
+/**
+ * Get recent client activity
+ */
+public function getRecentActivity(User $user, int $days = 7): array
+{
+    $messages = $this->getClientMessagesQuery($user)
+        ->where('created_at', '>=', now()->subDays($days))
+        ->with(['project'])
+        ->orderBy('created_at', 'desc')
+        ->limit(20)
+        ->get();
+    
+    return $messages->map(function($message) {
+        return [
+            'id' => $message->id,
+            'type' => 'message',
+            'action' => $this->getActivityAction($message),
+            'title' => $message->subject,
+            'description' => Str::limit($message->message, 100),
+            'url' => route('client.messages.show', $message),
+            'created_at' => $message->created_at,
+            'priority' => $message->priority,
+            'is_read' => $message->is_read,
+            'project' => $message->project ? [
+                'id' => $message->project->id,
+                'title' => $message->project->title,
+            ] : null,
+        ];
+    })->toArray();
+}
+
+/**
+ * Get client messages query with proper access control
+ */
+protected function getClientMessagesQuery(User $user): Builder
+{
+    return Message::query()->where('user_id', $user->id);
+}
+
+/**
+ * Get average response time in hours
+ */
+protected function getAverageResponseTime(User $user): float
+{
+    $repliedMessages = $this->getClientMessagesQuery($user)
+        ->whereNotNull('replied_at')
+        ->where('is_replied', true)
+        ->select('created_at', 'replied_at')
+        ->get();
+    
+    if ($repliedMessages->isEmpty()) {
+        return 0;
+    }
+    
+    $totalHours = $repliedMessages->sum(function($message) {
+        return $message->created_at->diffInHours($message->replied_at);
+    });
+    
+    return round($totalHours / $repliedMessages->count(), 1);
+}
+
+/**
+ * Get activity action description
+ */
+protected function getActivityAction(Message $message): string
+{
+    switch ($message->type) {
+        case 'admin_to_client':
+            return 'Received reply from support';
+        case 'client_reply':
+            return 'Sent reply';
+        case 'support':
+            return 'Requested technical support';
+        case 'project_inquiry':
+            return 'Asked about project';
+        case 'complaint':
+            return 'Filed complaint';
+        case 'feedback':
+            return 'Provided feedback';
+        default:
+            return 'Sent message';
+    }
+}
+
+/**
+ * Check if client can reply to message
+ */
+public function canReplyToMessage(Message $message, User $user): bool
+{
+    // Client owns the message or conversation
+    if ($message->user_id !== $user->id) {
+        return false;
+    }
+    
+    // Can reply to admin messages or in existing conversation
+    return in_array($message->type, ['admin_to_client', 'support_response']) ||
+           ($message->parent_id && $message->parent->user_id === $user->id);
+}
+
+/**
+ * Get message summary for dashboard
+ */
+public function getMessageSummary(User $user): array
+{
+    $query = $this->getClientMessagesQuery($user);
+    
+    $summary = [
+        'total' => $query->count(),
+        'unread' => $query->where('is_read', false)->count(),
+        'urgent' => $query->where('priority', 'urgent')->count(),
+        'awaiting_reply' => $query->where('is_replied', false)
+            ->whereIn('type', ['general', 'support', 'project_inquiry', 'complaint'])
+            ->count(),
+    ];
+    
+    // Recent activity (last 7 days)
+    $recentCount = $query->where('created_at', '>=', now()->subDays(7))->count();
+    $summary['recent_activity'] = $recentCount;
+    
+    return $summary;
+}
+
+/**
+ * Create client reply to admin message
+ */
+public function createClientReply(Message $originalMessage, string $replyText, array $attachments = []): Message
+{
+    $user = $originalMessage->user;
+    
+    $replyData = [
+        'name' => $user->name,
+        'email' => $user->email,
+        'phone' => $user->phone,
+        'company' => $user->company,
+        'subject' => 'Re: ' . $originalMessage->subject,
+        'message' => $replyText,
+        'type' => 'client_reply',
+        'user_id' => $user->id,
+        'project_id' => $originalMessage->project_id,
+        'parent_id' => $originalMessage->id,
+        'priority' => $originalMessage->priority,
+        'is_read' => false,
+        'is_replied' => false,
+    ];
+    
+    return $this->createMessage($replyData, $attachments);
+}
 }

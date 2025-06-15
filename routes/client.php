@@ -85,14 +85,16 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'admin'])->group(f
         Route::get('get-temp-files', [QuotationController::class, 'getTempFiles'])
             ->name('get-temp-files');
         Route::resource('', QuotationController::class)
-    ->except(['destroy'])
-    ->parameters(['' => 'quotation']);
+            ->except(['destroy'])
+            ->parameters(['' => 'quotation']);
         // Quotation attachment management
         Route::delete('{quotation}/attachments/{attachment}', [QuotationController::class, 'deleteAttachment'])
-            ->name('delete-attachment');
+            ->name('delete-attachment')
+            ->where('attachment', '[0-9]+');
 
         Route::get('{quotation}/attachments/{attachment}/download', [QuotationController::class, 'downloadAttachment'])
-            ->name('download-attachment');
+            ->name('download-attachment')
+            ->where('attachment', '[0-9]+');;
         
         // Additional quotation management routes
         Route::post('{quotation}/duplicate', [QuotationController::class, 'duplicate'])
@@ -109,18 +111,27 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'admin'])->group(f
     });
 
     Route::prefix('messages')->name('messages.')->group(function () {
+        
+        // ===== RESOURCE ROUTES (UI Pages) =====
         Route::get('/', [MessageController::class, 'index'])->name('index');
-        Route::get('/create', [MessageController::class, 'create'])->name('create');
-        Route::post('/', [MessageController::class, 'store'])->middleware('throttle:10,1')->name('store');
-        Route::get('/{message}', [MessageController::class, 'show'])->name('show');
-        Route::post('/{message}/reply', [MessageController::class, 'reply'])->middleware('throttle:10,1')->name('reply');
-        Route::patch('/{message}/mark-read', [MessageController::class, 'markAsRead'])->name('mark-read');
-        Route::get('/{message}/reply', [MessageController::class, 'showReplyForm'])->name('reply.form');
-        Route::post('/{message}/toggle-read', [MessageController::class, 'toggleRead'])->name('toggle-read');
-        Route::get('/{message}/attachments/{attachment}/download', [MessageController::class, 'downloadAttachment'])->name('attachments.download');
-        Route::get('/unread-count', [MessageController::class, 'getUnreadCount'])->name('unread-count');
-        Route::post('/mark-all-read', [MessageController::class, 'markAllAsRead'])->name('mark-all-read');
-        Route::get('/statistics', [MessageController::class, 'getStatistics'])->name('statistics');
+        Route::get('create', [MessageController::class, 'create'])->name('create');  
+        Route::post('/', [MessageController::class, 'store'])->name('store');
+        Route::get('{message}', [MessageController::class, 'show'])->name('show');
+        Route::post('{message}/reply', [MessageController::class, 'reply'])
+            ->name('reply');
+        Route::patch('{message}/urgent', [MessageController::class, 'markUrgent'])
+            ->name('mark-urgent');
+        Route::patch('{message}/toggle-read', [MessageController::class, 'toggleRead'])
+            ->name('toggle-read');
+        Route::post('bulk-action', [MessageController::class, 'bulkAction'])
+            ->name('bulk-action');
+        Route::get('project/{project}', [MessageController::class, 'projectMessages'])
+            ->name('project')
+            ->where('project', '[0-9]+');
+        Route::get('{message}/attachments/{attachment}/download', 
+            [MessageController::class, 'downloadAttachment'])
+            ->name('attachment.download')
+            ->where(['message' => '[0-9]+', 'attachment' => '[0-9]+']);
     });
 
     Route::prefix('testimonials')->name('testimonials.')->group(function () {

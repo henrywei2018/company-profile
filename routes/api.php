@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\{
     ContactController, QuotationController, NotificationController
 };
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\Api\Client\MessageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,14 +28,14 @@ RateLimiter::for('admin-api', fn(Request $request) =>
 | Authenticated User Endpoint
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth:sanctum')->get('/user', fn(Request $request) => $request->user());
+Route::middleware('auth')->get('/user', fn(Request $request) => $request->user());
 
 /*
 |--------------------------------------------------------------------------
 | Notification API
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
+Route::middleware('auth')->prefix('notifications')->group(function () {
     Route::get('statistics', [NotificationController::class, 'statistics']);
     Route::get('types', [NotificationController::class, 'types']);
     Route::post('test', [NotificationController::class, 'test']);
@@ -106,6 +107,21 @@ Route::prefix('chat')->middleware(['auth:sanctum'])->group(function () {
     Route::post('/update-info', [ChatController::class, 'updateClientInfo'])->name('api.chat.update-info');
     Route::get('/history', [ChatController::class, 'history'])->name('api.chat.history');
     Route::get('/online-status', [ChatController::class, 'onlineStatus'])->name('api.chat.client-online-status');
+});
+
+Route::middleware(['auth', 'admin'])->prefix('api/client')->name('api.client.')->group(function () {
+    
+    Route::prefix('messages')->name('messages.')->group(function () {
+        Route::get('unread-count', [MessageController::class, 'getUnreadCount'])->name('unread-count');
+        Route::get('statistics', [MessageController::class, 'getStatistics'])->name('statistics');
+        Route::get('summary', [MessageController::class, 'getSummary'])->name('summary');
+        Route::get('activity', [MessageController::class, 'getActivity'])->name('activity');
+        Route::get('notifications', [MessageController::class, 'getNotifications'])->name('notifications');
+        Route::get('check-urgent', [MessageController::class, 'checkUrgent'])->name('check-urgent');
+        Route::post('mark-all-read', [MessageController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::get('{message}/check-updates', [MessageController::class, 'checkThreadUpdates'])
+            ->name('check-updates')->where('message', '[0-9]+');
+    });
 });
 
 /*

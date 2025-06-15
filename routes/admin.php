@@ -333,14 +333,25 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     
 
     // Messages
-    Route::resource('messages', MessageController::class);
-    Route::post('/messages/{message}/reply', [MessageController::class, 'reply'])->middleware('throttle:20,1')->name('messages.reply');
-    Route::post('/messages/{message}/toggle-read', [MessageController::class, 'toggleRead'])->name('messages.toggle-read');
-    Route::post('/messages/{message}/mark-unread', [MessageController::class, 'markAsUnread'])->name('messages.mark-unread');
-    Route::post('/messages/mark-read', [MessageController::class, 'markAsRead'])->name('messages.mark-read');
-    Route::delete('/messages/delete-multiple', [MessageController::class, 'destroyMultiple'])->middleware('throttle:30,1')->name('messages.destroy-multiple');
-    Route::get('/messages/{message}/attachments/{attachmentId}/download', [MessageController::class, 'downloadAttachment'])->name('messages.attachments.download')->where('attachmentId', '[0-9]+');
-    Route::post('/messages/email-reply-webhook', [MessageController::class, 'handleEmailReply'])->middleware('throttle:100,1')->name('messages.email-reply-webhook');
+    Route::prefix('messages')->name('messages.')->group(function () {
+        
+        // Admin message management
+        Route::get('/', [MessageController::class, 'index'])->name('index');
+        Route::get('{message}', [MessageController::class, 'show'])->name('show');
+        Route::post('{message}/reply', [MessageController::class, 'reply'])->name('reply');
+        Route::patch('{message}/read', [MessageController::class, 'markAsRead'])->name('mark-read');
+        Route::patch('{message}/priority', [MessageController::class, 'updatePriority'])->name('update-priority');
+        Route::delete('{message}', [MessageController::class, 'destroy'])->name('destroy');
+        
+        // Admin bulk operations
+        Route::post('bulk-action', [MessageController::class, 'bulkAction'])->name('bulk-action');
+        
+        // Admin API endpoints
+        Route::prefix('api')->name('api.')->group(function () {
+            Route::get('statistics', [MessageController::class, 'getStatistics'])->name('statistics');
+            Route::get('recent', [MessageController::class, 'getRecent'])->name('recent');
+        });
+    });
 
     // Team
     Route::prefix('team')->name('team.')->group(function () {

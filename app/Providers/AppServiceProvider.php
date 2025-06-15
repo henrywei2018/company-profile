@@ -19,6 +19,7 @@ use App\Services\ClientAccessService;
 use App\Services\FileUploadService;
 use App\Services\DashboardService;
 use App\Models\User;
+use Illuminate\Support\Facades\Route;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -57,6 +58,13 @@ class AppServiceProvider extends ServiceProvider
         if (class_exists('\App\Helpers\SeoHelper')) {
             $this->app->singleton(\App\Helpers\SeoHelper::class);
         }
+
+        Route::bind('attachment', function ($value) {
+        return \App\Models\QuotationAttachment::findOrFail($value);
+        
+
+        
+    });
     }
 
     /**
