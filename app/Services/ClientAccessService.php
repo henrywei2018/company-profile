@@ -392,8 +392,7 @@ public function getClientProjects(User $user): Builder
 {
     return Project::query()
         ->where(function ($query) use ($user) {
-            $query->where('client_id', $user->id)
-                  ->orWhere('user_id', $user->id);
+            $query->where('client_id', $user->id);
         });
 }
 

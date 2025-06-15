@@ -123,18 +123,8 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->expectsJson()) {
                 return response()->json(['error' => 'Forbidden'], 403);
             }
-
-            if (auth()->check()) {
-                $user = auth()->user();
-                if ($request->is('admin/*') && !$user->hasAnyRole(['super-admin', 'admin', 'manager', 'editor'])) {
-                    return redirect()->route('client.dashboard')->with('error', 'Access denied.');
-                }
-                if ($request->is('client/*') && !$user->hasRole('client') && !$user->hasAnyRole(['super-admin', 'admin'])) {
-                    return redirect()->route('admin.dashboard')->with('error', 'Access denied.');
-                }
-            }
-
-            return redirect()->back()->with('error', 'Access denied.');
+            return response()->view('errors.403', [], 403);
         });
+
     })
     ->create();

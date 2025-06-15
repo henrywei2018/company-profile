@@ -36,21 +36,20 @@ class AdminMiddleware
         }
 
         // Check if user has admin roles or dashboard access permission
-        if (!$user->hasAnyRole(['super-admin', 'admin', 'manager', 'editor']) && !$user->can('view dashboard')) {
+        if (!$user->hasAnyRole(['super-admin', 'admin', 'manager', 'editor'])) {
+            // bisa redirect atau abort di sini
             if ($request->expectsJson()) {
                 return response()->json([
                     'error' => 'Forbidden',
                     'message' => 'Admin access required.'
                 ], 403);
             }
-            
-            // Redirect client users to their area
             if ($user->hasRole('client')) {
                 return redirect()->route('client.dashboard')->with('warning', 'You do not have admin access.');
             }
-            
             abort(403, 'Admin access required.');
         }
+
 
         return $next($request);
     }

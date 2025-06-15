@@ -83,7 +83,7 @@ class Message extends Model
      */
     public function project()
     {
-        return $this->belongsTo(Project::class);
+        return $this->belongsTo(Project::class, 'client_id');
     }
 
     /**

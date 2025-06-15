@@ -44,7 +44,7 @@
     </div>
 
     <!-- Filter Section -->
-    <x-admin.filter-section 
+    <x-admin.filter-section  
         :action="route('client.quotations.index')"
         :searchValue="request('search')"
         searchPlaceholder="Search quotations by project type, location, or requirements..."
