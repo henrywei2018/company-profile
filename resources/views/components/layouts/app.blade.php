@@ -31,6 +31,7 @@
     
     {{-- Styles --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="stylesheet" href="{{ asset('css/orange-theme.css') }}">
     @stack('styles')
     
     {{-- Analytics & Tracking - Head --}}
@@ -39,7 +40,7 @@
 <body class="bg-white text-gray-900">
     {{-- Analytics & Tracking - Body --}}
     <x-seo.analytics position="body" />
-    
+    <x-navigation-header />
     {{-- Main Content --}}
     {{ $slot }}
     

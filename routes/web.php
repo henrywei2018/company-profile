@@ -43,12 +43,10 @@ Route::prefix('services')->group(function () {
     Route::get('/{slug}', [ServiceController::class, 'show'])->name('services.show');
 });
 
-Route::prefix('portfolio')->group(function () {
-    Route::get('/', [PortfolioController::class, 'index'])->name('portfolio.index');
-    Route::get('/{slug}', [PortfolioController::class, 'show'])->name('portfolio.show');
-    Route::prefix('projects')->group(function () {
-        Route::get('/{slug}', [ProjectController::class, 'show'])->name('portfolio.projects.show');
-    });
+Route::prefix('portfolio')->name('portfolio.')->group(function () {
+    Route::get('/', [PortfolioController::class, 'index'])->name('index');
+    Route::get('/{project:slug}', [PortfolioController::class, 'show'])->name('show');
+    
 });
 
 
@@ -77,8 +75,8 @@ Route::prefix('blog')->name('blog.')->group(function () {
     Route::get('/{post:slug}', [App\Http\Controllers\BlogController::class, 'show'])->name('show');
 });
 
-Route::prefix('contact')->group(function () {
-    Route::get('/', [ContactController::class, 'index'])->name('contact.index');
+Route::prefix('contact')->name('contact.')->group(function () {
+    Route::get('/', [ContactController::class, 'index'])->name('index');
     Route::post('/', [ContactController::class, 'store'])
         ->middleware('throttle:10,1')
         ->name('contact.store');

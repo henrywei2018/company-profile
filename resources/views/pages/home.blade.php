@@ -1,13 +1,15 @@
 <!-- resources/views/pages/home.blade.php -->
-@extends('components.layouts.app')
-
-@section('title', 'CV Usaha Prima Lestari - Professional Construction & General Supplier')
-@section('meta_description', 'Leading construction and general supplier company in Indonesia providing quality civil
-    engineering, building maintenance, and project management services.')
-
-@section('content')
+<x-layouts.public>
+    <x-slot:title>
+        CV Usaha Prima Lestari - Professional Construction & General Supplier
+    </x-slot:title>
+    <x-slot:meta_description>
+        Leading construction and general supplier company in Indonesia providing quality civil
+        engineering, building maintenance, and project management services.
+    </x-slot:meta_description>
+    
     <!-- Hero Section -->
-    <x-banner-slider category-slug="home-slider" />
+    <x-banner-slider category-slug="homepage-hero" />
     <!-- End Hero -->
 
     <!-- Services Section -->
@@ -351,4 +353,4 @@
         </div>
         <!-- End Grid -->
     </div>
-@endsection
+</x-layouts.public>

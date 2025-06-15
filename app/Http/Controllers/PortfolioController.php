@@ -8,61 +8,44 @@ use Illuminate\Http\Request;
 
 class PortfolioController extends Controller
 {
-    /**
-     * Display a listing of portfolio projects.
-     */
+    // Menampilkan list project portfolio
     public function index(Request $request)
     {
+        // Ambil semua kategori unik
+        $categories = ProjectCategory::withCount('projects')->get();
+
+        // Query project, filter by category jika ada
         $query = Project::query()
-            ->with(['category', 'images', 'client'])
             ->where('is_active', true)
-            ->where('status', 'completed'); // Only show completed projects in portfolio
+            ->where('status', 'completed')
+            ->with(['category', 'images']);
 
-        // Apply filters
         if ($request->filled('category')) {
-            $query->where('project_category_id', $request->category);
+            // Filter berdasar slug kategori, jika ada request category
+            $category = ProjectCategory::where('slug', $request->category)->first();
+            if ($category) {
+                $query->where('project_category_id', $category->id);
+            }
         }
 
-        if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('title', 'like', '%' . $request->search . '%')
-                  ->orWhere('description', 'like', '%' . $request->search . '%');
-            });
-        }
+        $projects = $query->latest('end_date')->paginate(9);
 
-        if ($request->filled('year')) {
-            $query->where('year', $request->year);
-        }
-
-        // Order by featured first, then by created date
-        $projects = $query->orderByDesc('featured')
-                         ->orderByDesc('created_at')
-                         ->paginate(12);
-
-        $categories = ProjectCategory::whereHas('projects', function ($query) {
-            $query->where('is_active', true)->where('status', 'completed');
-        })->get();
-
-        $years = Project::where('is_active', true)
-                       ->where('status', 'completed')
-                       ->selectRaw('YEAR(created_at) as year')
-                       ->distinct()
-                       ->orderByDesc('year')
-                       ->pluck('year');
-
-        return view('portfolio.index', compact('projects', 'categories', 'years'));
+        return view('pages.portfolio.index', [
+            'projects' => $projects,
+            'categories' => $categories,
+            'selectedCategory' => $request->category ?? null,
+        ]);
     }
 
-    /**
-     * Display the specified project.
-     */
+    // Menampilkan detail project
     public function show(Project $project)
     {
-        // Check if project is active and accessible to public
+        // Hanya tampilkan project yang aktif & completed
         if (!$project->is_active || $project->status !== 'completed') {
             abort(404);
         }
 
+        // Load relasi (category, client, images, testimonial aktif & featured)
         $project->load([
             'category',
             'client',
@@ -74,7 +57,7 @@ class PortfolioController extends Controller
             }
         ]);
 
-        // Get related projects
+        // Ambil project terkait
         $relatedProjects = Project::where('is_active', true)
             ->where('status', 'completed')
             ->where('id', '!=', $project->id)
@@ -83,10 +66,12 @@ class PortfolioController extends Controller
             })
             ->with(['category', 'images'])
             ->orderByDesc('featured')
-            ->orderByDesc('created_at')
             ->limit(3)
             ->get();
 
-        return view('portfolio.show', compact('project', 'relatedProjects'));
+        return view('pages.portfolio.show', [
+            'project' => $project,
+            'relatedProjects' => $relatedProjects,
+        ]);
     }
 }

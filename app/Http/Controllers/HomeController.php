@@ -1,42 +1,29 @@
 <?php
-// File: app/Http/Controllers/HomeController.php
 
 namespace App\Http\Controllers;
 
-use App\Models\Project;
-use App\Models\Service;
-use App\Models\Testimonial;
-use App\Models\Post;
-use App\Models\CompanyProfile;
 use Illuminate\Http\Request;
+use App\Models\Service;
+use App\Models\Project;
+use App\Models\Testimonial;
+use App\Models\CompanyProfile; // Jika ada
+use App\Models\Banner; // Jika ada
 
 class HomeController extends Controller
 {
-    /**
-     * Display the homepage.
-     */
     public function index()
     {
-        // Get featured projects
-        $featuredProjects = Project::featured()->latest()->take(6)->get();
-        
-        // Get services
-        $services = Service::active()->featured()->take(6)->get();
-        
-        // Get testimonials
-        $testimonials = Testimonial::active()->featured()->take(4)->get();
-        
-        // Get recent blog posts
-        $latestPosts = Post::published()->recent(3)->get();
-        
-        // Get company profile
-        $companyProfile = CompanyProfile::getInstance();
-        
+        // Ambil data yang diperlukan, contoh limit sesuai kebutuhan home page
+        $services = Service::latest()->limit(6)->get();
+        $featuredProjects = Project::latest()->limit(6)->get();
+        $testimonials = Testimonial::latest()->limit(1)->get(); // 1 saja yang tampil
+        $companyProfile = CompanyProfile::first(); // Ambil data profil perusahaan, jika ada
+
+        // Lempar ke view
         return view('pages.home', compact(
-            'featuredProjects',
             'services',
+            'featuredProjects',
             'testimonials',
-            'latestPosts',
             'companyProfile'
         ));
     }
