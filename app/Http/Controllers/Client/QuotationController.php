@@ -9,6 +9,7 @@ use App\Models\QuotationAttachment;
 use App\Services\ClientAccessService;
 use App\Services\DashboardService;
 use App\Services\QuotationService;
+use App\Services\FileUploadService;
 use App\Facades\Notifications;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -24,15 +25,18 @@ class QuotationController extends Controller
     protected ClientAccessService $clientAccessService;
     protected DashboardService $dashboardService;
     protected QuotationService $quotationService;
+    protected FileUploadService $fileUploadService;
 
     public function __construct(
         ClientAccessService $clientAccessService,
         DashboardService $dashboardService,
-        QuotationService $quotationService
+        QuotationService $quotationService,
+        FileUploadService $fileUploadService
     ) {
         $this->clientAccessService = $clientAccessService;
         $this->dashboardService = $dashboardService;
         $this->quotationService = $quotationService;
+        $this->fileUploadService = $fileUploadService;
     }
 
     /**
@@ -133,8 +137,17 @@ class QuotationController extends Controller
             'phone' => $user->phone,
             'company' => $user->company,
         ];
+        $budgetRanges = [
+            'under_5k' => 'Under $5,000',
+            '5k_10k' => '$5,000 - $10,000',
+            '10k_25k' => '$10,000 - $25,000',
+            '25k_50k' => '$25,000 - $50,000',
+            '50k_100k' => '$50,000 - $100,000',
+            'over_100k' => 'Over $100,000',
+            'tbd' => 'To Be Determined'
+        ];
         
-        return view('client.quotations.create', compact('services', 'userDefaults'));
+        return view('client.quotations.create', compact('services', 'userDefaults', 'budgetRanges'));
     }
 
     /**
@@ -142,25 +155,34 @@ class QuotationController extends Controller
      */
     public function store(Request $request)
     {
+        // Enhanced validation that handles both traditional and universal file uploads
         $validated = $request->validate([
             'service_id' => 'nullable|exists:services,id',
             'project_type' => 'required|string|max:255',
-            'requirements' => 'required|string|min:50',
+            'requirements' => 'required|string|min:10|max:2000',
             'location' => 'nullable|string|max:255',
             'budget_range' => 'nullable|string|max:100',
             'start_date' => 'nullable|date|after:today',
-            'attachments.*' => 'nullable|file|max:10240|mimes:pdf,doc,docx,jpg,jpeg,png,gif,zip,rar',
-            'priority' => 'nullable|string|in:low,normal,high,urgent',
-            'additional_info' => 'nullable|string|max:1000',
-            'preferred_contact_method' => 'nullable|string|in:email,phone,whatsapp',
-            'preferred_contact_time' => 'nullable|string|in:morning,afternoon,evening',
+            'priority' => 'nullable|string|in:low,medium,high,urgent',
+            'additional_notes' => 'nullable|string|max:1000',
+            'preferred_contact_method' => 'nullable|in:email,phone,both',
+            'action' => 'nullable|in:save_as_draft,submit',
+            
+            // Traditional file uploads (your existing method)
+            'attachments.*' => 'nullable|file|max:10240',
+            
+            // Universal file uploader temp files (new method)
+            'temp_files' => 'nullable|array',
+            'temp_files.*.temp_id' => 'required|string',
+            'temp_files.*.category' => 'nullable|string|in:document,image,requirement,specification,other',
+            'temp_files.*.description' => 'nullable|string|max:255'
         ]);
         
         $user = auth()->user();
         
+        DB::beginTransaction();
+        
         try {
-            DB::beginTransaction();
-            
             // Prepare quotation data
             $quotationData = array_merge($validated, [
                 'client_id' => $user->id,
@@ -168,23 +190,28 @@ class QuotationController extends Controller
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'company' => $user->company,
-                'status' => 'pending',
-                'priority' => $validated['priority'] ?? 'normal',
+                'status' => $request->input('action') === 'save_as_draft' ? 'draft' : 'pending',
+                'priority' => $validated['priority'] ?? 'medium',
                 'source' => 'client_portal',
-                'quotation_number' => $this->generateQuotationNumber(),
+                'submitted_at' => $request->input('action') === 'save_as_draft' ? null : now()
             ]);
             
-            // Use service to create quotation with attachments
-            $quotation = $this->quotationService->createQuotation(
-                $quotationData,
-                $request->file('attachments') ?? []
-            );
+            // Remove temp_files from quotation data before passing to service
+            unset($quotationData['temp_files']);
             
-            // Send notification to admin
-            try {
-                Notifications::send('quotation.created_by_client', $quotation);
-            } catch (\Exception $e) {
-                Log::warning('Failed to send quotation notification: ' . $e->getMessage());
+            // Handle traditional file uploads (your existing method)
+            $traditionalFiles = $request->file('attachments') ?? [];
+            
+            // Use service to create quotation with traditional attachments
+            $quotation = $this->quotationService->createQuotation($quotationData, $traditionalFiles);
+            
+            // Handle universal file uploader temp files (new method)
+            if ($request->has('temp_files') && !empty($request->input('temp_files'))) {
+                $attachmentCount = $this->processTempFiles($quotation, $request->input('temp_files'));
+                
+                if ($attachmentCount > 0) {
+                    Log::info("Processed {$attachmentCount} temp file attachments for quotation {$quotation->id}");
+                }
             }
             
             DB::commit();
@@ -192,16 +219,26 @@ class QuotationController extends Controller
             // Clear dashboard cache
             $this->dashboardService->clearCache($user);
             
+            $message = $quotation->status === 'draft' 
+                ? 'Quotation saved as draft successfully! You can continue editing or submit it later.'
+                : 'Quotation request submitted successfully! We will review it within 24 hours.';
+            
+            // Redirect based on action
+            if ($request->input('action') === 'save_as_draft') {
+                return redirect()->route('client.quotations.edit', $quotation)
+                    ->with('success', $message);
+            }
+            
             return redirect()->route('client.quotations.show', $quotation)
-                ->with('success', 'Quotation request submitted successfully! We will review it within 24 hours.');
+                ->with('success', $message);
                 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Failed to create client quotation: ' . $e->getMessage());
+            Log::error('Failed to create quotation: ' . $e->getMessage());
             
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Failed to submit quotation request. Please try again.');
+                ->with('error', 'Failed to create quotation. Please try again.');
         }
     }
 
@@ -260,14 +297,15 @@ class QuotationController extends Controller
             abort(403, 'Unauthorized access to this quotation.');
         }
         
-        // Check if quotation can be edited
-        if (!in_array($quotation->status, ['pending', 'reviewed'])) {
+        // Only allow editing of draft or pending quotations
+        if (!in_array($quotation->status, ['draft', 'pending'])) {
             return redirect()->route('client.quotations.show', $quotation)
-                ->with('error', 'This quotation cannot be edited at this time.');
+                ->with('error', 'This quotation cannot be edited in its current status.');
         }
-        
-        $services = Service::active()->orderBy('title')->get();
-        
+
+        $services = Service::active()->get();
+        $quotation->load('attachments');
+
         return view('client.quotations.edit', compact('quotation', 'services'));
     }
 
@@ -281,48 +319,67 @@ class QuotationController extends Controller
             abort(403, 'Unauthorized access to this quotation.');
         }
         
-        // Check if quotation can be updated
-        if (!in_array($quotation->status, ['pending', 'reviewed'])) {
+        // Only allow updating of draft or pending quotations
+        if (!in_array($quotation->status, ['draft', 'pending'])) {
             return redirect()->route('client.quotations.show', $quotation)
-                ->with('error', 'This quotation cannot be updated at this time.');
+                ->with('error', 'This quotation cannot be updated in its current status.');
         }
-        
+
         $validated = $request->validate([
-            'requirements' => 'required|string|min:50',
+            'service_id' => 'nullable|exists:services,id',
+            'project_type' => 'required|string|max:255',
+            'requirements' => 'required|string|min:10|max:2000',
             'location' => 'nullable|string|max:255',
             'budget_range' => 'nullable|string|max:100',
             'start_date' => 'nullable|date|after:today',
-            'additional_info' => 'nullable|string|max:1000',
-            'preferred_contact_method' => 'nullable|string|in:email,phone,whatsapp',
-            'preferred_contact_time' => 'nullable|string|in:morning,afternoon,evening',
+            'priority' => 'nullable|string|in:low,medium,high,urgent',
+            'additional_notes' => 'nullable|string|max:1000',
+            'preferred_contact_method' => 'nullable|in:email,phone,both',
+            'action' => 'nullable|in:save_as_draft,submit',
+            'temp_files' => 'nullable|array',
+            'temp_files.*.temp_id' => 'required|string',
+            'temp_files.*.category' => 'nullable|string|in:document,image,requirement,specification,other',
+            'temp_files.*.description' => 'nullable|string|max:255'
         ]);
-        
+
+        DB::beginTransaction();
+
         try {
-            DB::beginTransaction();
+            // Update quotation data
+            $updateData = $validated;
             
-            $quotation->update(array_merge($validated, [
-                'status' => 'pending', // Reset to pending for review
-                'last_communication_at' => now(),
-            ]));
-            
-            // Send notification to admin about update
-            try {
-                Notifications::send('quotation.updated_by_client', $quotation);
-            } catch (\Exception $e) {
-                Log::warning('Failed to send quotation update notification: ' . $e->getMessage());
+            // Handle status change
+            if ($request->input('action') === 'submit' && $quotation->status === 'draft') {
+                $updateData['status'] = 'pending';
+                $updateData['submitted_at'] = now();
             }
-            
+
+            $quotation->update($updateData);
+
+            // Handle new file attachments
+            if ($request->has('temp_files')) {
+                $attachmentCount = $this->processTempFiles($quotation, $request->input('temp_files'));
+                
+                if ($attachmentCount > 0) {
+                    Log::info("Added {$attachmentCount} new attachments to quotation {$quotation->id}");
+                }
+            }
+
             DB::commit();
-            
+
             // Clear dashboard cache
             $this->dashboardService->clearCache(auth()->user());
-            
+
+            $message = $quotation->status === 'draft' 
+                ? 'Quotation draft updated successfully!'
+                : 'Quotation updated and submitted successfully!';
+
             return redirect()->route('client.quotations.show', $quotation)
-                ->with('success', 'Quotation updated successfully! We will review the changes within 24 hours.');
-                
+                ->with('success', $message);
+
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Failed to update client quotation: ' . $e->getMessage());
+            Log::error('Failed to update quotation: ' . $e->getMessage());
             
             return redirect()->back()
                 ->withInput()
@@ -330,50 +387,266 @@ class QuotationController extends Controller
         }
     }
 
+    public function tempUpload(Request $request): JsonResponse
+{
+    // Check if file was actually uploaded
+    if (!$request->hasFile('file')) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No file was uploaded'
+        ], 422);
+    }
+
+    // Validate the upload
+    $request->validate([
+        'file' => 'required|file|max:10240', // 10MB max
+        'category' => 'nullable|string|in:document,image,requirement,specification,other'
+    ]);
+
+    try {
+        $file = $request->file('file');
+        $category = $request->input('category', 'document');
+        
+        // Validate file type based on category
+        $allowedTypes = $this->getAllowedFileTypes($category);
+        if (!in_array($file->getMimeType(), $allowedTypes)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'File type "' . $file->getMimeType() . '" not allowed for category "' . $category . '"'
+            ], 422);
+        }
+        
+        // Generate unique temp ID
+        $tempId = 'temp_quotation_' . uniqid() . '_' . time();
+        
+        // Store temporarily with organized structure
+        $tempPath = "temp/quotations/" . auth()->id() . "/" . date('Y-m-d');
+        $fileName = $tempId . '_' . $file->getClientOriginalName();
+        $path = $file->storeAs($tempPath, $fileName, 'public');
+        
+        // Store temp file info in session
+        session()->put("temp_quotation_files.{$tempId}", [
+            'original_name' => $file->getClientOriginalName(),
+            'temp_path' => $path,
+            'size' => $file->getSize(),
+            'mime_type' => $file->getMimeType(),
+            'category' => $category,
+            'uploaded_at' => now()->toISOString()
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'temp_id' => $tempId,
+            'file_name' => $file->getClientOriginalName(),
+            'file_size' => $file->getSize(),
+            'file_size_formatted' => $this->formatFileSize($file->getSize()),
+            'category' => $category,
+            'url' => Storage::url($path),
+            'message' => 'File uploaded successfully'
+        ]);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation error',
+            'errors' => $e->errors()
+        ], 422);
+    } catch (\Exception $e) {
+        Log::error('Temp file upload failed: ' . $e->getMessage(), [
+            'user_id' => auth()->id(),
+            'file_name' => $request->file('file') ? $request->file('file')->getClientOriginalName() : 'unknown'
+        ]);
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Upload failed: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
     /**
-     * Delete attachment from quotation
+     * ADD THIS NEW METHOD - Delete temporary file
      */
-    public function deleteAttachment(Quotation $quotation, QuotationAttachment $attachment)
+    public function tempDelete(Request $request): JsonResponse
     {
-        // Ensure the quotation belongs to the authenticated client
-        if (!$this->clientAccessService->canAccessQuotation(auth()->user(), $quotation)) {
-            abort(403, 'Unauthorized access to this quotation.');
-        }
-        
-        // Check if quotation allows modifications
-        if (!in_array($quotation->status, ['pending', 'reviewed'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Attachments cannot be removed at this time.'
-            ], 403);
-        }
-        
+        $request->validate([
+            'temp_id' => 'required|string'
+        ]);
+
         try {
-            // Delete file from storage
-            if (Storage::disk('public')->exists($attachment->file_path)) {
-                Storage::disk('public')->delete($attachment->file_path);
+            $tempId = $request->input('temp_id');
+            $tempData = session()->get("temp_quotation_files.{$tempId}");
+
+            if ($tempData && isset($tempData['temp_path'])) {
+                Storage::disk('public')->delete($tempData['temp_path']);
+                session()->forget("temp_quotation_files.{$tempId}");
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'File deleted successfully'
+                ]);
             }
-            
-            // Delete attachment record
-            $attachment->delete();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Attachment removed successfully.'
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Failed to delete quotation attachment: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to remove attachment.'
+                'message' => 'File not found'
+            ], 404);
+
+        } catch (\Exception $e) {
+            Log::error('Temp file deletion failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Delete failed: ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Download attachment
+     * ADD THIS NEW METHOD - Get current temporary files
+     */
+    public function getTempFiles(Request $request): JsonResponse
+{
+    $sessionKey = 'quotation_temp_files_' . session()->getId();
+    $tempFiles = session()->get($sessionKey, []);
+    $files = [];
+    foreach ($tempFiles as $tempId => $data) {
+        $files[] = [
+            'id'         => $tempId,
+            'temp_id'    => $tempId,
+            'name'       => $data['original_name'] ?? 'Attachment',
+            'file_name'  => $data['original_name'] ?? '',
+            'category'   => $data['category'] ?? 'document',
+            'type'       => $data['category'] ?? 'document',
+            'url'        => Storage::disk('public')->url($data['temp_path']),
+            'size'       => $this->formatFileSize($data['file_size'] ?? 0),
+            'temp_path'  => $data['temp_path'],
+            'is_temp'    => true,
+            'created_at' => \Carbon\Carbon::parse($data['uploaded_at'])->format('M j, Y H:i')
+        ];
+    }
+    return response()->json(['files' => $files]);
+}
+
+
+    /**
+     * ADD THIS NEW METHOD - Upload attachment to existing quotation (for edit mode)
+     */
+    public function uploadTempFiles(Request $request)
+{
+    // Ambil semua file dari request, baik multiple maupun single
+    $files = [];
+    if ($request->hasFile('files')) {
+        $files = $request->file('files');
+        // Jika cuma single, bungkus jadi array
+        if (!is_array($files)) {
+            $files = [$files];
+        }
+    }
+
+    if (empty($files)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No file was uploaded',
+        ], 422);
+    }
+
+    // Tidak perlu validasi array di sini, cukup validasi file per item
+    foreach ($files as $file) {
+        if (!$file->isValid()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid file uploaded',
+            ], 422);
+        }
+    }
+
+    $category = $request->input('category', 'document');
+    $sessionKey = 'quotation_temp_files_' . session()->getId();
+    $sessionData = session()->get($sessionKey, []);
+    $uploadedFiles = [];
+
+    foreach ($files as $file) {
+        $tempId = 'temp_' . uniqid() . '_' . time();
+        $tempFilename = $tempId . '.' . $file->getClientOriginalExtension();
+        $tempPath = $file->storeAs('temp/quotations', $tempFilename, 'public');
+
+        $tempData = [
+            'temp_id'      => $tempId,
+            'temp_path'    => $tempPath,
+            'original_name'=> $file->getClientOriginalName(),
+            'category'     => $category,
+            'file_size'    => $file->getSize(),
+            'mime_type'    => $file->getMimeType(),
+            'uploaded_at'  => now()->toISOString(),
+            'session_id'   => session()->getId()
+        ];
+
+        $sessionData[$tempId] = $tempData;
+
+        $uploadedFiles[] = [
+            'id'         => $tempId,
+            'temp_id'    => $tempId,
+            'name'       => $file->getClientOriginalName(),
+            'file_name'  => $file->getClientOriginalName(),
+            'category'   => $category,
+            'type'       => $category,
+            'url'        => Storage::disk('public')->url($tempPath),
+            'size'       => $this->formatFileSize($file->getSize()),
+            'temp_path'  => $tempPath,
+            'is_temp'    => true,
+            'created_at' => now()->format('M j, Y H:i')
+        ];
+    }
+
+    session()->put($sessionKey, $sessionData);
+
+    return response()->json(['files' => $uploadedFiles]);
+}
+
+
+
+    /**
+     * ADD THIS NEW METHOD - Delete attachment from quotation
+     */
+    public function deleteAttachment(Request $request, Quotation $quotation): JsonResponse
+    {
+        // Ensure the quotation belongs to the authenticated client
+        if (!$this->clientAccessService->canAccessQuotation(auth()->user(), $quotation)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'attachment_id' => 'required|exists:quotation_attachments,id'
+        ]);
+ 
+        try {
+            $attachment = QuotationAttachment::where('quotation_id', $quotation->id)
+                ->findOrFail($request->input('attachment_id'));
+
+            // Delete file from storage
+            if (Storage::disk('public')->exists($attachment->file_path)) {
+                Storage::disk('public')->delete($attachment->file_path);
+            }
+
+            // Delete database record
+            $attachment->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Attachment deleted successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Attachment deletion failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Delete failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * ADD THIS NEW METHOD - Download attachment
      */
     public function downloadAttachment(Quotation $quotation, QuotationAttachment $attachment)
     {
@@ -381,15 +654,150 @@ class QuotationController extends Controller
         if (!$this->clientAccessService->canAccessQuotation(auth()->user(), $quotation)) {
             abort(403, 'Unauthorized access to this quotation.');
         }
-        
-        if (!$attachment->exists()) {
+
+        // Ensure attachment belongs to quotation
+        if ($attachment->quotation_id !== $quotation->id) {
+            abort(404, 'Attachment not found.');
+        }
+
+        if (!Storage::disk('public')->exists($attachment->file_path)) {
             abort(404, 'File not found.');
         }
+
+        // Increment download count if tracking
+        if (method_exists($attachment, 'incrementDownloads')) {
+            $attachment->incrementDownloads();
+        }
+
+        return Storage::disk('public')->download($attachment->file_path, $attachment->file_name);
+    }
+
+    /**
+     * ADD THIS PRIVATE METHOD - Process temporary files and convert to permanent attachments
+     */
+    private function processTempFiles(Quotation $quotation, array $tempFiles): int
+{
+    $processedCount = 0;
+    
+    foreach ($tempFiles as $fileData) {
+        $tempId = $fileData['temp_id'];
+        $tempData = session()->get("temp_quotation_files.{$tempId}");
         
-        return Storage::disk('public')->download(
-            $attachment->file_path,
-            $attachment->file_name
-        );
+        if (!$tempData) {
+            Log::warning("Temp file data not found for ID: {$tempId}");
+            continue;
+        }
+        
+        try {
+            // Move from temp to permanent storage using your existing structure
+            $permanentPath = "quotation_attachments/{$quotation->id}";
+            $fileName = time() . '_' . $processedCount . '_' . $tempData['original_name'];
+            $finalPath = $permanentPath . '/' . $fileName;
+            
+            // Ensure directory exists
+            Storage::disk('public')->makeDirectory($permanentPath);
+            
+            // Move file
+            if (Storage::disk('public')->exists($tempData['temp_path'])) {
+                Storage::disk('public')->move($tempData['temp_path'], $finalPath);
+                
+                // Create attachment record using your existing QuotationAttachment model structure
+                $attachmentData = [
+                    'quotation_id' => $quotation->id,
+                    'file_name' => $tempData['original_name'],
+                    'file_path' => $finalPath,
+                    'file_size' => $tempData['size'],
+                    'file_type' => $tempData['mime_type'],
+                ];                
+                
+                QuotationAttachment::create($attachmentData);
+                $processedCount++;
+            }
+            
+            // Clean up session
+            session()->forget("temp_quotation_files.{$tempId}");
+            
+        } catch (\Exception $e) {
+            Log::error("Failed to process temp file {$tempId}: " . $e->getMessage(), [
+                'quotation_id' => $quotation->id,
+                'temp_id' => $tempId,
+                'user_id' => auth()->id()
+            ]);
+        }
+    }
+    
+    return $processedCount;
+}
+
+    /**
+     * ADD THIS PRIVATE METHOD - Get allowed file types for a category
+     */
+    private function getAllowedFileTypes(string $category): array
+{
+    $types = [
+        'document' => [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'text/plain',
+            'text/csv',
+            'application/rtf'
+        ],
+        'image' => [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'image/svg+xml',
+            'image/bmp'
+        ],
+        'requirement' => [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'text/plain',
+            'text/csv'
+        ],
+        'specification' => [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        ],
+        'other' => [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/zip',
+            'application/x-zip-compressed',
+            'text/plain',
+            'image/jpeg',
+            'image/png'
+        ]
+    ];
+
+    return $types[$category] ?? $types['other'];
+}
+
+    /**
+     * ADD THIS PRIVATE METHOD - Format file size for display
+     */
+    private function formatFileSize(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $factor = floor((strlen($bytes) - 1) / 3);
+        return sprintf("%.1f %s", $bytes / pow(1024, $factor), $units[$factor]);
     }
 
     /**

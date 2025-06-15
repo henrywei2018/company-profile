@@ -102,7 +102,13 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'admin'])->group(f
         Route::post('export', [QuotationController::class, 'export'])
             ->name('export');
         Route::get('statistics', [QuotationController::class, 'getStatistics'])
-            ->name('statistics');
+            ->name('statistics'); 
+        Route::get('/{quotation}/attachments/{attachment}/download', [QuotationController::class, 'downloadAttachment'])->name('download-attachment');
+        Route::post('/{quotation}/upload-attachment', [QuotationController::class, 'uploadAttachment'])->name('upload-attachment');
+        Route::delete('/{quotation}/delete-attachment', [QuotationController::class, 'deleteAttachment'])->name('delete-attachment');
+        Route::post('/temp-upload', [QuotationController::class, 'uploadTempFiles'])->name('temp-upload');
+        Route::delete('/temp-delete', [QuotationController::class, 'tempDelete'])->name('temp-delete');
+        Route::get('/temp-files', [QuotationController::class, 'getTempFiles'])->name('temp-files');
     });
 
     Route::prefix('messages')->name('messages.')->group(function () {

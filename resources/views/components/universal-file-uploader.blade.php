@@ -555,6 +555,12 @@ function enhancedFileUploader(config = {}) {
                 files: this.files,
                 component: this.componentId
             });
+            window.dispatchEvent(new CustomEvent('files-selected', {
+                detail: {
+                    files: this.files,
+                    component: this.componentId,
+                }
+            }));
         },
 
         validateFile(file) {
@@ -590,6 +596,13 @@ function enhancedFileUploader(config = {}) {
                 index: index,
                 component: this.componentId
             });
+            window.dispatchEvent(new CustomEvent('file-removed', {
+                detail: {
+                    index: index,
+                    component: this.componentId,
+                }
+            }));
+            
         },
 
         clearAllFiles() {
@@ -598,6 +611,11 @@ function enhancedFileUploader(config = {}) {
             this.$dispatch('files-cleared', {
                 component: this.componentId
             });
+            window.dispatchEvent(new CustomEvent('files-cleared', {
+                detail: {
+                    component: this.componentId,
+                }
+            }));
         },
 
         async uploadFiles() {
@@ -725,6 +743,13 @@ function enhancedFileUploader(config = {}) {
                 component: this.componentId,
                 result: result
             });
+            window.dispatchEvent(new CustomEvent('files-uploaded', {
+                detail: {
+                    files: result.files,
+                    component: this.componentId,
+                    result: result
+                }
+            }));
         },
 
         handleUploadError(error) {
@@ -740,6 +765,12 @@ function enhancedFileUploader(config = {}) {
                 error: error.message,
                 component: this.componentId
             });
+            window.dispatchEvent(new CustomEvent('upload-error', {
+                detail: {
+                    error: error.message,
+                    component: this.componentId,
+                }
+            }));
         },
 
         async deleteExistingFile(file, index) {
@@ -802,6 +833,12 @@ function enhancedFileUploader(config = {}) {
                 file: file,
                 component: this.componentId
             });
+            window.dispatchEvent(new CustomEvent('file-deleted', {
+                detail: {
+                    files: this.files,
+                    component: this.componentId,
+                }
+            }));
         } else {
             throw new Error(result.message || 'Delete failed');
         }
