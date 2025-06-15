@@ -73,42 +73,39 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'admin'])->group(f
     });
 
     // Main quotation routes
-    Route::resource('quotations', QuotationController::class)->except(['destroy']);
+    
     Route::prefix('quotations')->name('quotations.')->group(function () {
-        Route::post('{quotation}/approve', [QuotationController::class, 'approve'])
-            ->name('approve');
-        Route::get('{quotation}/decline', [QuotationController::class, 'showDeclineForm'])
-            ->name('decline');
-        Route::post('{quotation}/decline', [QuotationController::class, 'decline'])
-            ->name('decline.store');
-        Route::post('{quotation}/cancel', [QuotationController::class, 'cancel'])
-            ->name('cancel');
+
+        Route::post('upload-attachment', [QuotationController::class, 'uploadAttachment'])
+            ->name('upload-attachment');
+
+        Route::delete('delete-temp-file', [QuotationController::class, 'deleteTempFile'])
+            ->name('delete-temp-file');
+
+        Route::get('get-temp-files', [QuotationController::class, 'getTempFiles'])
+            ->name('get-temp-files');
+        Route::resource('', QuotationController::class)
+    ->except(['destroy'])
+    ->parameters(['' => 'quotation']);
+        // Quotation attachment management
+        Route::delete('{quotation}/attachments/{attachment}', [QuotationController::class, 'deleteAttachment'])
+            ->name('delete-attachment');
+
+        Route::get('{quotation}/attachments/{attachment}/download', [QuotationController::class, 'downloadAttachment'])
+            ->name('download-attachment');
+        
+        // Additional quotation management routes
         Route::post('{quotation}/duplicate', [QuotationController::class, 'duplicate'])
             ->name('duplicate');
-        Route::get('{quotation}/additional-info', [QuotationController::class, 'showAdditionalInfoForm'])
-            ->name('additional-info');
-        Route::post('{quotation}/additional-info', [QuotationController::class, 'updateAdditionalInfo'])
-            ->name('additional-info.store');
-        Route::post('{quotation}/attachments', [QuotationController::class, 'addAttachment'])
-            ->name('attachments.add');
-        Route::get('{quotation}/attachments/{attachment}/download', [QuotationController::class, 'downloadAttachment'])
-            ->name('attachments.download');
-        Route::delete('{quotation}/attachments/{attachment}', [QuotationController::class, 'deleteAttachment'])
-            ->name('attachments.delete');
-        Route::get('{quotation}/print', [QuotationController::class, 'print'])
-            ->name('print');
+
+        Route::patch('{quotation}/cancel', [QuotationController::class, 'cancel'])
+            ->name('cancel');
+
         Route::get('{quotation}/activity', [QuotationController::class, 'getActivity'])
             ->name('activity');
-        Route::post('export', [QuotationController::class, 'export'])
-            ->name('export');
-        Route::get('statistics', [QuotationController::class, 'getStatistics'])
-            ->name('statistics'); 
-        Route::get('/{quotation}/attachments/{attachment}/download', [QuotationController::class, 'downloadAttachment'])->name('download-attachment');
-        Route::post('/{quotation}/upload-attachment', [QuotationController::class, 'uploadAttachment'])->name('upload-attachment');
-        Route::delete('/{quotation}/delete-attachment', [QuotationController::class, 'deleteAttachment'])->name('delete-attachment');
-        Route::post('/temp-upload', [QuotationController::class, 'uploadTempFiles'])->name('temp-upload');
-        Route::delete('/temp-delete', [QuotationController::class, 'tempDelete'])->name('temp-delete');
-        Route::get('/temp-files', [QuotationController::class, 'getTempFiles'])->name('temp-files');
+
+        Route::get('{quotation}/print', [QuotationController::class, 'print'])
+            ->name('print');
     });
 
     Route::prefix('messages')->name('messages.')->group(function () {

@@ -293,12 +293,13 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
-
-    <style>
+<style>
         .notification-dropdown {
             width: 384px;
             /* w-96 */
             max-width: 90vw;
+            padding-left: 6px;
+            padding-right: 12px;
         }
 
         @media (max-width: 640px) {
@@ -680,4 +681,5 @@ document.addEventListener('DOMContentLoaded', function () {
         .dark .notification-badge-container .notification-badge {
             border-color: #1f2937;
         }
+        
     </style>

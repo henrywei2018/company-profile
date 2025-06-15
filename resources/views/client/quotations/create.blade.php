@@ -1,444 +1,424 @@
-<x-layouts.client title="New Quotation Request">
-    <div class="max-w-8xl mx-auto py-4 px-4 sm:px-6 lg:px-4">
-        {{-- Header Section --}}
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Request New Quotation</h1>
-            <p class="mt-2 text-gray-600 dark:text-gray-400">
-                Fill out the form below to request a quotation for your project. All fields marked with * are required.
-            </p>
-        </div>
+<x-layouts.client>
+    <x-slot name="title">Submit Quotation Request</x-slot>
+    <x-slot name="description">Tell us about your project and we'll get back to you with a detailed quote.</x-slot>
 
-        {{-- Enhanced Form with File Upload Support --}}
-        <form id="quotation-form" action="{{ route('client.quotations.store') }}" method="POST">
-            @csrf
+    <form id="quotation-form" 
+          action="{{ route('client.quotations.store') }}" 
+          method="POST" 
+          enctype="multipart/form-data"
+          x-data="quotationFormHandler()">
+        @csrf
+
+        <!-- Personal Information -->
+        <x-admin.card>
             
-            <div class="space-y-8">
-                {{-- Project Information Section --}}
-                <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
-                    <div class="px-4 py-5 sm:p-6">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">
-                            Project Information
-                        </h3>
-                        
-                        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                            {{-- Project Type --}}
-                            <div class="sm:col-span-2">
-                                <label for="project_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Project Type *
-                                </label>
-                                <input type="text" 
-                                       name="project_type" 
-                                       id="project_type" 
-                                       value="{{ old('project_type') }}"
-                                       placeholder="e.g., Website Development, Mobile App, E-commerce Platform"
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                       required>
-                                @error('project_type')
-                                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Personal Information</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Please provide your contact details.</p>
+            
 
-                            {{-- Service Selection --}}
-                            <div>
-                                <label for="service_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Related Service
-                                </label>
-                                <select name="service_id" 
-                                        id="service_id" 
-                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                    <option value="">Select a service (optional)</option>
-                                    @foreach($services as $service)
-                                        <option value="{{ $service->id }}" {{ old('service_id') == $service->id ? 'selected' : '' }}>
-                                            {{ $service->title }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('service_id')
-                                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            {{-- Priority --}}
-                            <div>
-                                <label for="priority" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Priority Level
-                                </label>
-                                <select name="priority" 
-                                        id="priority"
-                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                    <option value="medium" {{ old('priority', 'medium') == 'medium' ? 'selected' : '' }}>Medium Priority</option>
-                                    <option value="low" {{ old('priority') == 'low' ? 'selected' : '' }}>Low Priority</option>
-                                    <option value="high" {{ old('priority') == 'high' ? 'selected' : '' }}>High Priority</option>
-                                    <option value="urgent" {{ old('priority') == 'urgent' ? 'selected' : '' }}>Urgent</option>
-                                </select>
-                                @error('priority')
-                                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            {{-- Location --}}
-                            <div>
-                                <label for="location" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Project Location
-                                </label>
-                                <input type="text" 
-                                       name="location" 
-                                       id="location" 
-                                       value="{{ old('location') }}"
-                                       placeholder="e.g., New York, Remote, Multiple Locations"
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                @error('location')
-                                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            {{-- Budget Range --}}
-                            <div>
-                                <label for="budget_range" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Budget Range
-                                </label>
-                                <select name="budget_range" 
-                                        id="budget_range"
-                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                    <option value="">Select budget range</option>
-                                    <option value="under_5k" {{ old('budget_range') == 'under_5k' ? 'selected' : '' }}>Under $5,000</option>
-                                    <option value="5k_10k" {{ old('budget_range') == '5k_10k' ? 'selected' : '' }}>$5,000 - $10,000</option>
-                                    <option value="10k_25k" {{ old('budget_range') == '10k_25k' ? 'selected' : '' }}>$10,000 - $25,000</option>
-                                    <option value="25k_50k" {{ old('budget_range') == '25k_50k' ? 'selected' : '' }}>$25,000 - $50,000</option>
-                                    <option value="50k_100k" {{ old('budget_range') == '50k_100k' ? 'selected' : '' }}>$50,000 - $100,000</option>
-                                    <option value="over_100k" {{ old('budget_range') == 'over_100k' ? 'selected' : '' }}>Over $100,000</option>
-                                    <option value="tbd" {{ old('budget_range') == 'tbd' ? 'selected' : '' }}>To Be Determined</option>
-                                </select>
-                                @error('budget_range')
-                                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            {{-- Start Date --}}
-                            <div>
-                                <label for="start_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Preferred Start Date
-                                </label>
-                                <input type="date" 
-                                       name="start_date" 
-                                       id="start_date" 
-                                       value="{{ old('start_date') }}"
-                                       min="{{ date('Y-m-d', strtotime('+1 day')) }}"
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                @error('start_date')
-                                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            {{-- Preferred Contact Method --}}
-                            <div>
-                                <label for="preferred_contact_method" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Preferred Contact Method
-                                </label>
-                                <select name="preferred_contact_method" 
-                                        id="preferred_contact_method"
-                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                    <option value="both" {{ old('preferred_contact_method', 'both') == 'both' ? 'selected' : '' }}>Email & Phone</option>
-                                    <option value="email" {{ old('preferred_contact_method') == 'email' ? 'selected' : '' }}>Email Only</option>
-                                    <option value="phone" {{ old('preferred_contact_method') == 'phone' ? 'selected' : '' }}>Phone Only</option>
-                                </select>
-                                @error('preferred_contact_method')
-                                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
+            <div class="px-6 py-4 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <x-admin.input 
+                        label="Full Name" 
+                        name="name" 
+                        :value="old('name', auth()->user()->name)" 
+                        required 
+                    />
+                    
+                    <x-admin.input 
+                        label="Email Address" 
+                        name="email" 
+                        type="email" 
+                        :value="old('email', auth()->user()->email)" 
+                        required 
+                    />
                 </div>
 
-                {{-- Requirements Section --}}
-                <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
-                    <div class="px-4 py-5 sm:p-6">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">
-                            Project Requirements
-                        </h3>
-                        
-                        <div class="space-y-6">
-                            {{-- Main Requirements --}}
-                            <div>
-                                <label for="requirements" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Project Requirements *
-                                </label>
-                                <textarea name="requirements" 
-                                          id="requirements" 
-                                          rows="6" 
-                                          placeholder="Please describe your project requirements, goals, target audience, features needed, and any specific preferences or constraints..."
-                                          class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                          required>{{ old('requirements') }}</textarea>
-                                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                                    Minimum 10 characters. Be as detailed as possible to help us provide an accurate quote.
-                                </p>
-                                @error('requirements')
-                                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            {{-- Additional Notes --}}
-                            <div>
-                                <label for="additional_notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Additional Notes
-                                </label>
-                                <textarea name="additional_notes" 
-                                          id="additional_notes" 
-                                          rows="3" 
-                                          placeholder="Any additional information, special requirements, or questions..."
-                                          class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">{{ old('additional_notes') }}</textarea>
-                                @error('additional_notes')
-                                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- File Attachments Section - ENHANCED WITH UNIVERSAL FILE UPLOADER --}}
-                <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
-    <div class="px-4 py-5 sm:p-6">
-        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">
-            Supporting Documents
-        </h3>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Upload any relevant documents, images, or specifications to help us understand your project better (Optional)
-        </p>
-
-        {{-- Universal File Uploader Integration - CORRECTED --}}
-        <x-universal-file-uploader 
-    id="quotation-attachments-uploader"
-    name="files[]"
-    :multiple="false"
-    :maxFiles="3"
-    maxFileSize="10MB"
-    :acceptedFileTypes="[
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.ms-powerpoint',
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        'image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp', 'image/bmp',
-        'text/plain', 'text/csv', 'application/zip', 'application/rtf'
-    ]"
-    :uploadEndpoint="route('client.quotations.temp-upload')"
-    :deleteEndpoint="route('client.quotations.temp-delete')"
-    dropDescription="Drop a file here or click to browse"
-    :enableCategories="true"
-    :categories="[
-        ['value' => 'document', 'label' => 'Project Document'],
-        ['value' => 'image', 'label' => 'Reference Image'],
-        ['value' => 'requirement', 'label' => 'Requirement Spec'],
-        ['value' => 'specification', 'label' => 'Technical Specification'],
-        ['value' => 'other', 'label' => 'Other']
-    ]"
-    :enableDescription="true"
-    :instantUpload="true"
-    :autoUpload="true"
-    :singleMode="true"
-    theme="modern"
-    containerClass="mb-4"
-/>
-        
-        {{-- Hidden inputs for temp file data --}}
-        <div id="temp-files-data"></div>
-
-        {{-- Helpful Information --}}
-        <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <div class="flex">
-                <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                </svg>
-                <div class="text-sm text-blue-700 dark:text-blue-300">
-                    <p class="font-medium">Helpful files to include:</p>
-                    <ul class="mt-1 space-y-1 list-disc list-inside">
-                        <li>Project briefs or specifications</li>
-                        <li>Reference images or design mockups</li>
-                        <li>Technical requirements documents</li>
-                        <li>Brand guidelines or style guides</li>
-                        <li>Existing website or system documentation</li>
-                    </ul>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <x-admin.input 
+                        label="Phone Number" 
+                        name="phone" 
+                        :value="old('phone', auth()->user()->phone)" 
+                    />
+                    
+                    <x-admin.input 
+                        label="Company Name" 
+                        name="company" 
+                        :value="old('company', auth()->user()->company)" 
+                    />
                 </div>
             </div>
-        </div>
-    </div>
-</div>
+        </x-admin.card>
 
-                {{-- Action Buttons --}}
-                <div class="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-700">
-                    <a href="{{ route('client.quotations.index') }}" 
-                       class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                        </svg>
-                        Cancel
-                    </a>
+        <!-- Project Information -->
+        <x-admin.card>
+            
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Project Information</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Tell us about your project requirements.</p>
+            
+
+            <div class="px-6 py-4 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <x-admin.select 
+                        label="Service Type" 
+                        name="service_id"
+                        :options="$services->pluck('name', 'id')"
+                        :value="old('service_id')"
+                        placeholder="Select a service (optional)"
+                    />
                     
-                    <div class="flex space-x-3">
-                        {{-- Save as Draft Button --}}
-                        <button type="submit" 
-                                name="action" 
-                                value="save_as_draft" 
-                                class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a.997.997 0 01-.707.293H7a4 4 0 01-4-4V7a4 4 0 014-4z"/>
-                            </svg>
+                    <x-admin.input 
+                        label="Project Type" 
+                        name="project_type" 
+                        :value="old('project_type')" 
+                        placeholder="e.g., Website Development, Mobile App, etc."
+                        required 
+                    />
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <x-admin.input 
+                        label="Location" 
+                        name="location" 
+                        :value="old('location')" 
+                        placeholder="Project location (if applicable)"
+                    />
+                    
+                    <x-admin.input 
+                        label="Expected Start Date" 
+                        name="start_date" 
+                        type="date" 
+                        :value="old('start_date')"
+                    />
+                </div>
+
+                <x-admin.textarea 
+                    label="Project Requirements" 
+                    name="requirements" 
+                    :value="old('requirements')" 
+                    rows="4"
+                    placeholder="Please describe your project in detail. Include features, functionality, design preferences, technical requirements, etc."
+                    required 
+                />
+
+                <x-admin.select 
+                    label="Budget Range" 
+                    name="budget_range"
+                    :options="[
+                        'under_5k' => 'Under $5,000',
+                        '5k_15k' => '$5,000 - $15,000',
+                        '15k_50k' => '$15,000 - $50,000',
+                        '50k_100k' => '$50,000 - $100,000',
+                        'over_100k' => 'Over $100,000',
+                        'discuss' => 'Prefer to discuss'
+                    ]"
+                    :value="old('budget_range')"
+                    placeholder="Select budget range (optional)"
+                />
+            </div>
+        </x-admin.card>
+
+        <!-- File Attachments -->
+        <x-admin.card>
+            
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Project Files</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Upload any relevant documents, designs, specifications, or reference materials (max 5 files, 10MB each).
+                </p>
+           
+
+            <div class="px-6 py-4">
+                <x-universal-file-uploader
+                    name="files"
+                    :multiple="true"
+                    :max-files="5"
+                    max-file-size="10MB"
+                    :accepted-file-types="[
+                        'application/pdf',
+                        'application/msword',
+                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        'application/vnd.ms-excel',
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        'image/jpeg',
+                        'image/png',
+                        'image/gif',
+                        'application/zip',
+                        'application/x-rar-compressed',
+                        'text/plain',
+                        'text/csv'
+                    ]"
+                    upload-endpoint="{{ route('client.quotations.upload-attachment') }}"
+                    delete-endpoint="{{ route('client.quotations.delete-temp-file') }}"
+                    drop-description="Drop project files here or click to browse"
+                    :auto-upload="true"
+                    :upload-on-drop="true"
+                    :show-progress="true"
+                    theme="modern"
+                    id="quotation-attachments-uploader"
+                    container-class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
+                    :existing-files="[]"
+                />
+
+                @error('attachments')
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+                @error('attachments.*')
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+        </x-admin.card>
+
+        <!-- Action Buttons -->
+        <x-admin.card>
+            <div class="px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <x-admin.button href="{{ route('client.quotations.index') }}" color="light">
+                            Cancel
+                        </x-admin.button>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <button 
+                            type="button" 
+                            class="inline-flex items-center px-4 py-2 bg-gray-300 border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-400 focus:bg-gray-400 active:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                            @click="saveDraft()"
+                            x-show="!isDraft"
+                        >
                             Save as Draft
                         </button>
                         
-                        {{-- Submit Button --}}
-                        <button type="submit" 
-                                class="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                            </svg>
-                            Submit Quotation Request
+                        <button 
+                            type="button" 
+                            class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                            :disabled="submitting"
+                            @click="submitQuotation()"
+                        >
+                            <!-- Loading spinner -->
+                            <template x-if="submitting">
+                                <svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </template>
+                            
+                            <!-- Normal icon -->
+                            <template x-if="!submitting">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                </svg>
+                            </template>
+                            
+                            <span x-text="submitting ? 'Submitting...' : 'Submit Quotation Request'"></span>
                         </button>
                     </div>
                 </div>
             </div>
-        </form>
-    </div>
+        </x-admin.card>
+    </form>
 
-   @push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    window.tempFiles = [];
-
-    // Show notification helper
-    function showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-md ${
-            type === 'error' ? 'bg-red-600 text-white' : 
-            type === 'success' ? 'bg-green-600 text-white' : 
-            'bg-blue-600 text-white'
-        }`;
-        notification.innerHTML = `
-            <div class="flex items-center">
-                <span class="flex-1">${message}</span>
-                <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                    </svg>
-                </button>
-            </div>
-        `;
-        document.body.appendChild(notification);
-        setTimeout(() => { if (notification.parentNode) notification.remove(); }, 5000);
-    }
-
-    // Utility: sinkronkan temp files ke hidden input
-    function addTempFilesToForm() {
-        const container = document.getElementById('temp-files-data');
-        if (!container) return;
-        container.innerHTML = '';
-        window.tempFiles.forEach((file, index) => {
-            const tempIdInput = document.createElement('input');
-            tempIdInput.type = 'hidden';
-            tempIdInput.name = `temp_files[${index}][temp_id]`;
-            tempIdInput.value = file.temp_id;
-            container.appendChild(tempIdInput);
-
-            if (file.category) {
-                const categoryInput = document.createElement('input');
-                categoryInput.type = 'hidden';
-                categoryInput.name = `temp_files[${index}][category]`;
-                categoryInput.value = file.category;
-                container.appendChild(categoryInput);
-            }
-
-            if (file.description) {
-                const descInput = document.createElement('input');
-                descInput.type = 'hidden';
-                descInput.name = `temp_files[${index}][description]`;
-                descInput.value = file.description;
-                container.appendChild(descInput);
-            }
-        });
-    }
-
-    // Handler sukses upload file universal-uploader
-    function handleUniversalUploadEvent(event) {
-        // Debug: tampilkan detail event
-        console.log('[DEBUG] files-uploaded event:', event.detail);
-        let files = [];
-        if (event.detail.files && Array.isArray(event.detail.files)) {
-            files = event.detail.files;
-        } else if (event.detail.file) {
-            files = [event.detail.file];
-        } else if (event.detail.result) {
-            files = [event.detail.result];
-        }
-
-        // Update tempFiles hanya dengan file yang temp_id
-        files.forEach(file => {
-            if (file.temp_id) {
-                // Hindari duplikat temp_id
-                if (!window.tempFiles.some(f => f.temp_id === file.temp_id)) {
-                    window.tempFiles.push({
-                        temp_id: file.temp_id,
-                        category: file.category || 'document',
-                        description: file.description || ''
+    @push('scripts')
+    <script>
+        // Debug logging
+        console.log('=== QUOTATION FORM DEBUG ===');
+        console.log('Session ID:', '{{ session()->getId() }}');
+        console.log('Upload endpoint:', '{{ route("client.quotations.upload-attachment") }}');
+        
+        function quotationFormHandler() {
+            return {
+                submitting: false,
+                isDraft: false,
+                uploadedFiles: [],
+                tempSession: '{{ session()->getId() }}',
+                
+                init() {
+                    console.log('Quotation form handler initialized');
+                    
+                    // Load existing temp files on page load
+                    this.loadExistingTempFiles();
+                    
+                    // Listen for file upload events from universal uploader
+                    document.addEventListener('files-uploaded', (event) => {
+                        console.log('Files uploaded event received:', event.detail);
+                        if (event.detail.component === 'quotation-attachments-uploader') {
+                            this.handleFilesUploaded(event.detail);
+                        }
                     });
+                    
+                    // Listen for file removal events
+                    document.addEventListener('file-removed', (event) => {
+                        console.log('File removed event received:', event.detail);
+                        if (event.detail.component === 'quotation-attachments-uploader') {
+                            this.handleFileRemoved(event.detail);
+                        }
+                    });
+
+                    // Listen for upload errors
+                    document.addEventListener('upload-error', (event) => {
+                        console.log('Upload error event received:', event.detail);
+                        this.showNotification('Upload failed: ' + event.detail.error, 'error');
+                    });
+
+                    // Prevent default form submission and use our custom handler
+                    document.getElementById('quotation-form').addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        if (!this.submitting) {
+                            this.submitQuotation();
+                        }
+                    });
+                },
+                
+                async loadExistingTempFiles() {
+                    console.log('Loading existing temp files...');
+                    try {
+                        const response = await fetch('{{ route('client.quotations.get-temp-files') }}', {
+                            method: 'GET',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            }
+                        });
+
+                        const result = await response.json();
+                        console.log('Get temp files response:', result);
+                        
+                        if (result.success && result.files.length > 0) {
+                            this.uploadedFiles = result.files;
+                            console.log('Loaded temp files:', this.uploadedFiles);
+                            
+                            // Dispatch event to update uploader component
+                            this.$dispatch('load-existing-files', {
+                                files: result.files,
+                                component: 'quotation-attachments-uploader'
+                            });
+                        }
+                    } catch (error) {
+                        console.warn('Could not load existing temp files:', error);
+                    }
+                },
+                
+                handleFilesUploaded(detail) {
+                    console.log('Handling files uploaded:', detail);
+                    
+                    if (detail.files && Array.isArray(detail.files)) {
+                        this.uploadedFiles = [...this.uploadedFiles, ...detail.files];
+                        console.log('Updated uploaded files array:', this.uploadedFiles);
+                        
+                        this.showNotification(detail.result?.message || 'Files uploaded successfully!', 'success');
+                    }
+                },
+                
+                handleFileRemoved(detail) {
+                    console.log('Handling file removed:', detail);
+                    // Remove from our tracking array
+                    this.uploadedFiles = this.uploadedFiles.filter((file, index) => index !== detail.index);
+                    console.log('Updated uploaded files after removal:', this.uploadedFiles);
+                },
+                
+                async submitQuotation() {
+                    console.log('Submit quotation called');
+                    
+                    if (this.submitting) {
+                        console.log('Already submitting, ignoring...');
+                        return;
+                    }
+                    
+                    this.submitting = true;
+                    console.log('Starting quotation submission...');
+                    
+                    try {
+                        // Get the form element
+                        const form = document.getElementById('quotation-form');
+                        
+                        // Basic client-side validation
+                        const requiredFields = ['name', 'email', 'project_type', 'requirements'];
+                        for (const field of requiredFields) {
+                            const input = form.querySelector(`[name="${field}"]`);
+                            if (!input || !input.value.trim()) {
+                                this.showNotification(`Please fill in the ${field.replace('_', ' ')} field.`, 'error');
+                                this.submitting = false;
+                                input?.focus();
+                                return;
+                            }
+                        }
+
+                        // Create form data
+                        const formData = new FormData(form);
+                        
+                        // Log uploaded files before submission
+                        console.log('Uploaded files before submission:', this.uploadedFiles);
+                        
+                        // Add uploaded file references
+                        this.uploadedFiles.forEach((file, index) => {
+                            if (file.temp_id) {
+                                formData.append(`temp_files[${index}]`, file.temp_id);
+                                console.log(`Added temp file ${index}:`, file.temp_id);
+                            }
+                        });
+
+                        // Log FormData contents
+                        console.log('FormData contents:');
+                        for (let pair of formData.entries()) {
+                            console.log(pair[0], pair[1]);
+                        }
+
+                        // Submit via fetch for better control
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        console.log('Form submission response status:', response.status);
+                        
+                        const result = await response.json();
+                        console.log('Form submission response:', result);
+
+                        if (response.ok && result.success) {
+                            this.showNotification(result.message, 'success');
+                            
+                            // Redirect to show page
+                            if (result.data && result.data.redirect) {
+                                console.log('Redirecting to:', result.data.redirect);
+                                setTimeout(() => {
+                                    window.location.href = result.data.redirect;
+                                }, 1500);
+                            }
+                        } else {
+                            throw new Error(result.message || 'Form submission failed');
+                        }
+                        
+                    } catch (error) {
+                        console.error('Quotation submission error:', error);
+                        this.showNotification(error.message || 'Failed to submit quotation. Please try again.', 'error');
+                    } finally {
+                        this.submitting = false;
+                    }
+                },
+                
+                async saveDraft() {
+                    // Implement draft saving if needed
+                    this.showNotification('Draft functionality coming soon!', 'info');
+                },
+                
+                showNotification(message, type = 'info') {
+                    console.log('Showing notification:', type, message);
+                    
+                    // Use your existing notification system
+                    if (window.showNotification) {
+                        window.showNotification(message, type);
+                    } else {
+                        // Fallback
+                        alert(`${type.toUpperCase()}: ${message}`);
+                    }
                 }
             }
-        });
-        addTempFilesToForm();
-    }
-
-    // Handler file deleted (hapus dari array & form)
-    function handleTempFileDelete(event) {
-        let tempId = event.detail?.temp_id || event.temp_id;
-        if (tempId) {
-            window.tempFiles = window.tempFiles.filter(file => file.temp_id !== tempId);
-            addTempFilesToForm();
         }
-    }
 
-    // Listen event universal-uploader (window & document agar robust)
-    window.addEventListener('files-uploaded', handleUniversalUploadEvent);
-    document.addEventListener('files-uploaded', handleUniversalUploadEvent);
-    window.addEventListener('file-deleted', handleTempFileDelete);
-    document.addEventListener('file-deleted', handleTempFileDelete);
-
-    // --- Validasi sebelum submit ---
-    const form = document.getElementById('quotation-form');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            addTempFilesToForm();
-
-            // Validasi field wajib (customisasi sesuai kebutuhan)
-            const projectType = document.getElementById('project_type')?.value?.trim() || '';
-            const requirements = document.getElementById('requirements')?.value?.trim() || '';
-            // Cek apakah minimal 1 file harus diupload
-            const mustUploadFile = true; // Ubah ke false jika tidak wajib file
-
-            if (!projectType) {
-                e.preventDefault();
-                showNotification('Please enter a project type.', 'error');
-                document.getElementById('project_type').focus();
-                return;
-            }
-            if (!requirements || requirements.length < 10) {
-                e.preventDefault();
-                showNotification('Please provide at least 10 characters in the requirements field.', 'error');
-                document.getElementById('requirements').focus();
-                return;
-            }
-            if (mustUploadFile && window.tempFiles.length < 1) {
-                e.preventDefault();
-                showNotification('Please upload at least one attachment.', 'error');
-                // Scroll ke uploader jika perlu:
-                document.getElementById('quotation-attachments-uploader')?.scrollIntoView({behavior: "smooth", block: "center"});
-                return;
-            }
-            // Tambahkan validasi lain jika perlu...
-        });
-    }
-});
-</script>
-@endpush
-
+    </script>
+    @endpush
 </x-layouts.client>
