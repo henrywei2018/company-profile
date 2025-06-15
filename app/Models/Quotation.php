@@ -347,6 +347,217 @@ class Quotation extends Model
         return $this->project;
     }
 
+    public function isExpired(int $expireDays = 30): bool
+{
+    // Only approved quotations can expire
+    if ($this->status !== self::STATUS_APPROVED) {
+        return false;
+    }
+    
+    // Check if quotation has an approval date
+    if (!$this->approved_at) {
+        return false;
+    }
+    
+    // Check if quotation has been converted to project
+    // If converted, it shouldn't be considered expired
+    if ($this->project_created || $this->hasExistingProject()) {
+        return false;
+    }
+    
+    // Check if client has already approved
+    // If client approved, extend the expiry
+    if ($this->client_approved === true) {
+        $expireDays = $expireDays + 14; // Add 14 days extension for client-approved quotations
+    }
+    
+    return $this->approved_at->diffInDays(now()) > $expireDays;
+}
+
+/**
+ * Check if quotation is expiring soon (within warning period)
+ * 
+ * @param int $warningDays Number of days before expiry to show warning (default: 5)
+ * @param int $expireDays Total days until expiry (default: 30)
+ * @return bool
+ */
+public function isExpiringSoon(int $warningDays = 5, int $expireDays = 30): bool
+{
+    // Only approved quotations can expire
+    if ($this->status !== self::STATUS_APPROVED) {
+        return false;
+    }
+    
+    // Check if quotation has an approval date
+    if (!$this->approved_at) {
+        return false;
+    }
+    
+    // Check if quotation has been converted to project
+    if ($this->project_created || $this->hasExistingProject()) {
+        return false;
+    }
+    
+    // Adjust expiry days if client approved
+    if ($this->client_approved === true) {
+        $expireDays = $expireDays + 14;
+    }
+    
+    $daysFromApproval = $this->approved_at->diffInDays(now());
+    
+    return $daysFromApproval > ($expireDays - $warningDays) && $daysFromApproval <= $expireDays;
+}
+
+/**
+ * Get days until quotation expires
+ * 
+ * @param int $expireDays Total days until expiry (default: 30)
+ * @return int|null Days remaining (null if not applicable)
+ */
+public function getDaysUntilExpiry(int $expireDays = 30): ?int
+{
+    // Only approved quotations can expire
+    if ($this->status !== self::STATUS_APPROVED || !$this->approved_at) {
+        return null;
+    }
+    
+    // Check if quotation has been converted to project
+    if ($this->project_created || $this->hasExistingProject()) {
+        return null;
+    }
+    
+    // Adjust expiry days if client approved
+    if ($this->client_approved === true) {
+        $expireDays = $expireDays + 14;
+    }
+    
+    $daysFromApproval = $this->approved_at->diffInDays(now());
+    $daysRemaining = $expireDays - $daysFromApproval;
+    
+    return max(0, $daysRemaining);
+}
+
+/**
+ * Get expiry status with detailed information
+ * 
+ * @param int $expireDays Total days until expiry (default: 30)
+ * @param int $warningDays Warning period before expiry (default: 5)
+ * @return array
+ */
+public function getExpiryStatus(int $expireDays = 30, int $warningDays = 5): array
+{
+    if ($this->status !== self::STATUS_APPROVED || !$this->approved_at) {
+        return [
+            'status' => 'not_applicable',
+            'message' => 'Quotation is not approved or has no approval date',
+            'days_remaining' => null,
+            'is_expired' => false,
+            'is_expiring_soon' => false,
+        ];
+    }
+    
+    if ($this->project_created || $this->hasExistingProject()) {
+        return [
+            'status' => 'converted',
+            'message' => 'Quotation has been converted to project',
+            'days_remaining' => null,
+            'is_expired' => false,
+            'is_expiring_soon' => false,
+        ];
+    }
+    
+    $adjustedExpireDays = $expireDays;
+    if ($this->client_approved === true) {
+        $adjustedExpireDays = $expireDays + 14;
+    }
+    
+    $daysFromApproval = $this->approved_at->diffInDays(now());
+    $daysRemaining = $adjustedExpireDays - $daysFromApproval;
+    
+    if ($daysRemaining <= 0) {
+        return [
+            'status' => 'expired',
+            'message' => 'Quotation has expired',
+            'days_remaining' => 0,
+            'is_expired' => true,
+            'is_expiring_soon' => false,
+            'expired_days_ago' => abs($daysRemaining),
+        ];
+    }
+    
+    if ($daysRemaining <= $warningDays) {
+        return [
+            'status' => 'expiring_soon',
+            'message' => "Quotation expires in {$daysRemaining} day(s)",
+            'days_remaining' => $daysRemaining,
+            'is_expired' => false,
+            'is_expiring_soon' => true,
+        ];
+    }
+    
+    return [
+        'status' => 'active',
+        'message' => "Quotation expires in {$daysRemaining} day(s)",
+        'days_remaining' => $daysRemaining,
+        'is_expired' => false,
+        'is_expiring_soon' => false,
+    ];
+}
+
+/**
+ * Scope for expired quotations
+ */
+public function scopeExpired($query, int $expireDays = 30)
+{
+    return $query->where('status', self::STATUS_APPROVED)
+                ->whereNotNull('approved_at')
+                ->where('project_created', false)
+                ->whereDoesntHave('project')
+                ->where(function ($q) use ($expireDays) {
+                    // Regular quotations (not client approved)
+                    $q->where(function ($subQ) use ($expireDays) {
+                        $subQ->where(function ($innerQ) {
+                            $innerQ->whereNull('client_approved')
+                                  ->orWhere('client_approved', false);
+                        })
+                        ->whereRaw("DATEDIFF(NOW(), approved_at) > ?", [$expireDays]);
+                    })
+                    // Client approved quotations (extended expiry)
+                    ->orWhere(function ($subQ) use ($expireDays) {
+                        $subQ->where('client_approved', true)
+                            ->whereRaw("DATEDIFF(NOW(), approved_at) > ?", [$expireDays + 14]);
+                    });
+                });
+}
+
+/**
+ * Scope for quotations expiring soon
+ */
+public function scopeExpiringSoon($query, int $warningDays = 5, int $expireDays = 30)
+{
+    return $query->where('status', self::STATUS_APPROVED)
+                ->whereNotNull('approved_at')
+                ->where('project_created', false)
+                ->whereDoesntHave('project')
+                ->where(function ($q) use ($warningDays, $expireDays) {
+                    // Regular quotations (not client approved)
+                    $q->where(function ($subQ) use ($warningDays, $expireDays) {
+                        $subQ->where(function ($innerQ) {
+                            $innerQ->whereNull('client_approved')
+                                  ->orWhere('client_approved', false);
+                        })
+                        ->whereRaw("DATEDIFF(NOW(), approved_at) > ?", [$expireDays - $warningDays])
+                        ->whereRaw("DATEDIFF(NOW(), approved_at) <= ?", [$expireDays]);
+                    })
+                    // Client approved quotations (extended expiry)
+                    ->orWhere(function ($subQ) use ($warningDays, $expireDays) {
+                        $subQ->where('client_approved', true)
+                            ->whereRaw("DATEDIFF(NOW(), approved_at) > ?", [($expireDays + 14) - $warningDays])
+                            ->whereRaw("DATEDIFF(NOW(), approved_at) <= ?", [$expireDays + 14]);
+                    });
+                });
+}
+
     /**
      * Check if quotation has been converted to project
      * Using existing project_created field

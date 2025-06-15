@@ -72,20 +72,37 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'admin'])->group(f
         Route::post('/{project}/testimonial', [ProjectController::class, 'storeTestimonial'])->middleware('throttle:3,1')->name('testimonial.store');
     });
 
+    // Main quotation routes
+    Route::resource('quotations', QuotationController::class)->except(['destroy']);
     Route::prefix('quotations')->name('quotations.')->group(function () {
-        Route::get('/', [QuotationController::class, 'index'])->name('index');
-        Route::get('/create', [QuotationController::class, 'create'])->name('create');
-        Route::post('/', [QuotationController::class, 'store'])->middleware('throttle:5,1')->name('store');
-        Route::get('/{quotation}', [QuotationController::class, 'show'])->name('show');
-        Route::put('/{quotation}/approve', [QuotationController::class, 'approve'])->name('approve');
-        Route::put('/{quotation}/reject', [QuotationController::class, 'reject'])->name('reject');
-        Route::post('/{quotation}/feedback', [QuotationController::class, 'provideFeedback'])->name('feedback');
-        Route::get('/{quotation}/additional-info', [QuotationController::class, 'showAdditionalInfoForm'])->name('additional-info');
-        Route::put('/{quotation}/additional-info', [QuotationController::class, 'updateAdditionalInfo'])->name('additional-info.update');
-        Route::get('/{quotation}/decline', [QuotationController::class, 'showDeclineForm'])->name('decline.form');
-        Route::post('/{quotation}/decline', [QuotationController::class, 'decline'])->name('decline');
-        Route::get('/{quotation}/attachments/{attachment}/download', [QuotationController::class, 'downloadAttachment'])->name('attachments.download');
-        Route::get('/statistics', [QuotationController::class, 'getStatistics'])->name('statistics');
+        Route::post('{quotation}/approve', [QuotationController::class, 'approve'])
+            ->name('approve');
+        Route::get('{quotation}/decline', [QuotationController::class, 'showDeclineForm'])
+            ->name('decline');
+        Route::post('{quotation}/decline', [QuotationController::class, 'decline'])
+            ->name('decline.store');
+        Route::post('{quotation}/cancel', [QuotationController::class, 'cancel'])
+            ->name('cancel');
+        Route::post('{quotation}/duplicate', [QuotationController::class, 'duplicate'])
+            ->name('duplicate');
+        Route::get('{quotation}/additional-info', [QuotationController::class, 'showAdditionalInfoForm'])
+            ->name('additional-info');
+        Route::post('{quotation}/additional-info', [QuotationController::class, 'updateAdditionalInfo'])
+            ->name('additional-info.store');
+        Route::post('{quotation}/attachments', [QuotationController::class, 'addAttachment'])
+            ->name('attachments.add');
+        Route::get('{quotation}/attachments/{attachment}/download', [QuotationController::class, 'downloadAttachment'])
+            ->name('attachments.download');
+        Route::delete('{quotation}/attachments/{attachment}', [QuotationController::class, 'deleteAttachment'])
+            ->name('attachments.delete');
+        Route::get('{quotation}/print', [QuotationController::class, 'print'])
+            ->name('print');
+        Route::get('{quotation}/activity', [QuotationController::class, 'getActivity'])
+            ->name('activity');
+        Route::post('export', [QuotationController::class, 'export'])
+            ->name('export');
+        Route::get('statistics', [QuotationController::class, 'getStatistics'])
+            ->name('statistics');
     });
 
     Route::prefix('messages')->name('messages.')->group(function () {
