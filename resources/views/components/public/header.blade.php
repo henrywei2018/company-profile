@@ -1,4 +1,4 @@
-{{-- resources/views/components/public/header.blade.php --}}
+{{-- resources/views/components/public/header.blade.php - CLEAN VERSION --}}
 @props([
     'variant' => 'default', // default, transparent, dark, gradient
     'sticky' => true,
@@ -42,7 +42,6 @@
         
         {{-- Logo Section --}}
         <div class="lg:col-span-3 flex items-center">
-            {{-- Logo --}}
             <a class="flex-none rounded-xl text-xl inline-block font-bold focus:outline-none focus:opacity-80 group" 
                href="{{ route('home') }}" 
                aria-label="{{ $companyProfile->company_name ?? config('app.name') }}">
@@ -52,14 +51,13 @@
                          alt="{{ $companyProfile->company_name ?? config('app.name') }}"
                          class="h-8 lg:h-10 w-auto group-hover:scale-105 transition-transform duration-300">
                 @else
-                    {{-- Default Logo with Orange Gradient --}}
                     <div class="flex items-center space-x-3">
                         <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all duration-300">
                             <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                             </svg>
                         </div>
-                        <span class="text-2xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+                        <span class="text-2xl font-bold gradient-text">
                             {{ $companyProfile->company_name ?? config('app.name') }}
                         </span>
                     </div>
@@ -73,129 +71,100 @@
                 <div class="flex items-center gap-x-1">
                     {{-- Home Link --}}
                     <a class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                        </svg>
                         Home
                     </a>
 
                     {{-- About Dropdown --}}
                     <div class="hs-dropdown relative inline-flex">
                         <button type="button" 
-                                class="nav-link hs-dropdown-toggle {{ request()->routeIs('about*') ? 'active' : '' }}" 
-                                id="hs-dropdown-about"
+                                class="nav-link hs-dropdown-toggle {{ request()->routeIs('about.*') ? 'active' : '' }}"
                                 aria-haspopup="menu" 
                                 aria-expanded="false" 
-                                aria-label="About Menu">
+                                aria-label="About Dropdown">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
                             About
-                            <svg class="hs-dropdown-open:rotate-180 size-4 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg class="hs-dropdown-open:rotate-180 ms-1 shrink-0 size-4 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="m6 9 6 6 6-6"/>
                             </svg>
                         </button>
 
-                        <div class="hs-dropdown-menu transition-[opacity,margin] duration hs-dropdown-open:opacity-100 opacity-0 hidden min-w-60 bg-white/95 backdrop-blur-sm shadow-xl rounded-2xl border border-orange-100/50 p-2 mt-2" role="menu" aria-orientation="vertical" aria-labelledby="hs-dropdown-about">
-                            <a class="dropdown-item {{ request()->routeIs('about') ? 'active' : '' }}" href="{{ route('about') }}">
-                                <div class="flex items-center">
-                                    <div class="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center mr-3">
-                                        <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm font-medium text-gray-900">About Us</div>
-                                        <div class="text-xs text-gray-500">Learn about our company</div>
-                                    </div>
-                                </div>
+                        <div class="hs-dropdown-menu transition-[opacity,margin] duration-300 hs-dropdown-open:opacity-100 opacity-0 min-w-60 z-10 bg-white shadow-lg border border-orange-100 rounded-xl p-2 mt-2 hidden"
+                             role="menu" 
+                             aria-orientation="vertical">
+                            <a class="dropdown-item {{ request()->routeIs('about.index') ? 'active' : '' }}" 
+                               href="{{ route('about.index') }}" 
+                               role="menuitem">
+                                <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                </svg>
+                                Company Profile
                             </a>
                             
                             @if(Route::has('about.team'))
-                            <a class="dropdown-item {{ request()->routeIs('about.team') ? 'active' : '' }}" href="{{ route('about.team') }}">
-                                <div class="flex items-center">
-                                    <div class="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center mr-3">
-                                        <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm font-medium text-gray-900">Our Team</div>
-                                        <div class="text-xs text-gray-500">Meet our professionals</div>
-                                    </div>
-                                </div>
+                            <a class="dropdown-item {{ request()->routeIs('about.team') ? 'active' : '' }}" 
+                               href="{{ route('about.team') }}" 
+                               role="menuitem">
+                                <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                                Our Team
+                            </a>
+                            @endif
+                            
+                            @if(Route::has('about.history'))
+                            <a class="dropdown-item {{ request()->routeIs('about.history') ? 'active' : '' }}" 
+                               href="{{ route('about.history') }}" 
+                               role="menuitem">
+                                <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Our History
                             </a>
                             @endif
                         </div>
                     </div>
 
-                    {{-- Services Dropdown --}}
-                    @if(Route::has('services'))
-                    <div class="hs-dropdown relative inline-flex">
-                        <button type="button" 
-                                class="nav-link hs-dropdown-toggle {{ request()->routeIs('services*') ? 'active' : '' }}" 
-                                id="hs-dropdown-services"
-                                aria-haspopup="menu" 
-                                aria-expanded="false" 
-                                aria-label="Services Menu">
-                            Services
-                            <svg class="hs-dropdown-open:rotate-180 size-4 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="m6 9 6 6 6-6"/>
-                            </svg>
-                        </button>
-
-                        <div class="hs-dropdown-menu transition-[opacity,margin] duration hs-dropdown-open:opacity-100 opacity-0 hidden min-w-80 bg-white/95 backdrop-blur-sm shadow-xl rounded-2xl border border-orange-100/50 p-2 mt-2" role="menu" aria-orientation="vertical" aria-labelledby="hs-dropdown-services">
-                            {{-- Featured Services Grid --}}
-                            <div class="grid grid-cols-2 gap-2">
-                                <a class="dropdown-item" href="{{ route('services') }}">
-                                    <div class="flex items-center">
-                                        <div class="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center mr-3">
-                                            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <div class="text-sm font-medium text-gray-900">Web Development</div>
-                                            <div class="text-xs text-gray-500">Custom web solutions</div>
-                                        </div>
-                                    </div>
-                                </a>
-                                
-                                <a class="dropdown-item" href="{{ route('services') }}">
-                                    <div class="flex items-center">
-                                        <div class="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center mr-3">
-                                            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a1 1 0 001-1V4a1 1 0 00-1-1H8a1 1 0 00-1 1v16a1 1 0 001 1z"/>
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <div class="text-sm font-medium text-gray-900">Mobile Apps</div>
-                                            <div class="text-xs text-gray-500">iOS & Android apps</div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                            
-                            <div class="border-t border-orange-100 mt-3 pt-3">
-                                <a class="w-full text-center py-2 px-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-medium hover:from-orange-600 hover:to-amber-600 transition-all duration-300 inline-block" href="{{ route('services') }}">
-                                    View All Services
-                                </a>
-                            </div>
-                        </div>
-                    </div>
+                    {{-- Services Link --}}
+                    @if(Route::has('services.index'))
+                    <a class="nav-link {{ request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('services.index') }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                        </svg>
+                        Services
+                    </a>
                     @endif
 
                     {{-- Portfolio Link --}}
-                    @if(Route::has('portfolio'))
-                    <a class="nav-link {{ request()->routeIs('portfolio*') ? 'active' : '' }}" href="{{ route('portfolio') }}">
+                    @if(Route::has('portfolio.index'))
+                    <a class="nav-link {{ request()->routeIs('portfolio.*') ? 'active' : '' }}" href="{{ route('portfolio.index') }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        </svg>
                         Portfolio
                     </a>
                     @endif
 
                     {{-- Blog Link --}}
-                    @if(Route::has('blog'))
-                    <a class="nav-link {{ request()->routeIs('blog*') ? 'active' : '' }}" href="{{ route('blog') }}">
+                    @if(Route::has('blog.index'))
+                    <a class="nav-link {{ request()->routeIs('blog.*') ? 'active' : '' }}" href="{{ route('blog.index') }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+                        </svg>
                         Blog
                     </a>
                     @endif
 
                     {{-- Contact Link --}}
-                    @if(Route::has('contact'))
-                    <a class="nav-link {{ request()->routeIs('contact') ? 'active' : '' }}" href="{{ route('contact') }}">
+                    @if(Route::has('contact.index'))
+                    <a class="nav-link {{ request()->routeIs('contact.*') ? 'active' : '' }}" href="{{ route('contact.index') }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
                         Contact
                     </a>
                     @endif
@@ -203,54 +172,43 @@
             </div>
         </div>
 
-        {{-- Right Section - CTA & Mobile Menu --}}
-        <div class="lg:col-span-3 flex justify-end items-center gap-x-2">
+        {{-- Right Side Actions --}}
+        <div class="lg:col-span-3 flex justify-end items-center gap-x-3">
             {{-- Theme Toggle --}}
-            <button type="button" 
-                    class="hs-dark-mode hs-dark-mode-active:hidden block size-9 flex justify-center items-center text-gray-600 hover:text-orange-600 rounded-xl hover:bg-orange-50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
-                    data-hs-theme-click-value="dark">
-                <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+            <button id="theme-toggle"
+                    class="size-9 flex justify-center items-center rounded-xl transition-all duration-300"
+                    aria-label="Toggle dark mode">
+                {{-- Sun Icon (Light Mode) --}}
+                <svg class="hidden dark:block size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="5" />
+                    <line x1="12" y1="1" x2="12" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" />
+                    <line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+                {{-- Moon Icon (Dark Mode) --}}
+                <svg class="block dark:hidden size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg>
             </button>
-            
-            <button type="button" 
-                    class="hs-dark-mode hs-dark-mode-active:block hidden size-9 flex justify-center items-center text-gray-600 hover:text-orange-600 rounded-xl hover:bg-orange-50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
-                    data-hs-theme-click-value="light">
-                <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="4"/>
-                    <path d="m12 2 2 2-2 2-2-2 2-2zM12 22l2-2-2-2-2 2 2 2zM22 12l-2 2-2-2 2-2 2 2zM2 12l2-2 2 2-2 2-2-2z"/>
-                </svg>
-            </button>
-
-            {{-- CTA Button --}}
-            @if(Route::has('contact'))
-            <div class="hidden lg:block">
-                <a class="cta-button" href="{{ route('contact') }}">
-                    Get Started
-                    <svg class="shrink-0 size-4 group-hover:translate-x-0.5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M5 12h14"/>
-                        <path d="m12 5 7 7-7 7"/>
-                    </svg>
-                </a>
-            </div>
-            @endif
 
             {{-- Mobile Menu Toggle --}}
             <div class="lg:hidden">
-                <button type="button" 
-                        class="hs-collapse-toggle size-9 flex justify-center items-center text-gray-600 hover:text-orange-600 rounded-xl hover:bg-orange-50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
-                        id="hs-navbar-collapse"
-                        aria-expanded="false"
+                <button type="button"
+                        class="hs-collapse-toggle size-9 flex justify-center items-center rounded-xl transition-all duration-300"
+                        data-hs-collapse="#hs-navbar-collapse-with-animation"
                         aria-controls="hs-navbar-collapse-with-animation"
-                        aria-label="Toggle navigation"
-                        data-hs-collapse="#hs-navbar-collapse-with-animation">
-                    <svg class="hs-collapse-open:hidden shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        aria-label="Toggle navigation">
+                    <svg class="hs-collapse-open:hidden shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="3" x2="21" y1="6" y2="6"/>
                         <line x1="3" x2="21" y1="12" y2="12"/>
                         <line x1="3" x2="21" y1="18" y2="18"/>
                     </svg>
-                    <svg class="hs-collapse-open:block hidden shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg class="hs-collapse-open:block hidden shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="m18 6-12 12"/>
                         <path d="m6 6 12 12"/>
                     </svg>
@@ -265,136 +223,56 @@
                 {{-- Mobile Navigation Links --}}
                 <div class="space-y-2">
                     <a class="mobile-nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                        </svg>
                         Home
                     </a>
                     
-                    <a class="mobile-nav-link {{ request()->routeIs('about*') ? 'active' : '' }}" href="{{ route('about') }}">
+                    <a class="mobile-nav-link {{ request()->routeIs('about.*') ? 'active' : '' }}" href="{{ route('about.index') }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
                         About
                     </a>
                     
-                    @if(Route::has('about.team'))
-                    <a class="mobile-nav-link {{ request()->routeIs('about.team') ? 'active' : '' }}" href="{{ route('about.team') }}">
-                        Team
-                    </a>
-                    @endif
-                    
-                    @if(Route::has('services'))
-                    <a class="mobile-nav-link {{ request()->routeIs('services*') ? 'active' : '' }}" href="{{ route('services') }}">
+                    @if(Route::has('services.index'))
+                    <a class="mobile-nav-link {{ request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('services.index') }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                        </svg>
                         Services
                     </a>
                     @endif
                     
-                    @if(Route::has('portfolio'))
-                    <a class="mobile-nav-link {{ request()->routeIs('portfolio*') ? 'active' : '' }}" href="{{ route('portfolio') }}">
+                    @if(Route::has('portfolio.index'))
+                    <a class="mobile-nav-link {{ request()->routeIs('portfolio.*') ? 'active' : '' }}" href="{{ route('portfolio.index') }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        </svg>
                         Portfolio
                     </a>
                     @endif
                     
-                    @if(Route::has('blog'))
-                    <a class="mobile-nav-link {{ request()->routeIs('blog*') ? 'active' : '' }}" href="{{ route('blog') }}">
+                    @if(Route::has('blog.index'))
+                    <a class="mobile-nav-link {{ request()->routeIs('blog.*') ? 'active' : '' }}" href="{{ route('blog.index') }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+                        </svg>
                         Blog
                     </a>
                     @endif
                     
-                    @if(Route::has('contact'))
-                    <a class="mobile-nav-link {{ request()->routeIs('contact') ? 'active' : '' }}" href="{{ route('contact') }}">
+                    @if(Route::has('contact.index'))
+                    <a class="mobile-nav-link {{ request()->routeIs('contact.*') ? 'active' : '' }}" href="{{ route('contact.index') }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
                         Contact
                     </a>
                     @endif
                 </div>
-
-                {{-- Mobile CTA --}}
-                @if(Route::has('contact'))
-                <div class="pt-4">
-                    <a class="w-full py-3 px-4 inline-flex justify-center items-center gap-x-2 text-sm font-medium rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2" 
-                       href="{{ route('contact') }}">
-                        Get Started
-                        <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 12h14"/>
-                            <path d="m12 5 7 7-7 7"/>
-                        </svg>
-                    </a>
-                </div>
-                @endif
             </div>
         </div>
     </nav>
 </header>
-
-@pushOnce('styles')
-
-<style>
-    /* Navigation Styles with Orange Theme */
-    .nav-link {
-        @apply relative px-4 py-2 text-sm font-medium text-gray-700 hover:text-orange-600 rounded-xl transition-all duration-300 flex items-center gap-x-1 group;
-    }
-    
-    .nav-link:hover {
-        @apply bg-orange-50/80 backdrop-blur-sm;
-    }
-    
-    .nav-link.active {
-        @apply text-orange-600 bg-orange-50/80 backdrop-blur-sm;
-    }
-    
-    .nav-link.active::after {
-        content: '';
-        @apply absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-orange-500 rounded-full;
-    }
-    
-    /* Dropdown Styles */
-    .dropdown-item {
-        @apply flex items-center w-full px-3 py-3 text-sm text-gray-700 rounded-xl hover:bg-orange-50/80 hover:text-orange-600 transition-all duration-300 group;
-    }
-    
-    .dropdown-item.active {
-        @apply text-orange-600 bg-orange-50/80;
-    }
-    
-    /* CTA Button */
-    .cta-button {
-        @apply group inline-flex items-center gap-x-2 py-2.5 px-6 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-amber-600 transform hover:scale-105 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2;
-    }
-    
-    /* Mobile Navigation */
-    .mobile-nav-link {
-        @apply block px-4 py-3 text-sm font-medium text-gray-700 hover:text-orange-600 hover:bg-orange-50/80 rounded-xl transition-all duration-300;
-    }
-    
-    .mobile-nav-link.active {
-        @apply text-orange-600 bg-orange-50/80;
-    }
-    
-    /* Backdrop Blur Support */
-    @supports (backdrop-filter: blur(0)) {
-    .backdrop-blur-sm {
-        backdrop-filter: blur(4px);
-    }
-    }
-    
-    /* Custom Scrollbar for Dropdowns */
-    .hs-dropdown-menu {
-        scrollbar-width: thin;
-        scrollbar-color: rgb(251 146 60) rgb(255 247 237);
-    }
-    
-    .hs-dropdown-menu::-webkit-scrollbar {
-        width: 6px;
-    }
-    
-    .hs-dropdown-menu::-webkit-scrollbar-track {
-        background: rgb(255 247 237);
-        border-radius: 3px;
-    }
-    
-    .hs-dropdown-menu::-webkit-scrollbar-thumb {
-        background: rgb(251 146 60);
-        border-radius: 3px;
-    }
-    
-    .hs-dropdown-menu::-webkit-scrollbar-thumb:hover {
-        background: rgb(234 88 12);
-    }
-</style>
-
-@endPushOnce
