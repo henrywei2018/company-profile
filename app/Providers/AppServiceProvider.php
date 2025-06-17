@@ -107,6 +107,20 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function registerViewComposers(): void
     {
+        // Global auth layout composer - for guest and auth pages
+        View::composer([
+            'layouts.guest',
+            'auth.*',
+            'components.auth.*'
+        ], function ($view) {
+            try {
+                $view->with($this->getAuthViewData());
+            } catch (\Exception $e) {
+                \Log::error('Error fetching auth view data: ' . $e->getMessage());
+                $view->with($this->getDefaultAuthData());
+            }
+        });
+
         // Admin view composers
         View::composer([
             'admin.*', 
@@ -143,6 +157,7 @@ class AppServiceProvider extends ServiceProvider
                 $view->with($this->getClientDefaultStats());
             }
         });
+
         view()->composer('components.banner-slider', function ($view) {
             // Global data that all banner sliders might need
             $view->with([
@@ -169,6 +184,171 @@ class AppServiceProvider extends ServiceProvider
                 }
             });
         }
+    }
+
+    /**
+     * Get auth view data for guest and authentication pages.
+     */
+    protected function getAuthViewData(): array
+    {
+        try {
+            $companyProfile = CompanyProfile::getInstance();
+            
+            return [
+                'companyProfile' => $companyProfile,
+                'siteLogo' => $this->getSiteLogo($companyProfile),
+                'companyName' => $companyProfile->company_name ?? config('app.name'),
+                'authStats' => $this->getAuthPageStats(),
+                'contactInfo' => $this->getBasicContactInfo($companyProfile),
+                'socialLinks' => $this->getBasicSocialLinks($companyProfile),
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Error getting auth view data: ' . $e->getMessage());
+            return $this->getDefaultAuthData();
+        }
+    }
+
+    /**
+     * Get site logo URL with fallback.
+     */
+    protected function getSiteLogo($companyProfile = null): string
+    {
+        if (!$companyProfile) {
+            $companyProfile = CompanyProfile::getInstance();
+        }
+
+        // Check for logo in company profile
+        if ($companyProfile && $companyProfile->logo) {
+            // If logo starts with http/https, it's an external URL
+            if (str_starts_with($companyProfile->logo, 'http')) {
+                return $companyProfile->logo;
+            }
+            // Otherwise, it's a storage path
+            return asset('storage/' . $companyProfile->logo);
+        }
+
+        // Check for logo in public assets
+        $possibleLogos = [
+            'images/logo.png',
+            'images/logo.svg',
+            'images/logo.jpg',
+            'assets/logo.png',
+            'assets/logo.svg',
+        ];
+
+        foreach ($possibleLogos as $logo) {
+            if (file_exists(public_path($logo))) {
+                return asset($logo);
+            }
+        }
+
+        // Return null if no logo found - the view can handle this with a fallback
+        return '';
+    }
+
+    /**
+     * Get basic contact information for auth pages.
+     */
+    protected function getBasicContactInfo($companyProfile = null): array
+    {
+        if (!$companyProfile) {
+            $companyProfile = CompanyProfile::getInstance();
+        }
+
+        return [
+            'phone' => $companyProfile->phone ?? null,
+            'email' => $companyProfile->email ?? config('mail.from.address'),
+            'address' => $companyProfile->address ?? null,
+            'website' => config('app.url'),
+        ];
+    }
+
+    /**
+     * Get basic social links for auth pages.
+     */
+    protected function getBasicSocialLinks($companyProfile = null): array
+    {
+        if (!$companyProfile) {
+            $companyProfile = CompanyProfile::getInstance();
+        }
+
+        return [
+            'facebook' => $companyProfile->facebook_url ?? null,
+            'twitter' => $companyProfile->twitter_url ?? null,
+            'instagram' => $companyProfile->instagram_url ?? null,
+            'linkedin' => $companyProfile->linkedin_url ?? null,
+        ];
+    }
+
+    /**
+     * Get statistics for auth pages (for branding).
+     */
+    protected function getAuthPageStats(): array
+    {
+        try {
+            return [
+                'completed_projects' => Project::where('status', 'completed')->count(),
+                'happy_clients' => Project::distinct('client_id')->count(),
+                'years_experience' => $this->calculateYearsOfExperience(),
+                'total_services' => $this->safeCount(\App\Models\Service::class, ['is_active' => true]),
+            ];
+        } catch (\Exception $e) {
+            return [
+                'completed_projects' => 500,
+                'happy_clients' => 200,
+                'years_experience' => 15,
+                'total_services' => 20,
+            ];
+        }
+    }
+
+    /**
+     * Calculate years of experience from company profile or default.
+     */
+    protected function calculateYearsOfExperience(): int
+    {
+        try {
+            $companyProfile = CompanyProfile::getInstance();
+            
+            if ($companyProfile && $companyProfile->founded_year) {
+                return now()->year - $companyProfile->founded_year;
+            }
+            
+            // Default fallback
+            return now()->year - 2010;
+        } catch (\Exception $e) {
+            return 15; // Default years
+        }
+    }
+
+    /**
+     * Get default auth data for fallback.
+     */
+    protected function getDefaultAuthData(): array
+    {
+        return [
+            'companyProfile' => null,
+            'siteLogo' => '',
+            'companyName' => config('app.name'),
+            'authStats' => [
+                'completed_projects' => 500,
+                'happy_clients' => 200,
+                'years_experience' => 15,
+                'total_services' => 20,
+            ],
+            'contactInfo' => [
+                'phone' => null,
+                'email' => config('mail.from.address'),
+                'address' => null,
+                'website' => config('app.url'),
+            ],
+            'socialLinks' => [
+                'facebook' => null,
+                'twitter' => null,
+                'instagram' => null,
+                'linkedin' => null,
+            ],
+        ];
     }
 
     /**

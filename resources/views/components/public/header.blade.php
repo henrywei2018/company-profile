@@ -110,17 +110,7 @@
                                 alt="{{ $companyProfile->company_name ?? config('app.name') }}"
                                 class="w-full h-full">
                         </div>
-                    </div>
-                    
-                    {{-- Company Info --}}
-                    <div class="ml-3 hidden sm:block">
-                        <h1 class="text-lg font-bold text-gray-900 group-hover:text-orange-600 transition-colors duration-300">
-                            {{ $companyProfile->company_name ?? config('app.name') }}
-                        </h1>
-                        @if($companyProfile?->tagline)
-                        <p class="text-xs text-gray-600 font-medium">{{ Str::limit($companyProfile->tagline, 30) }}</p>
-                        @endif
-                    </div>
+                    </div>                    
                 </a>
             </div>
 
