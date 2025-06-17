@@ -6,11 +6,14 @@ use App\Models\Project;
 use App\Models\ProjectCategory;
 use Illuminate\Http\Request;
 
-class ProjectController extends Controller
+class ProjectController extends BaseController
 {
-    /**
-     * Display a listing of projects.
-     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->shareBaseData();
+    }
+
     public function index(Request $request)
     {
         $query = Project::query()

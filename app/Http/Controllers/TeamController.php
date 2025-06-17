@@ -6,11 +6,13 @@ namespace App\Http\Controllers;
 use App\Models\TeamMember;
 use Illuminate\Http\Request;
 
-class TeamController extends Controller
+class TeamController extends BaseController
 {
-    /**
-     * Display the team page.
-     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->shareBaseData();
+    }
     public function index()
     {
         // Get featured team members

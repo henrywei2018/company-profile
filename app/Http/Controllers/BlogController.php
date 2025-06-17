@@ -8,8 +8,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
-class BlogController extends Controller
+class BlogController extends BaseController
 {
+    public function __construct()
+    {
+        parent::__construct();
+        $this->shareBaseData();
+    }
     /**
      * Display the blog page with filtering, search, and pagination.
      */

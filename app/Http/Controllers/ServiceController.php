@@ -7,11 +7,14 @@ use App\Models\ServiceCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
-class ServiceController extends Controller
+class ServiceController extends BaseController
 {
-    /**
-     * Display the services page with filtering, search, and pagination.
-     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->shareBaseData();
+    }
+
     public function index(Request $request)
     {
         // Build query with filters - only active services
@@ -126,17 +129,13 @@ class ServiceController extends Controller
     /**
      * Display single service detail.
      */
-    public function show(Service $service)
+    public function show(Service $services)
     {
-        // Only show active services
-        if (!$service->is_active) {
-            abort(404);
-        }
 
-        $service->load(['category']);
+        $services->load(['category']);
 
         // Get related services
-        $relatedServices = $this->getRelatedServices($service, 4);
+        $relatedServices = $this->getRelatedServices($services, 4);
 
         // Sidebar data
         $categories = ServiceCategory::query()
@@ -153,32 +152,32 @@ class ServiceController extends Controller
         $recentServices = Service::query()
             ->active()
             ->with(['category'])
-            ->where('id', '!=', $service->id)
+            ->where('id', '!=', $services->id)
             ->latest('created_at')
             ->limit(5)
             ->get();
 
         // SEO Data
         $seoData = [
-            'title' => $service->title . ' - CV Usaha Prima Lestari',
-            'description' => $service->short_description ?: strip_tags($service->description),
-            'keywords' => $service->category ? $service->category->name . ', ' . $service->title : $service->title,
+            'title' => $services->title . ' - CV Usaha Prima Lestari',
+            'description' => $services->short_description ?: strip_tags($services->description),
+            'keywords' => $services->category ? $services->category->name . ', ' . $services->title : $services->title,
             'breadcrumbs' => [
                 ['name' => 'Home', 'url' => route('home')],
                 ['name' => 'Services', 'url' => route('services.index')],
-                ['name' => $service->title, 'url' => route('services.show', $service->slug), 'active' => true]
+                ['name' => $services->title, 'url' => route('services.show', $services->slug), 'active' => true]
             ]
         ];
 
         // Add category to breadcrumbs if exists
-        if ($service->category) {
+        if ($services->category) {
             array_splice($seoData['breadcrumbs'], -1, 0, [
-                ['name' => $service->category->name, 'url' => route('services.index', ['category' => $service->category->slug])]
+                ['name' => $services->category->name, 'url' => route('services.index', ['category' => $services->category->slug])]
             ]);
         }
 
-        return view('pages.service.show', compact(
-            'service',
+        return view('pages.services.show', compact(
+            'services',
             'relatedServices',
             'categories',
             'recentServices',
@@ -189,13 +188,13 @@ class ServiceController extends Controller
     /**
      * Get related services based on category.
      */
-    private function getRelatedServices(Service $service, int $limit = 4)
+    private function getRelatedServices(Service $services, int $limit = 4)
     {
-        if (!$service->category_id) {
+        if (!$services->category_id) {
             return Service::query()
                 ->active()
                 ->with(['category'])
-                ->where('id', '!=', $service->id)
+                ->where('id', '!=', $services->id)
                 ->ordered()
                 ->limit($limit)
                 ->get();
@@ -204,8 +203,8 @@ class ServiceController extends Controller
         return Service::query()
             ->active()
             ->with(['category'])
-            ->where('id', '!=', $service->id)
-            ->where('category_id', $service->category_id)
+            ->where('id', '!=', $services->id)
+            ->where('category_id', $services->category_id)
             ->ordered()
             ->limit($limit)
             ->get();

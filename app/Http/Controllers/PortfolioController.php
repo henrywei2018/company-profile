@@ -6,8 +6,13 @@ use App\Models\Project;
 use App\Models\ProjectCategory;
 use Illuminate\Http\Request;
 
-class PortfolioController extends Controller
+class PortfolioController extends BaseController
 {
+    public function __construct()
+    {
+        parent::__construct();
+        $this->shareBaseData();
+    }
     // Menampilkan list project portfolio
     public function index(Request $request)
     {

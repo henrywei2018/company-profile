@@ -32,14 +32,15 @@ require __DIR__ . '/auth.php';
 */
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
-Route::prefix('about')->group(function () {
-    Route::get('/', [AboutController::class, 'index'])->name('about');
-    Route::get('/team', [AboutController::class, 'team'])->name('about.team');
+Route::prefix('about')->name('about.')->group(function () {
+    Route::get('/', [AboutController::class, 'index'])->name('index');
+    Route::get('/team', [AboutController::class, 'team'])->name('team');
+    Route::get('/team/{slug}', [TeamController::class, 'show'])->name('team.show');
 });
 
 Route::prefix('services')->name('services.')->group(function () {
     Route::get('/', [ServiceController::class, 'index'])->name('index');
-    Route::get('/{service:slug}', [ServiceController::class, 'show'])->name('show'); // ✅ Fix parameter
+    Route::get('/{services:slug}', [ServiceController::class, 'show'])->name('show'); // ✅ Fix parameter
 });
 
 Route::prefix('portfolio')->name('portfolio.')->group(function () {

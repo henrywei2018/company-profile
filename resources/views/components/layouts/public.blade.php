@@ -75,10 +75,12 @@
         Skip to main content
     </a>
     
-    {{-- Header --}}
-    <x-public.header 
+    <x-public.header
         :variant="$headerVariant"
-        :announcement-banner="$announcementBanner"
+        :companyProfile="$companyProfile"
+        :navLinks="$navLinks"
+        :additionalNav="$additionalNav"
+        :announcementBanner="$announcementBanner"
     />
     
     {{-- Main Content --}}

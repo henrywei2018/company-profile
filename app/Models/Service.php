@@ -82,6 +82,7 @@ class Service extends Model
         return $this->hasMany(Quotation::class);
     }
     
+    
     /**
      * Scope a query to only include featured services.
      */

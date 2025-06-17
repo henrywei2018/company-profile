@@ -10,13 +10,15 @@ use App\Models\CompanyProfile;
 use App\Models\Banner;
 use App\Services\BannerService;
 
-class HomeController extends Controller
+class HomeController extends BaseController
 {
     protected $bannerService;
 
     public function __construct(BannerService $bannerService)
     {
+        $this->shareBaseData();
         $this->bannerService = $bannerService;
+        
     }
     public function index()
     {

@@ -8,8 +8,13 @@ use App\Models\CompanyProfile;
 use App\Http\Requests\ContactRequest;
 use Illuminate\Http\Request;
 
-class ContactController extends Controller
+class ContactController extends BaseController
 {
+    public function __construct()
+    {
+        parent::__construct();
+        $this->shareBaseData();
+    }
     /**
      * Display the contact page.
      */

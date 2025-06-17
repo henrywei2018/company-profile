@@ -8,7 +8,7 @@
     <div class="max-w-[85rem] px-4 py-10 sm:px-6 lg:px-8 lg:py-14 mx-auto">
         <!-- Back Button -->
         <div class="mb-6">
-            <a href="{{ route('services.index') }}" class="inline-flex items-center gap-x-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+            <a href="{{ route('services.index') }}" class="inline-flex items-center gap-x-1 text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
@@ -21,9 +21,9 @@
             <article class="lg:col-span-3">
                 <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
                     <!-- Service Image -->
-                    @if($service->image_url)
+                    @if($services->image_url)
                         <div class="aspect-video overflow-hidden">
-                            <img src="{{ $service->image_url }}" alt="{{ $service->title }}" class="w-full h-full object-cover">
+                            <img src="{{ $services->image_url }}" alt="{{ $services->title }}" class="w-full h-full object-cover">
                         </div>
                     @endif
 
@@ -32,13 +32,13 @@
                         <header class="mb-8">
                             <!-- Category & Featured Badge -->
                             <div class="flex items-center gap-2 mb-4">
-                                @if($service->category)
-                                    <a href="{{ route('services.index', ['category' => $service->category->slug]) }}" 
-                                       class="inline-block bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm px-3 py-1 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors">
-                                        {{ $service->category->name }}
+                                @if($services->category)
+                                    <a href="{{ route('services.index', ['category' => $services->category->slug]) }}" 
+                                       class="inline-block bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 text-sm px-3 py-1 rounded-full hover:bg-orange-200 dark:hover:bg-orange-800 transition-colors">
+                                        {{ $services->category->name }}
                                     </a>
                                 @endif
-                                @if($service->featured)
+                                @if($services->featured)
                                     <span class="inline-flex items-center px-3 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-sm rounded-full">
                                         <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
@@ -50,22 +50,22 @@
 
                             <!-- Title & Icon -->
                             <div class="flex items-start gap-6 mb-6">
-                                @if($service->icon_url)
+                                @if($services->icon_url)
                                     <div class="flex-shrink-0">
-                                        <img src="{{ $service->icon_url }}" alt="{{ $service->title }}" class="w-16 h-16 object-contain">
+                                        <img src="{{ $services->icon_url }}" alt="{{ $services->title }}" class="w-16 h-16 object-contain">
                                     </div>
                                 @endif
                                 <div class="flex-1">
-                                    <h1 class="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">{{ $service->title }}</h1>
-                                    @if($service->short_description)
-                                        <p class="text-xl text-gray-600 dark:text-gray-300 leading-relaxed">{{ $service->short_description }}</p>
+                                    <h1 class="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">{{ $services->title }}</h1>
+                                    @if($services->short_description)
+                                        <p class="text-xl text-gray-600 dark:text-gray-300 leading-relaxed">{{ $services->short_description }}</p>
                                     @endif
                                 </div>
                             </div>
 
                             <!-- CTA Buttons -->
                             <div class="flex flex-wrap gap-4">
-                                <a href="{{ route('quotation.create', ['service' => $service->slug]) }}" 
+                                <a href="{{ route('quotation.create', ['service' => $services->slug]) }}" 
                                    class="inline-flex items-center px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -84,13 +84,13 @@
 
                         <!-- Service Description -->
                         <div class="prose prose-lg dark:prose-invert max-w-none">
-                            {!! $service->description !!}
+                            {!! $services->description !!}
                         </div>
 
                         <!-- Service Features/Benefits -->
-                        @if($service->category)
+                        @if($services->category)
                             <div class="mt-12 p-6 bg-gray-50 dark:bg-slate-700 rounded-xl">
-                                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Why Choose Our {{ $service->category->name }}?</h3>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Why Choose Our {{ $services->category->name }}?</h3>
                                 <div class="grid md:grid-cols-2 gap-4">
                                     <div class="flex items-start">
                                         <svg class="w-5 h-5 text-green-600 mr-3 mt-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -152,11 +152,11 @@
                                                 <img src="{{ $related->icon_url }}" alt="{{ $related->title }}" class="w-8 h-8 object-contain flex-shrink-0">
                                             @endif
                                             <div class="flex-1">
-                                                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
                                                     <a href="{{ route('services.show', $related->slug) }}">{{ $related->title }}</a>
                                                 </h3>
                                                 @if($related->category)
-                                                    <span class="inline-block bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs px-2 py-1 rounded-full">
+                                                    <span class="inline-block bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs px-2 py-1 rounded-full">
                                                         {{ $related->category->name }}
                                                     </span>
                                                 @endif
@@ -169,7 +169,7 @@
 
                                         <div class="flex items-center justify-between">
                                             <a href="{{ route('services.show', $related->slug) }}" 
-                                               class="inline-flex items-center gap-x-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium">
+                                               class="inline-flex items-center gap-x-1 text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 text-sm font-medium">
                                                 Learn more
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -191,16 +191,16 @@
             <!-- Sidebar -->
             <aside class="lg:col-span-1 space-y-6">
                 <!-- Quick Contact -->
-                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+                <div class="bg-gradient-to-br from-orange-500 to-orange-700 rounded-xl p-6 text-white">
                     <h3 class="text-lg font-bold mb-2">Get Started Today</h3>
-                    <p class="text-blue-100 text-sm mb-4">Ready to discuss your project? Contact us for a free consultation.</p>
+                    <p class="text-orange-100 text-sm mb-4">Ready to discuss your project? Contact us for a free consultation.</p>
                     <div class="space-y-2">
-                        <a href="{{ route('quotation.create', ['service' => $service->slug]) }}" 
-                           class="block w-full text-center px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium">
+                        <a href="{{ route('quotation.create', ['service' => $services->slug]) }}" 
+                           class="block w-full text-center px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium">
                             Request Quote
                         </a>
                         <a href="{{ route('contact.index') }}" 
-                           class="block w-full text-center px-4 py-2 border border-blue-300 text-white rounded-lg hover:bg-blue-400 transition-colors text-sm font-medium">
+                           class="block w-full text-center px-4 py-2 border border-orange-300 text-white rounded-lg hover:bg-orange-400 transition-colors text-sm font-medium">
                             Contact Us
                         </a>
                     </div>
@@ -213,7 +213,7 @@
                         <div class="space-y-2">
                             @foreach($categories as $category)
                                 <a href="{{ route('services.index', ['category' => $category->slug]) }}" 
-                                   class="flex items-center justify-between py-2 px-3 rounded-lg text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors {{ $service->category_id == $category->id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : '' }}">
+                                   class="flex items-center justify-between py-2 px-3 rounded-lg text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors {{ $services->category_id == $category->id ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400' : '' }}">
                                     <div class="flex items-center">
                                         @if($category->icon)
                                             <img src="{{ asset('storage/' . $category->icon) }}" alt="{{ $category->name }}" class="w-4 h-4 object-contain mr-2">
@@ -236,7 +236,7 @@
                         <div class="space-y-4">
                             @foreach($recentServices as $recent)
                                 <article class="group">
-                                    <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mb-1">
+                                    <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors mb-1">
                                         <a href="{{ route('services.show', $recent->slug) }}">{{ Str::limit($recent->title, 50) }}</a>
                                     </h4>
                                     @if($recent->category)
