@@ -4,90 +4,63 @@
     'description' => null,
     'keywords' => null,
     'image' => null,
-    'url' => null,
     'type' => 'website',
     'model' => null,
-    'noindex' => false,
-    'nofollow' => false
+    'noindex' => false
 ])
 
 @php
-use App\Helpers\SeoHelper;
-
-// Generate SEO data
-$seoTitle = SeoHelper::generateTitle($title);
-$seoDescription = SeoHelper::generateDescription($description);
-$seoKeywords = SeoHelper::generateKeywords($keywords);
-$canonicalUrl = SeoHelper::generateCanonicalUrl($url);
-$ogImage = SeoHelper::generateOgImage($model) ?: $image;
-$robots = SeoHelper::generateRobots(!$noindex, !$nofollow);
-
-// Get model SEO data if available
-if ($model && method_exists($model, 'getSeoData')) {
-    $modelSeo = $model->getSeoData();
-    if ($modelSeo) {
-        $seoTitle = $modelSeo->title ?: $seoTitle;
-        $seoDescription = $modelSeo->description ?: $seoDescription;
-        $seoKeywords = $modelSeo->keywords ?: $seoKeywords;
-        if ($modelSeo->og_image) {
-            $ogImage = asset('storage/' . $modelSeo->og_image);
-        }
-    }
-}
+    $siteTitle = $title ?? config('app.name');
+    $siteDescription = $description ?? 'Professional construction and engineering services';
+    $siteKeywords = $keywords ?? 'construction, engineering, professional services';
+    $siteImage = $image ?? asset('images/og-image.jpg');
+    $siteUrl = request()->url();
 @endphp
 
-<!-- Basic Meta Tags -->
+{{-- Basic Meta Tags --}}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 
-<!-- SEO Meta Tags -->
-<title>{{ $seoTitle }}</title>
-<meta name="description" content="{{ $seoDescription }}">
-@if($seoKeywords)
-<meta name="keywords" content="{{ $seoKeywords }}">
-@endif
-<meta name="robots" content="{{ $robots }}">
-<link rel="canonical" href="{{ $canonicalUrl }}">
+{{-- Title --}}
+<title>{{ $siteTitle }}</title>
 
-<!-- Open Graph Meta Tags -->
-<meta property="og:type" content="{{ $type }}">
-<meta property="og:title" content="{{ $seoTitle }}">
-<meta property="og:description" content="{{ $seoDescription }}">
-<meta property="og:url" content="{{ $canonicalUrl }}">
-<meta property="og:site_name" content="{{ settings('site_name', config('app.name')) }}">
-@if($ogImage)
-<meta property="og:image" content="{{ $ogImage }}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-@endif
+{{-- SEO Meta Tags --}}
+<meta name="description" content="{{ $siteDescription }}">
+<meta name="keywords" content="{{ $siteKeywords }}">
+<meta name="author" content="{{ config('app.name') }}">
 
-<!-- Twitter Card Meta Tags -->
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{ $seoTitle }}">
-<meta name="twitter:description" content="{{ $seoDescription }}">
-@if($ogImage)
-<meta name="twitter:image" content="{{ $ogImage }}">
-@endif
-@if(settings('twitter_site'))
-<meta name="twitter:site" content="{{ settings('twitter_site') }}">
-@endif
-
-<!-- Additional Meta Tags -->
-<meta name="author" content="{{ settings('site_name', config('app.name')) }}">
-<meta name="generator" content="Laravel {{ app()->version() }}">
-
-<!-- Verification Meta Tags -->
-@if(settings('seo_google_verification'))
-<meta name="google-site-verification" content="{{ settings('seo_google_verification') }}">
-@endif
-@if(settings('seo_bing_verification'))
-<meta name="msvalidate.01" content="{{ settings('seo_bing_verification') }}">
-@endif
-
-<!-- Favicon -->
-@if(settings('site_favicon'))
-<link rel="icon" type="image/x-icon" href="{{ asset('storage/' . settings('site_favicon')) }}">
+{{-- Robots --}}
+@if($noindex)
+<meta name="robots" content="noindex, nofollow">
 @else
+<meta name="robots" content="index, follow">
+@endif
+
+{{-- Open Graph Meta Tags --}}
+<meta property="og:title" content="{{ $siteTitle }}">
+<meta property="og:description" content="{{ $siteDescription }}">
+<meta property="og:type" content="{{ $type }}">
+<meta property="og:url" content="{{ $siteUrl }}">
+<meta property="og:image" content="{{ $siteImage }}">
+<meta property="og:site_name" content="{{ config('app.name') }}">
+
+{{-- Twitter Card Meta Tags --}}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ $siteTitle }}">
+<meta name="twitter:description" content="{{ $siteDescription }}">
+<meta name="twitter:image" content="{{ $siteImage }}">
+
+{{-- Canonical URL --}}
+<link rel="canonical" href="{{ $siteUrl }}">
+
+{{-- Favicon --}}
 <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+<link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
+
+{{-- JSON-LD Structured Data --}}
+@if($model && method_exists($model, 'getStructuredData'))
+<script type="application/ld+json">
+{!! json_encode($model->getStructuredData()) !!}
+</script>
 @endif

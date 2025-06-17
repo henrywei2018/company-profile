@@ -15,7 +15,8 @@ class ServiceController extends BaseController
     public function __construct()
     {
         parent::__construct();
-        $this->shareBaseData();
+        // BaseController sudah melakukan shareDataToViews() otomatis
+        // Tidak perlu memanggil shareBaseData() lagi
     }
 
     /**

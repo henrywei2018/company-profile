@@ -11,10 +11,22 @@ class TeamController extends BaseController
     public function __construct()
     {
         parent::__construct();
-        $this->shareBaseData();
     }
+
     public function index()
     {
+        // Set page meta
+        $this->setPageMeta(
+            'Team - ' . $this->siteConfig['site_title'],
+            'Meet our professional team members and their expertise.',
+            'team, staff, professionals, expertise'
+        );
+
+        // Set breadcrumb
+        $this->setBreadcrumb([
+            ['name' => 'Team', 'url' => route('team.index')]
+        ]);
+
         // Get featured team members
         $featuredMembers = TeamMember::active()
             ->featured()
@@ -27,7 +39,7 @@ class TeamController extends BaseController
             ->ordered()
             ->get();
             
-        // Combine into departments/categories if needed
+        // Combine into departments if needed
         $departments = TeamMember::active()
             ->select('department')
             ->distinct()
@@ -45,7 +57,7 @@ class TeamController extends BaseController
             }
         }
         
-        return view('pages.team', compact(
+        return view('pages.team.index', compact(
             'featuredMembers', 
             'regularMembers', 
             'departments', 
@@ -53,15 +65,25 @@ class TeamController extends BaseController
         ));
     }
     
-    /**
-     * Display the specified team member.
-     */
     public function show($slug)
     {
-        // Find the team member by slug
+        // Find team member by slug
         $teamMember = TeamMember::where('slug', $slug)
             ->active()
             ->firstOrFail();
+
+        // Set page meta
+        $this->setPageMeta(
+            $teamMember->name . ' - Team Member',
+            $teamMember->bio ?? 'Meet ' . $teamMember->name . ', ' . $teamMember->position,
+            'team member, ' . $teamMember->name . ', ' . $teamMember->position
+        );
+
+        // Set breadcrumb
+        $this->setBreadcrumb([
+            ['name' => 'Team', 'url' => route('team.index')],
+            ['name' => $teamMember->name, 'url' => route('team.show', $teamMember->slug)]
+        ]);
             
         // Get related team members (same department)
         $relatedMembers = TeamMember::active()
@@ -72,6 +94,6 @@ class TeamController extends BaseController
             ->take(3)
             ->get();
             
-        return view('pages.team-member', compact('teamMember', 'relatedMembers'));
+        return view('pages.team.show', compact('teamMember', 'relatedMembers'));
     }
 }

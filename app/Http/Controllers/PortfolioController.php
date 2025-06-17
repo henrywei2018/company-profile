@@ -1,4 +1,5 @@
 <?php
+// File: app/Http/Controllers/PortfolioController.php
 
 namespace App\Http\Controllers;
 
@@ -12,36 +13,47 @@ class PortfolioController extends BaseController
     {
         parent::__construct();
     }
-    // Menampilkan list project portfolio
+
     public function index(Request $request)
     {
-        // Ambil semua kategori unik
-        $categories = ProjectCategory::withCount('projects')->get();
+        // Set page meta
+        $this->setPageMeta(
+            'Portfolio - ' . $this->siteConfig['site_title'],
+            'Browse our completed projects and portfolio showcasing our expertise and quality work.',
+            'portfolio, projects, completed work, showcase'
+        );
 
-        // Query project, filter by category jika ada
+        // Set breadcrumb
+        $this->setBreadcrumb([
+            ['name' => 'Portfolio', 'url' => route('portfolio.index')]
+        ]);
+
+        // Ambil semua kategori dengan project count
+        $categories = ProjectCategory::withCount(['activeProjects'])->get();
+
+        // Query project dengan filter
         $query = Project::query()
             ->where('is_active', true)
             ->where('status', 'completed')
             ->with(['category', 'images']);
 
         if ($request->filled('category')) {
-            // Filter berdasar slug kategori, jika ada request category
             $category = ProjectCategory::where('slug', $request->category)->first();
             if ($category) {
                 $query->where('project_category_id', $category->id);
             }
         }
 
-        $projects = $query->latest('end_date')->paginate(9);
+        $projects = $query->orderByDesc('featured')
+                         ->latest('end_date')
+                         ->paginate(9);
 
-        return view('pages.portfolio.index', [
-            'projects' => $projects,
-            'categories' => $categories,
-            'selectedCategory' => $request->category ?? null,
-        ]);
+        return view('pages.portfolio.index', compact(
+            'projects',
+            'categories'
+        ));
     }
 
-    // Menampilkan detail project
     public function show(Project $project)
     {
         // Hanya tampilkan project yang aktif & completed
@@ -49,7 +61,20 @@ class PortfolioController extends BaseController
             abort(404);
         }
 
-        // Load relasi (category, client, images, testimonial aktif & featured)
+        // Set page meta
+        $this->setPageMeta(
+            $project->title . ' - Portfolio',
+            $project->description,
+            'project, portfolio, ' . $project->title
+        );
+
+        // Set breadcrumb
+        $this->setBreadcrumb([
+            ['name' => 'Portfolio', 'url' => route('portfolio.index')],
+            ['name' => $project->title, 'url' => route('portfolio.show', $project->slug)]
+        ]);
+
+        // Load relasi
         $project->load([
             'category',
             'client',
@@ -73,9 +98,9 @@ class PortfolioController extends BaseController
             ->limit(3)
             ->get();
 
-        return view('pages.portfolio.show', [
-            'project' => $project,
-            'relatedProjects' => $relatedProjects,
-        ]);
+        return view('pages.portfolio.show', compact(
+            'project',
+            'relatedProjects'
+        ));
     }
 }

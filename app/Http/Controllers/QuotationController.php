@@ -11,14 +11,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use App\Facades\Notifications;
-use App\Models\TempNotifiable;
+use App\Services\TempNotifiable;
 
 class QuotationController extends BaseController
 {
     public function __construct()
     {
         parent::__construct();
-        $this->shareBaseData();
+        // BaseController sudah melakukan shareDataToViews() otomatis
     }
 
     /**

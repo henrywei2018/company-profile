@@ -4,7 +4,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Message;
-use App\Models\CompanyProfile;
 use App\Http\Requests\ContactRequest;
 use Illuminate\Http\Request;
 
@@ -14,20 +13,24 @@ class ContactController extends BaseController
     {
         parent::__construct();
     }
-    /**
-     * Display the contact page.
-     */
+
     public function index()
     {
-        // Get company profile for contact information
-        $companyProfile = CompanyProfile::getInstance();
-        
-        return view('pages.contact', compact('companyProfile'));
+        // Set page meta
+        $this->setPageMeta(
+            'Contact Us - ' . $this->siteConfig['site_title'],
+            'Get in touch with us. Contact information and contact form.',
+            'contact, get in touch, contact form'
+        );
+
+        // Set breadcrumb
+        $this->setBreadcrumb([
+            ['name' => 'Contact', 'url' => route('contact.index')]
+        ]);
+
+        return view('pages.contact');
     }
     
-    /**
-     * Store a newly created message.
-     */
     public function store(ContactRequest $request)
     {
         // Create new message
@@ -36,7 +39,6 @@ class ContactController extends BaseController
         // Send email notification (to be implemented)
         // Mail::to(config('mail.admin'))->send(new ContactFormSubmitted($message));
         
-        // Flash success message
         return redirect()->route('contact.index')
             ->with('success', 'Thank you for your message. We will get back to you soon!');
     }
