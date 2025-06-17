@@ -1,5 +1,5 @@
 {{-- resources/views/about/team.blade.php --}}
-<x-layouts.app 
+<x-layouts.public 
     :title="$seoData['title']"
     :description="$seoData['description']" 
     :keywords="$seoData['keywords']"
@@ -358,4 +358,4 @@
         .team-member-card:hover .social-link:nth-child(4) { transition-delay: 0.4s; }
     </style>
     @endpush
-</x-layouts.app>
+</x-layouts.public>

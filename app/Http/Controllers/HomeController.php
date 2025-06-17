@@ -6,14 +6,21 @@ use Illuminate\Http\Request;
 use App\Models\Service;
 use App\Models\Project;
 use App\Models\Testimonial;
-use App\Models\CompanyProfile; // Jika ada
-use App\Models\Banner; // Jika ada
+use App\Models\CompanyProfile;
+use App\Models\Banner;
+use App\Services\BannerService;
 
 class HomeController extends Controller
 {
+    protected $bannerService;
+
+    public function __construct(BannerService $bannerService)
+    {
+        $this->bannerService = $bannerService;
+    }
     public function index()
     {
-        // Ambil data yang diperlukan, contoh limit sesuai kebutuhan home page
+        $heroBanners = $this->bannerService->getBannersByCategory('homepage-hero', 3);
         $services = Service::latest()->limit(6)->get();
         $featuredProjects = Project::latest()->limit(6)->get();
         $testimonials = Testimonial::latest()->limit(1)->get(); // 1 saja yang tampil
@@ -22,6 +29,7 @@ class HomeController extends Controller
         // Lempar ke view
         return view('pages.home', compact(
             'services',
+            'heroBanners',
             'featuredProjects',
             'testimonials',
             'companyProfile'

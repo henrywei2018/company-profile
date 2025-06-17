@@ -315,43 +315,59 @@
                         </div>
 
                         <!-- Upload New Images -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Upload
-                                Images</label>
-                            <div
-                                class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md dark:border-gray-600">
-                                <div class="space-y-1 text-center">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none"
-                                        viewBox="0 0 48 48">
-                                        <path
-                                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                    </svg>
-                                    <div class="flex text-sm text-gray-600 dark:text-gray-400">
-                                        <label for="images"
-                                            class="relative cursor-pointer bg-white dark:bg-gray-700 rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-                                            <span>Upload images</span>
-                                            <input id="images" name="images[]" type="file" class="sr-only"
-                                                multiple accept="image/*">
-                                        </label>
-                                        <p class="pl-1">or drag and drop</p>
-                                    </div>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">PNG, JPG, WebP up to 2MB each
-                                        (max 10 images)</p>
-                                </div>
-                            </div>
-
-                            <!-- Image Preview Container -->
-                            <div id="image-preview-container"
-                                class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 hidden"></div>
-
-                            @error('images')
-                                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                            @error('images.*')
-                                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
+                        <x-universal-file-uploader 
+                            :id="'project-images-uploader-create'"
+                            name="temp_images" 
+                            :multiple="true" 
+                            :maxFiles="10"
+                            maxFileSize="5MB" 
+                            :acceptedFileTypes="['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']" 
+                            :uploadEndpoint="route('admin.projects.upload-temp')" 
+                            :deleteEndpoint="route('admin.projects.delete-temp')"
+                            dropDescription="Drop project images here or click to browse (Max 5MB each)" 
+                            :enableCategories="true"
+                            :categories="[
+                                ['value' => 'gallery', 'label' => 'Gallery Image'], 
+                                ['value' => 'before', 'label' => 'Before Photo'], 
+                                ['value' => 'during', 'label' => 'During Construction'], 
+                                ['value' => 'after', 'label' => 'After/Final Result'],
+                                ['value' => 'detail', 'label' => 'Detail Shot']
+                            ]"
+                            :enableDescription="true"
+                            :enablePublicToggle="false"
+                            :instantUpload="true" 
+                            :galleryMode="true" 
+                            :replaceMode="false"
+                            containerClass="mb-4" 
+                            theme="modern" 
+                            :singleMode="false" 
+                            :showFileList="true"
+                            :showProgress="true"
+                            :dragOverlay="true" />
+                            <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            <span class="text-sm text-gray-600 dark:text-gray-300">Upload Status:</span>
+            <span id="upload-status" class="text-sm font-medium text-gray-900 dark:text-white">0 / 10 images uploaded</span>
+        </div>
+        
+        <div class="flex items-center space-x-2">
+            <!-- Progress Bar -->
+            <div class="w-24 bg-gray-200 rounded-full h-2 dark:bg-gray-600">
+                <div id="upload-progress" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            
+            <!-- Clear All Button -->
+            <button type="button" 
+                    id="clear-all-uploads" 
+                    class="text-xs px-2 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled>
+                Clear All
+            </button>
+        </div>
+    </div>
                     </div>
                 </div>
             </div>
@@ -684,92 +700,519 @@
 </x-layouts.admin>
 
 @push('scripts')
-    <script>
-        // Auto-generate slug from title
-        document.getElementById('title')?.addEventListener('input', function(e) {
-            const slug = document.getElementById('slug');
-            if (slug && !slug.value) {
-                slug.value = e.target.value
-                    .toLowerCase()
-                    .replace(/[^\w\s-]/g, '')
-                    .replace(/\s+/g, '-')
-                    .replace(/--+/g, '-')
-                    .trim();
+<script>
+// Enhanced JavaScript untuk create view - tambahkan di @push('scripts')
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Enhanced logging for debugging
+    const DEBUG = {{ app()->environment(['local', 'staging']) ? 'true' : 'false' }};
+    
+    function debugLog(message, data = null) {
+        if (DEBUG) {
+            console.log('[Project Upload Debug]', message, data);
+        }
+    }
+
+    // Track upload state
+    let uploadedFilesCount = 0;
+    let totalFilesUploaded = [];
+
+    // Listen for universal uploader events with enhanced handling
+    document.addEventListener('files-uploaded', function(event) {
+        debugLog('Files uploaded event received', event.detail);
+        
+        if (event.detail.component && event.detail.component.includes('project-images-uploader-create')) {
+            const result = event.detail.result;
+            const files = event.detail.files || result?.files || [];
+            
+            // Handle partial success scenarios
+            if (result && result.errors && result.errors.length > 0) {
+                // Some files failed
+                const successCount = files.length;
+                const errorCount = result.errors.length;
+                
+                showNotification(
+                    `${successCount} image(s) uploaded successfully. ${errorCount} file(s) failed.`, 
+                    'warning'
+                );
+                
+                // Show specific errors
+                result.errors.forEach(error => {
+                    setTimeout(() => {
+                        showNotification(error, 'error');
+                    }, 1000);
+                });
+            } else {
+                // All files succeeded
+                const uploadedCount = files.length;
+                showNotification(`${uploadedCount} image(s) uploaded successfully!`, 'success');
             }
+            
+            // Update counters
+            uploadedFilesCount += files.length;
+            totalFilesUploaded.push(...files);
+            updateUploadStatus();
+            
+            debugLog('Upload successful', {
+                files: files,
+                total_uploaded: uploadedFilesCount,
+                errors: result?.errors
+            });
+        }
+    });
+    document.addEventListener('files-uploaded', function(event) {
+    debugLog('Files uploaded event received', event.detail);
+    
+    if (event.detail.component && event.detail.component.includes('project-images-uploader-create')) {
+        const result = event.detail.result;
+        const files = event.detail.files || result?.files || [];
+        
+        // Update counters
+        uploadedFilesCount += files.length;
+        totalFilesUploaded.push(...files);
+        updateUploadStatus();
+        
+        // Handle response messages
+        if (result && result.errors && result.errors.length > 0) {
+            const successCount = files.length;
+            const errorCount = result.errors.length;
+            
+            showNotification(
+                `${successCount} image(s) uploaded successfully. ${errorCount} file(s) failed.`, 
+                'warning'
+            );
+            
+            // Show specific errors after a delay
+            result.errors.forEach((error, index) => {
+                setTimeout(() => {
+                    showNotification(error, 'error');
+                }, 1000 + (index * 500));
+            });
+        } else {
+            const uploadedCount = files.length;
+            showNotification(`${uploadedCount} image(s) uploaded successfully!`, 'success');
+        }
+        
+        debugLog('Upload successful', {
+            files: files,
+            total_uploaded: uploadedFilesCount,
+            errors: result?.errors
         });
+    }
+});
+document.addEventListener('files-deleted', function(event) {
+    debugLog('Files deleted event received', event.detail);
+    
+    if (event.detail.component && event.detail.component.includes('project-images-uploader-create')) {
+        showNotification('Image deleted successfully!', 'success');
+        
+        // Update counter
+        uploadedFilesCount = Math.max(0, uploadedFilesCount - 1);
+        
+        // Remove from total files array if we have the file info
+        if (event.detail.file && event.detail.file.temp_id) {
+            totalFilesUploaded = totalFilesUploaded.filter(file => file.temp_id !== event.detail.file.temp_id);
+        }
+        
+        updateUploadStatus();
+    }
+});
 
-        // Image upload preview
-        document.getElementById('images')?.addEventListener('change', function(e) {
-            const files = e.target.files;
-            const container = document.getElementById('image-preview-container');
+    document.addEventListener('upload-error', function(event) {
+        debugLog('Upload error event received', event.detail);
+        
+        if (event.detail.component && event.detail.component.includes('project-images-uploader-create')) {
+            const errorMessage = event.detail.error || 'Unknown error occurred';
+            showNotification('Upload failed: ' + errorMessage, 'error');
+            
+            debugLog('Upload failed', {
+                error: errorMessage,
+                component: event.detail.component
+            });
+        }
+    });
 
+    document.addEventListener('files-selected', function(event) {
+    debugLog('Files selected event received', event.detail);
+    
+    if (event.detail.component && event.detail.component.includes('project-images-uploader-create')) {
+        const selectedCount = event.detail.files ? event.detail.files.length : 0;
+        
+        // Validate file count
+        if (uploadedFilesCount + selectedCount > 10) {
+            showNotification(
+                `Cannot upload ${selectedCount} more files. Maximum 10 images allowed (${uploadedFilesCount} already uploaded).`, 
+                'warning'
+            );
+            
+            // Prevent upload by clearing the selection
+            // This would need integration with the universal uploader component
+            return false;
+        }
+        
+        debugLog('Files selected', {
+            count: selectedCount,
+            files: event.detail.files,
+            current_uploaded: uploadedFilesCount
+        });
+    }
+});
+document.addEventListener('DOMContentLoaded', function() {
+    updateUploadStatus();
+    
+    // Check for existing temp files on page load
+    fetch('{{ route('admin.projects.temp-files') }}', {
+        method: 'GET',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.files) {
+            uploadedFilesCount = data.files.length;
+            totalFilesUploaded = data.files;
+            updateUploadStatus();
+            
+            if (uploadedFilesCount > 0) {
+                showNotification(`Found ${uploadedFilesCount} previously uploaded images.`, 'info');
+            }
+        }
+    })
+    .catch(error => {
+        debugLog('Error checking temp files', error);
+    });
+});
+    // Update upload status display
+    function updateUploadStatus() {
+    const statusElement = document.getElementById('upload-status');
+    const progressElement = document.getElementById('upload-progress');
+    const clearButton = document.getElementById('clear-all-uploads');
+    
+    if (statusElement) {
+        statusElement.textContent = `${uploadedFilesCount} / 10 images uploaded`;
+    }
+    
+    if (progressElement) {
+        const percentage = (uploadedFilesCount / 10) * 100;
+        progressElement.style.width = `${percentage}%`;
+    }
+    
+    if (clearButton) {
+        clearButton.disabled = uploadedFilesCount === 0;
+    }
+    
+    // Update form submission button text
+    const submitButtons = document.querySelectorAll('button[type="submit"]');
+    submitButtons.forEach(button => {
+        if (!button.dataset.originalText) {
+            button.dataset.originalText = button.textContent;
+        }
+        
+        if (uploadedFilesCount > 0) {
+            button.textContent = `${button.dataset.originalText} (${uploadedFilesCount} images)`;
+        } else {
+            button.textContent = button.dataset.originalText;
+        }
+    });
+}
+document.getElementById('clear-all-uploads')?.addEventListener('click', function() {
+    if (uploadedFilesCount === 0) return;
+    
+    const confirmDelete = confirm(`Are you sure you want to remove all ${uploadedFilesCount} uploaded images?`);
+    if (!confirmDelete) return;
+    
+    // This would need to interact with the universal uploader component
+    // to clear all uploaded files
+    if (window.universalUploaderInstances) {
+        const uploaderInstance = window.universalUploaderInstances['project-images-uploader-create'];
+        if (uploaderInstance && typeof uploaderInstance.clearAllFiles === 'function') {
+            uploaderInstance.clearAllFiles();
+        }
+    }
+    
+    // Reset counters
+    uploadedFilesCount = 0;
+    totalFilesUploaded = [];
+    updateUploadStatus();
+    
+    showNotification('All uploaded images have been removed.', 'success');
+});
+document.addEventListener('files-cleared', function(event) {
+    if (event.detail.component && event.detail.component.includes('project-images-uploader-create')) {
+        uploadedFilesCount = 0;
+        totalFilesUploaded = [];
+        updateUploadStatus();
+    }
+});
+
+    // Enhanced form submission with upload validation
+    const projectForm = document.getElementById('project-form');
+    if (projectForm) {
+        projectForm.addEventListener('submit', function(e) {
+            debugLog('Form submission started', {
+                uploaded_files: uploadedFilesCount,
+                total_files: totalFilesUploaded
+            });
+            
+            const title = document.getElementById('title').value.trim();
+            const description = document.querySelector('[name="description"]').value.trim();
+            
+            if (!title) {
+                e.preventDefault();
+                showNotification('Please enter a project title.', 'error');
+                document.getElementById('title').focus();
+                return;
+            }
+            
+            if (!description) {
+                e.preventDefault();
+                showNotification('Please enter a project description.', 'error');
+                document.querySelector('[name="description"]').focus();
+                return;
+            }
+            
+            // Check required category field if it exists
+            const categoryField = document.querySelector('[name="category_id"]');
+            if (categoryField && !categoryField.value) {
+                e.preventDefault();
+                showNotification('Please select a project category.', 'error');
+                categoryField.focus();
+                return;
+            }
+            
+            // Check if at least one image is uploaded (optional validation)
+            const traditionalFiles = document.getElementById('images').files;
+            if (uploadedFilesCount === 0 && traditionalFiles.length === 0) {
+                const proceed = confirm('No images have been uploaded. Do you want to create the project without images?');
+                if (!proceed) {
+                    e.preventDefault();
+                    return;
+                }
+            }
+            
+            debugLog('Form validation passed, submitting...', {
+                uploaded_count: uploadedFilesCount,
+                traditional_count: traditionalFiles.length
+            });
+            
+            // Show loading state
+            const submitButtons = projectForm.querySelectorAll('button[type="submit"]');
+            submitButtons.forEach(button => {
+                button.disabled = true;
+                const originalText = button.dataset.originalText || button.textContent;
+                button.textContent = 'Creating Project...';
+                button.dataset.originalText = originalText;
+            });
+            
+            // Show progress message
+            showNotification('Creating project, please wait...', 'info');
+        });
+    }
+
+    // Handle traditional file input with enhanced validation
+    const fileInput = document.getElementById('images');
+    const altTextFields = document.getElementById('alt-text-fields');
+    const altTextContainer = document.getElementById('alt-text-container');
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            altTextContainer.innerHTML = '';
+            
             if (files.length > 0) {
-                container.classList.remove('hidden');
-                container.innerHTML = '';
-
-                Array.from(files).forEach((file, index) => {
-                    if (file.type.startsWith('image/')) {
-                        const reader = new FileReader();
-                        reader.onload = function(e) {
-                            const preview = `
-                        <div class="relative">
-                            <img src="${e.target.result}" alt="Preview ${index + 1}" class="w-full h-32 object-cover rounded-lg">
-                            <div class="mt-2">
-                                <input type="text" name="image_alt_texts[${index}]" placeholder="Alt text for image ${index + 1}"
-                                       class="w-full text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md">
+                // Check total file limit
+                if (uploadedFilesCount + files.length > 10) {
+                    showNotification(
+                        `Cannot select ${files.length} files. Maximum 10 images allowed (${uploadedFilesCount} already uploaded via uploader).`, 
+                        'warning'
+                    );
+                    e.target.value = ''; // Clear selection
+                    return;
+                }
+                
+                altTextFields.style.display = 'block';
+                
+                // Validate and process each file
+                const validFiles = [];
+                files.forEach((file, index) => {
+                    // Validate file type
+                    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+                    if (!allowedTypes.includes(file.type)) {
+                        showNotification(`File "${file.name}" is not a supported image format.`, 'error');
+                        return;
+                    }
+                    
+                    // Validate file size (2MB for traditional upload)
+                    if (file.size > 2 * 1024 * 1024) {
+                        showNotification(`File "${file.name}" is too large. Maximum size is 2MB for traditional upload.`, 'error');
+                        return;
+                    }
+                    
+                    validFiles.push({file, index});
+                });
+                
+                // Create alt text fields for valid files
+                validFiles.forEach(({file, index}) => {
+                    const div = document.createElement('div');
+                    div.className = 'mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg';
+                    div.innerHTML = `
+                        <div class="flex items-start space-x-3">
+                            <div class="flex-shrink-0">
+                                <div class="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    ${file.name} <span class="text-xs text-gray-500">(${formatFileSize(file.size)})</span>
+                                </label>
+                                <input type="text" 
+                                       name="image_alt_texts[]" 
+                                       placeholder="Describe this image for accessibility..."
+                                       class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md 
+                                              focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white"
+                                       value="Project image ${index + 1}">
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    ${index === 0 ? '✨ This will be the featured image' : `Image ${index + 1}`}
+                                </p>
                             </div>
                         </div>
                     `;
-                            container.insertAdjacentHTML('beforeend', preview);
-                        };
-                        reader.readAsDataURL(file);
-                    }
+                    altTextContainer.appendChild(div);
                 });
-            } else {
-                container.classList.add('hidden');
-            }
-        });
-
-        // Form validation
-        document.getElementById('project-form')?.addEventListener('submit', function(e) {
-            const startDate = document.getElementById('start_date')?.value;
-            const endDate = document.getElementById('end_date')?.value;
-
-            if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
-                e.preventDefault();
-                alert('End date must be after or equal to start date.');
-                return false;
-            }
-
-            // Check budget vs actual cost
-            const budget = parseFloat(document.getElementById('budget')?.value || 0);
-            const actualCost = parseFloat(document.getElementById('actual_cost')?.value || 0);
-
-            if (budget > 0 && actualCost > budget * 1.5) {
-                if (!confirm(
-                        'Actual cost is significantly over budget (more than 150%). Are you sure this is correct?'
-                        )) {
-                    e.preventDefault();
-                    return false;
+                
+                if (validFiles.length !== files.length) {
+                    showNotification(`${validFiles.length} of ${files.length} files are valid for upload.`, 'warning');
                 }
+            } else {
+                altTextFields.style.display = 'none';
             }
         });
+    }
 
-        // Update status-related fields
-        document.getElementById('status')?.addEventListener('change', function(e) {
-            const progressField = document.getElementById('progress_percentage');
-            if (progressField && e.target.value === 'completed') {
-                progressField.value = '100';
+    // Auto-generate slug from title
+    const titleInput = document.getElementById('title');
+    const slugInput = document.getElementById('slug');
+    
+    if (titleInput && slugInput) {
+        titleInput.addEventListener('input', function(e) {
+            if (!slugInput.value || slugInput.dataset.userModified !== 'true') {
+                const slug = generateSlug(e.target.value);
+                slugInput.value = slug;
             }
         });
+        
+        slugInput.addEventListener('input', function() {
+            slugInput.dataset.userModified = 'true';
+        });
+    }
 
-        // Handle quotation-based project creation
-        @if (isset($quotation) && $quotation)
-            // Pre-populate fields based on quotation data
-            document.addEventListener('DOMContentLoaded', function() {
-                // You can add additional logic here to handle quotation data
-                console.log('Creating project from quotation #{{ $quotation->id }}');
-            });
-        @endif
-    </script>
+    // Helper functions
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function generateSlug(title) {
+        return title
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
+    }
+
+    // Enhanced notification function
+    function showNotification(message, type = 'info') {
+        // Remove existing notifications of the same type
+        const existingNotifications = document.querySelectorAll(`.notification-toast.${type}`);
+        existingNotifications.forEach(notification => notification.remove());
+
+        const notification = document.createElement('div');
+        notification.className = `notification-toast ${type} fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl transition-all duration-300 transform translate-x-full max-w-sm border-l-4`;
+        
+        switch (type) {
+            case 'success':
+                notification.className += ' bg-green-50 border-green-400 text-green-800';
+                break;
+            case 'error':
+                notification.className += ' bg-red-50 border-red-400 text-red-800';
+                break;
+            case 'warning':
+                notification.className += ' bg-yellow-50 border-yellow-400 text-yellow-800';
+                break;
+            default:
+                notification.className += ' bg-blue-50 border-blue-400 text-blue-800';
+        }
+        
+        notification.innerHTML = `
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    ${getNotificationIcon(type)}
+                </div>
+                <div class="ml-3 flex-1">
+                    <p class="text-sm font-medium">${message}</p>
+                </div>
+                <div class="ml-4 flex-shrink-0">
+                    <button type="button" class="text-current hover:opacity-70 transition-opacity" onclick="this.closest('.notification-toast').remove()">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full');
+        }, 100);
+        
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                    }
+                }, 300);
+            }
+        }, type === 'error' ? 8000 : 6000); // Errors stay longer
+    }
+
+    function getNotificationIcon(type) {
+        const iconClass = 'w-5 h-5';
+        switch (type) {
+            case 'success':
+                return `<svg class="${iconClass} text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>`;
+            case 'error':
+                return `<svg class="${iconClass} text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                </svg>`;
+            case 'warning':
+                return `<svg class="${iconClass} text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                </svg>`;
+            default:
+                return `<svg class="${iconClass} text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>`;
+        }
+    }
+
+    // Initialize upload status display
+    updateUploadStatus();
+});
+</script>
 @endpush

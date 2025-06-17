@@ -1,5 +1,5 @@
 {{-- resources/views/about.blade.php --}}
-<x-layouts.app 
+<x-layouts.public 
     :title="$seoData['title']"
     :description="$seoData['description']" 
     :keywords="$seoData['keywords']"
@@ -478,4 +478,4 @@
         }
     </style>
     @endpush
-</x-layouts.app>
+</x-layouts.public>

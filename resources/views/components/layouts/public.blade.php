@@ -1,4 +1,4 @@
-{{-- resources/views/components/layouts/public.blade.php - UPDATED --}}
+
 @props([
     'title' => null,
     'description' => null,
@@ -11,26 +11,12 @@
     'headerVariant' => 'default',
     'footerVariant' => 'default',
     'showNewsletter' => true,
-    'announcementBanner' => null,
-    'bodyClass' => ''
+    'announcementBanner' => null
 ])
-
-@php
-    // Auto SEO data - fallback values
-    $autoSeo = [
-        'title' => config('app.name'),
-        'description' => 'Professional web development and digital solutions',
-        'type' => 'website'
-    ];
-@endphp
 
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    
     {{-- SEO Meta Tags Component --}}
     <x-seo.meta-tags 
         :title="$title ?? $autoSeo['title'] ?? null"
@@ -48,7 +34,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     {{-- Styles --}}
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/js/app.js',])
     @vite('resources/css/orange-theme.css')
 
     
@@ -56,9 +42,7 @@
     @stack('styles')
     
     {{-- Analytics & Tracking - Head --}}
-    @if(class_exists('App\View\Components\Seo\Analytics'))
-        <x-seo.analytics position="head" />
-    @endif
+    <x-seo.analytics position="head" />
     
     {{-- Theme Detection Script --}}
     <script>
@@ -73,19 +57,15 @@
     </script>
 </head>
 
-<body class="bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 {{ $bodyClass }}">
+<body class="bg-white text-gray-900 {{ $bodyClass ?? '' }}">
     {{-- Analytics & Tracking - Body --}}
-    @if(class_exists('App\View\Components\Seo\Analytics'))
-        <x-seo.analytics position="body" />
-    @endif
+    <x-seo.analytics position="body" />
     
     {{-- Page Loading Indicator --}}
-    <div id="page-loader" class="fixed inset-0 z-50 bg-white dark:bg-gray-900 flex items-center justify-center transition-opacity duration-300">
+    <div id="page-loader" class="fixed inset-0 z-50 bg-white flex items-center justify-center">
         <div class="text-center">
-            <div class="loading-spinner mb-4">
-                <div class="w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
-            </div>
-            <p class="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
+            <div class="loading-spinner mb-4"></div>
+            <p class="text-sm text-gray-600">Loading...</p>
         </div>
     </div>
     
@@ -102,164 +82,137 @@
     />
     
     {{-- Main Content --}}
-    <main id="main-content" class="page-enter min-h-screen">
+    <main id="main-content" class="page-enter">
         {{ $slot }}
     </main>
     
     {{-- Footer --}}
-    @if(class_exists('App\View\Components\Public\Footer'))
-        <x-public.footer 
-            :variant="$footerVariant"
-            :show-newsletter="$showNewsletter"
-        />
-    @else
-        {{-- Fallback Footer --}}
-        <footer class="bg-gray-900 text-white py-8">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="text-center">
-                    <p class="text-sm text-gray-400">
-                        © {{ date('Y') }} {{ config('app.name') }}. All rights reserved.
-                    </p>
-                </div>
-            </div>
-        </footer>
-    @endif
+    <x-public.footer 
+        :variant="$footerVariant"
+        :show-newsletter="$showNewsletter"
+    />
     
     {{-- Schema.org JSON-LD --}}
-    @if(class_exists('App\View\Components\Seo\Schema'))
-        <x-seo.schema 
-            type="company"
-            :breadcrumbs="$breadcrumbs ?? []"
-        />
+    <x-seo.schema 
+        type="company"
+        :breadcrumbs="$breadcrumbs ?? null"
+    />
+    
+    {{-- Page-specific schema --}}
+    @if(isset($model))
+        @if(isset($model->title) || isset($model->name))
+            <x-seo.schema 
+                type="article"
+                :data="$model"
+            />
+        @endif
     @endif
     
-    {{-- JavaScript --}}
+    {{-- Scripts --}}
     @stack('scripts')
     
-    {{-- Page Transition and Loading Scripts --}}
+    {{-- Page Load Complete Script --}}
     <script>
-        // Hide loading screen when page is ready
         document.addEventListener('DOMContentLoaded', function() {
-            const pageLoader = document.getElementById('page-loader');
-            if (pageLoader) {
+            // Hide loading indicator
+            const loader = document.getElementById('page-loader');
+            if (loader) {
+                loader.style.opacity = '0';
                 setTimeout(() => {
-                    pageLoader.style.opacity = '0';
-                    setTimeout(() => {
-                        pageLoader.style.display = 'none';
-                    }, 300);
-                }, 100);
+                    loader.style.display = 'none';
+                }, 300);
             }
             
-            // Add page enter animation
-            const mainContent = document.getElementById('main-content');
-            if (mainContent) {
-                mainContent.classList.add('opacity-100', 'translate-y-0');
-            }
-        });
-
-        // Page transition effects
-        document.addEventListener('click', function(e) {
-            const link = e.target.closest('a[href]');
-            if (link && !link.hasAttribute('target') && !link.hasAttribute('download')) {
-                const href = link.getAttribute('href');
-                if (href && href.startsWith('/') && !href.startsWith('//')) {
-                    e.preventDefault();
-                    
-                    // Add exit animation
-                    const mainContent = document.getElementById('main-content');
-                    if (mainContent) {
-                        mainContent.classList.add('page-exit');
-                        setTimeout(() => {
-                            window.location.href = href;
-                        }, 150);
-                    } else {
-                        window.location.href = href;
-                    }
-                }
-            }
-        });
-
-        // Smooth scroll for anchor links
-        document.addEventListener('click', function(e) {
-            const link = e.target.closest('a[href^="#"]');
-            if (link) {
-                e.preventDefault();
-                const targetId = link.getAttribute('href').substring(1);
-                const targetElement = document.getElementById(targetId);
-                
-                if (targetElement) {
-                    targetElement.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
+            // Initialize page animations
+            const elements = document.querySelectorAll('[data-animate]');
+            if (elements.length > 0 && 'IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const animationType = entry.target.dataset.animate;
+                            entry.target.classList.add(`animate-${animationType}`);
+                            observer.unobserve(entry.target);
+                        }
                     });
-                }
-            }
-        });
-
-        // Handle back/forward browser navigation
-        window.addEventListener('popstate', function() {
-            const pageLoader = document.getElementById('page-loader');
-            if (pageLoader) {
-                pageLoader.style.display = 'flex';
-                pageLoader.style.opacity = '1';
+                }, {
+                    threshold: 0.1,
+                    rootMargin: '0px 0px -50px 0px'
+                });
+                
+                elements.forEach(el => observer.observe(el));
             }
             
-            setTimeout(() => {
-                location.reload();
-            }, 100);
+            // Initialize smooth scrolling for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+            
+            // Initialize lazy loading for images
+            if ('IntersectionObserver' in window) {
+                const imageObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            if (img.dataset.src) {
+                                img.src = img.dataset.src;
+                                img.classList.remove('opacity-0');
+                                img.classList.add('opacity-100');
+                                imageObserver.unobserve(img);
+                            }
+                        }
+                    });
+                });
+                
+                document.querySelectorAll('img[data-src]').forEach(img => {
+                    img.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                    imageObserver.observe(img);
+                });
+            }
+            
+            // Performance optimization: Preload critical resources
+            const criticalResources = [
+                '/images/hero-bg.jpg',
+                '/images/logo.png'
+            ];
+            
+            criticalResources.forEach(resource => {
+                const link = document.createElement('link');
+                link.rel = 'preload';
+                link.as = 'image';
+                link.href = resource;
+                document.head.appendChild(link);
+            });
         });
-
-        // Global error handler
-        window.addEventListener('error', function(e) {
-            console.error('Public page error:', e.error);
-        });
-
-        // Global unhandled promise rejection handler
-        window.addEventListener('unhandledrejection', function(e) {
-            console.error('Public page promise rejection:', e.reason);
-        });
+        
+        // Error handling for images
+        document.addEventListener('error', function(e) {
+            if (e.target.tagName === 'IMG') {
+                e.target.src = '/images/placeholder.jpg'; // Fallback image
+                e.target.classList.add('opacity-50');
+            }
+        }, true);
+        
+        // Service Worker Registration (optional)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(function(registrationError) {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
     </script>
-    
-    {{-- Custom CSS for page transitions --}}
-    <style>
-        .page-enter {
-            opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
-        }
-        
-        .page-exit {
-            opacity: 0;
-            transform: translateY(-10px);
-            transition: opacity 0.15s ease-in, transform 0.15s ease-in;
-        }
-        
-        .loading-spinner {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        /* Ensure smooth transitions */
-        * {
-            transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
-            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-            transition-duration: 150ms;
-        }
-        
-        /* Reduce motion for users who prefer it */
-        @media (prefers-reduced-motion: reduce) {
-            * {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
-            
-            .page-enter,
-            .page-exit {
-                transition: none !important;
-            }
-        }
-    </style>
 </body>
 </html>

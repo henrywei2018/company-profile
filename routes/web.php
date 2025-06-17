@@ -15,7 +15,6 @@ use App\Http\Controllers\{
     TeamController,
     ChatController
 };
-use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Client\{
     DashboardController as ClientDashboardController,
     ProfileController as ClientProfileController,
@@ -33,15 +32,14 @@ require __DIR__ . '/auth.php';
 */
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
-Route::prefix('about')->name('about.')->group(function () {
-    Route::get('/', [AboutController::class, 'index'])->name('index');
-    Route::get('/team', [AboutController::class, 'team'])->name('team');
-    Route::get('/company', [AboutController::class, 'team'])->name('company');
+Route::prefix('about')->group(function () {
+    Route::get('/', [AboutController::class, 'index'])->name('about');
+    Route::get('/team', [AboutController::class, 'team'])->name('about.team');
 });
 
 Route::prefix('services')->name('services.')->group(function () {
     Route::get('/', [ServiceController::class, 'index'])->name('index');
-    Route::get('/{slug}', [ServiceController::class, 'show'])->name('show');
+    Route::get('/{service:slug}', [ServiceController::class, 'show'])->name('show'); // ✅ Fix parameter
 });
 
 Route::prefix('portfolio')->name('portfolio.')->group(function () {
@@ -51,28 +49,14 @@ Route::prefix('portfolio')->name('portfolio.')->group(function () {
 });
 
 
-Route::prefix('team')->name('team.')->group(function () {
-    Route::get('/', [TeamController::class, 'index'])->name('index');
-    Route::get('/{slug}', [TeamController::class, 'show'])->name('show');
+Route::prefix('team')->group(function () {
+    Route::get('/', [TeamController::class, 'index'])->name('team.index');
+    Route::get('/{slug}', [TeamController::class, 'show'])->name('team.show');
 });
 
 Route::prefix('blog')->name('blog.')->group(function () {
     // Main blog page
     Route::get('/', [App\Http\Controllers\BlogController::class, 'index'])->name('index');
-    
-    // Category pages
-    Route::get('/category/{category:slug}', [App\Http\Controllers\BlogController::class, 'category'])->name('category');
-    
-    // Archive pages
-    Route::get('/archive/{year}/{month?}', [App\Http\Controllers\BlogController::class, 'archive'])->name('archive');
-    
-    // Search
-    Route::get('/search', [App\Http\Controllers\BlogController::class, 'search'])->name('search');
-    
-    // RSS Feed
-    Route::get('/feed', [App\Http\Controllers\BlogController::class, 'feed'])->name('feed');
-    
-    // Individual post (should be last to avoid conflicts)
     Route::get('/{post:slug}', [App\Http\Controllers\BlogController::class, 'show'])->name('show');
 });
 
@@ -80,10 +64,10 @@ Route::prefix('contact')->name('contact.')->group(function () {
     Route::get('/', [ContactController::class, 'index'])->name('index');
     Route::post('/', [ContactController::class, 'store'])
         ->middleware('throttle:10,1')
-        ->name('contact.store');
+        ->name('store');
 });
 
-Route::prefix('quotation')->name('quotation.')->group(function () {
+Route::prefix('quotation')->group(function () {
     Route::get('/', [QuotationController::class, 'create'])->name('quotation.create');
     Route::post('/', [QuotationController::class, 'store'])->middleware('throttle:5,1')->name('quotation.store');
     Route::get('/thank-you', [QuotationController::class, 'thankYou'])->name('quotation.thank-you');

@@ -1,4 +1,9 @@
-<x-layouts.app>
+<x-layouts.public 
+    :title="$seoData['title']"
+    :description="$seoData['description']" 
+    :keywords="$seoData['keywords']"
+    :breadcrumbs="$seoData['breadcrumbs']"
+>
     <x-slot:title>Portfolio Projects</x-slot:title>
     <x-slot:meta_description>Discover our construction project portfolio.</x-slot:meta_description>
 
@@ -57,4 +62,4 @@
             {{ $projects->withQueryString()->links() }}
         </div>
     </div>
-</x-layouts.app>
+</x-layouts.public>

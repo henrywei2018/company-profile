@@ -9,7 +9,16 @@
     </x-slot:meta_description>
     
     <!-- Hero Section -->
-    <x-banner-slider category-slug="homepage-hero" />
+    <x-banner-slider 
+    category="homepage-hero" 
+    :limit="3" 
+    height="h-[500px]"
+    :show-navigation="true"
+    :show-pagination="true"
+    :autoplay="true"
+    :autoplay-delay="4000"
+    effect="slide"
+    container-class="mb-8" />
     <!-- End Hero -->
 
     <!-- Services Section -->
@@ -179,7 +188,7 @@
                 <a class="group rounded-xl overflow-hidden dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
                     href="{{ route('portfolio.show', $project->slug) }}">
                     <div class="relative pt-[50%] sm:pt-[70%] rounded-xl overflow-hidden">
-                        <img class="size-full absolute top-0 start-0 object-cover group-hover:scale-105 transition-transform duration-500 ease-in-out rounded-xl"
+                        <img class="size-full opacity-50 absolute top-0 start-0 object-cover group-hover:scale-105 transition-transform duration-500 ease-in-out rounded-xl"
                             src="{{ $project->getFeaturedImageUrlAttribute() }}" alt="{{ $project->title }}">
                         <span
                             class="absolute top-0 end-0 rounded-se-xl rounded-es-xl text-xs font-medium bg-gray-800 text-white py-1.5 px-3 dark:bg-gray-900">
@@ -213,7 +222,7 @@
                         href="{{ route('portfolio.index') }}">
                         <div class="relative pt-[50%] sm:pt-[70%] rounded-xl overflow-hidden">
                             <img class="size-full absolute top-0 start-0 object-cover group-hover:scale-105 transition-transform duration-500 ease-in-out rounded-xl"
-                                src="{{ asset('images/project-' . $i . '.jpg') }}" alt="Project {{ $i }}">
+                                src="{{ asset('images/project_' . $i . '.jpg') }}" alt="Project {{ $i }}">
                             <span
                                 class="absolute top-0 end-0 rounded-se-xl rounded-es-xl text-xs font-medium bg-gray-800 text-white py-1.5 px-3 dark:bg-gray-900">
                                 {{ ['Commercial', 'Residential', 'Industrial'][$i - 1] }}

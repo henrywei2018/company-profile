@@ -136,14 +136,19 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     // Projects
     Route::resource('projects', ProjectController::class);
-    Route::patch('/projects/{project}/toggle-featured', [ProjectController::class, 'toggleFeatured'])->name('projects.toggle-featured');
-    Route::post('/projects/update-order', [ProjectController::class, 'updateOrder'])->name('projects.update-order');
-    
-    // NEW: Quick update route for project settings
-    Route::patch('/projects/{project}/quick-update', [ProjectController::class, 'quickUpdate'])->name('projects.quick-update');
-    
-    // NEW: Convert project back to quotation
-    Route::post('/projects/{project}/convert-to-quotation', [ProjectController::class, 'convertToQuotation'])->name('projects.convert-to-quotation');
+    Route::prefix('projects')->name('projects.')->group(function () {
+        // Temporary file routes (MUST come before resource routes to avoid conflicts)
+        Route::post('/upload-temp', [ProjectController::class, 'uploadTempImages'])->name('upload-temp');
+        Route::delete('/delete-temp', [ProjectController::class, 'deleteTempImage'])->name('delete-temp');
+        Route::get('/temp-files', [ProjectController::class, 'getTempFiles'])->name('temp-files');
+        Route::post('/cleanup-temp', [ProjectController::class, 'cleanupTempFiles'])->name('cleanup-temp');
+        Route::patch('/{project}/toggle-featured', [ProjectController::class, 'toggleFeatured'])->name('toggle-featured');
+        Route::post('/update-order', [ProjectController::class, 'updateOrder'])->name('update-order');
+        Route::patch('/{project}/quick-update', [ProjectController::class, 'quickUpdate'])->name('quick-update');
+        Route::post('/{project}/convert-to-quotation', [ProjectController::class, 'convertToQuotation'])->name('convert-to-quotation');
+        
+        Route::post('/{project}/images/reorder', [ProjectController::class, 'reorderImages'])->name('reorder-images');
+    });
     
     // Project Milestones - Enhanced Routes
     Route::prefix('projects/{project}')->name('projects.')->group(function () {
@@ -345,8 +350,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // Team
     Route::prefix('team')->name('team.')->group(function () {
         // Temporary file routes (MUST come before resource routes to avoid conflicts)
-        Route::post('/temp-upload', [TeamController::class, 'uploadTempImages'])->name('temp-upload');
-        Route::delete('/temp-delete', [TeamController::class, 'deleteTempImage'])->name('temp-delete');
+        Route::post('/temp-upload', [TeamController::class, 'uploadTempImages'])->name('upload-temp');
+        Route::delete('/temp-delete', [TeamController::class, 'deleteTempImage'])->name('delete-temp');
         Route::get('/temp-files', [TeamController::class, 'getTempFiles'])->name('temp-files');
         Route::post('/cleanup-temp', [TeamController::class, 'cleanupTempFiles'])->name('cleanup-temp');
         

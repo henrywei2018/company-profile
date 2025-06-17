@@ -75,6 +75,7 @@ class AppServiceProvider extends ServiceProvider
         Blade::if('client', function () {
             return Auth::check() && Auth::user()->hasRole('client');
         });
+        Blade::component('banner-slider', \App\View\Components\BannerSlider::class);
 
         Blade::if('admin', function () {
             return Auth::check() && Auth::user()->hasAnyRole(['super-admin', 'admin', 'manager', 'editor']);
@@ -99,6 +100,7 @@ class AppServiceProvider extends ServiceProvider
                    request()->is('client/*');
         });
     }
+    
 
     /**
      * Register view composers for shared data.
@@ -140,6 +142,13 @@ class AppServiceProvider extends ServiceProvider
             } else {
                 $view->with($this->getClientDefaultStats());
             }
+        });
+        view()->composer('components.banner-slider', function ($view) {
+            // Global data that all banner sliders might need
+            $view->with([
+                'defaultTracking' => config('banner.enable_tracking', true),
+                'cdnUrl' => config('app.cdn_url', config('app.url')),
+            ]);
         });
 
         // Chat sidebar composer - only if chat feature is enabled

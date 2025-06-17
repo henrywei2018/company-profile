@@ -1,156 +1,197 @@
 <?php
-// File: app/Http/Controllers/BlogController.php
 
 namespace App\Http\Controllers;
 
 use App\Models\Post;
 use App\Models\PostCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class BlogController extends Controller
 {
     /**
-     * Display a listing of blog posts.
+     * Display the blog page with filtering, search, and pagination.
      */
     public function index(Request $request)
     {
-        // Get all categories with post count
-        $categories = PostCategory::withCount(['posts' => function ($query) {
-            $query->published();
-        }])->get();
-        
-        // Apply filters and pagination
-        $posts = Post::published()
-            ->with('author')
-            ->when($request->filled('category'), function ($query) use ($request) {
-                return $query->whereHas('categories', function ($q) use ($request) {
-                    $q->where('slug', $request->category);
-                });
-            })
-            ->when($request->filled('search'), function ($query) use ($request) {
-                return $query->where(function ($q) use ($request) {
-                    $q->where('title', 'like', "%{$request->search}%")
-                      ->orWhere('excerpt', 'like', "%{$request->search}%")
-                      ->orWhere('content', 'like', "%{$request->search}%");
-                });
-            })
-            ->latest('published_at')
-            ->paginate(9);
-        
-        return view('pages.blog', compact('posts', 'categories'));
-    }
-    
-    /**
-     * Display the specified blog post.
-     */
-    public function show($slug)
-    {
-        // Find the post by slug
-        $post = Post::where('slug', $slug)
+        // Build query with filters
+        $query = Post::published()->with(['author', 'categories']);
+
+        // Apply filters
+        if ($request->filled('category')) {
+            $query->whereHas('categories', function ($q) use ($request) {
+                $q->where('slug', $request->category);
+            });
+        }
+
+        if ($request->filled('search')) {
+            $query->search($request->search);
+        }
+
+        if ($request->filled('featured') && $request->featured == '1') {
+            $query->featured();
+        }
+
+        // Apply sorting
+        $sortBy = $request->get('sort', 'latest');
+        switch ($sortBy) {
+            case 'oldest':
+                $query->oldest('published_at');
+                break;
+            case 'popular':
+                // You can implement view counts later
+                $query->latest('published_at');
+                break;
+            default:
+                $query->latest('published_at');
+        }
+
+        $posts = $query->paginate(12)->withQueryString();
+
+        // Sidebar data
+        $categories = PostCategory::query()
+            ->hasPublishedPosts()
+            ->withPublishedPostsCount()
+            ->orderBy('name')
+            ->get();
+
+        $recentPosts = Post::query()
             ->published()
             ->with(['author', 'categories'])
-            ->firstOrFail();
-        
-        // Get recent posts
-        $recentPosts = Post::published()
-            ->where('id', '!=', $post->id)
             ->latest('published_at')
-            ->take(4)
+            ->limit(5)
             ->get();
-        
+
+        $featuredPosts = Post::query()
+            ->published()
+            ->featured()
+            ->with(['author', 'categories'])
+            ->limit(3)
+            ->get();
+
+        // Archive data for sidebar
+        $archiveData = Post::query()
+            ->published()
+            ->selectRaw('YEAR(published_at) as year, MONTH(published_at) as month, COUNT(*) as count')
+            ->groupByRaw('YEAR(published_at), MONTH(published_at)')
+            ->orderByRaw('YEAR(published_at) DESC, MONTH(published_at) DESC')
+            ->limit(12)
+            ->get();
+
+        // SEO Data
+        $seoData = [
+            'title' => 'Blog - CV Usaha Prima Lestari',
+            'description' => 'Read our latest insights, industry news, and project updates. Stay informed about construction trends and our company developments.',
+            'keywords' => 'blog, articles, construction, insights, CV Usaha Prima Lestari',
+            'breadcrumbs' => [
+                ['name' => 'Home', 'url' => route('home')],
+                ['name' => 'Blog', 'url' => route('blog.index'), 'active' => true]
+            ]
+        ];
+
+        // Customize SEO based on filters
+        if ($request->filled('search')) {
+            $seoData['title'] = "Search Results for '{$request->search}' - Blog";
+            $seoData['description'] = "Search results for '{$request->search}' in our blog articles.";
+        }
+
+        if ($request->filled('category')) {
+            $category = $categories->where('slug', $request->category)->first();
+            if ($category) {
+                $seoData['title'] = "{$category->name} - Blog Category";
+                $seoData['description'] = $category->description ?: "Browse all posts in the {$category->name} category.";
+                $seoData['breadcrumbs'][] = ['name' => $category->name, 'url' => route('blog.index', ['category' => $category->slug]), 'active' => true];
+            }
+        }
+
+        return view('pages.blog.index', compact(
+            'posts',
+            'categories',
+            'recentPosts',
+            'featuredPosts',
+            'archiveData',
+            'seoData'
+        ));
+    }
+
+    /**
+     * Display single blog post.
+     */
+    public function show(Post $post)
+    {
+        // Only show published posts
+        if ($post->status !== 'published' || $post->published_at > now()) {
+            abort(404);
+        }
+
+        $post->load(['author', 'categories']);
+
         // Get related posts
-        $relatedPosts = Post::published()
-            ->where('id', '!=', $post->id)
-            ->whereHas('categories', function ($query) use ($post) {
-                $query->whereIn('post_categories.id', $post->categories->pluck('id'));
-            })
-            ->latest('published_at')
-            ->take(3)
+        $relatedPosts = $this->getRelatedPosts($post, 4);
+
+        // Sidebar data
+        $categories = PostCategory::query()
+            ->hasPublishedPosts()
+            ->withPublishedPostsCount()
+            ->orderBy('name')
             ->get();
-        
-        // Increment view count if tracking
-        if (method_exists($post, 'incrementViews')) {
-            $post->incrementViews();
+
+        $recentPosts = Post::query()
+            ->published()
+            ->with(['author', 'categories'])
+            ->where('id', '!=', $post->id)
+            ->latest('published_at')
+            ->limit(5)
+            ->get();
+
+        // SEO Data
+        $seoData = [
+            'title' => $post->title,
+            'description' => $post->excerpt ?: Str::limit(strip_tags($post->content), 160),
+            'keywords' => $post->categories->pluck('name')->join(', '),
+            'breadcrumbs' => [
+                ['name' => 'Home', 'url' => route('home')],
+                ['name' => 'Blog', 'url' => route('blog.index')],
+                ['name' => Str::limit($post->title, 50), 'url' => route('blog.show', $post->slug), 'active' => true]
+            ]
+        ];
+
+        return view('pages.blog.show', compact(
+            'post',
+            'relatedPosts',
+            'categories',
+            'recentPosts',
+            'seoData'
+        ));
+    }
+
+    /**
+     * Get related posts based on categories.
+     */
+    private function getRelatedPosts(Post $post, int $limit = 4)
+    {
+        $categoryIds = $post->categories->pluck('id');
+
+        if ($categoryIds->isEmpty()) {
+            return Post::query()
+                ->published()
+                ->with(['author', 'categories'])
+                ->where('id', '!=', $post->id)
+                ->latest('published_at')
+                ->limit($limit)
+                ->get();
         }
-        
-        return view('pages.blog-single', compact('post', 'recentPosts', 'relatedPosts'));
-    }
-    
-    /**
-     * Display posts by category.
-     */
-    public function category($slug)
-    {
-        // Find the category
-        $category = PostCategory::where('slug', $slug)->firstOrFail();
-        
-        // Get posts in this category
-        $posts = Post::published()
-            ->whereHas('categories', function ($query) use ($slug) {
-                $query->where('slug', $slug);
+
+        return Post::query()
+            ->published()
+            ->with(['author', 'categories'])
+            ->where('id', '!=', $post->id)
+            ->whereHas('categories', function ($query) use ($categoryIds) {
+                $query->whereIn('post_categories.id', $categoryIds);
             })
             ->latest('published_at')
-            ->paginate(9);
-        
-        // Get all categories with post count
-        $categories = PostCategory::withCount(['posts' => function ($query) {
-            $query->published();
-        }])->get();
-        
-        return view('pages.blog-category', compact('posts', 'categories', 'category'));
-    }
-    
-    /**
-     * Display posts archive by year/month.
-     */
-    public function archive(Request $request, $year, $month = null)
-    {
-        $posts = Post::published()
-            ->whereYear('published_at', $year)
-            ->when($month, function ($query) use ($month) {
-                return $query->whereMonth('published_at', $month);
-            })
-            ->latest('published_at')
-            ->paginate(9);
-        
-        // Get all categories
-        $categories = PostCategory::withCount(['posts' => function ($query) {
-            $query->published();
-        }])->get();
-        
-        // Format archive title
-        $archiveTitle = $month 
-            ? date('F Y', mktime(0, 0, 0, $month, 1, $year)) 
-            : $year;
-        
-        return view('pages.blog-archive', compact('posts', 'categories', 'archiveTitle', 'year', 'month'));
-    }
-    
-    /**
-     * Display search results.
-     */
-    public function search(Request $request)
-    {
-        $query = $request->input('query');
-        
-        if (empty($query)) {
-            return redirect()->route('blog.index');
-        }
-        
-        $posts = Post::published()
-            ->where(function ($q) use ($query) {
-                $q->where('title', 'like', "%{$query}%")
-                  ->orWhere('excerpt', 'like', "%{$query}%")
-                  ->orWhere('content', 'like', "%{$query}%");
-            })
-            ->latest('published_at')
-            ->paginate(9);
-        
-        // Get all categories
-        $categories = PostCategory::withCount(['posts' => function ($query) {
-            $query->published();
-        }])->get();
-        
-        return view('pages.blog-search', compact('posts', 'categories', 'query'));
+            ->limit($limit)
+            ->get();
     }
 }

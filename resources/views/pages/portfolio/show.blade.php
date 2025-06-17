@@ -1,4 +1,9 @@
-<x-layouts.app>
+<x-layouts.public 
+    :title="$seoData['title']"
+    :description="$seoData['description']" 
+    :keywords="$seoData['keywords']"
+    :breadcrumbs="$seoData['breadcrumbs']"
+>
     <x-slot:title>{{ $project->title }}</x-slot:title>
     <x-slot:meta_description>{{ Str::limit(strip_tags($project->description), 160) }}</x-slot:meta_description>
 
@@ -37,5 +42,5 @@
             @endif
         </div>
     </div>
-</x-layouts.app>
+</x-layouts.public>
     

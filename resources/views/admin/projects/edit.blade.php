@@ -29,8 +29,8 @@
             </x-admin.button>
 
             @if ($project->slug)
-                <x-admin.button href="{{ route('portfolio.projects.show', $project->slug) }}" color="info"
-                    size="sm" target="_blank">
+                <x-admin.button href="{{ route('home', $project->slug) }}" color="info" size="sm"
+                    target="_blank">
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -263,7 +263,7 @@
                             class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('title') border-red-500 @enderror"
                             required>
                         @error('title')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                            <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                         @enderror
                     </div>
 
@@ -277,7 +277,7 @@
                         <p class="mt-1 text-sm text-gray-500">URL-friendly version of the title. Leave blank to
                             auto-generate.</p>
                         @error('slug')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                            <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                         @enderror
                     </div>
 
@@ -297,7 +297,7 @@
                                 @endforeach
                             </select>
                             @error('client_id')
-                                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                             @enderror
                         </div>
                     @endif
@@ -311,7 +311,7 @@
                                 value="{{ old('client_name', $project->client_name ?? $project->client?->name) }}"
                                 class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('client_name') border-red-500 @enderror">
                             @error('client_name')
-                                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                             @enderror
                         </div>
                     @endif
@@ -332,7 +332,7 @@
                                 @endforeach
                             </select>
                             @error('category_id')
-                                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                             @enderror
                         </div>
                     @endif
@@ -353,7 +353,7 @@
                                 @endforeach
                             </select>
                             @error('service_id')
-                                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                             @enderror
                         </div>
                     @endif
@@ -366,7 +366,7 @@
                             value="{{ old('location', $project->location) }}"
                             class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('location') border-red-500 @enderror">
                         @error('location')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                            <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                         @enderror
                     </div>
 
@@ -378,7 +378,7 @@
                             max="{{ date('Y') + 5 }}" value="{{ old('year', $project->year) }}"
                             class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('year') border-red-500 @enderror">
                         @error('year')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                            <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                         @enderror
                     </div>
                 </div>
@@ -390,7 +390,7 @@
                     <textarea name="description" id="description" rows="4" required
                         class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('description') border-red-500 @enderror">{{ old('description', $project->description) }}</textarea>
                     @error('description')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                        <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                     @enderror
                 </div>
 
@@ -404,7 +404,7 @@
                             class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('short_description') border-red-500 @enderror">{{ old('short_description', $project->short_description) }}</textarea>
                         <p class="mt-1 text-sm text-gray-500">Brief summary for listings and previews.</p>
                         @error('short_description')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                            <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                         @enderror
                     </div>
                 @endif
@@ -443,7 +443,7 @@
                             </option>
                         </select>
                         @error('status')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                            <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                         @enderror
                     </div>
 
@@ -468,7 +468,7 @@
                                     Urgent</option>
                             </select>
                             @error('priority')
-                                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                             @enderror
                         </div>
                     @endif
@@ -483,7 +483,7 @@
                                 value="{{ old('progress_percentage', $project->progress_percentage ?? 0) }}"
                                 class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('progress_percentage') border-red-500 @enderror">
                             @error('progress_percentage')
-                                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                             @enderror
                         </div>
                     @endif
@@ -531,7 +531,7 @@
                             value="{{ old('start_date', $project->start_date?->format('Y-m-d')) }}"
                             class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('start_date') border-red-500 @enderror">
                         @error('start_date')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                            <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                         @enderror
                     </div>
 
@@ -543,7 +543,7 @@
                             value="{{ old('end_date', $project->end_date?->format('Y-m-d')) }}"
                             class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('end_date') border-red-500 @enderror">
                         @error('end_date')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                            <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                         @enderror
                     </div>
 
@@ -557,7 +557,7 @@
                                 value="{{ old('estimated_completion_date', $project->estimated_completion_date?->format('Y-m-d')) }}"
                                 class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('estimated_completion_date') border-red-500 @enderror">
                             @error('estimated_completion_date')
-                                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                             @enderror
                         </div>
                     @endif
@@ -572,7 +572,7 @@
                                 value="{{ old('actual_completion_date', $project->actual_completion_date?->format('Y-m-d')) }}"
                                 class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('actual_completion_date') border-red-500 @enderror">
                             @error('actual_completion_date')
-                                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                             @enderror
                         </div>
                     @endif
@@ -603,7 +603,7 @@
                                     value="{{ old('value', $project->value) }}"
                                     class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('value') border-red-500 @enderror">
                                 @error('value')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                                 @enderror
                             </div>
                         @endif
@@ -617,7 +617,7 @@
                                     value="{{ old('budget', $project->budget) }}"
                                     class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('budget') border-red-500 @enderror">
                                 @error('budget')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                                 @enderror
                             </div>
                         @endif
@@ -632,7 +632,7 @@
                                     value="{{ old('actual_cost', $project->actual_cost) }}"
                                     class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('actual_cost') border-red-500 @enderror">
                                 @error('actual_cost')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                                 @enderror
                             </div>
                         @endif
@@ -659,7 +659,7 @@
                             class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('challenge') border-red-500 @enderror">{{ old('challenge', $project->challenge) }}</textarea>
                         <p class="mt-1 text-sm text-gray-500">What challenges did this project address?</p>
                         @error('challenge')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                            <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                         @enderror
                     </div>
 
@@ -671,7 +671,7 @@
                             class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('solution') border-red-500 @enderror">{{ old('solution', $project->solution) }}</textarea>
                         <p class="mt-1 text-sm text-gray-500">How did we solve these challenges?</p>
                         @error('solution')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                            <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                         @enderror
                     </div>
 
@@ -683,7 +683,7 @@
                             class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('result') border-red-500 @enderror">{{ old('result', $project->result) }}</textarea>
                         <p class="mt-1 text-sm text-gray-500">What were the outcomes?</p>
                         @error('result')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                            <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                         @enderror
                     </div>
 
@@ -697,7 +697,7 @@
                                 class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('client_feedback') border-red-500 @enderror">{{ old('client_feedback', $project->client_feedback) }}</textarea>
                             <p class="mt-1 text-sm text-gray-500">Client testimonials or feedback.</p>
                             @error('client_feedback')
-                                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                             @enderror
                         </div>
                     @endif
@@ -712,7 +712,7 @@
                                 class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('lessons_learned') border-red-500 @enderror">{{ old('lessons_learned', $project->lessons_learned) }}</textarea>
                             <p class="mt-1 text-sm text-gray-500">Key learnings and insights from this project.</p>
                             @error('lessons_learned')
-                                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                             @enderror
                         </div>
                     @endif
@@ -721,103 +721,306 @@
         </div>
         <!-- Project Gallery Section -->
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-6">
-            <div class="px-4 py-5 sm:p-6">
-                <div class="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Project Gallery</h3>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage project images and gallery.</p>
+    <div class="px-4 py-5 sm:p-6">
+        <div class="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Project Images</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage images for this project. Drag to reorder, click to edit.</p>
+        </div>
+
+        <!-- Current Images Display -->
+        @if($project->images && $project->images->count() > 0)
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-sm font-medium text-gray-900 dark:text-white">
+                        Current Images ({{ $project->images->count() }})
+                    </h4>
+                    <div class="flex items-center space-x-2 text-xs text-gray-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Click image to view full size, hover for actions</span>
+                    </div>
                 </div>
-
-                <!-- Existing Images -->
-                @if ($project->images->count() > 0)
-                    <div class="mb-6">
-                        <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4">Current Images
-                            ({{ $project->images->count() }})</h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                            id="existing-images-grid">
-                            @foreach ($project->images as $image)
-                                <div class="relative group image-item" data-image-id="{{ $image->id }}">
-                                    <div class="aspect-w-3 aspect-h-2">
-                                        <img src="{{ Storage::url($image->image_path) }}"
-                                            alt="{{ $image->alt_text }}" class="w-full h-48 object-cover rounded-lg">
-                                    </div>
-
-                                    <!-- Image overlay with controls -->
-                                    <div
-                                        class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                        <div class="flex space-x-2">
-                                            <button type="button"
-                                                class="set-featured-btn bg-white text-gray-800 px-3 py-1 rounded-md text-sm font-medium hover:bg-gray-100 {{ $image->is_featured ? 'bg-yellow-400 text-yellow-900' : '' }}"
-                                                data-image-id="{{ $image->id }}">
-                                                {{ $image->is_featured ? 'Featured' : 'Set Featured' }}
-                                            </button>
-                                            <button type="button"
-                                                class="delete-image-btn bg-red-600 text-white px-3 py-1 rounded-md text-sm font-medium hover:bg-red-700"
-                                                data-image-id="{{ $image->id }}">
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Featured badge -->
-                                    @if ($image->is_featured)
-                                        <div class="absolute top-2 right-2">
-                                            <span
-                                                class="bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-medium">Featured</span>
-                                        </div>
-                                    @endif
-
-                                    <!-- Image info -->
-                                    <div class="mt-2">
-                                        <input type="text" name="existing_image_alt[{{ $image->id }}]"
-                                            value="{{ $image->alt_text }}" placeholder="Alt text"
-                                            class="w-full text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md">
+                
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="current-images-grid">
+                    @foreach($project->images->sortBy('sort_order') as $image)
+                        <div class="relative group bg-gray-50 dark:bg-gray-700 rounded-lg p-2 border-2 border-dashed border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500 transition-colors" 
+                             data-image-id="{{ $image->id }}">
+                            
+                            <!-- Image Display -->
+                            <div class="aspect-w-16 aspect-h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-600 cursor-pointer"
+                                 onclick="viewImage('{{ $image->image_url }}', '{{ $image->alt_text }}')">
+                                <img src="{{ $image->image_url }}" 
+                                     alt="{{ $image->alt_text }}" 
+                                     class="w-full h-32 object-cover rounded-lg transition-transform group-hover:scale-105">
+                                
+                                <!-- Overlay -->
+                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 rounded-lg flex items-center justify-center">
+                                    <div class="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-2">
+                                        <!-- View Full Size -->
+                                        <button type="button" 
+                                                onclick="event.stopPropagation(); viewImage('{{ $image->image_url }}', '{{ $image->alt_text }}')"
+                                                class="bg-white text-gray-800 p-2 rounded-full hover:bg-gray-100 transition-colors shadow-lg"
+                                                title="View full size">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                            </svg>
+                                        </button>
+                                        
+                                        <!-- Delete -->
+                                        <button type="button" 
+                                                onclick="event.stopPropagation(); deleteProjectImage({{ $image->id }}, '{{ addslashes($image->alt_text) }}')"
+                                                class="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition-colors shadow-lg"
+                                                title="Delete image">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                <!-- Upload New Images -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Add New
-                        Images</label>
-                    <div
-                        class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md dark:border-gray-600">
-                        <div class="space-y-1 text-center">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none"
-                                viewBox="0 0 48 48">
-                                <path
-                                    d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-                            <div class="flex text-sm text-gray-600 dark:text-gray-400">
-                                <label for="images"
-                                    class="relative cursor-pointer bg-white dark:bg-gray-700 rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-                                    <span>Upload images</span>
-                                    <input id="images" name="images[]" type="file" class="sr-only" multiple
-                                        accept="image/*">
-                                </label>
-                                <p class="pl-1">or drag and drop</p>
                             </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">PNG, JPG, WebP up to 2MB each (max 10
-                                images)</p>
+
+                            <!-- Image Info -->
+                            <div class="mt-2">
+                                <div class="flex items-center justify-between mb-2">
+                                    @if($image->is_featured)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                                            </svg>
+                                            Featured
+                                        </span>
+                                    @else
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">
+                                            #{{ $image->sort_order }}
+                                        </span>
+                                    @endif
+                                    
+                                    <span class="text-xs text-gray-400">
+                                        @if(Storage::disk('public')->exists($image->image_path))
+                                            {{ number_format(Storage::disk('public')->size($image->image_path) / 1024, 1) }} KB
+                                        @else
+                                            <span class="text-red-500">Missing</span>
+                                        @endif
+                                    </span>
+                                </div>
+                                
+                                <!-- Alt Text Editor -->
+                                <div class="mt-1">
+                                    <input type="text" 
+                                           name="existing_image_alt[{{ $image->id }}]"
+                                           value="{{ $image->alt_text }}"
+                                           placeholder="Alt text for accessibility..."
+                                           class="w-full text-xs px-2 py-1 border border-gray-200 dark:border-gray-600 rounded 
+                                                  focus:ring-1 focus:ring-blue-500 focus:border-blue-500 
+                                                  dark:bg-gray-600 dark:text-gray-200 transition-colors"
+                                           title="Alt text for accessibility"
+                                           onchange="markFormAsChanged()">
+                                </div>
+
+                                <!-- Make Featured Button -->
+                                @if(!$image->is_featured)
+                                    <button type="button" 
+                                            onclick="setFeaturedImage({{ $image->id }})"
+                                            class="mt-2 w-full text-xs px-2 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded transition-colors dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40">
+                                        Set as Featured
+                                    </button>
+                                @endif
+                            </div>
+
+                            <!-- Drag Handle -->
+                            <div class="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity cursor-move bg-white dark:bg-gray-800 rounded-full p-1 shadow-lg" 
+                                 title="Drag to reorder">
+                                <svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+                
+                <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div class="flex items-start space-x-2">
+                        <svg class="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                        </svg>
+                        <div class="text-sm text-blue-800 dark:text-blue-200">
+                            <p class="font-medium mb-1">Image Management Tips:</p>
+                            <ul class="text-xs space-y-1 text-blue-700 dark:text-blue-300">
+                                <li>• Click on any image to view it in full size</li>
+                                <li>• Edit alt text inline for better accessibility</li>
+                                <li>• Drag images to reorder them (first image is featured)</li>
+                                <li>• Changes are saved when you update the project</li>
+                            </ul>
                         </div>
                     </div>
+                </div>
+            </div>
+        @endif
 
-                    <!-- Image Preview Container -->
-                    <div id="image-preview-container"
-                        class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 hidden"></div>
-
-                    @error('images')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                    @error('images.*')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
+        <!-- Upload Status Counter (sama seperti create view) -->
+        <div class="mb-6 p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span class="text-sm text-gray-600 dark:text-gray-300">New Images:</span>
+                    <span id="upload-status" class="text-sm font-medium text-gray-900 dark:text-white">0 / {{ 10 - $project->images->count() }} images can be added</span>
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    <!-- Progress Bar -->
+                    <div class="w-24 bg-gray-200 rounded-full h-2 dark:bg-gray-600">
+                        <div id="upload-progress" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    
+                    <!-- Clear All Button -->
+                    <button type="button" 
+                            id="clear-all-uploads" 
+                            class="text-xs px-2 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                        Clear New
+                    </button>
                 </div>
             </div>
         </div>
+
+        <!-- Upload New Images -->
+        <div class="mb-4">
+            <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                {{ $project->images->count() > 0 ? 'Add More Images' : 'Upload Images' }}
+            </h4>
+
+            @if($project->images->count() >= 10)
+                <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div class="flex">
+                        <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-yellow-800">Maximum Images Reached</h3>
+                            <p class="mt-1 text-sm text-yellow-700">This project already has the maximum of 10 images. Please delete some images before adding new ones.</p>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <!-- Universal File Uploader for New Images -->
+                <x-universal-file-uploader 
+                    :id="'project-images-uploader-edit-' . $project->id"
+                    name="temp_images" 
+                    :multiple="true" 
+                    :maxFiles="10"
+                    maxFileSize="5MB" 
+                    :acceptedFileTypes="['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']" 
+                    :uploadEndpoint="route('admin.projects.upload-temp')" 
+                    :deleteEndpoint="route('admin.projects.delete-temp')"
+                    dropDescription="Drop new project images here or click to browse (Max 5MB each)" 
+                    :enableCategories="true"
+                    :categories="[
+                        ['value' => 'gallery', 'label' => 'Gallery Image'], 
+                        ['value' => 'before', 'label' => 'Before Photo'], 
+                        ['value' => 'during', 'label' => 'During Construction'], 
+                        ['value' => 'after', 'label' => 'After/Final Result'],
+                        ['value' => 'detail', 'label' => 'Detail Shot']
+                    ]"
+                    :enableDescription="true"
+                    :enablePublicToggle="false"
+                    :instantUpload="true" 
+                    :galleryMode="true" 
+                    :replaceMode="false"
+                    containerClass="mb-4" 
+                    theme="modern" 
+                    :singleMode="false" 
+                    :showFileList="true"
+                    :showProgress="true"
+                    :dragOverlay="true" />
+
+                <!-- Traditional File Upload (Fallback) -->
+                <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Alternative Upload Method</h4>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">If the above uploader doesn't work, you can use traditional file upload:</p>
+                    
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <label for="images" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Select Additional Images (Max {{ 10 - $project->images->count() }})
+                            </label>
+                            <input type="file" 
+                                   name="images[]" 
+                                   id="images"
+                                   multiple 
+                                   accept="image/jpeg,image/jpg,image/png,image/webp"
+                                   class="mt-1 block w-full text-sm text-gray-500 dark:text-gray-400
+                                          file:mr-4 file:py-2 file:px-4
+                                          file:rounded-full file:border-0
+                                          file:text-sm file:font-semibold
+                                          file:bg-blue-50 file:text-blue-700
+                                          hover:file:bg-blue-100
+                                          dark:file:bg-blue-900 dark:file:text-blue-300">
+                            <p class="mt-1 text-xs text-gray-500">JPEG, PNG, WebP up to 2MB each</p>
+                            @error('images')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                            @error('images.*')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Alt Text for Traditional Upload -->
+                        <div id="alt-text-fields" style="display: none;">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Alt Text for New Images
+                            </label>
+                            <div id="alt-text-container">
+                                <!-- Alt text fields will be generated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
+
+        <!-- Debug Information (Development Only) -->
+        @if(app()->environment(['local', 'staging']))
+        <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h5 class="text-sm font-medium text-yellow-800 mb-2">Debug Info (Development Only)</h5>
+            <div class="text-xs text-yellow-700 space-y-1">
+                <p><strong>Project ID:</strong> {{ $project->id }}</p>
+                <p><strong>Current Images:</strong> {{ $project->images->count() }} / 10</p>
+                <p><strong>Can Add:</strong> {{ 10 - $project->images->count() }} more images</p>
+                <p><strong>Upload Endpoint:</strong> {{ route('admin.projects.upload-temp') }}</p>
+                <p><strong>Delete Endpoint:</strong> {{ route('admin.projects.delete-temp') }}</p>
+                <p><strong>Session ID:</strong> {{ session()->getId() }}</p>
+            </div>
+        </div>
+        @endif
+    </div>
+</div>
+<div id="image-view-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeImageModal()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
+            <div class="absolute top-0 right-0 pt-4 pr-4">
+                <button type="button" onclick="closeImageModal()" class="bg-white dark:bg-gray-800 rounded-md text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <span class="sr-only">Close</span>
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="sm:flex sm:items-start">
+                <div class="w-full text-center">
+                    <img id="modal-image" src="" alt="" class="max-w-full max-h-96 mx-auto rounded-lg shadow-lg">
+                    <h3 id="modal-title" class="mt-4 text-lg leading-6 font-medium text-gray-900 dark:text-white"></h3>
+                    <p id="modal-info" class="mt-2 text-sm text-gray-500 dark:text-gray-400"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
         <!-- SEO Section (if columns exist) -->
         @if (Schema::hasColumn('projects', 'meta_title') ||
@@ -843,7 +1046,7 @@
                                     class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('meta_title') border-red-500 @enderror">
                                 <p class="mt-1 text-sm text-gray-500">Recommended length: 50-60 characters</p>
                                 @error('meta_title')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                                 @enderror
                             </div>
                         @endif
@@ -858,7 +1061,7 @@
                                     class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('meta_description') border-red-500 @enderror">{{ old('meta_description', $project->meta_description) }}</textarea>
                                 <p class="mt-1 text-sm text-gray-500">Recommended length: 150-160 characters</p>
                                 @error('meta_description')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                                 @enderror
                             </div>
                         @endif
@@ -874,7 +1077,7 @@
                                     class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md @error('meta_keywords') border-red-500 @enderror">
                                 <p class="mt-1 text-sm text-gray-500">Separate keywords with commas</p>
                                 @error('meta_keywords')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-2 text-sm text-red-600">{{ $message ?? '' }}</p>
                                 @enderror
                             </div>
                         @endif
@@ -965,162 +1168,592 @@
             </div>
         </div>
     </div>
+
 </x-layouts.admin>
-
 @push('scripts')
-
 <script>
-// Image Gallery Functions
-function setFeaturedImage(imageId) {
-    // AJAX call to set featured image
-    fetch(`/admin/projects/{{ $project->id }}/images/${imageId}/set-featured`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update UI
-            document.querySelectorAll('.set-featured-btn').forEach(btn => {
-                btn.textContent = 'Set Featured';
-                btn.classList.remove('bg-yellow-400', 'text-yellow-900');
-                btn.classList.add('bg-white', 'text-gray-800');
-            });
-            
-            // Update the clicked button
-            const button = document.querySelector(`[data-image-id="${imageId}"]`);
-            button.textContent = 'Featured';
-            button.classList.remove('bg-white', 'text-gray-800');
-            button.classList.add('bg-yellow-400', 'text-yellow-900');
-            
-            // Update featured badges
-            document.querySelectorAll('.featured-badge').forEach(badge => badge.remove());
-            const imageItem = document.querySelector(`[data-image-id="${imageId}"]`).closest('.image-item');
-            imageItem.querySelector('.relative').insertAdjacentHTML('beforeend', 
-                '<div class="featured-badge absolute top-2 right-2"><span class="bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-medium">Featured</span></div>'
-            );
-        } else {
-            alert('Failed to set featured image');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred');
-    });
-}
-
-function deleteImage(imageId) {
-    if (!confirm('Are you sure you want to delete this image?')) return;
+document.addEventListener('DOMContentLoaded', function() {
+    // Configuration
+    const DEBUG = {{ app()->environment(['local', 'staging']) ? 'true' : 'false' }};
+    const PROJECT_ID = {{ $project->id }};
+    const CURRENT_IMAGES_COUNT = {{ $project->images->count() }};
+    const MAX_IMAGES = 10;
+    const MAX_NEW_IMAGES = MAX_IMAGES - CURRENT_IMAGES_COUNT;
     
-    fetch(`/admin/projects/{{ $project->id }}/images/${imageId}`, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            document.querySelector(`[data-image-id="${imageId}"]`).closest('.image-item').remove();
-        } else {
-            alert('Failed to delete image');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred');
-    });
-}
-
-// Image upload preview
-document.getElementById('images')?.addEventListener('change', function(e) {
-    const files = e.target.files;
-    const container = document.getElementById('image-preview-container');
+    // State management
+    let uploadedFilesCount = 0;
+    let totalFilesUploaded = [];
+    let hasUnsavedChanges = false;
     
-    if (files.length > 0) {
-        container.classList.remove('hidden');
-        container.innerHTML = '';
+    function debugLog(message, data = null) {
+        if (DEBUG) {
+            console.log('[Project Edit Debug]', message, data);
+        }
+    }
+
+    // Mark form as changed
+    window.markFormAsChanged = function() {
+        hasUnsavedChanges = true;
+    };
+
+    // Update upload status display
+    function updateUploadStatus() {
+        const statusElement = document.getElementById('upload-status');
+        const progressElement = document.getElementById('upload-progress');
+        const clearButton = document.getElementById('clear-all-uploads');
         
-        Array.from(files).forEach((file, index) => {
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const preview = `
-                        <div class="relative">
-                            <img src="${e.target.result}" alt="Preview ${index + 1}" class="w-full h-32 object-cover rounded-lg">
-                            <div class="mt-2">
-                                <input type="text" name="image_alt_texts[${index}]" placeholder="Alt text for image ${index + 1}"
-                                       class="w-full text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md">
+        if (statusElement) {
+            const remaining = MAX_NEW_IMAGES - uploadedFilesCount;
+            statusElement.textContent = `${uploadedFilesCount} / ${MAX_NEW_IMAGES} new images uploaded`;
+        }
+        
+        if (progressElement) {
+            const percentage = MAX_NEW_IMAGES > 0 ? (uploadedFilesCount / MAX_NEW_IMAGES) * 100 : 0;
+            progressElement.style.width = `${percentage}%`;
+        }
+        
+        if (clearButton) {
+            clearButton.disabled = uploadedFilesCount === 0;
+        }
+        
+        // Update form submission button text
+        const submitButtons = document.querySelectorAll('button[type="submit"]');
+        submitButtons.forEach(button => {
+            if (!button.dataset.originalText) {
+                button.dataset.originalText = button.textContent;
+            }
+            
+            if (uploadedFilesCount > 0) {
+                button.textContent = `${button.dataset.originalText} (+${uploadedFilesCount} new images)`;
+            } else {
+                button.textContent = button.dataset.originalText;
+            }
+        });
+    }
+
+    // Universal uploader event handlers
+    document.addEventListener('files-uploaded', function(event) {
+        debugLog('Files uploaded event received', event.detail);
+        
+        if (event.detail.component && event.detail.component.includes('project-images-uploader-edit-' + PROJECT_ID)) {
+            const result = event.detail.result;
+            const files = event.detail.files || result?.files || [];
+            
+            // Update counters
+            uploadedFilesCount += files.length;
+            totalFilesUploaded.push(...files);
+            updateUploadStatus();
+            markFormAsChanged();
+            
+            // Handle response messages
+            if (result && result.errors && result.errors.length > 0) {
+                const successCount = files.length;
+                const errorCount = result.errors.length;
+                
+                showNotification(
+                    `${successCount} image(s) uploaded successfully. ${errorCount} file(s) failed.`, 
+                    'warning'
+                );
+                
+                result.errors.forEach((error, index) => {
+                    setTimeout(() => {
+                        showNotification(error, 'error');
+                    }, 1000 + (index * 500));
+                });
+            } else {
+                const uploadedCount = files.length;
+                showNotification(`${uploadedCount} new image(s) uploaded successfully! Save to make changes permanent.`, 'success');
+            }
+            
+            debugLog('Upload successful', {
+                files: files,
+                total_uploaded: uploadedFilesCount,
+                errors: result?.errors
+            });
+        }
+    });
+
+    document.addEventListener('upload-error', function(event) {
+        debugLog('Upload error event received', event.detail);
+        
+        if (event.detail.component && event.detail.component.includes('project-images-uploader-edit-' + PROJECT_ID)) {
+            const errorMessage = event.detail.error || 'Unknown error occurred';
+            showNotification('Upload failed: ' + errorMessage, 'error');
+        }
+    });
+
+    document.addEventListener('files-deleted', function(event) {
+        debugLog('Files deleted event received', event.detail);
+        
+        if (event.detail.component && event.detail.component.includes('project-images-uploader-edit-' + PROJECT_ID)) {
+            showNotification('New image deleted successfully!', 'success');
+            
+            uploadedFilesCount = Math.max(0, uploadedFilesCount - 1);
+            
+            if (event.detail.file && event.detail.file.temp_id) {
+                totalFilesUploaded = totalFilesUploaded.filter(file => file.temp_id !== event.detail.file.temp_id);
+            }
+            
+            updateUploadStatus();
+        }
+    });
+
+    // Handle clear all uploads
+    document.getElementById('clear-all-uploads')?.addEventListener('click', function() {
+        if (uploadedFilesCount === 0) return;
+        
+        const confirmDelete = confirm(`Are you sure you want to remove all ${uploadedFilesCount} newly uploaded images?`);
+        if (!confirmDelete) return;
+        
+        // Clear via universal uploader if available
+        if (window.universalUploaderInstances) {
+            const uploaderInstance = window.universalUploaderInstances['project-images-uploader-edit-' + PROJECT_ID];
+            if (uploaderInstance && typeof uploaderInstance.clearAllFiles === 'function') {
+                uploaderInstance.clearAllFiles();
+            }
+        }
+        
+        uploadedFilesCount = 0;
+        totalFilesUploaded = [];
+        updateUploadStatus();
+        
+        showNotification('All newly uploaded images have been removed.', 'success');
+    });
+
+    // Image management functions
+    window.viewImage = function(imageUrl, altText) {
+        const modal = document.getElementById('image-view-modal');
+        const modalImage = document.getElementById('modal-image');
+        const modalTitle = document.getElementById('modal-title');
+        const modalInfo = document.getElementById('modal-info');
+        
+        modalImage.src = imageUrl;
+        modalImage.alt = altText;
+        modalTitle.textContent = altText || 'Project Image';
+        modalInfo.textContent = 'Click outside to close';
+        
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closeImageModal = function() {
+        const modal = document.getElementById('image-view-modal');
+        modal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    };
+
+    window.deleteProjectImage = function(imageId, altText) {
+        if (!confirm(`Are you sure you want to delete "${altText}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        // Show loading state
+        const imageContainer = document.querySelector(`[data-image-id="${imageId}"]`);
+        if (imageContainer) {
+            imageContainer.style.opacity = '0.5';
+            imageContainer.style.pointerEvents = 'none';
+        }
+
+        fetch(`{{ route('admin.projects.index') }}/${PROJECT_ID}/images/${imageId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message || 'Image deleted successfully!', 'success');
+                
+                // Remove the image container with animation
+                if (imageContainer) {
+                    imageContainer.style.transform = 'scale(0.8)';
+                    imageContainer.style.opacity = '0';
+                    setTimeout(() => {
+                        imageContainer.remove();
+                        updateImageGrid();
+                    }, 300);
+                }
+                
+                markFormAsChanged();
+            } else {
+                showNotification(data.message || 'Failed to delete image', 'error');
+                // Restore image container
+                if (imageContainer) {
+                    imageContainer.style.opacity = '1';
+                    imageContainer.style.pointerEvents = 'auto';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('An error occurred while deleting the image', 'error');
+            // Restore image container
+            if (imageContainer) {
+                imageContainer.style.opacity = '1';
+                imageContainer.style.pointerEvents = 'auto';
+            }
+        });
+    };
+
+    window.setFeaturedImage = function(imageId) {
+        // Show loading state
+        const button = event.target;
+        const originalText = button.textContent;
+        button.textContent = 'Setting...';
+        button.disabled = true;
+
+        // Update all images to remove featured status visually
+        document.querySelectorAll('[data-image-id]').forEach(container => {
+            const featuredBadge = container.querySelector('.bg-blue-100');
+            if (featuredBadge) {
+                featuredBadge.remove();
+            }
+            
+            const setFeaturedBtn = container.querySelector('button');
+            if (setFeaturedBtn && setFeaturedBtn.textContent.includes('Set as Featured')) {
+                setFeaturedBtn.style.display = 'block';
+            }
+        });
+
+        // Add featured badge to selected image
+        const selectedContainer = document.querySelector(`[data-image-id="${imageId}"]`);
+        if (selectedContainer) {
+            const infoDiv = selectedContainer.querySelector('.flex.items-center.justify-between');
+            if (infoDiv) {
+                const featuredBadge = document.createElement('span');
+                featuredBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+                featuredBadge.innerHTML = `
+                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                    </svg>
+                    Featured
+                `;
+                infoDiv.replaceChild(featuredBadge, infoDiv.firstElementChild);
+            }
+            
+            // Hide the set featured button
+            const setFeaturedBtn = selectedContainer.querySelector('button');
+            if (setFeaturedBtn) {
+                setFeaturedBtn.style.display = 'none';
+            }
+        }
+
+        // Add hidden input to form to track featured image
+        let featuredInput = document.querySelector('input[name="featured_image_id"]');
+        if (!featuredInput) {
+            featuredInput = document.createElement('input');
+            featuredInput.type = 'hidden';
+            featuredInput.name = 'featured_image_id';
+            document.getElementById('project-form').appendChild(featuredInput);
+        }
+        featuredInput.value = imageId;
+
+        markFormAsChanged();
+        showNotification('Featured image updated! Save the project to make it permanent.', 'success');
+        
+        // Restore button
+        button.textContent = originalText;
+        button.disabled = false;
+    };
+
+    // Update image grid after deletions
+    function updateImageGrid() {
+        const grid = document.getElementById('current-images-grid');
+        const images = grid.querySelectorAll('[data-image-id]');
+        
+        // Update sort order numbers
+        images.forEach((img, index) => {
+            const orderSpan = img.querySelector('.text-xs.text-gray-500');
+            if (orderSpan && !orderSpan.textContent.includes('Featured')) {
+                orderSpan.textContent = `#${index + 1}`;
+            }
+        });
+        
+        // Update upload status based on remaining slots
+        const currentCount = images.length;
+        const newMaxImages = MAX_IMAGES - currentCount;
+        const statusElement = document.getElementById('upload-status');
+        if (statusElement) {
+            statusElement.textContent = `${uploadedFilesCount} / ${newMaxImages} new images can be added`;
+        }
+    }
+
+    // Handle traditional file input
+    const fileInput = document.getElementById('images');
+    const altTextFields = document.getElementById('alt-text-fields');
+    const altTextContainer = document.getElementById('alt-text-container');
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            altTextContainer.innerHTML = '';
+            
+            if (files.length > 0) {
+                // Check total file limit
+                const totalCurrentImages = CURRENT_IMAGES_COUNT + uploadedFilesCount;
+                if (totalCurrentImages + files.length > MAX_IMAGES) {
+                    showNotification(
+                        `Cannot select ${files.length} files. Maximum ${MAX_IMAGES} images allowed (${totalCurrentImages} already exist).`, 
+                        'warning'
+                    );
+                    e.target.value = '';
+                    return;
+                }
+                
+                altTextFields.style.display = 'block';
+                
+                const validFiles = [];
+                files.forEach((file, index) => {
+                    // Validate file type
+                    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+                    if (!allowedTypes.includes(file.type)) {
+                        showNotification(`File "${file.name}" is not a supported image format.`, 'error');
+                        return;
+                    }
+                    
+                    // Validate file size (2MB for traditional upload)
+                    if (file.size > 2 * 1024 * 1024) {
+                        showNotification(`File "${file.name}" is too large. Maximum size is 2MB for traditional upload.`, 'error');
+                        return;
+                    }
+                    
+                    validFiles.push({file, index});
+                });
+                
+                // Create alt text fields for valid files
+                validFiles.forEach(({file, index}) => {
+                    const div = document.createElement('div');
+                    div.className = 'mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg';
+                    div.innerHTML = `
+                        <div class="flex items-start space-x-3">
+                            <div class="flex-shrink-0">
+                                <div class="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    ${file.name} <span class="text-xs text-gray-500">(${formatFileSize(file.size)})</span>
+                                </label>
+                                <input type="text" 
+                                       name="image_alt_texts[]" 
+                                       placeholder="Describe this image for accessibility..."
+                                       class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md 
+                                              focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white"
+                                       value="Project image ${CURRENT_IMAGES_COUNT + uploadedFilesCount + index + 1}"
+                                       onchange="markFormAsChanged()">
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Additional image ${index + 1}
+                                </p>
                             </div>
                         </div>
                     `;
-                    container.insertAdjacentHTML('beforeend', preview);
-                };
-                reader.readAsDataURL(file);
+                    altTextContainer.appendChild(div);
+                });
+                
+                if (validFiles.length !== files.length) {
+                    showNotification(`${validFiles.length} of ${files.length} files are valid for upload.`, 'warning');
+                }
+                
+                markFormAsChanged();
+            } else {
+                altTextFields.style.display = 'none';
             }
         });
-    } else {
-        container.classList.add('hidden');
     }
-});
 
-// Form submission handler
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            // Basic form validation
-            const requiredFields = form.querySelectorAll('[required]');
-            let hasErrors = false;
-            
-            requiredFields.forEach(field => {
-                if (!field.value.trim()) {
-                    hasErrors = true;
-                    field.classList.add('border-red-500');
-                } else {
-                    field.classList.remove('border-red-500');
-                }
+    // Track changes in existing alt text fields
+    document.querySelectorAll('input[name^="existing_image_alt"]').forEach(input => {
+        input.addEventListener('change', markFormAsChanged);
+    });
+
+    // Form submission handling
+    const projectForm = document.getElementById('project-form');
+    if (projectForm) {
+        projectForm.addEventListener('submit', function(e) {
+            debugLog('Form submission started', {
+                uploaded_files: uploadedFilesCount,
+                total_files: totalFilesUploaded,
+                current_images: CURRENT_IMAGES_COUNT
             });
             
-            if (hasErrors) {
+            // Basic validation
+            const title = document.getElementById('title').value.trim();
+            const description = document.querySelector('[name="description"]').value.trim();
+            
+            if (!title) {
                 e.preventDefault();
-                alert('Please fill in all required fields.');
-                return false;
+                showNotification('Please enter a project title.', 'error');
+                document.getElementById('title').focus();
+                return;
             }
+            
+            if (!description) {
+                e.preventDefault();
+                showNotification('Please enter a project description.', 'error');
+                document.querySelector('[name="description"]').focus();
+                return;
+            }
+            
+            // Show loading state
+            const submitButtons = projectForm.querySelectorAll('button[type="submit"]');
+            submitButtons.forEach(button => {
+                button.disabled = true;
+                const originalText = button.dataset.originalText || button.textContent;
+                button.textContent = 'Updating Project...';
+                button.dataset.originalText = originalText;
+            });
+            
+            showNotification('Updating project, please wait...', 'info');
+            hasUnsavedChanges = false; // Prevent warning after successful submission
         });
     }
-    
-    // Set up existing image controls
-    document.querySelectorAll('.set-featured-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const imageId = this.dataset.imageId;
-            setFeaturedImage(imageId);
-        });
-    });
-    
-    document.querySelectorAll('.delete-image-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const imageId = this.dataset.imageId;
-            deleteImage(imageId);
-        });
-    });
-});
 
-function confirmDelete() {
-    document.getElementById('delete-project-modal').classList.remove('hidden');
-}
+    // Warn before leaving page with unsaved changes
+    window.addEventListener('beforeunload', function(e) {
+        if (hasUnsavedChanges) {
+            e.preventDefault();
+            e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+            return e.returnValue;
+        }
+    });
 
-let autoSaveTimeout;
-document.querySelectorAll('input, textarea, select').forEach(input => {
-    input.addEventListener('input', function() {
-        clearTimeout(autoSaveTimeout);
-        autoSaveTimeout = setTimeout(() => {
-            // Implement auto-save draft logic here if needed
-            console.log('Auto-saving draft...');
-        }, 5000); // Save after 5 seconds of inactivity
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + S to save
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            const submitButton = document.querySelector('button[type="submit"]');
+            if (submitButton && !submitButton.disabled) {
+                submitButton.click();
+            }
+        }
+        
+        // Escape to close modal
+        if (e.key === 'Escape') {
+            closeImageModal();
+        }
+    });
+
+    // Helper functions
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function showNotification(message, type = 'info') {
+        // Remove existing notifications of the same type
+        const existingNotifications = document.querySelectorAll(`.notification-toast.${type}`);
+        existingNotifications.forEach(notification => notification.remove());
+
+        const notification = document.createElement('div');
+        notification.className = `notification-toast ${type} fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl transition-all duration-300 transform translate-x-full max-w-sm border-l-4`;
+        
+        switch (type) {
+            case 'success':
+                notification.className += ' bg-green-50 border-green-400 text-green-800';
+                break;
+            case 'error':
+                notification.className += ' bg-red-50 border-red-400 text-red-800';
+                break;
+            case 'warning':
+                notification.className += ' bg-yellow-50 border-yellow-400 text-yellow-800';
+                break;
+            default:
+                notification.className += ' bg-blue-50 border-blue-400 text-blue-800';
+        }
+        
+        notification.innerHTML = `
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    ${getNotificationIcon(type)}
+                </div>
+                <div class="ml-3 flex-1">
+                    <p class="text-sm font-medium">${message}</p>
+                </div>
+                <div class="ml-4 flex-shrink-0">
+                    <button type="button" class="text-current hover:opacity-70 transition-opacity" onclick="this.closest('.notification-toast').remove()">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full');
+        }, 100);
+        
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                    }
+                }, 300);
+            }
+        }, type === 'error' ? 8000 : 6000);
+    }
+
+    function getNotificationIcon(type) {
+        const iconClass = 'w-5 h-5';
+        switch (type) {
+            case 'success':
+                return `<svg class="${iconClass} text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>`;
+            case 'error':
+                return `<svg class="${iconClass} text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                </svg>`;
+            case 'warning':
+                return `<svg class="${iconClass} text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                </svg>`;
+            default:
+                return `<svg class="${iconClass} text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>`;
+        }
+    }
+
+    // Initialize
+    updateUploadStatus();
+    
+    // Check for existing temp files on page load
+    fetch('{{ route('admin.projects.temp-files') }}', {
+        method: 'GET',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.files) {
+            uploadedFilesCount = data.files.length;
+            totalFilesUploaded = data.files;
+            updateUploadStatus();
+            
+            if (uploadedFilesCount > 0) {
+                showNotification(`Found ${uploadedFilesCount} previously uploaded new images.`, 'info');
+            }
+        }
+    })
+    .catch(error => {
+        debugLog('Error checking temp files', error);
     });
 });
 </script>

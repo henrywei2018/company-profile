@@ -2,7 +2,7 @@
 @props([
     'variant' => 'default', // default, minimal, gradient
     'companyProfile' => null,
-    'showNewsletter' => true,
+    'showNewsletter' => false,
     'showSocialMedia' => true
 ])
 
@@ -25,7 +25,7 @@
     <div class="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 relative overflow-hidden">
         {{-- Pattern Overlay --}}
         <div class="absolute inset-0 bg-black/10"></div>
-        <div class="absolute inset-0 animate-float" style="background-image: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%23ffffff" fill-opacity="0.05"><circle cx="30" cy="30" r="4"/></g></svg>'); background-size: 60px 60px;"></div>
+        
         
         <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
             <div class="max-w-2xl mx-auto text-center">
@@ -36,23 +36,7 @@
                     Get exclusive updates, industry insights, and special offers delivered directly to your inbox.
                 </p>
                 
-                {{-- Newsletter Form --}}
-                <form class="flex flex-col sm:flex-row gap-4 max-w-md mx-auto" action="{{ route('newsletter.subscribe') }}" method="POST">
-                    @csrf
-                    <div class="flex-1">
-                        <label for="newsletter-email" class="sr-only">Email address</label>
-                        <input type="email" 
-                               id="newsletter-email" 
-                               name="email" 
-                               required
-                               class="w-full px-6 py-3 bg-white/95 border border-white/20 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent backdrop-blur-sm transition-all duration-300"
-                               placeholder="Enter your email address">
-                    </div>
-                    <button type="submit" 
-                            class="px-8 py-3 bg-white text-orange-600 font-semibold rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-white/50 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
-                        Subscribe
-                    </button>
-                </form>
+                
                 
                 <p class="text-sm text-orange-200 mt-4">
                     We respect your privacy. Unsubscribe at any time.
@@ -128,6 +112,18 @@
                         </a>
                     </div>
                     @endif
+                    
+                {{-- Quick Contact CTA --}}
+                <div class="text-center md:text-left">
+                    <p class="text-sm text-gray-600 mb-3">Need immediate assistance?</p>
+                    <a href="{{ route('contact.index') }}" 
+                       class="inline-flex items-center gap-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-amber-600 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                        </svg>
+                        Contact Us Now
+                    </a>
+                </div>
                 </div>
             </div>
             
@@ -175,9 +171,9 @@
                         </a>
                     </li>
                     @endif
-                    @if(Route::has('contact'))
+                    @if(Route::has('contact.index'))
                     <li>
-                        <a href="{{ route('contact') }}" 
+                        <a href="{{ route('contact.index') }}" 
                            class="text-gray-600 hover:text-orange-600 transition-colors duration-300 flex items-center group">
                             <svg class="w-4 h-4 mr-2 text-orange-500 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -335,17 +331,6 @@
                     </div>
                 </div>
                 
-                {{-- Quick Contact CTA --}}
-                <div class="text-center md:text-right">
-                    <p class="text-sm text-gray-600 mb-3">Need immediate assistance?</p>
-                    <a href="{{ route('contact') }}" 
-                       class="inline-flex items-center gap-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-amber-600 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                        </svg>
-                        Contact Us Now
-                    </a>
-                </div>
             </div>
         </div>
         @endif
