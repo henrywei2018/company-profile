@@ -11,7 +11,7 @@ use App\Http\Controllers\{
     BlogController,
     ContactController,
     AboutController,
-    ServiceController,
+    ServicesController,
     TeamController,
     ChatController
 };
@@ -39,8 +39,8 @@ Route::prefix('about')->name('about.')->group(function () {
 });
 
 Route::prefix('services')->name('services.')->group(function () {
-    Route::get('/', [ServiceController::class, 'index'])->name('index');
-    Route::get('/{services:slug}', [ServiceController::class, 'show'])->name('show'); // ✅ Fix parameter
+    Route::get('/', [ServicesController::class, 'index'])->name('index');
+    Route::get('/{services:slug}', [ServicesController::class, 'show'])->name('show'); // ✅ Fix parameter
 });
 
 Route::prefix('portfolio')->name('portfolio.')->group(function () {
@@ -88,7 +88,7 @@ Route::prefix('api/chat')->group(function () {
 | Authenticated User Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth','admin')->group(function () {
+Route::middleware('auth')->group(function () {
     Route::get('/dashboard', function () {
         $user = auth()->user();
 
