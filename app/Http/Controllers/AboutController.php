@@ -16,7 +16,6 @@ class AboutController extends BaseController
     public function __construct()
     {
         parent::__construct();
-        $this->shareBaseData();
     }
     /**
      * Display the about page with data from database.

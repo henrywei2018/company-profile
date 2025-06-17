@@ -11,7 +11,7 @@ use App\Http\Controllers\{
     BlogController,
     ContactController,
     AboutController,
-    ServicesController,
+    ServiceController,
     TeamController,
     ChatController
 };
@@ -39,8 +39,8 @@ Route::prefix('about')->name('about.')->group(function () {
 });
 
 Route::prefix('services')->name('services.')->group(function () {
-    Route::get('/', [ServicesController::class, 'index'])->name('index');
-    Route::get('/{services:slug}', [ServicesController::class, 'show'])->name('show'); // ✅ Fix parameter
+    Route::get('/', [ServiceController::class, 'index'])->name('index');
+    Route::get('/{services:slug}', [ServiceController::class, 'show'])->name('show'); // ✅ Fix parameter
 });
 
 Route::prefix('portfolio')->name('portfolio.')->group(function () {
@@ -68,8 +68,8 @@ Route::prefix('contact')->name('contact.')->group(function () {
         ->name('store');
 });
 
-Route::prefix('quotation')->group(function () {
-    Route::get('/', [QuotationController::class, 'create'])->name('quotation.create');
+Route::prefix('quotation')->name('quotation.')->group(function () {
+    Route::get('/', [QuotationController::class, 'create'])->name('create');
     Route::post('/', [QuotationController::class, 'store'])->middleware('throttle:5,1')->name('quotation.store');
     Route::get('/thank-you', [QuotationController::class, 'thankYou'])->name('quotation.thank-you');
 });

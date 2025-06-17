@@ -13,7 +13,6 @@ class BlogController extends BaseController
     public function __construct()
     {
         parent::__construct();
-        $this->shareBaseData();
     }
     /**
      * Display the blog page with filtering, search, and pagination.

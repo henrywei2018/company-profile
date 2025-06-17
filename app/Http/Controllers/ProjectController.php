@@ -11,7 +11,6 @@ class ProjectController extends BaseController
     public function __construct()
     {
         parent::__construct();
-        $this->shareBaseData();
     }
 
     public function index(Request $request)

@@ -13,7 +13,6 @@ class ContactController extends BaseController
     public function __construct()
     {
         parent::__construct();
-        $this->shareBaseData();
     }
     /**
      * Display the contact page.

@@ -11,7 +11,6 @@ class PortfolioController extends BaseController
     public function __construct()
     {
         parent::__construct();
-        $this->shareBaseData();
     }
     // Menampilkan list project portfolio
     public function index(Request $request)
