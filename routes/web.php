@@ -65,7 +65,8 @@ Route::prefix('contact')->name('contact.')->group(function () {
     Route::get('/', [ContactController::class, 'index'])->name('index');
     Route::post('/', [ContactController::class, 'store'])
         ->middleware('throttle:10,1')
-        ->name('store');
+        ->name('store');        
+    Route::get('/thank-you', [ContactController::class, 'thankYou'])->name('thank-you');
 });
 
 Route::prefix('quotation')->name('quotation.')->group(function () {

@@ -90,6 +90,21 @@ class Service extends Model
     {
         return $query->where('featured', true);
     }
+    public function projects()
+{
+    return $this->hasMany(Project::class, 'service_id');
+}
+
+
+/**
+ * Get active completed projects that use this service.
+ */
+public function activeProjects()
+{
+    return $this->hasMany(Project::class, 'service_id')
+        ->where('is_active', true)
+        ->where('status', 'completed');
+}
     
     /**
      * Get icon URL.

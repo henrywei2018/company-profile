@@ -1,11 +1,12 @@
 <?php
-// File: app/Http/Controllers/PortfolioController.php
 
 namespace App\Http\Controllers;
 
 use App\Models\Project;
 use App\Models\ProjectCategory;
+use App\Models\Service;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class PortfolioController extends BaseController
 {
@@ -14,87 +15,180 @@ class PortfolioController extends BaseController
         parent::__construct();
     }
 
+    /**
+     * Display the portfolio index page with filtering
+     */
     public function index(Request $request)
     {
-        // Set page meta
+        // Set page meta for SEO
         $this->setPageMeta(
-            'Portfolio - ' . $this->siteConfig['site_title'],
-            'Browse our completed projects and portfolio showcasing our expertise and quality work.',
-            'portfolio, projects, completed work, showcase'
+            'Our Portfolio - ' . $this->siteConfig['site_title'],
+            'Explore our completed construction and engineering projects. See the quality and craftsmanship we deliver.',
+            'construction portfolio, completed projects, construction gallery, engineering projects',
+            asset($this->siteConfig['site_logo'])
         );
 
-        // Set breadcrumb
-        $this->setBreadcrumb([
-            ['name' => 'Portfolio', 'url' => route('portfolio.index')]
-        ]);
+        // Get filter parameters
+        $category = $request->get('category');
+        $service = $request->get('service');
+        $year = $request->get('year');
+        $search = $request->get('search');
+        $sortBy = $request->get('sort', 'latest');
+        $perPage = $request->get('per_page', 12);
 
-        // Ambil semua kategori dengan project count
-        $categories = ProjectCategory::withCount(['activeProjects'])->get();
-
-        // Query project dengan filter
-        $query = Project::query()
-            ->where('is_active', true)
+        // Build projects query
+        $projectsQuery = Project::where('is_active', true)
             ->where('status', 'completed')
-            ->with(['category', 'images']);
+            ->with(['category', 'service', 'client', 'images']);
 
-        if ($request->filled('category')) {
-            $category = ProjectCategory::where('slug', $request->category)->first();
-            if ($category) {
-                $query->where('project_category_id', $category->id);
-            }
+        // Apply search filter
+        if ($search) {
+            $projectsQuery->where(function($query) use ($search) {
+                $query->where('title', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%")
+                      ->orWhere('location', 'like', "%{$search}%");
+            });
         }
 
-        $projects = $query->orderByDesc('featured')
-                         ->latest('end_date')
-                         ->paginate(9);
+        // Apply category filter
+        if ($category && $category !== 'all') {
+            $projectsQuery->whereHas('category', function($query) use ($category) {
+                $query->where('slug', $category);
+            });
+        }
+
+        // Apply service filter
+        if ($service && $service !== 'all') {
+            $projectsQuery->whereHas('service', function($query) use ($service) {
+                $query->where('slug', $service);
+            });
+        }
+
+        // Apply year filter
+        if ($year && $year !== 'all') {
+            $projectsQuery->where('year', $year);
+        }
+
+        // Apply sorting
+        switch ($sortBy) {
+            case 'title':
+                $projectsQuery->orderBy('title', 'asc');
+                break;
+            case 'oldest':
+                $projectsQuery->orderBy('created_at', 'asc');
+                break;
+            case 'featured':
+                $projectsQuery->orderBy('featured', 'desc')
+                             ->orderBy('created_at', 'desc');
+                break;
+            case 'latest':
+            default:
+                $projectsQuery->orderBy('created_at', 'desc');
+                break;
+        }
+
+        // Get paginated projects
+        $projects = $projectsQuery->paginate($perPage)->withQueryString();
+
+        // Get featured projects for hero section
+        $featuredProjects = Cache::remember('featured_projects_portfolio', 1800, function () {
+            return Project::where('is_active', true)
+                ->where('status', 'completed')
+                ->where('featured', true)
+                ->with(['category', 'service'])
+                ->orderBy('created_at', 'desc')
+                ->limit(3)
+                ->get();
+        });
+
+        // Get categories for filter
+        $categories = Cache::remember('project_categories_filter', 1800, function () {
+            return ProjectCategory::where('is_active', true)
+                ->withCount(['activeProjects'])
+                ->orderBy('name', 'asc')
+                ->get();
+        });
+
+        // Get services for filter
+        $services = Cache::remember('services_for_projects', 1800, function () {
+            return Service::where('is_active', true)
+                ->whereHas('projects', function($query) {
+                    $query->where('is_active', true)->where('status', 'completed');
+                })
+                ->orderBy('title', 'asc')
+                ->get();
+        });
+
+        // Get available years
+        $years = Cache::remember('project_years', 1800, function () {
+            return Project::where('is_active', true)
+                ->where('status', 'completed')
+                ->whereNotNull('year')
+                ->distinct()
+                ->orderBy('year', 'desc')
+                ->pluck('year');
+        });
+
+        // Get portfolio statistics
+        $stats = [
+            'total_projects' => Project::where('status', 'completed')->count(),
+            'active_categories' => ProjectCategory::where('is_active', true)->count(),
+            'satisfied_clients' => Project::where('status', 'completed')->distinct('client_id')->count('client_id'),
+            'years_experience' => now()->year - 2010, // Adjust base year as needed
+        ];
 
         return view('pages.portfolio.index', compact(
             'projects',
-            'categories'
+            'featuredProjects',
+            'categories',
+            'services',
+            'years',
+            'stats',
+            'search',
+            'category',
+            'service',
+            'year',
+            'sortBy'
         ));
     }
 
-    public function show(Project $project)
+    /**
+     * Display a specific project
+     */
+    public function show($slug)
     {
-        // Hanya tampilkan project yang aktif & completed
-        if (!$project->is_active || $project->status !== 'completed') {
-            abort(404);
-        }
+        // Find project by slug
+        $project = Project::where('slug', $slug)
+            ->where('is_active', true)
+            ->where('status', 'completed')
+            ->with(['category', 'service', 'client', 'images', 'milestones' => function($query) {
+                $query->orderBy('sort_order', 'asc')->orderBy('due_date', 'asc');
+            }])
+            ->firstOrFail();
 
-        // Set page meta
+        // Set page meta for SEO
         $this->setPageMeta(
-            $project->title . ' - Portfolio',
-            $project->description,
-            'project, portfolio, ' . $project->title
+            $project->title . ' - Portfolio - ' . $this->siteConfig['site_title'],
+            $project->short_description ?: 'View details of our ' . $project->title . ' project.',
+            $project->title . ', construction project, portfolio',
+            $project->featured_image_url ?: asset($this->siteConfig['site_logo'])
         );
 
-        // Set breadcrumb
-        $this->setBreadcrumb([
-            ['name' => 'Portfolio', 'url' => route('portfolio.index')],
-            ['name' => $project->title, 'url' => route('portfolio.show', $project->slug)]
-        ]);
-
-        // Load relasi
-        $project->load([
-            'category',
-            'client',
-            'images' => function ($query) {
-                $query->orderBy('sort_order')->orderBy('created_at');
-            },
-            'testimonials' => function ($query) {
-                $query->where('is_active', true)->where('featured', true);
-            }
-        ]);
-
-        // Ambil project terkait
+        // Get related projects
         $relatedProjects = Project::where('is_active', true)
             ->where('status', 'completed')
             ->where('id', '!=', $project->id)
-            ->when($project->project_category_id, function ($query) use ($project) {
-                $query->where('project_category_id', $project->project_category_id);
+            ->where(function($query) use ($project) {
+                if ($project->category_id) {
+                    $query->where('category_id', $project->category_id);
+                } elseif ($project->service_id) {
+                    $query->where('service_id', $project->service_id);
+                } else {
+                    $query->where('featured', true);
+                }
             })
-            ->with(['category', 'images'])
-            ->orderByDesc('featured')
+            ->with(['category', 'service'])
+            ->orderBy('featured', 'desc')
             ->limit(3)
             ->get();
 

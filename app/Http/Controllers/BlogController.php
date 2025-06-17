@@ -1,5 +1,4 @@
 <?php
-// File: app/Http/Controllers/BlogController.php
 
 namespace App\Http\Controllers;
 
@@ -19,53 +18,65 @@ class BlogController extends BaseController
         // Set page meta
         $this->setPageMeta(
             'Blog - ' . $this->siteConfig['site_title'],
-            'Read our latest insights, industry news, and project updates.',
-            'blog, news, insights, articles'
+            'Read our latest insights, industry news, and project updates from our construction and engineering experts.',
+            'blog, construction news, engineering insights, project updates',
+            asset($this->siteConfig['site_logo'])
         );
 
-        // Set breadcrumb
-        $this->setBreadcrumb([
-            ['name' => 'Blog', 'url' => route('blog.index')]
-        ]);
+        // Get filter parameters
+        $search = $request->get('search');
+        $category = $request->get('category');
+        $sortBy = $request->get('sort', 'latest');
+        $perPage = $request->get('per_page', 9);
 
-        // Build query dengan filter
-        $query = Post::published()->with(['author', 'categories']);
+        // Build posts query
+        $postsQuery = Post::published()
+            ->with(['author', 'categories']);
 
-        if ($request->filled('category')) {
-            $query->whereHas('categories', function ($q) use ($request) {
-                $q->where('slug', $request->category);
+        // Apply search filter
+        if ($search) {
+            $postsQuery->where(function ($query) use ($search) {
+                $query->where('title', 'like', "%{$search}%")
+                      ->orWhere('excerpt', 'like', "%{$search}%")
+                      ->orWhere('content', 'like', "%{$search}%");
             });
         }
 
-        if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('title', 'like', '%' . $request->search . '%')
-                  ->orWhere('excerpt', 'like', '%' . $request->search . '%')
-                  ->orWhere('content', 'like', '%' . $request->search . '%');
+        // Apply category filter
+        if ($category && $category !== 'all') {
+            $postsQuery->whereHas('categories', function ($query) use ($category) {
+                $query->where('slug', $category);
             });
-        }
-
-        if ($request->filled('featured') && $request->featured == '1') {
-            $query->featured();
         }
 
         // Apply sorting
-        $sortBy = $request->get('sort', 'latest');
         switch ($sortBy) {
             case 'oldest':
-                $query->oldest('published_at');
+                $postsQuery->oldest('published_at');
                 break;
+            case 'title':
+                $postsQuery->orderBy('title', 'asc');
+                break;
+            case 'featured':
+                $postsQuery->orderBy('featured', 'desc')
+                          ->orderBy('published_at', 'desc');
+                break;
+            case 'latest':
             default:
-                $query->latest('published_at');
+                $postsQuery->latest('published_at');
+                break;
         }
 
-        $posts = $query->paginate(12)->withQueryString();
+        // Get paginated posts
+        $posts = $postsQuery->paginate($perPage)->withQueryString();
 
-        // Sidebar data
-        $categories = PostCategory::withCount(['publishedPosts'])
-            ->orderBy('name')
+        // Get categories for filter dropdown
+        $categories = PostCategory::withPublishedPostsCount()
+            ->hasPublishedPosts()
+            ->orderBy('name', 'asc')
             ->get();
 
+        // Sidebar data
         $recentPosts = Post::published()
             ->with(['author', 'categories'])
             ->latest('published_at')
@@ -75,52 +86,80 @@ class BlogController extends BaseController
         $featuredPosts = Post::published()
             ->featured()
             ->with(['author', 'categories'])
+            ->latest('published_at')
             ->limit(3)
             ->get();
+
+        // Blog statistics
+        $stats = [
+            'total_posts' => Post::published()->count(),
+            'total_categories' => $categories->count(),
+            'this_month_posts' => Post::published()
+                ->whereMonth('published_at', now()->month)
+                ->whereYear('published_at', now()->year)
+                ->count(),
+        ];
 
         return view('pages.blog.index', compact(
             'posts',
             'categories',
             'recentPosts',
-            'featuredPosts'
+            'featuredPosts',
+            'stats',
+            'search',
+            'category',
+            'sortBy'
         ));
     }
 
     public function show(Post $post)
     {
         // Check if post is published
-        if (!$post->is_published) {
+        if ($post->status !== 'published' || $post->published_at > now()) {
             abort(404);
         }
 
         // Set page meta
         $this->setPageMeta(
-            $post->title,
-            $post->excerpt,
-            'blog, article, ' . $post->title
+            $post->title . ' - ' . $this->siteConfig['site_title'],
+            $post->excerpt ?: strip_tags(substr($post->content, 0, 160)),
+            'blog, article, ' . $post->categories->pluck('name')->implode(', '),
+            $post->featured_image ? asset('storage/' . $post->featured_image) : asset($this->siteConfig['site_logo'])
         );
-
-        // Set breadcrumb
-        $this->setBreadcrumb([
-            ['name' => 'Blog', 'url' => route('blog.index')],
-            ['name' => $post->title, 'url' => route('blog.show', $post->slug)]
-        ]);
 
         $post->load(['author', 'categories']);
 
-        // Get related posts
+        // Get related posts (same categories or featured)
         $relatedPosts = Post::published()
             ->where('id', '!=', $post->id)
-            ->whereHas('categories', function ($query) use ($post) {
-                $query->whereIn('categories.id', $post->categories->pluck('id'));
+            ->where(function($query) use ($post) {
+                $query->whereHas('categories', function ($q) use ($post) {
+                    $q->whereIn('post_categories.id', $post->categories->pluck('id'));
+                })->orWhere('featured', true);
             })
             ->with(['author', 'categories'])
+            ->latest('published_at')
             ->limit(3)
+            ->get();
+
+        // Sidebar data for single post
+        $recentPosts = Post::published()
+            ->where('id', '!=', $post->id)
+            ->with(['author', 'categories'])
+            ->latest('published_at')
+            ->limit(5)
+            ->get();
+
+        $categories = PostCategory::withPublishedPostsCount()
+            ->hasPublishedPosts()
+            ->orderBy('name', 'asc')
             ->get();
 
         return view('pages.blog.show', compact(
             'post',
-            'relatedPosts'
+            'relatedPosts',
+            'recentPosts',
+            'categories'
         ));
     }
 }

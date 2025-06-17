@@ -22,12 +22,6 @@ class AboutController extends BaseController
             $this->companyProfile->about ?? 'Learn more about our company.',
             'about us, company profile, team, vision, mission'
         );
-
-        // Set breadcrumb
-        $this->setBreadcrumb([
-            ['name' => 'About', 'url' => route('about.index')]
-        ]);
-        
         // Get featured team members
         $featuredTeamMembers = TeamMember::with('department')
             ->active()
@@ -65,12 +59,6 @@ class AboutController extends BaseController
             'Meet our professional team members and their expertise.',
             'team, staff, professionals, expertise'
         );
-
-        // Set breadcrumb
-        $this->setBreadcrumb([
-            ['name' => 'About', 'url' => route('about.index')],
-            ['name' => 'Team', 'url' => route('about.team')]
-        ]);
 
         // Get team members by department
         $departments = TeamMemberDepartment::with(['activeTeamMembers' => function ($query) {

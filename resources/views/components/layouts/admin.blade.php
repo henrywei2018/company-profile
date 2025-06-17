@@ -39,7 +39,19 @@
     @stack('styles')
 
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script>
+        // Quick theme check before page load to prevent flashing
+        const html = document.querySelector('html');
+        const isLightOrAuto = localStorage.getItem('hs_theme') === 'light' || (localStorage.getItem('hs_theme') ===
+            'auto' && !window.matchMedia('(prefers-color-scheme: dark)').matches);
+        const isDarkOrAuto = localStorage.getItem('hs_theme') === 'dark' || (localStorage.getItem('hs_theme') === 'auto' &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches);
 
+        if (isLightOrAuto && html.classList.contains('dark')) html.classList.remove('dark');
+        else if (isDarkOrAuto && html.classList.contains('light')) html.classList.remove('light');
+        else if (isDarkOrAuto && !html.classList.contains('dark')) html.classList.add('dark');
+        else if (isLightOrAuto && !html.classList.contains('light')) html.classList.add('light');
+    </script>
     @if ($enableCharts)
         <!-- Apexcharts -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.css">

@@ -1,286 +1,413 @@
-<x-layouts.public 
-    :title="$seoData['title']"
-    :description="$seoData['description']"
-    :keywords="$seoData['keywords']"
-    :breadcrumbs="$seoData['breadcrumbs']"
+{{-- resources/views/pages/blog/index.blade.php --}}
+<x-layouts.public
+    title="Blog - {{ $siteConfig['site_title'] }}"
+    description="Read our latest insights, industry news, and project updates from our construction and engineering experts."
+    keywords="blog, construction news, engineering insights, project updates"
+    type="website"
 >
 
-    <!-- Hero Section -->
-    <div class="max-w-[85rem] px-4 py-10 sm:px-6 lg:px-8 lg:py-14 mx-auto">
-        <div class="max-w-2xl mx-auto text-center mb-10 lg:mb-14">
-            <h1 class="text-3xl font-bold md:text-4xl md:leading-tight dark:text-white">Our Blog</h1>
-            <p class="mt-3 text-gray-800 dark:text-gray-200">
-                Insights, updates, and expertise from CV Usaha Prima Lestari
+{{-- Hero Section --}}
+<section class="relative pt-32 pb-16 bg-gradient-to-br from-orange-50 via-white to-amber-50 overflow-hidden">
+    {{-- Background Pattern --}}
+    <div class="absolute inset-0 bg-[url('/images/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
+    
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
+        {{-- Breadcrumbs --}}
+        <nav class="flex mb-8" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="{{ route('home') }}" class="text-gray-700 hover:text-orange-600 inline-flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                        </svg>
+                        Home
+                    </a>
+                </li>
+                <li aria-current="page">
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="ml-1 text-orange-600 md:ml-2 font-medium">Blog</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+
+        <div class="text-center">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+                Our 
+                <span class="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+                    Blog
+                </span>
+            </h1>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+                Stay updated with the latest insights, industry news, and project updates from our construction and engineering experts.
             </p>
+            
+            {{-- Quick Stats --}}
+            <div class="flex justify-center gap-8 text-sm text-gray-600">
+                <div class="flex items-center">
+                    <svg class="w-4 h-4 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+                    </svg>
+                    {{ $stats['total_posts'] }} Articles
+                </div>
+                <div class="flex items-center">
+                    <svg class="w-4 h-4 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                    </svg>
+                    {{ $stats['total_categories'] }} Categories
+                </div>
+                <div class="flex items-center">
+                    <svg class="w-4 h-4 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    {{ $stats['this_month_posts'] }} This Month
+                </div>
+            </div>
         </div>
+    </div>
+</section>
 
-        <div class="grid lg:grid-cols-4 gap-8">
-            <!-- Main Content -->
+{{-- Main Content --}}
+<section class="py-16 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {{-- Main Content Area --}}
             <div class="lg:col-span-3">
-                <!-- Filters & Search -->
-                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-orange-200 dark:border-slate-700 p-6 mb-8">
-                    <form method="GET" action="{{ route('blog.index') }}" class="grid md:grid-cols-4 gap-4">
-                        <!-- Search -->
-                        <div>
-                            <input 
-                                type="text" 
-                                name="search" 
-                                placeholder="Search articles..."
-                                value="{{ request('search') }}"
-                                class="w-full px-4 py-2 border border-orange-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-slate-700 dark:text-white"
-                            >
+                {{-- Filter Bar --}}
+                <div class="bg-gray-50 rounded-2xl p-6 mb-8">
+                    <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        {{-- Search Input --}}
+                        <div class="md:col-span-2">
+                            <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
+                                Search Articles
+                            </label>
+                            <div class="relative">
+                                <input type="text" 
+                                       id="search" 
+                                       name="search" 
+                                       value="{{ $search }}"
+                                       placeholder="Search by title, content..."
+                                       class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </div>
                         </div>
-
-                        <!-- Category Filter -->
+                        
+                        {{-- Category Filter --}}
                         <div>
-                            <select name="category" class="w-full px-4 py-2 border border-orange-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-slate-700 dark:text-white">
-                                <option value="">All Categories</option>
-                                @foreach($categories as $category)
-                                    <option value="{{ $category->slug }}" {{ request('category') == $category->slug ? 'selected' : '' }}>
-                                        {{ $category->name }} ({{ $category->published_posts_count }})
-                                    </option>
+                            <label for="category" class="block text-sm font-medium text-gray-700 mb-2">
+                                Category
+                            </label>
+                            <select id="category" 
+                                    name="category" 
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                <option value="all" {{ $category === 'all' ? 'selected' : '' }}>All Categories</option>
+                                @foreach($categories as $cat)
+                                <option value="{{ $cat->slug }}" {{ $category === $cat->slug ? 'selected' : '' }}>
+                                    {{ $cat->name }} ({{ $cat->published_posts_count }})
+                                </option>
                                 @endforeach
                             </select>
                         </div>
-
-                        <!-- Sort -->
+                        
+                        {{-- Sort Filter --}}
                         <div>
-                            <select name="sort" class="w-full px-4 py-2 border border-orange-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-slate-700 dark:text-white">
-                                <option value="latest" {{ request('sort') == 'latest' ? 'selected' : '' }}>Latest</option>
-                                <option value="oldest" {{ request('sort') == 'oldest' ? 'selected' : '' }}>Oldest</option>
-                                <option value="popular" {{ request('sort') == 'popular' ? 'selected' : '' }}>Popular</option>
+                            <label for="sort" class="block text-sm font-medium text-gray-700 mb-2">
+                                Sort By
+                            </label>
+                            <select id="sort" 
+                                    name="sort" 
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                <option value="latest" {{ $sortBy === 'latest' ? 'selected' : '' }}>Latest First</option>
+                                <option value="oldest" {{ $sortBy === 'oldest' ? 'selected' : '' }}>Oldest First</option>
+                                <option value="title" {{ $sortBy === 'title' ? 'selected' : '' }}>Title A-Z</option>
+                                <option value="featured" {{ $sortBy === 'featured' ? 'selected' : '' }}>Featured First</option>
                             </select>
                         </div>
-
-                        <!-- Submit & Featured Filter -->
-                        <div class="flex gap-2">
-                            <button type="submit" class="flex-1 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors">
-                                Filter
-                            </button>
-                            <label class="flex items-center">
-                                <input type="checkbox" name="featured" value="1" {{ request('featured') == '1' ? 'checked' : '' }} class="mr-2">
-                                <span class="text-sm dark:text-gray-300">Featured</span>
-                            </label>
-                        </div>
                     </form>
-
-                    <!-- Active Filters -->
-                    @if(request()->hasAny(['search', 'category', 'featured', 'sort']))
-                        <div class="mt-4 pt-4 border-t border-orange-200 dark:border-slate-600">
-                            <div class="flex flex-wrap gap-2 items-center">
-                                <span class="text-sm text-gray-600 dark:text-gray-400">Active filters:</span>
-                                
-                                @if(request('search'))
-                                    <span class="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900 text-orange-800 dark:text-orange-200 text-sm rounded-full">
-                                        Search: "{{ request('search') }}"
-                                        <a href="{{ request()->fullUrlWithoutQuery('search') }}" class="ml-2 hover:text-orange-600">×</a>
-                                    </span>
-                                @endif
-
-                                @if(request('category'))
-                                    <span class="inline-flex items-center px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-sm rounded-full">
-                                        Category: {{ $categories->where('slug', request('category'))->first()?->name }}
-                                        <a href="{{ request()->fullUrlWithoutQuery('category') }}" class="ml-2 hover:text-green-600">×</a>
-                                    </span>
-                                @endif
-
-                                @if(request('featured'))
-                                    <span class="inline-flex items-center px-3 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-sm rounded-full">
-                                        Featured Only
-                                        <a href="{{ request()->fullUrlWithoutQuery('featured') }}" class="ml-2 hover:text-yellow-600">×</a>
-                                    </span>
-                                @endif
-
-                                <a href="{{ route('blog.index') }}" class="text-sm text-red-600 dark:text-red-400 hover:underline">Clear all</a>
-                            </div>
-                        </div>
+                    
+                    {{-- Filter Actions --}}
+                    <div class="flex flex-col sm:flex-row gap-4 mt-6">
+                        <button type="submit" 
+                                form="filter-form"
+                                class="inline-flex items-center justify-center px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-colors">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                            </svg>
+                            Apply Filters
+                        </button>
+                        <a href="{{ route('blog.index') }}" 
+                           class="inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            Clear All
+                        </a>
+                    </div>
+                    
+                    {{-- Results Summary --}}
+                    @if($search || $category !== 'all')
+                    <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+                        <p class="text-sm text-blue-800">
+                            Showing {{ $posts->count() }} of {{ $posts->total() }} articles
+                            @if($search)
+                                for "<strong>{{ $search }}</strong>"
+                            @endif
+                            @if($category && $category !== 'all')
+                                in <strong>{{ $categories->where('slug', $category)->first()?->name }}</strong>
+                            @endif
+                        </p>
+                    </div>
                     @endif
                 </div>
 
-                <!-- Posts Results -->
-                @if($posts->isNotEmpty())
-                    <!-- Results Info -->
-                    <div class="flex justify-between items-center mb-6">
-                        <p class="text-gray-600 dark:text-gray-400">
-                            Showing {{ $posts->firstItem() }}-{{ $posts->lastItem() }} of {{ $posts->total() }} articles
-                        </p>
-                    </div>
-
-                    <!-- Posts Grid -->
-                    <div class="grid md:grid-cols-2 gap-6 mb-8">
-                        @foreach($posts as $post)
-                            <article class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-orange-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-all duration-300 group">
-                                @if($post->featured_image_url)
-                                    <div class="aspect-video overflow-hidden">
-                                        <img 
-                                            src="{{ $post->featured_image_url }}" 
-                                            alt="{{ $post->title }}"
-                                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                        >
-                                    </div>
-                                @endif
-                                
-                                <div class="p-6">
-                                    <!-- Meta Info -->
-                                    <div class="flex items-center gap-4 mb-3 text-sm text-gray-500 dark:text-gray-400">
-                                        <time datetime="{{ $post->published_at->toISOString() }}">
-                                            {{ $post->published_at->format('M d, Y') }}
-                                        </time>
-                                        <span>{{ $post->reading_time }} min read</span>
-                                        @if($post->featured)
-                                            <span class="inline-flex items-center px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-xs rounded-full">
-                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                                </svg>
-                                                Featured
-                                            </span>
-                                        @endif
-                                    </div>
-
-                                    <!-- Categories -->
-                                    @if($post->categories->isNotEmpty())
-                                        <div class="mb-3">
-                                            @foreach($post->categories->take(2) as $category)
-                                                <span class="inline-block bg-blue-100 dark:bg-blue-900 text-orange-800 dark:text-orange-200 text-xs px-2 py-1 rounded-full mr-2">
-                                                    {{ $category->name }}
-                                                </span>
-                                            @endforeach
-                                        </div>
-                                    @endif
-
-                                    <!-- Title -->
-                                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                                        <a href="{{ route('blog.show', $post->slug) }}">{{ $post->title }}</a>
-                                    </h2>
-
-                                    <!-- Excerpt -->
-                                    @if($post->excerpt)
-                                        <p class="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3">{{ $post->excerpt }}</p>
-                                    @endif
-
-                                    <!-- Author & Read More -->
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center">
-                                            <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                                                {{ substr($post->author->name, 0, 1) }}
-                                            </div>
-                                            <span class="ml-2 text-sm text-gray-600 dark:text-gray-300">{{ $post->author->name }}</span>
-                                        </div>
-                                        <a href="{{ route('blog.show', $post->slug) }}" class="inline-flex items-center gap-x-1 text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 text-sm font-medium">
-                                            Read more
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                            </svg>
-                                        </a>
-                                    </div>
-                                </div>
-                            </article>
-                        @endforeach
-                    </div>
-
-                    <!-- Pagination -->
-                    @if($posts->hasPages())
-                        <div class="flex justify-center">
-                            {{ $posts->links() }}
-                        </div>
-                    @endif
-                @else
-                    <!-- Empty State -->
-                    <div class="text-center py-16">
-                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
-                        </svg>
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No articles found</h3>
-                        <p class="text-gray-500 dark:text-gray-400 mb-6">
-                            @if(request()->hasAny(['search', 'category', 'featured']))
-                                Try adjusting your filters or search terms.
+                {{-- Posts Grid --}}
+                @if($posts && $posts->count() > 0)
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+                    @foreach($posts as $post)
+                    <article class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-2">
+                        {{-- Post Image --}}
+                        <div class="relative h-48 overflow-hidden">
+                            @if($post->featured_image)
+                                <img src="{{ asset('storage/' . $post->featured_image) }}" 
+                                     alt="{{ $post->title }}" 
+                                     class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                             @else
-                                Check back soon for our latest insights and updates.
+                                <div class="w-full h-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center">
+                                    <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+                                    </svg>
+                                </div>
                             @endif
-                        </p>
-                        @if(request()->hasAny(['search', 'category', 'featured']))
-                            <a href="{{ route('blog.index') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                                Clear Filters
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                            
+                            {{-- Featured Badge --}}
+                            @if($post->featured)
+                            <div class="absolute top-3 left-3">
+                                <span class="bg-orange-500 text-white px-2 py-1 rounded-lg text-xs font-medium">
+                                    Featured
+                                </span>
+                            </div>
+                            @endif
+                            
+                            {{-- Categories --}}
+                            @if($post->categories->count() > 0)
+                            <div class="absolute top-3 right-3">
+                                <span class="bg-white/90 text-gray-800 px-2 py-1 rounded-lg text-xs font-medium">
+                                    {{ $post->categories->first()->name }}
+                                </span>
+                            </div>
+                            @endif
+                        </div>
+                        
+                        {{-- Post Content --}}
+                        <div class="p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-3 group-hover:text-orange-600 transition-colors line-clamp-2">
+                                <a href="{{ route('blog.show', $post->slug) }}">
+                                    {{ $post->title }}
+                                </a>
+                            </h2>
+                            
+                            @if($post->excerpt)
+                            <p class="text-gray-600 mb-4 line-clamp-3">
+                                {{ $post->excerpt }}
+                            </p>
+                            @endif
+                            
+                            {{-- Post Meta --}}
+                            <div class="flex items-center justify-between text-sm text-gray-500 mb-4">
+                                <div class="flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                    </svg>
+                                    {{ $post->author->name }}
+                                </div>
+                                <div class="flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    {{ $post->published_at->format('M j, Y') }}
+                                </div>
+                            </div>
+                            
+                            {{-- Read More Button --}}
+                            <a href="{{ route('blog.show', $post->slug) }}" 
+                               class="inline-flex items-center justify-center w-full px-4 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-semibold rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 transform hover:scale-105">
+                                Read Article
+                                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                                </svg>
                             </a>
-                        @endif
-                    </div>
+                        </div>
+                    </article>
+                    @endforeach
+                </div>
+                
+                {{-- Pagination --}}
+                @if($posts->hasPages())
+                <div class="flex justify-center">
+                    {{ $posts->links() }}
+                </div>
+                @endif
+                @else
+                {{-- No Posts Found --}}
+                <div class="text-center py-12">
+                    <svg class="w-24 h-24 text-gray-300 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+                    </svg>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">No Articles Found</h3>
+                    <p class="text-gray-600 mb-8">
+                        We couldn't find any articles matching your criteria. Try adjusting your search or filters.
+                    </p>
+                    <a href="{{ route('blog.index') }}" 
+                       class="inline-flex items-center px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-colors">
+                        View All Articles
+                    </a>
+                </div>
                 @endif
             </div>
-
-            <!-- Sidebar -->
-            <aside class="lg:col-span-1 space-y-6">
-                <!-- Featured Posts -->
-                @if($featuredPosts->isNotEmpty())
-                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-orange-200 dark:border-slate-700 p-6">
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Featured Posts</h3>
-                        <div class="space-y-4">
-                            @foreach($featuredPosts as $featured)
-                                <article class="group">
-                                    @if($featured->featured_image_url)
-                                        <div class="aspect-video overflow-hidden rounded-lg mb-3">
-                                            <img src="{{ $featured->featured_image_url }}" alt="{{ $featured->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+            
+            {{-- Sidebar --}}
+            <div class="lg:col-span-1">
+                {{-- Featured Posts --}}
+                @if($featuredPosts && $featuredPosts->count() > 0)
+                <div class="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-6 mb-8 border border-orange-100">
+                    <h3 class="text-xl font-bold text-gray-900 mb-6">Featured Articles</h3>
+                    <div class="space-y-4">
+                        @foreach($featuredPosts as $featured)
+                        <article class="group">
+                            <div class="flex gap-4">
+                                <div class="w-20 h-20 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex-shrink-0 overflow-hidden">
+                                    @if($featured->featured_image)
+                                        <img src="{{ asset('storage/' . $featured->featured_image) }}" 
+                                             alt="{{ $featured->title }}" 
+                                             class="w-full h-full object-cover">
+                                    @else
+                                        <div class="w-full h-full flex items-center justify-center">
+                                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+                                            </svg>
                                         </div>
                                     @endif
-                                    <h4 class="font-medium text-gray-900 dark:text-gray-100 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors mb-1">
-                                        <a href="{{ route('blog.show', $featured->slug) }}">{{ Str::limit($featured->title, 60) }}</a>
-                                    </h4>
-                                    <time class="text-xs text-gray-500 dark:text-gray-400">{{ $featured->published_at->format('M d, Y') }}</time>
-                                </article>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                <!-- Categories -->
-                @if($categories->isNotEmpty())
-                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-orange-200 dark:border-slate-700 p-6">
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Categories</h3>
-                        <div class="space-y-2">
-                            @foreach($categories as $category)
-                                <a href="{{ route('blog.index', ['category' => $category->slug]) }}" 
-                                   class="flex items-center justify-between py-2 px-3 rounded-lg text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors {{ request('category') == $category->slug ? 'bg-blue-50 dark:bg-blue-900/20 text-orange-600 dark:text-orange-400' : '' }}">
-                                    <span>{{ $category->name }}</span>
-                                    <span class="bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-gray-300 text-xs px-2 py-1 rounded-full">
-                                        {{ $category->published_posts_count }}
-                                    </span>
-                                </a>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                <!-- Recent Posts -->
-                @if($recentPosts->isNotEmpty())
-                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-orange-200 dark:border-slate-700 p-6">
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Recent Posts</h3>
-                        <div class="space-y-4">
-                            @foreach($recentPosts as $recent)
-                                <article class="group">
-                                    <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors mb-1">
-                                        <a href="{{ route('blog.show', $recent->slug) }}">{{ Str::limit($recent->title, 60) }}</a>
-                                    </h4>
-                                    <time class="text-xs text-gray-500 dark:text-gray-400">{{ $recent->published_at->format('M d, Y') }}</time>
-                                </article>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                <!-- Archive -->
-                @if($archiveData->isNotEmpty())
-                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-orange-200 dark:border-slate-700 p-6">
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Archive</h3>
-                        <div class="space-y-2">
-                            @foreach($archiveData->take(6) as $archive)
-                                <div class="flex items-center justify-between py-1 text-sm">
-                                    <span class="text-gray-600 dark:text-gray-300">{{ date('F Y', mktime(0, 0, 0, $archive->month, 1, $archive->year)) }}</span>
-                                    <span class="text-gray-500 dark:text-gray-400">({{ $archive->count }})</span>
                                 </div>
-                            @endforeach
-                        </div>
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="font-semibold text-gray-900 mb-1 line-clamp-2 group-hover:text-orange-600 transition-colors">
+                                        <a href="{{ route('blog.show', $featured->slug) }}">
+                                            {{ $featured->title }}
+                                        </a>
+                                    </h4>
+                                    <p class="text-xs text-gray-500">
+                                        {{ $featured->published_at->format('M j, Y') }}
+                                    </p>
+                                </div>
+                            </div>
+                        </article>
+                        @endforeach
                     </div>
+                </div>
                 @endif
-            </aside>
+                
+                {{-- Categories --}}
+                @if($categories && $categories->count() > 0)
+                <div class="bg-white border border-gray-200 rounded-2xl p-6 mb-8">
+                    <h3 class="text-xl font-bold text-gray-900 mb-6">Categories</h3>
+                    <div class="space-y-2">
+                        @foreach($categories as $cat)
+                        <a href="{{ route('blog.index', ['category' => $cat->slug]) }}" 
+                           class="flex items-center justify-between p-3 rounded-xl hover:bg-orange-50 transition-colors group">
+                            <span class="font-medium text-gray-700 group-hover:text-orange-600">
+                                {{ $cat->name }}
+                            </span>
+                            <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded-lg text-sm group-hover:bg-orange-100 group-hover:text-orange-600">
+                                {{ $cat->published_posts_count }}
+                            </span>
+                        </a>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+                
+                {{-- Recent Posts --}}
+                @if($recentPosts && $recentPosts->count() > 0)
+                <div class="bg-gray-50 rounded-2xl p-6">
+                    <h3 class="text-xl font-bold text-gray-900 mb-6">Recent Articles</h3>
+                    <div class="space-y-4">
+                        @foreach($recentPosts as $recent)
+                        <article class="group">
+                            <h4 class="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-orange-600 transition-colors">
+                                <a href="{{ route('blog.show', $recent->slug) }}">
+                                    {{ $recent->title }}
+                                </a>
+                            </h4>
+                            <div class="flex items-center text-sm text-gray-500">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                {{ $recent->published_at->format('M j, Y') }}
+                            </div>
+                        </article>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+            </div>
         </div>
     </div>
+</section>
+
+{{-- JavaScript for Form Enhancement --}}
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit form on filter change
+    const filterForm = document.querySelector('form');
+    const filterInputs = filterForm.querySelectorAll('select, input[name="search"]');
+    
+    // Add form ID for the submit button
+    filterForm.setAttribute('id', 'filter-form');
+    
+    filterInputs.forEach(input => {
+        if (input.type === 'text') {
+            // Debounce search input
+            let timeout;
+            input.addEventListener('input', function() {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    filterForm.submit();
+                }, 800);
+            });
+        } else {
+            // Auto-submit on select change
+            input.addEventListener('change', function() {
+                filterForm.submit();
+            });
+        }
+    });
+});
+</script>
+@endpush
+
+{{-- Custom CSS --}}
+@push('styles')
+<style>
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+</style>
+@endpush
+
 </x-layouts.public>

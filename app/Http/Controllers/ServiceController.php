@@ -7,6 +7,7 @@ use App\Models\ServiceCategory;
 use App\Models\Project;
 use App\Models\Testimonial;
 use App\Models\CompanyProfile;
+use App\Models\TeamMember;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -15,8 +16,7 @@ class ServiceController extends BaseController
     public function __construct()
     {
         parent::__construct();
-        // BaseController sudah melakukan shareDataToViews() otomatis
-        // Tidak perlu memanggil shareBaseData() lagi
+        // BaseController automatically handles shareDataToViews()
     }
 
     /**
@@ -24,246 +24,174 @@ class ServiceController extends BaseController
      */
     public function index(Request $request)
     {
-        // Build query with filters
-        $query = Service::query()
-            ->active()
-            ->with(['category', 'images']);
+        // Set page meta for SEO
+        $this->setPageMeta(
+            'Our Services - ' . $this->siteConfig['site_title'],
+            'Discover our comprehensive range of professional construction and engineering services. Quality solutions for all your project needs.',
+            'construction services, engineering, building, renovation, consultation',
+            asset($this->siteConfig['site_logo'])
+        );
 
-        // Apply category filter
-        if ($request->filled('category')) {
-            $category = ServiceCategory::where('slug', $request->category)->first();
-            if ($category) {
-                $query->where('service_category_id', $category->id);
-            }
-        }
+        // Get search and filter parameters
+        $search = $request->get('search');
+        $category = $request->get('category');
+        $sortBy = $request->get('sort', 'featured'); // featured, title, price
+        $perPage = $request->get('per_page', 12);
+
+        // Build services query
+        $servicesQuery = Service::where('is_active', true)
+            ->with(['category']);
 
         // Apply search filter
-        if ($request->filled('search')) {
-            $searchTerm = $request->search;
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('title', 'like', "%{$searchTerm}%")
-                  ->orWhere('description', 'like', "%{$searchTerm}%")
-                  ->orWhere('short_description', 'like', "%{$searchTerm}%");
+        if ($search) {
+            $servicesQuery->where(function($query) use ($search) {
+                $query->where('title', 'like', "%{$search}%")
+                      ->orWhere('short_description', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%")
+                      ->orWhereHas('category', function($q) use ($search) {
+                          $q->where('name', 'like', "%{$search}%");
+                      });
+            });
+        }
+
+        // Apply category filter
+        if ($category && $category !== 'all') {
+            $servicesQuery->whereHas('category', function($query) use ($category) {
+                $query->where('slug', $category);
             });
         }
 
         // Apply sorting
-        $sortBy = $request->get('sort', 'featured');
         switch ($sortBy) {
-            case 'name_asc':
-                $query->orderBy('title', 'asc');
+            case 'title':
+                $servicesQuery->orderBy('title', 'asc');
                 break;
-            case 'name_desc':
-                $query->orderBy('title', 'desc');
+            case 'price':
+                $servicesQuery->orderBy('base_price', 'asc');
                 break;
             case 'newest':
-                $query->latest('created_at');
+                $servicesQuery->latest();
                 break;
-            case 'oldest':
-                $query->oldest('created_at');
+            case 'featured':
+            default:
+                $servicesQuery->orderBy('featured', 'desc')
+                             ->orderBy('sort_order', 'asc')
+                             ->orderBy('title', 'asc');
                 break;
-            default: // featured
-                $query->orderByDesc('featured')->latest('created_at');
         }
 
-        // Paginate results
-        $services = $query->paginate(9)->withQueryString();
+        // Get paginated services
+        $services = $servicesQuery->paginate($perPage)->withQueryString();
 
-        // Get categories for filter sidebar
-        $categories = ServiceCategory::query()
-            ->active()
-            ->withCount(['activeServices'])
-            ->orderBy('name')
-            ->get();
+        // Get featured services for hero section
+        $featuredServices = Cache::remember('featured_services_page', 1800, function () {
+            return Service::where('is_active', true)
+                ->where('featured', true)
+                ->orderBy('sort_order', 'asc')
+                ->limit(3)
+                ->get();
+        });
 
-        // Get featured services for sidebar or recommendations
-        $featuredServices = Service::query()
-            ->active()
-            ->featured()
-            ->with(['category', 'images'])
-            ->latest('created_at')
-            ->limit(3)
-            ->get();
+        // Get categories for filter dropdown
+        $categories = Cache::remember('service_categories_filter', 1800, function () {
+            return ServiceCategory::where('is_active', true)
+                ->withCount(['activeServices'])
+                ->orderBy('name', 'asc')
+                ->get();
+        });
 
         // Get service statistics
-        $serviceStats = [
-            'total_services' => Service::active()->count(),
-            'total_categories' => ServiceCategory::active()->count(),
+        $stats = [
+            'total_services' => Service::where('is_active', true)->count(),
             'completed_projects' => Project::where('status', 'completed')->count(),
-            'satisfied_clients' => Testimonial::active()->featured()->count(),
+            'satisfied_clients' => Project::distinct('client_id')->count(),
+            'team_experts' => TeamMember::where('is_active', true)->count(),
         ];
 
-        // SEO Data
-        $seoData = [
-            'title' => 'Layanan Kami - CV Usaha Prima Lestari',
-            'description' => 'Jelajahi berbagai layanan professional yang kami tawarkan. Solusi terpercaya untuk kebutuhan bisnis dan konstruksi Anda.',
-            'keywords' => 'layanan konstruksi, jasa profesional, kontraktor, konsultan',
-            'breadcrumbs' => [
-                ['name' => 'Home', 'url' => route('home')],
-                ['name' => 'Services', 'url' => route('services.index')]
-            ]
-        ];
+        // Get recent testimonials
+        $testimonials = Cache::remember('services_testimonials', 1800, function () {
+            return Testimonial::where('is_active', true)
+                ->where('featured', true)
+                ->latest()
+                ->limit(6)
+                ->get();
+        });
+
+        // Get related projects for showcase
+        $recentProjects = Cache::remember('recent_projects_showcase', 1800, function () {
+            return Project::where('is_active', true)
+                ->where('status', 'completed')
+                ->where('featured', true)
+                ->with(['category', 'client'])
+                ->latest()
+                ->limit(6)
+                ->get();
+        });
 
         return view('pages.services.index', compact(
             'services',
-            'categories',
             'featuredServices',
-            'serviceStats',
-            'seoData'
-        ));
-    }
-
-    /**
-     * Display the specified service detail page.
-     */
-    public function show(Service $services)
-    {
-        // Ensure service is active
-        if (!$services->is_active) {
-            abort(404);
-        }
-
-        // Load relationships
-        $services->load([
+            'categories',
+            'stats',
+            'testimonials',
+            'recentProjects',
+            'search',
             'category',
-            'images' => function ($query) {
-                $query->orderBy('sort_order')->orderBy('created_at');
-            }
-        ]);
-
-        // Get related services (same category or featured)
-        $relatedServices = Service::query()
-            ->active()
-            ->where('id', '!=', $services->id)
-            ->when($services->service_category_id, function ($query) use ($services) {
-                $query->where('service_category_id', $services->service_category_id);
-            })
-            ->with(['category', 'images'])
-            ->orderByDesc('featured')
-            ->limit(3)
-            ->get();
-
-        // Get projects using this service
-        $relatedProjects = Project::query()
-            ->active()
-            ->where('status', 'completed')
-            ->whereHas('services', function ($query) use ($services) {
-                $query->where('services.id', $services->id);
-            })
-            ->with(['category', 'images', 'client'])
-            ->orderByDesc('featured')
-            ->limit(4)
-            ->get();
-
-        // Get testimonials related to this service
-        $serviceTestimonials = Testimonial::query()
-            ->active()
-            ->featured()
-            ->whereHas('project.services', function ($query) use ($services) {
-                $query->where('services.id', $services->id);
-            })
-            ->with(['project', 'client'])
-            ->limit(3)
-            ->get();
-
-        // Get service features/benefits (if stored in a separate table or JSON field)
-        $serviceFeatures = $this->getServiceFeatures($services);
-
-        // Get service FAQ (if available)
-        $serviceFaq = $this->getServiceFaq($services);
-
-        // Get next/previous service for navigation
-        $navigation = [
-            'previous' => Service::active()
-                ->where('id', '<', $services->id)
-                ->orderByDesc('id')
-                ->first(['id', 'title', 'slug']),
-            'next' => Service::active()
-                ->where('id', '>', $services->id)
-                ->orderBy('id')
-                ->first(['id', 'title', 'slug'])
-        ];
-
-        // SEO Data
-        $seoData = [
-            'title' => $services->meta_title ?: $services->title . ' - CV Usaha Prima Lestari',
-            'description' => $services->meta_description ?: $services->short_description,
-            'keywords' => $services->meta_keywords,
-            'image' => $services->featured_image,
-            'breadcrumbs' => [
-                ['name' => 'Home', 'url' => route('home')],
-                ['name' => 'Services', 'url' => route('services.index')],
-                ['name' => $services->title, 'url' => route('services.show', $services->slug)]
-            ]
-        ];
-
-        return view('pages.services.show', compact(
-            'services',
-            'relatedServices',
-            'relatedProjects',
-            'serviceTestimonials',
-            'serviceFeatures',
-            'serviceFaq',
-            'navigation',
-            'seoData'
+            'sortBy'
         ));
     }
 
     /**
-     * Get featured services for API or AJAX calls.
+     * Display a specific service detail page.
      */
-    public function featured()
+    public function show($slug)
     {
-        $services = Service::query()
-            ->active()
-            ->featured()
-            ->with(['category', 'images'])
-            ->orderBy('sort_order')
-            ->get();
+        // Find service by slug
+        $service = Service::where('slug', $slug)
+            ->where('is_active', true)
+            ->with(['category'])
+            ->firstOrFail();
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $services
-        ]);
-    }
-
-    /**
-     * Get service categories for API or AJAX calls.
-     */
-    public function categories()
-    {
-        $categories = ServiceCategory::query()
-            ->active()
-            ->withCount(['activeServices'])
-            ->orderBy('name')
-            ->get();
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $categories
-        ]);
-    }
-
-    /**
-     * Get related services for a specific service.
-     */
-    public function related(Service $service)
-    {
-        $relatedServices = Service::query()
-            ->active()
-            ->where('id', '!=', $service->id)
-            ->when($service->service_category_id, function ($query) use ($service) {
-                $query->where('service_category_id', $service->service_category_id);
-            })
-            ->with(['category', 'images'])
-            ->orderByDesc('featured')
+        // Get projects that use this service
+        $serviceProjects = Project::where('is_active', true)
+            ->where('status', 'completed')
+            ->where('service_id', $service->id)
+            ->with(['category', 'client'])
+            ->latest()
             ->limit(6)
             ->get();
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $relatedServices
-        ]);
+        // Get related services
+        $relatedServices = Service::where('is_active', true)
+            ->where('id', '!=', $service->id)
+            ->where(function($query) use ($service) {
+                if ($service->category_id) {
+                    $query->where('category_id', $service->category_id);
+                } else {
+                    $query->where('featured', true);
+                }
+            })
+            ->orderBy('featured', 'desc')
+            ->limit(3)
+            ->get();
+
+        // Get service features
+        $features = $this->getServiceFeatures($service);
+        
+        // Get service FAQ
+        $faqs = $this->getServiceFaq($service);
+        
+        // Get service process steps
+        $processSteps = $this->getServiceProcess($service);
+
+        return view('pages.services.show', compact(
+            'service',
+            'serviceProjects', 
+            'relatedServices',
+            'features',
+            'faqs',
+            'processSteps'
+        ));
     }
 
     /**
@@ -276,25 +204,37 @@ class ServiceController extends BaseController
             return $service->features;
         }
 
-        // Or if you have a separate service_features table
-        // return $service->features()->active()->ordered()->get();
-
         // Default features structure if none available
         return [
             [
                 'icon' => 'check-circle',
                 'title' => 'Professional Quality',
-                'description' => 'Kualitas professional dengan standar internasional'
+                'description' => 'High-quality workmanship with international standards and attention to detail.'
             ],
             [
                 'icon' => 'clock',
                 'title' => 'Timely Delivery',
-                'description' => 'Pengerjaan tepat waktu sesuai jadwal yang disepakati'
+                'description' => 'On-time project completion according to agreed schedules and milestones.'
             ],
             [
                 'icon' => 'shield-check',
                 'title' => 'Quality Guarantee',
-                'description' => 'Garansi kualitas dan kepuasan pelanggan'
+                'description' => 'Comprehensive warranty and customer satisfaction guarantee on all work.'
+            ],
+            [
+                'icon' => 'users',
+                'title' => 'Expert Team',
+                'description' => 'Skilled professionals with years of experience in the industry.'
+            ],
+            [
+                'icon' => 'tools',
+                'title' => 'Modern Equipment',
+                'description' => 'Latest technology and equipment for efficient and precise execution.'
+            ],
+            [
+                'icon' => 'dollar-sign',
+                'title' => 'Competitive Pricing',
+                'description' => 'Fair and transparent pricing with no hidden costs or surprises.'
             ],
         ];
     }
@@ -309,22 +249,78 @@ class ServiceController extends BaseController
             return $service->faq;
         }
 
-        // Or if you have a separate service_faqs table
-        // return $service->faqs()->active()->ordered()->get();
-
         // Default FAQ structure if none available
         return [
             [
-                'question' => 'Berapa lama waktu pengerjaan?',
-                'answer' => 'Waktu pengerjaan bervariasi tergantung kompleksitas proyek. Kami akan memberikan estimasi waktu yang akurat setelah evaluasi awal.'
+                'question' => 'How long does the project take to complete?',
+                'answer' => 'Project duration varies depending on complexity and scope. We provide accurate time estimates after initial evaluation and planning.'
             ],
             [
-                'question' => 'Apakah ada garansi?',
-                'answer' => 'Ya, kami memberikan garansi untuk semua pekerjaan sesuai dengan standar industri dan kesepakatan kontrak.'
+                'question' => 'Do you provide warranty for your work?',
+                'answer' => 'Yes, we provide comprehensive warranty for all our services according to industry standards and contract agreements.'
             ],
             [
-                'question' => 'Bagaimana cara memulai proyek?',
-                'answer' => 'Hubungi kami untuk konsultasi awal gratis. Tim kami akan melakukan survey dan memberikan proposal yang sesuai dengan kebutuhan Anda.'
+                'question' => 'How do I start a project with you?',
+                'answer' => 'Contact us for a free initial consultation. Our team will conduct a site survey and provide a detailed proposal tailored to your needs.'
+            ],
+            [
+                'question' => 'Do you handle permits and legal requirements?',
+                'answer' => 'Yes, we assist with all necessary permits, licenses, and legal requirements to ensure your project complies with local regulations.'
+            ],
+            [
+                'question' => 'What payment methods do you accept?',
+                'answer' => 'We accept various payment methods including bank transfers, checks, and installment plans for larger projects.'
+            ],
+        ];
+    }
+
+    /**
+     * Get service process steps.
+     */
+    private function getServiceProcess(Service $service)
+    {
+        // If you have a process field (JSON) in the services table
+        if (isset($service->process) && is_array($service->process)) {
+            return $service->process;
+        }
+
+        // Default process structure
+        return [
+            [
+                'step' => 1,
+                'title' => 'Initial Consultation',
+                'description' => 'Free consultation to understand your needs and project requirements.',
+                'icon' => 'chat-alt-2'
+            ],
+            [
+                'step' => 2,
+                'title' => 'Site Survey & Analysis',
+                'description' => 'Detailed site inspection and technical analysis for accurate planning.',
+                'icon' => 'search'
+            ],
+            [
+                'step' => 3,
+                'title' => 'Design & Proposal',
+                'description' => 'Custom design solutions with detailed proposal and cost estimation.',
+                'icon' => 'pencil-alt'
+            ],
+            [
+                'step' => 4,
+                'title' => 'Project Execution',
+                'description' => 'Professional implementation with regular progress updates and quality control.',
+                'icon' => 'cog'
+            ],
+            [
+                'step' => 5,
+                'title' => 'Quality Inspection',
+                'description' => 'Thorough quality inspection and testing before project handover.',
+                'icon' => 'badge-check'
+            ],
+            [
+                'step' => 6,
+                'title' => 'Project Handover',
+                'description' => 'Final handover with documentation, warranty, and maintenance guidelines.',
+                'icon' => 'hand'
             ],
         ];
     }

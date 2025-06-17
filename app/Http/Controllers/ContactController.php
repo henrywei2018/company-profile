@@ -1,5 +1,4 @@
 <?php
-// File: app/Http/Controllers/ContactController.php
 
 namespace App\Http\Controllers;
 
@@ -14,7 +13,7 @@ class ContactController extends BaseController
         parent::__construct();
     }
 
-    public function index()
+    public function index(Request $request)
     {
         // Set page meta
         $this->setPageMeta(
@@ -23,23 +22,48 @@ class ContactController extends BaseController
             'contact, get in touch, contact form'
         );
 
-        // Set breadcrumb
-        $this->setBreadcrumb([
-            ['name' => 'Contact', 'url' => route('contact.index')]
-        ]);
-
         return view('pages.contact');
     }
     
     public function store(ContactRequest $request)
     {
-        // Create new message
-        $message = Message::create($request->validated());
-        
-        // Send email notification (to be implemented)
-        // Mail::to(config('mail.admin'))->send(new ContactFormSubmitted($message));
-        
-        return redirect()->route('contact.index')
-            ->with('success', 'Thank you for your message. We will get back to you soon!');
+        try {
+            // Create new message
+            $messageData = $request->validated();
+            
+            // Add additional fields if not in form
+            $messageData['type'] = 'contact_form';
+            $messageData['is_read'] = false;
+            $messageData['is_replied'] = false;
+            
+            $message = Message::create($messageData);
+            return redirect()->route('contact.thank-you')
+                ->with('success', 'Thank you for your message. We will get back to you soon!')
+                ->with('message_id', $message->id);
+                
+        } catch (\Exception $e) {
+            // Log the error
+            \Log::error('Contact form submission failed', [
+                'error' => $e->getMessage(),
+                'data' => $request->validated()
+            ]);
+            
+            // Redirect back with error
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Sorry, there was an error sending your message. Please try again or contact us directly.');
+        }
+    }
+    
+    public function thankYou()
+    {
+        // Set page meta
+        $this->setPageMeta(
+            'Thank You - ' . $this->siteConfig['site_title'],
+            'Thank you for contacting us. We have received your message and will get back to you soon.',
+            'thank you, contact confirmation, message received'
+        );
+
+        return view('pages.thank-you');
     }
 }

@@ -1,361 +1,234 @@
-{{-- resources/views/about/team.blade.php --}}
-<x-layouts.public 
-    :title="$seoData['title']"
-    :description="$seoData['description']" 
-    :keywords="$seoData['keywords']"
-    :breadcrumbs="$seoData['breadcrumbs']"
+{{-- resources/views/pages/about/team.blade.php --}}
+<x-layouts.public
+    title="Our Team - {{ $siteConfig['site_title'] }}"
+    description="Meet our professional team members and their expertise."
+    keywords="team, staff, professionals, expertise"
+    type="website"
 >
-    {{-- Hero Section --}}
-    <section class="relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50 py-20 lg:py-32">
-        <div class="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] -z-10"></div>
-        
-        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="max-w-4xl mx-auto text-center">
-                <h1 class="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-                    Tim 
-                    <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        Profesional
-                    </span>
-                </h1>
-                
-                <p class="text-xl md:text-2xl text-gray-600 mb-8 leading-relaxed">
-                    Berkenalan dengan tim ahli yang berpengalaman dan berkomitmen memberikan hasil terbaik untuk setiap project.
-                </p>
 
-                {{-- Department Filter --}}
-                @if($departments->count() > 0)
-                <div class="flex flex-wrap justify-center gap-3 mb-8">
-                    <button onclick="filterTeam('all')" 
-                            class="filter-btn active px-6 py-3 rounded-full font-medium transition-all duration-300">
-                        Semua Tim ({{ $teamMembers->count() }})
-                    </button>
-                    @foreach($departments as $dept)
-                        <button onclick="filterTeam('{{ $dept->slug }}')" 
-                                class="filter-btn px-6 py-3 rounded-full font-medium transition-all duration-300">
-                            {{ $dept->name }} ({{ $dept->active_team_members_count }})
-                        </button>
-                    @endforeach
-                </div>
-                @endif
-            </div>
+{{-- Hero Section --}}
+<section class="relative pt-32 pb-20 bg-gradient-to-br from-orange-50 via-white to-amber-50 overflow-hidden">
+    {{-- Background Pattern --}}
+    <div class="absolute inset-0 bg-[url('/images/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
+    
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
+        {{-- Breadcrumbs --}}
+        <nav class="flex mb-8" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="{{ route('home') }}" class="text-gray-700 hover:text-orange-600 inline-flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                        </svg>
+                        Home
+                    </a>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <a href="{{ route('about.index') }}" class="ml-1 text-gray-700 hover:text-orange-600 md:ml-2">About</a>
+                    </div>
+                </li>
+                <li aria-current="page">
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="ml-1 text-orange-600 md:ml-2 font-medium">Our Team</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+
+        <div class="text-center">
+            <h1 class="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+                Meet Our 
+                <span class="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+                    Team
+                </span>
+            </h1>
+            <p class="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+                Get to know the dedicated professionals who make our success possible through their expertise and commitment.
+            </p>
         </div>
-    </section>
+    </div>
+</section>
 
-    {{-- Team Members Section --}}
-    <section class="py-20 bg-white">
-        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="max-w-7xl mx-auto">
-                @if($teamByDepartment->count() > 0)
-                    @foreach($teamByDepartment as $departmentName => $members)
-                    <div class="department-section mb-16" data-department="{{ Str::slug($departmentName) }}">
-                        {{-- Department Header --}}
-                        <div class="text-center mb-12">
-                            <h2 class="text-3xl font-bold text-gray-900 mb-4">{{ $departmentName }}</h2>
-                            <div class="w-24 h-1 bg-gradient-to-r from-blue-600 to-purple-600 mx-auto rounded-full"></div>
-                        </div>
-
-                        {{-- Team Members Grid --}}
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                            @foreach($members as $member)
-                            <div class="team-member-card group" data-department="{{ $member->department ? $member->department->slug : 'other' }}">
-                                <div class="bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-100 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
-                                    {{-- Photo --}}
-                                    <div class="aspect-square relative overflow-hidden">
-                                        @if($member->hasPhoto())
-                                            <img src="{{ $member->photo_url }}" 
-                                                 alt="{{ $member->name }}"
-                                                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300">
-                                        @else
-                                            <div class="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                                                <svg class="w-20 h-20 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                                                </svg>
-                                            </div>
-                                        @endif
-                                        
-                                        {{-- Social Media Overlay --}}
-                                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                            <div class="flex space-x-3">
-                                                @if($member->linkedin)
-                                                    <a href="{{ $member->linkedin }}" target="_blank" 
-                                                       class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-blue-600 hover:bg-blue-50 transition-colors transform hover:scale-110">
-                                                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                                                            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                                                        </svg>
-                                                    </a>
-                                                @endif
-                                                
-                                                @if($member->twitter)
-                                                    <a href="{{ $member->twitter }}" target="_blank" 
-                                                       class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-blue-400 hover:bg-blue-50 transition-colors transform hover:scale-110">
-                                                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                                                            <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
-                                                        </svg>
-                                                    </a>
-                                                @endif
-                                                
-                                                @if($member->facebook)
-                                                    <a href="{{ $member->facebook }}" target="_blank" 
-                                                       class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-blue-800 hover:bg-blue-50 transition-colors transform hover:scale-110">
-                                                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                                                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                                                        </svg>
-                                                    </a>
-                                                @endif
-                                                
-                                                @if($member->instagram)
-                                                    <a href="{{ $member->instagram }}" target="_blank" 
-                                                       class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-pink-600 hover:bg-pink-50 transition-colors transform hover:scale-110">
-                                                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                                                            <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987 6.62 0 11.987-5.367 11.987-11.987C24.014 5.367 18.637.001 12.017.001zM8.449 16.988c-1.297 0-2.346-1.049-2.346-2.346S7.152 12.296 8.449 12.296s2.346 1.049 2.346 2.346-1.049 2.346-2.346 2.346zm7.719 0c-1.297 0-2.346-1.049-2.346-2.346s1.049-2.346 2.346-2.346 2.346 1.049 2.346 2.346-1.049 2.346-2.346 2.346z"/>
-                                                        </svg>
-                                                    </a>
-                                                @endif
-
-                                                @if($member->email)
-                                                    <a href="mailto:{{ $member->email }}" 
-                                                       class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors transform hover:scale-110">
-                                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                                                        </svg>
-                                                    </a>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    {{-- Member Info --}}
-                                    <div class="p-6">
-                                        <h3 class="text-xl font-bold text-gray-900 mb-2">{{ $member->name }}</h3>
-                                        <p class="text-blue-600 font-medium mb-3">{{ $member->position }}</p>
-                                        
-                                        @if($member->bio)
-                                            <p class="text-gray-600 text-sm leading-relaxed mb-4">{{ $member->bio }}</p>
-                                        @endif
-                                        
-                                        @if($member->phone)
-                                            <div class="flex items-center text-sm text-gray-500 mb-2">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-                                                </svg>
-                                                {{ $member->phone }}
-                                            </div>
-                                        @endif
-                                        
-                                        @if($member->email)
-                                            <div class="flex items-center text-sm text-gray-500">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                                                </svg>
-                                                {{ $member->email }}
-                                            </div>
-                                        @endif
-                                    </div>
+{{-- Team Members by Department --}}
+@if($departments && $departments->count() > 0)
+<section class="py-20 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        @foreach($departments as $department)
+            @if($department->activeTeamMembers && $department->activeTeamMembers->count() > 0)
+            <div class="mb-16 {{ !$loop->last ? 'border-b border-gray-200 pb-16' : '' }}">
+                {{-- Department Header --}}
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold text-gray-900 mb-4">{{ $department->name }}</h2>
+                    @if($department->description)
+                    <p class="text-gray-600 max-w-2xl mx-auto">{{ $department->description }}</p>
+                    @endif
+                    <div class="w-24 h-1 bg-gradient-to-r from-orange-500 to-amber-500 mx-auto mt-4"></div>
+                </div>
+                
+                {{-- Team Members Grid --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                    @foreach($department->activeTeamMembers as $member)
+                    <div class="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+                        {{-- Member Photo --}}
+                        <div class="aspect-square overflow-hidden relative">
+                            @if($member->photo)
+                                <img src="{{ asset('storage/' . $member->photo) }}" 
+                                     alt="{{ $member->name }}" 
+                                     class="w-full h-full object-cover">
+                            @else
+                                <div class="w-full h-full bg-gradient-to-br from-orange-200 to-amber-200 flex items-center justify-center">
+                                    <span class="text-4xl font-bold text-orange-600">
+                                        {{ substr($member->name, 0, 1) }}
+                                    </span>
                                 </div>
+                            @endif
+                            
+                            {{-- Featured Badge --}}
+                            @if($member->featured)
+                            <div class="absolute top-3 right-3">
+                                <span class="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                                    Featured
+                                </span>
                             </div>
-                            @endforeach
+                            @endif
+                        </div>
+                        
+                        {{-- Member Info --}}
+                        <div class="p-6">
+                            <h3 class="font-bold text-gray-900 text-lg mb-1">{{ $member->name }}</h3>
+                            <p class="text-orange-600 font-medium text-sm mb-3">{{ $member->position }}</p>
+                            
+                            @if($member->bio)
+                            <p class="text-gray-600 text-sm mb-4 line-clamp-3">{{ $member->bio }}</p>
+                            @endif
+                            
+                            {{-- Contact & Social Links --}}
+                            <div class="flex items-center space-x-3">
+                                @if($member->email)
+                                <a href="mailto:{{ $member->email }}" 
+                                   class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-orange-100 hover:text-orange-600 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                    </svg>
+                                </a>
+                                @endif
+                                
+                                @if($member->phone)
+                                <a href="tel:{{ $member->phone }}" 
+                                   class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-orange-100 hover:text-orange-600 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                                    </svg>
+                                </a>
+                                @endif
+                                
+                                @if($member->linkedin)
+                                <a href="{{ $member->linkedin }}" target="_blank" rel="noopener"
+                                   class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-orange-100 hover:text-orange-600 transition-colors">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.338 16.338H13.67V12.16c0-.995-.017-2.277-1.387-2.277-1.39 0-1.601 1.086-1.601 2.207v4.248H8.014v-8.59h2.559v1.174h.037c.356-.675 1.227-1.387 2.526-1.387 2.703 0 3.203 1.778 3.203 4.092v4.711zM5.005 6.575a1.548 1.548 0 11-.003-3.096 1.548 1.548 0 01.003 3.096zm-1.337 9.763H6.34v-8.59H3.667v8.59zM17.668 1H2.328C1.595 1 1 1.581 1 2.298v15.403C1 18.418 1.595 19 2.328 19h15.34c.734 0 1.332-.582 1.332-1.299V2.298C19 1.581 18.402 1 17.668 1z" clip-rule="evenodd"/>
+                                    </svg>
+                                </a>
+                                @endif
+                                
+                                @if($member->twitter)
+                                <a href="{{ $member->twitter }}" target="_blank" rel="noopener"
+                                   class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-orange-100 hover:text-orange-600 transition-colors">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M6.29 18.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0020 3.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.073 4.073 0 01.8 7.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 010 16.407a11.616 11.616 0 006.29 1.84"/>
+                                    </svg>
+                                </a>
+                                @endif
+                            </div>
                         </div>
                     </div>
                     @endforeach
-                @else
-                    <div class="text-center py-20">
-                        <div class="max-w-md mx-auto">
-                            <svg class="w-24 h-24 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                            </svg>
-                            <h3 class="text-xl font-medium text-gray-900 mb-2">Belum Ada Tim Member</h3>
-                            <p class="text-gray-500">Tim kami sedang dalam proses pengembangan.</p>
-                        </div>
-                    </div>
-                @endif
-            </div>
-        </div>
-    </section>
-
-    {{-- Join Our Team Section --}}
-    <section class="py-20 bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800 relative overflow-hidden">
-        <div class="absolute inset-0 bg-black/20"></div>
-        <div class="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div class="max-w-4xl mx-auto text-center text-white">
-                <h2 class="text-3xl md:text-5xl font-bold mb-6">
-                    Bergabung dengan Tim Kami
-                </h2>
-                <p class="text-xl md:text-2xl mb-8 opacity-90">
-                    Kami selalu mencari talenta terbaik untuk berkembang bersama dan menciptakan dampak positif.
-                </p>
-                <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                    <a href="{{ route('contact.index') }}?subject=Career" 
-                       class="inline-flex items-center px-8 py-4 bg-white text-blue-600 font-bold rounded-xl hover:bg-gray-100 transform hover:scale-105 transition-all duration-300 shadow-lg">
-                        <span>Kirim CV Anda</span>
-                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                    </a>
-                    <a href="{{ route('about') }}" 
-                       class="inline-flex items-center px-8 py-4 border-2 border-white text-white font-bold rounded-xl hover:bg-white hover:text-blue-600 transform hover:scale-105 transition-all duration-300">
-                        <span>Tentang Kami</span>
-                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </a>
                 </div>
             </div>
+            @endif
+        @endforeach
+    </div>
+</section>
+@else
+{{-- No Team Members --}}
+<section class="py-20 bg-white">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div class="max-w-md mx-auto">
+            <svg class="w-24 h-24 text-gray-300 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+            </svg>
+            <h3 class="text-2xl font-bold text-gray-900 mb-4">Team Information Coming Soon</h3>
+            <p class="text-gray-600 mb-8">
+                We're updating our team profiles. Check back soon to meet our amazing professionals.
+            </p>
+            <a href="{{ route('about.index') }}" 
+               class="inline-flex items-center px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-colors">
+                Back to About Us
+            </a>
         </div>
-    </section>
+    </div>
+</section>
+@endif
 
-    @push('scripts')
-    <script>
-        // Team filter functionality
-        function filterTeam(department) {
-            const allSections = document.querySelectorAll('.department-section');
-            const allCards = document.querySelectorAll('.team-member-card');
-            const filterBtns = document.querySelectorAll('.filter-btn');
-            
-            // Update active button
-            filterBtns.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            if (department === 'all') {
-                // Show all sections and cards
-                allSections.forEach(section => {
-                    section.style.display = 'block';
-                    section.classList.add('animate-fade-in');
-                });
-                allCards.forEach(card => {
-                    card.style.display = 'block';
-                    card.classList.add('animate-fade-in');
-                });
-            } else {
-                // Hide all sections first
-                allSections.forEach(section => {
-                    section.style.display = 'none';
-                    section.classList.remove('animate-fade-in');
-                });
-                
-                // Show only matching cards
-                allCards.forEach(card => {
-                    const cardDept = card.getAttribute('data-department');
-                    if (cardDept === department) {
-                        card.style.display = 'block';
-                        card.classList.add('animate-fade-in');
-                        // Show parent section
-                        const parentSection = card.closest('.department-section');
-                        if (parentSection) {
-                            parentSection.style.display = 'block';
-                            parentSection.classList.add('animate-fade-in');
-                        }
-                    } else {
-                        card.style.display = 'none';
-                        card.classList.remove('animate-fade-in');
-                    }
-                });
-            }
-        }
+{{-- Join Our Team CTA --}}
+<section class="py-20 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">
+            Want to Join Our Team?
+        </h2>
+        <p class="text-xl text-orange-100 mb-8">
+            We're always looking for talented professionals to join our growing team.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="{{ route('contact.index') }}" 
+               class="inline-flex items-center px-8 py-4 bg-white text-orange-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.405L3 21l2.595-5.094A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z"/>
+                </svg>
+                Contact Us
+            </a>
+            @if($contactInfo['email'])
+            <a href="mailto:{{ $contactInfo['email'] }}" 
+               class="inline-flex items-center px-8 py-4 border-2 border-white text-white font-semibold rounded-xl hover:bg-white hover:text-orange-600 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                Send Resume
+            </a>
+            @endif
+        </div>
+    </div>
+</section>
 
-        // Intersection Observer for animations
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
+{{-- Additional CSS --}}
+@push('styles')
+<style>
+.line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('animate-fade-in-up');
-                }
-            });
-        }, observerOptions);
+/* Hover effects */
+.hover-lift:hover {
+    transform: translateY(-4px);
+}
 
-        // Observe team member cards
-        document.querySelectorAll('.team-member-card').forEach(card => {
-            observer.observe(card);
-        });
+/* Smooth transitions */
+.transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+}
+</style>
+@endpush
 
-        // Lazy loading for images
-        if ('IntersectionObserver' in window) {
-            const imageObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const img = entry.target;
-                        img.classList.add('loaded');
-                        imageObserver.unobserve(img);
-                    }
-                });
-            });
-
-            document.querySelectorAll('.team-member-card img').forEach(img => {
-                imageObserver.observe(img);
-            });
-        }
-    </script>
-
-    <style>
-        .filter-btn {
-            @apply bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 hover:text-gray-900;
-        }
-
-        .filter-btn.active {
-            @apply bg-gradient-to-r from-blue-600 to-purple-600 text-white border-transparent;
-        }
-
-        .animate-fade-in {
-            animation: fadeIn 0.6s ease-out forwards;
-        }
-
-        .animate-fade-in-up {
-            animation: fadeInUp 0.8s ease-out forwards;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .bg-grid-slate-100 {
-            background-image: url("data:image/svg+xml,%3csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3e%3cg fill='%23f1f5f9' fill-opacity='0.4' fill-rule='evenodd'%3e%3cpath d='m0 40l40-40h-40z'/%3e%3cpath d='m40 40v-40h-40z'/%3e%3c/g%3e%3c/svg%3e");
-        }
-
-        /* Image loading animation */
-        .team-member-card img {
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .team-member-card img.loaded {
-            opacity: 1;
-        }
-
-        /* Social media hover effects */
-        .team-member-card .social-link {
-            transform: translateY(4px);
-            opacity: 0;
-            transition: all 0.3s ease;
-        }
-
-        .team-member-card:hover .social-link {
-            transform: translateY(0);
-            opacity: 1;
-        }
-
-        .team-member-card:hover .social-link:nth-child(1) { transition-delay: 0.1s; }
-        .team-member-card:hover .social-link:nth-child(2) { transition-delay: 0.2s; }
-        .team-member-card:hover .social-link:nth-child(3) { transition-delay: 0.3s; }
-        .team-member-card:hover .social-link:nth-child(4) { transition-delay: 0.4s; }
-    </style>
-    @endpush
 </x-layouts.public>
