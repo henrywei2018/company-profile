@@ -97,7 +97,7 @@ Route::prefix('chat')->group(function () {
 | Client Authenticated Chat API
 |--------------------------------------------------------------------------
 */
-Route::prefix('chat')->middleware(['auth:sanctum'])->group(function () {
+Route::prefix('chat')->middleware(['auth'])->group(function () {
     Route::post('/start', [ChatController::class, 'start'])->name('api.chat.start');
     Route::get('/session', [ChatController::class, 'getSession'])->name('api.chat.session');
     Route::post('/close', [ChatController::class, 'close'])->name('api.chat.close');
@@ -129,7 +129,7 @@ Route::middleware(['auth', 'admin'])->prefix('api/client')->name('api.client.')-
 | Admin Chat API
 |--------------------------------------------------------------------------
 */
-Route::prefix('admin/chat')->middleware(['auth:sanctum', 'role:admin|super-admin'])->name('api.admin.chat.')->group(function () {
+Route::prefix('admin/chat')->middleware(['auth', 'admin'])->name('api.admin.chat.')->group(function () {
     Route::get('/sessions', [ChatController::class, 'getAdminSessions'])->name('sessions');
     Route::get('/statistics', [ChatController::class, 'getStatistics'])->name('statistics');
     Route::post('/{chatSession}/reply', [ChatController::class, 'reply'])->middleware('throttle:60,1')->name('reply');
