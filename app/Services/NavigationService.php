@@ -350,7 +350,7 @@ class NavigationService
             [
                 'title' => 'Profile',
                 'route' => 'client.profile.index',
-                'icon' => 'profile',
+                'icon' => 'users',
                 'active' => request()->routeIs('client.profile.*'),
             ],
         ];
@@ -362,6 +362,11 @@ class NavigationService
     public function filterByPermissions(array $navigation): array
     {
         $user = Auth::user();
+        
+        // Bypass permission checks for admin users - show all navigation
+        if ($user && ($user->hasRole(['admin', 'super-admin']) || $user->isAdmin())) {
+            return $navigation;
+        }
         
         return collect($navigation)->filter(function ($item) use ($user) {
             // Check if user has permission for this item
@@ -462,20 +467,185 @@ class NavigationService
         $routeName = Route::currentRouteName();
         $breadcrumbs = [];
 
-        // Define breadcrumb mappings
+        // Define comprehensive breadcrumb mappings
         $breadcrumbMappings = [
+            // Dashboard
             'admin.dashboard' => [
                 ['title' => 'Dashboard', 'route' => 'admin.dashboard']
             ],
+            
+            // Users Management
             'admin.users.index' => [
                 ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
-                ['title' => 'Users', 'route' => 'admin.users.index']
+                ['title' => 'User Management', 'route' => 'admin.users.index']
             ],
             'admin.users.create' => [
                 ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
-                ['title' => 'Users', 'route' => 'admin.users.index'],
+                ['title' => 'User Management', 'route' => 'admin.users.index'],
                 ['title' => 'Create User']
             ],
+            'admin.users.edit' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'User Management', 'route' => 'admin.users.index'],
+                ['title' => 'Edit User']
+            ],
+            'admin.users.show' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'User Management', 'route' => 'admin.users.index'],
+                ['title' => 'User Details']
+            ],
+            
+            // Roles & Permissions
+            'admin.roles.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'User Management', 'route' => 'admin.users.index'],
+                ['title' => 'Roles & Permissions']
+            ],
+            'admin.roles.create' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'User Management', 'route' => 'admin.users.index'],
+                ['title' => 'Roles & Permissions', 'route' => 'admin.roles.index'],
+                ['title' => 'Create Role']
+            ],
+            
+            // Projects
+            'admin.projects.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Projects', 'route' => 'admin.projects.index']
+            ],
+            'admin.projects.create' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Projects', 'route' => 'admin.projects.index'],
+                ['title' => 'Create Project']
+            ],
+            'admin.projects.show' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Projects', 'route' => 'admin.projects.index'],
+                ['title' => 'Project Details']
+            ],
+            'admin.projects.edit' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Projects', 'route' => 'admin.projects.index'],
+                ['title' => 'Edit Project']
+            ],
+            
+            // Project Categories
+            'admin.project-categories.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Projects', 'route' => 'admin.projects.index'],
+                ['title' => 'Project Categories']
+            ],
+            
+            // Services
+            'admin.services.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Services', 'route' => 'admin.services.index']
+            ],
+            'admin.services.create' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Services', 'route' => 'admin.services.index'],
+                ['title' => 'Create Service']
+            ],
+            'admin.services.edit' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Services', 'route' => 'admin.services.index'],
+                ['title' => 'Edit Service']
+            ],
+            
+            // Blog/Posts
+            'admin.posts.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Blog', 'route' => 'admin.posts.index']
+            ],
+            'admin.posts.create' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Blog', 'route' => 'admin.posts.index'],
+                ['title' => 'Create Post']
+            ],
+            'admin.posts.edit' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Blog', 'route' => 'admin.posts.index'],
+                ['title' => 'Edit Post']
+            ],
+            
+            // Messages
+            'admin.messages.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Messages', 'route' => 'admin.messages.index']
+            ],
+            'admin.messages.create' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Messages', 'route' => 'admin.messages.index'],
+                ['title' => 'Send Message']
+            ],
+            
+            // Chat
+            'admin.chat.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Live Chat', 'route' => 'admin.chat.index']
+            ],
+            'admin.chat.settings' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Live Chat', 'route' => 'admin.chat.index'],
+                ['title' => 'Chat Settings']
+            ],
+            
+            // Quotations
+            'admin.quotations.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Quotations', 'route' => 'admin.quotations.index']
+            ],
+            'admin.quotations.show' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Quotations', 'route' => 'admin.quotations.index'],
+                ['title' => 'Quotation Details']
+            ],
+            
+            // Team
+            'admin.team.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Team', 'route' => 'admin.team.index']
+            ],
+            'admin.team.create' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Team', 'route' => 'admin.team.index'],
+                ['title' => 'Add Team Member']
+            ],
+            
+            // Testimonials
+            'admin.testimonials.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Testimonials', 'route' => 'admin.testimonials.index']
+            ],
+            
+            // Settings
+            'admin.settings.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Settings', 'route' => 'admin.settings.index']
+            ],
+            'admin.settings.email' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Settings', 'route' => 'admin.settings.index'],
+                ['title' => 'Email Settings']
+            ],
+            'admin.settings.seo' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Settings', 'route' => 'admin.settings.index'],
+                ['title' => 'SEO Settings']
+            ],
+            
+            // Company Profile
+            'admin.company.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Company Profile', 'route' => 'admin.company.index']
+            ],
+            'admin.certifications.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Company Profile', 'route' => 'admin.company.index'],
+                ['title' => 'Certifications']
+            ],
+            
+            // Client Routes
             'client.dashboard' => [
                 ['title' => 'Dashboard', 'route' => 'client.dashboard']
             ],
@@ -483,18 +653,40 @@ class NavigationService
                 ['title' => 'Dashboard', 'route' => 'client.dashboard'],
                 ['title' => 'My Projects', 'route' => 'client.projects.index']
             ],
+            'client.quotations.index' => [
+                ['title' => 'Dashboard', 'route' => 'client.dashboard'],
+                ['title' => 'Quotations', 'route' => 'client.quotations.index']
+            ],
+            'client.messages.index' => [
+                ['title' => 'Dashboard', 'route' => 'client.dashboard'],
+                ['title' => 'Messages', 'route' => 'client.messages.index']
+            ],
+            'client.profile.index' => [
+                ['title' => 'Dashboard', 'route' => 'client.dashboard'],
+                ['title' => 'Profile', 'route' => 'client.profile.index']
+            ],
         ];
 
-        return $breadcrumbMappings[$routeName] ?? [];
+        return $breadcrumbMappings[$routeName] ?? [
+            ['title' => 'Dashboard', 'route' => Auth::user()->isClient() ? 'client.dashboard' : 'admin.dashboard']
+        ];
     }
 
     /**
-     * Helper methods for badge counts
+     * Badge count methods
      */
-    private function getUnreadMessagesCount(): int
+    
+    public function getDraftPostsCount(): int
     {
-        if (!Auth::check()) return 0;
-        
+        try {
+            return \App\Models\Post::where('status', 'draft')->count();
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    public function getUnreadMessagesCount(): int
+    {
         try {
             return \App\Models\Message::where('is_read', false)->count();
         } catch (\Exception $e) {
@@ -502,61 +694,32 @@ class NavigationService
         }
     }
 
-    private function getActiveProjectsCount(): int
+    public function getWaitingChatsCount(): int
     {
-        if (!Auth::check()) return 0;
-        
         try {
-            // For clients, count their active projects
-            if (Auth::user()->hasRole('client')) {
-                return \App\Models\Project::where('client_id', Auth::id())
-                    ->where('status', 'active')
-                    ->count();
-            }
-            return 0;
+            return \App\Models\ChatSession::where('status', 'waiting')->count();
         } catch (\Exception $e) {
             return 0;
         }
     }
 
-    private function getPendingQuotationsCount(): int
+    public function getPendingQuotationsCount(): int
     {
-        if (!Auth::check()) return 0;
-        
         try {
-            // For clients, count their pending quotations
-            if (Auth::user()->hasRole('client')) {
-                return \App\Models\Quotation::where('client_id', Auth::id())
-                    ->where('status', 'pending')
-                    ->count();
-            }
-            
-            // For admins, count all pending quotations
             return \App\Models\Quotation::where('status', 'pending')->count();
         } catch (\Exception $e) {
             return 0;
         }
     }
 
-    private function getWaitingChatsCount(): int
+    public function getActiveProjectsCount(): int
     {
-        if (!Auth::check()) return 0;
-        
         try {
-            return \App\Models\ChatSession::where('status', 'waiting')
-                ->whereNull('admin_user_id')
-                ->count();
-        } catch (\Exception $e) {
-            return 0;
-        }
-    }
-
-    private function getDraftPostsCount(): int
-    {
-        if (!Auth::check()) return 0;
-        
-        try {
-            return \App\Models\Post::where('status', 'draft')->count();
+            $user = Auth::user();
+            if ($user && $user->isClient()) {
+                return $user->projects()->where('status', 'active')->count();
+            }
+            return \App\Models\Project::where('status', 'active')->count();
         } catch (\Exception $e) {
             return 0;
         }

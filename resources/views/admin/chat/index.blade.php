@@ -606,7 +606,7 @@
                             </p>
                         </div>
                         <div class="flex space-x-2">
-                            <button onclick="assignToMe('${session.session_id}')" 
+                            <button onclick="assignSessionToMe('${session.session_id}')" 
                                     class="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors">
                                 Assign to Me
                             </button>
@@ -711,30 +711,31 @@
             }
 
             // Assign session to current user
-            async assignToMe() {
-                try {
-                    const response = await fetch(`/admin/chat/${this.chatSessionDbId}/assign-to-me`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                            'Accept': 'application/json',
-                        }
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        this.showSuccess('Chat session assigned to you');
-                        // Refresh the page or update UI
-                        window.location.reload();
-                    } else {
-                        throw new Error(data.message);
-                    }
-                } catch (error) {
-                    console.error('Assign error:', error);
-                    this.showError('Failed to assign chat session');
-                }
+            async function assignSessionToMe(sessionId) {
+    const btn = document.querySelector(`[onclick="assignSessionToMe('${sessionId}')"]`);
+    if (btn) btn.disabled = true;
+    try {
+        const response = await fetch(`/admin/chat/${sessionId}/assign-to-me`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json',
             }
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Chat session assigned to you', 'success');
+            // Remove from waiting and add to active, or wait for Echo event
+            moveSessionToActive(sessionId);
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (error) {
+        showNotification('Failed to assign chat session', 'error');
+    }
+    if (btn) btn.disabled = false;
+}
+
 
             // Utility functions
             function timeAgo(timestamp) {

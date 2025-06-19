@@ -79,7 +79,7 @@
 
     <!-- ========== MAIN CONTENT ========== -->
     <!-- Mobile breadcrumb -->
-    <x-admin.breadcrumb-mobile />
+    <x-admin.mobile-breadcrumb />
 
     <!-- Sidebar -->
     <x-admin.admin-sidebar />

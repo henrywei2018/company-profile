@@ -8,28 +8,9 @@
     'urgentItemsCount' => 0,
 ])
 <header
-    class="sticky top-0 inset-x-0 z-50 w-full bg-white border-b border-gray-200 text-sm dark:bg-gray-800 dark:border-gray-700 lg:ps-64">
+    class="sticky top-0 inset-x-0 z-[20] w-full bg-white border-b border-gray-200 text-sm dark:bg-gray-800 dark:border-gray-700 lg:ps-64">
     <nav class="w-full mx-auto px-4 py-2.5 sm:flex sm:items-center sm:justify-between sm:px-6 lg:px-8"
         aria-label="Global">
-        <!-- Left: Logo and Mobile Menu Toggle -->
-        <div class="flex items-center lg:hidden">
-            <!-- Mobile Menu Toggle -->
-            <button type="button"
-                class="size-8 flex justify-center items-center text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-neutral-700 rounded-full mr-2"
-                data-hs-overlay="#hs-application-sidebar" aria-controls="hs-application-sidebar"
-                aria-label="Toggle navigation">
-                <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
-
-            <!-- Mobile Logo -->
-            <a href="{{ route('admin.dashboard') }}" aria-label="{{ config('app.name') }} Admin"
-                class="text-xl font-bold text-blue-600 dark:text-white">
-                {{ config('app.name') }} Admin
-            </a>
-        </div>
 
         <!-- Right: Actions -->
         <div class="flex items-center justify-end w-full gap-x-2">
@@ -82,7 +63,7 @@
                 </button>
 
                 <div
-                    class="hs-dropdown-menu hidden z-50 min-w-60 mt-2 bg-white shadow-lg rounded-lg border dark:bg-neutral-800 dark:border-neutral-700">
+                    class="hs-dropdown-menu hidden z-[70] min-w-60 mt-2 bg-white shadow-lg rounded-lg border dark:bg-neutral-800 dark:border-neutral-700">
                     <div class="p-1.5 space-y-0.5">
                         <a href="{{ route('admin.projects.create') }}"
                             class="flex items-center gap-3 py-2 px-3 rounded-lg text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
@@ -139,7 +120,7 @@
                 </button>
 
                 <div
-                    class="hs-dropdown-menu hidden z-50 min-w-60 mt-2 bg-white shadow-lg rounded-lg border dark:bg-neutral-800 dark:border-neutral-700">
+                    class="hs-dropdown-menu hidden z-80 min-w-60 mt-2 bg-white shadow-lg rounded-lg border dark:bg-neutral-800 dark:border-neutral-700">
                     <div class="px-5 py-3 bg-gray-50 dark:bg-neutral-700 rounded-t-lg">
                         <p class="text-sm text-gray-500 dark:text-neutral-400">Admin Panel</p>
                         <p class="text-sm font-medium text-gray-800 dark:text-white truncate">
