@@ -1,5 +1,5 @@
 {{-- resources/views/components/public/header.blade.php --}}
-<header class="premium-header glass-effect luxury-shadow border-b premium-border sticky top-0 z-50">
+<header class="premium-header glass-effect sticky top-0 z-50">
     {{-- Premium Glass Background with Gradients --}}
     <div class="absolute inset-0 bg-gradient-to-r from-white/98 via-white/95 to-white/98 backdrop-blur-xl"></div>
     <div class="absolute inset-0 bg-gradient-to-r from-orange-500/8 via-amber-500/5 to-orange-500/8"></div>
@@ -167,15 +167,6 @@
 
             {{-- Right Section - CTA & User Menu --}}
             <div class="flex items-center justify-end w-64 space-x-3">
-                {{-- CTA Button --}}
-                <a href="{{ route('quotation.create') }}" 
-                   class="hidden md:inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-sm font-semibold rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all duration-300 transform hover:scale-105 shadow-lg">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                    </svg>
-                    <span class="hidden lg:inline">Get Quote</span>
-                    <span class="lg:hidden">Quote</span>
-                </a>
 
                 {{-- User Menu --}}
                 @auth

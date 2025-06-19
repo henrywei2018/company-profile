@@ -8,17 +8,14 @@
                 <div class="text-center mb-8">
                     <a href="{{ route('home') }}" class="inline-flex items-center">
                         @if($siteLogo)
-                            <img src="{{ $siteLogo }}" alt="{{ $companyName }}" class="w-12 h-12 object-contain rounded-xl mr-3">
+                            <img src="{{ $siteLogo }}" alt="{{ $companyName }}" class="w-48 h-26 object-contain rounded-xl mr-3">
                         @else
-                            <div class="w-12 h-12 bg-gradient-to-r from-orange-600 to-amber-600 rounded-xl flex items-center justify-center mr-3">
+                            <div class="w-48 h-26 bg-gradient-to-r from-orange-600 to-amber-600 rounded-xl flex items-center justify-center mr-3">
                                 <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                                 </svg>
                             </div>
                         @endif
-                        <span class="text-2xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                            {{ $companyName }}
-                        </span>
                     </a>
                 </div>
 
@@ -267,6 +264,143 @@
             input.addEventListener('blur', function() {
                 this.parentElement.classList.remove('ring-2', 'ring-orange-500');
             });
+        });
+    </script>
+
+    <script>
+        /**
+         * Login Autofill Script for Development Testing
+         * Only loads in development environments
+         */
+        document.addEventListener('DOMContentLoaded', function() {
+            // Test user credentials
+            const testUsers = {
+                admin: {
+                    email: 'superadmin@usahaprimaestari.com',
+                    password: 'password',
+                    label: 'Super Admin',
+                    color: 'bg-red-500 hover:bg-red-600'
+                },
+                client: {
+                    email: 'info@majubersama.com',
+                    password: 'password', 
+                    label: 'Client User',
+                    color: 'bg-green-500 hover:bg-green-600'
+                },
+            };
+
+            // Find login form elements
+            const emailInput = document.querySelector('input[name="email"]');
+            const passwordInput = document.querySelector('input[name="password"]');
+
+            if (!emailInput || !passwordInput) return;
+
+            // Create autofill panel
+            const autofillPanel = document.createElement('div');
+            autofillPanel.className = 'fixed top-4 right-4 z-50 bg-white rounded-lg shadow-xl border border-orange-200 p-4 max-w-xs transform transition-all duration-300';
+            autofillPanel.innerHTML = `
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-bold text-orange-600">🧪 Quick Login</h3>
+                    <button id="close-autofill" class="text-gray-400 hover:text-orange-600 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-2 mb-3">
+                    ${Object.entries(testUsers).map(([key, user]) => `
+                        <button type="button" 
+                                class="autofill-btn w-full text-white text-xs px-3 py-2 rounded font-medium transition-all transform hover:scale-105 ${user.color}"
+                                data-email="${user.email}" 
+                                data-password="${user.password}"
+                                title="Double-click to auto-login">
+                            ${user.label}
+                        </button>
+                    `).join('')}
+                </div>
+                <button type="button" id="clear-form" class="w-full text-gray-600 text-xs px-3 py-2 rounded border border-gray-300 hover:bg-gray-50 transition-colors">
+                    Clear Form
+                </button>
+                <div class="mt-2 text-xs text-gray-500 text-center">
+                    Dev Environment Only
+                </div>
+            `;
+
+            document.body.appendChild(autofillPanel);
+
+            // Autofill functionality
+            document.querySelectorAll('.autofill-btn').forEach(button => {
+                // Single click - fill form
+                button.addEventListener('click', function() {
+                    const email = this.dataset.email;
+                    const password = this.dataset.password;
+                    
+                    emailInput.value = email;
+                    passwordInput.value = password;
+                    
+                    // Visual feedback
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => this.style.transform = 'scale(1)', 150);
+                    
+                    // Focus password field
+                    passwordInput.focus();
+                });
+                
+                // Double click - fill and submit
+                button.addEventListener('dblclick', function() {
+                    const email = this.dataset.email;
+                    const password = this.dataset.password;
+                    
+                    emailInput.value = email;
+                    passwordInput.value = password;
+                    
+                    // Submit after brief delay
+                    setTimeout(() => {
+                        document.querySelector('form').submit();
+                    }, 300);
+                });
+            });
+
+            // Clear form
+            document.getElementById('clear-form').addEventListener('click', function() {
+                emailInput.value = '';
+                passwordInput.value = '';
+                emailInput.focus();
+            });
+
+            // Close panel
+            document.getElementById('close-autofill').addEventListener('click', function() {
+                autofillPanel.remove();
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+                    const users = Object.values(testUsers);
+                    const keyIndex = parseInt(e.key) - 1;
+                    
+                    if (keyIndex >= 0 && keyIndex < users.length) {
+                        e.preventDefault();
+                        const user = users[keyIndex];
+                        emailInput.value = user.email;
+                        passwordInput.value = user.password;
+                    }
+                }
+            });
+
+            // Console helper
+            window.quickLogin = function(role = 'admin') {
+                const user = testUsers[role];
+                if (user) {
+                    emailInput.value = user.email;
+                    passwordInput.value = user.password;
+                    console.log(`✅ Filled with ${role} credentials`);
+                } else {
+                    console.log('Available roles:', Object.keys(testUsers));
+                }
+            };
+
+            console.log('🧪 Dev autofill loaded! Use quickLogin("admin") or keyboard shortcuts Ctrl+Shift+1-4');
         });
     </script>
     @endpush

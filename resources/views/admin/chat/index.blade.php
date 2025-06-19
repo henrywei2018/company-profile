@@ -606,7 +606,7 @@
                             </p>
                         </div>
                         <div class="flex space-x-2">
-                            <button onclick="assignSessionToMe('${session.session_id}')" 
+                            <button onclick="assignToMe('${session.session_id}')" 
                                     class="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors">
                                 Assign to Me
                             </button>
@@ -711,29 +711,28 @@
             }
 
             // Assign session to current user
-            async function assignSessionToMe(sessionId) {
+            async assignToMe() {
                 try {
-                    const response = await fetch(`/admin/chat/${sessionId}/assign`, {
+                    const response = await fetch(`/admin/chat/${this.chatSessionDbId}/assign-to-me`, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
-                                'content')
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Accept': 'application/json',
                         }
                     });
-
+                    
                     const data = await response.json();
-
+                    
                     if (data.success) {
-                        showNotification('Chat session assigned to you successfully', 'success');
-                        // Redirect to chat page
-                        window.location.href = `/admin/chat/${sessionId}`;
+                        this.showSuccess('Chat session assigned to you');
+                        // Refresh the page or update UI
+                        window.location.reload();
                     } else {
-                        throw new Error(data.message || 'Failed to assign session');
+                        throw new Error(data.message);
                     }
                 } catch (error) {
-                    console.error('Failed to assign session:', error);
-                    showNotification('Failed to assign chat session', 'error');
+                    console.error('Assign error:', error);
+                    this.showError('Failed to assign chat session');
                 }
             }
 

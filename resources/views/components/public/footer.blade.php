@@ -177,16 +177,6 @@
                     @endif
                 </ul>
 
-                {{-- Call to Action --}}
-                <div class="mt-6">
-                    <a href="{{ route('quotation.create') }}" 
-                       class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white rounded-lg transition-all duration-300 text-sm font-semibold transform hover:scale-105 shadow-lg hover:shadow-xl">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                        </svg>
-                        Get Free Quote
-                    </a>
-                </div>
             </div>
         </div>
     </div>
