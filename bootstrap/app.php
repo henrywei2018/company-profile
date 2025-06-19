@@ -91,6 +91,7 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Providers\AuthServiceProvider::class,
         App\Providers\NotificationServiceProvider::class,
         App\Providers\SeoServiceProvider::class,
+        App\Providers\NavigationServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(append: [

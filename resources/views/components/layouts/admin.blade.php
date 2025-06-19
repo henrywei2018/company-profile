@@ -68,12 +68,12 @@
 <body class="bg-gray-50 dark:bg-neutral-900">
     <!-- ========== HEADER ========== -->
     <x-admin.admin-header 
-            :unreadMessagesCount="$unreadMessagesCount ?? $unreadMessages ?? 0" 
-            :pendingQuotationsCount="$pendingQuotationsCount ?? $pendingQuotations ?? 0"
-            :recentNotifications="$recentNotifications ?? collect()"
-            :unreadNotificationsCount="$unreadNotificationsCount ?? 0"
-            :waitingChatsCount="$waitingChatsCount ?? 0"
-            :urgentItemsCount="$urgentItemsCount ?? 0"
+        :unreadMessagesCount="$unreadMessagesCount ?? 0" 
+        :pendingQuotationsCount="$pendingQuotationsCount ?? 0"
+        :recentNotifications="$recentNotifications ?? collect()"
+        :unreadNotificationsCount="$unreadNotificationsCount ?? 0"
+        :waitingChatsCount="$waitingChatsCount ?? 0"
+        :urgentItemsCount="$urgentItemsCount ?? 0"
     />
     <!-- ========== END HEADER ========== -->
 

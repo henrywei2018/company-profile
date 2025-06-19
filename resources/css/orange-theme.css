@@ -653,3 +653,285 @@ html.dark {
   outline-offset: 3px;
   box-shadow: 0 0 0 6px rgba(255, 215, 0, 0.2);
 }
+
+/* ==========================================================================
+   Mobile Navigation Optimizations
+   ========================================================================== */
+
+/* Mobile Menu Improvements */
+#mobile-menu {
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* Mobile Menu Scrolling */
+#mobile-menu .overflow-y-auto {
+    scrollbar-width: thin;
+    scrollbar-color: #f97316 #f9fafb;
+}
+
+#mobile-menu .overflow-y-auto::-webkit-scrollbar {
+    width: 6px;
+}
+
+#mobile-menu .overflow-y-auto::-webkit-scrollbar-track {
+    background: #f9fafb;
+    border-radius: 3px;
+}
+
+#mobile-menu .overflow-y-auto::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #f97316, #f59e0b);
+    border-radius: 3px;
+}
+
+#mobile-menu .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, #ea580c, #d97706);
+}
+
+/* Mobile Dropdown Animations */
+.mobile-dropdown-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, opacity 0.2s ease-in-out;
+    opacity: 0;
+}
+
+.mobile-dropdown-content:not(.hidden) {
+    max-height: 500px;
+    opacity: 1;
+}
+
+/* Mobile Menu Button Improvements */
+#mobile-menu-button {
+    position: relative;
+    overflow: hidden;
+}
+
+#mobile-menu-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+#mobile-menu-button:hover::before {
+    left: 100%;
+}
+
+/* Mobile Navigation Links Hover Effects */
+.mobile-nav-link {
+    position: relative;
+    overflow: hidden;
+}
+
+.mobile-nav-link::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(249, 115, 22, 0.1), transparent);
+    transition: left 0.3s ease;
+}
+
+.mobile-nav-link:hover::before {
+    left: 100%;
+}
+
+/* Touch-friendly tap targets */
+@media (max-width: 1024px) {
+    .nav-link,
+    .mobile-nav-link,
+    button {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+/* Prevent scrolling on body when mobile menu is open */
+body.mobile-menu-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+}
+
+/* Mobile Menu Overlay Animation */
+#mobile-menu-overlay {
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+
+/* Mobile Header Responsive Improvements */
+@media (max-width: 640px) {
+    .premium-header .max-w-7xl {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .premium-header .h-16 {
+        height: 4rem;
+    }
+    
+    .premium-header .w-48 {
+        width: auto;
+        min-width: 120px;
+    }
+}
+
+/* Better mobile dropdown spacing */
+@media (max-width: 1024px) {
+    .mobile-dropdown-section {
+        margin-bottom: 0.5rem;
+    }
+    
+    .mobile-dropdown-content a {
+        padding: 0.75rem 1rem;
+        margin: 0.25rem 0;
+    }
+}
+
+/* Enhanced touch feedback */
+@media (hover: none) and (pointer: coarse) {
+    .nav-link:active,
+    .mobile-nav-link:active,
+    button:active {
+        transform: scale(0.98);
+        transition: transform 0.1s ease;
+    }
+}
+
+/* Mobile-specific animations */
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutToRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Mobile menu state transitions */
+#mobile-menu.mobile-menu-entering {
+    animation: slideInFromRight 0.3s ease-out forwards;
+}
+
+#mobile-menu.mobile-menu-leaving {
+    animation: slideOutToRight 0.3s ease-in forwards;
+}
+
+/* Better focus states for mobile */
+@media (max-width: 1024px) {
+    button:focus,
+    a:focus {
+        outline: 2px solid #f97316;
+        outline-offset: 2px;
+        border-radius: 0.5rem;
+    }
+}
+
+/* Mobile header z-index management */
+.premium-header {
+    z-index: 1000;
+}
+
+#mobile-menu-overlay {
+    z-index: 999;
+}
+
+#mobile-menu {
+    z-index: 1001;
+}
+
+/* Improved mobile navigation spacing */
+@media (max-width: 768px) {
+    #mobile-menu nav {
+        padding: 1rem;
+    }
+    
+    #mobile-menu nav a,
+    #mobile-menu nav button {
+        padding: 1rem;
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+}
+
+/* Enhanced mobile CTA button */
+@media (max-width: 1024px) {
+    .mobile-cta {
+        background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%);
+        box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+        transform: translateZ(0);
+    }
+    
+    .mobile-cta:active {
+        transform: translateY(1px) scale(0.98);
+        box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+    }
+}
+
+/* Mobile user avatar improvements */
+@media (max-width: 640px) {
+    .user-avatar {
+        width: 2rem;
+        height: 2rem;
+        font-size: 0.75rem;
+    }
+}
+
+/* Smooth transitions for mobile interactions */
+* {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+input,
+textarea,
+button,
+a {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+/* Mobile navigation performance optimizations */
+#mobile-menu {
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+#mobile-menu-overlay {
+    will-change: opacity;
+    transform: translateZ(0);
+}
+
+/* Prevent mobile safari zoom */
+@media (max-width: 1024px) {
+    input[type="search"],
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    textarea,
+    select {
+        font-size: 16px;
+    }
+}

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\DashboardService;
 use App\Services\NotificationService;
+use App\Services\NavigationService;
 use App\Facades\Notifications;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -18,10 +19,12 @@ class DashboardController extends Controller
 {
     protected DashboardService $dashboardService;
     protected NotificationService $notificationService;
+    protected NavigationService $navigationService;
 
     public function __construct(
         DashboardService $dashboardService,
         NotificationService $notificationService
+        
     ) {
         $this->dashboardService = $dashboardService;
         $this->notificationService = $notificationService;
