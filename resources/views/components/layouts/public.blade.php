@@ -65,16 +65,14 @@
     @stack('styles')
 
     {{-- Analytics --}}
-    @if($siteConfig['google_analytics'] ?? false)
-        <!-- Google Analytics -->
-        <script async src="https://www.googletagmanager.com/gtag/js?id={{ $siteConfig['google_analytics'] }}"></script>
-        <script>
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', '{{ $siteConfig['google_analytics'] }}');
-        </script>
-    @endif
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VYHSLQXJE5"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+    
+      gtag('config', 'G-VYHSLQXJE5');
+    </script>
 
     @if($siteConfig['facebook_pixel'] ?? false)
         <!-- Facebook Pixel -->

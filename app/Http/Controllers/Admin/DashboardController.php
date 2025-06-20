@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Services\DashboardService;
 use App\Services\NotificationService;
 use App\Services\NavigationService;
+use App\Services\AnalyticsDashboardService;
+use App\Services\GoogleAnalyticsService;
 use App\Facades\Notifications;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -20,14 +22,17 @@ class DashboardController extends Controller
     protected DashboardService $dashboardService;
     protected NotificationService $notificationService;
     protected NavigationService $navigationService;
+    protected AnalyticsDashboardService $analyticsService;
 
     public function __construct(
         DashboardService $dashboardService,
-        NotificationService $notificationService
+        NotificationService $notificationService,
+        AnalyticsDashboardService $analyticsService
         
     ) {
         $this->dashboardService = $dashboardService;
         $this->notificationService = $notificationService;
+        $this->analyticsService = $analyticsService;
     }
 
     /**
@@ -49,6 +54,7 @@ class DashboardController extends Controller
             $dashboardData = $this->getDashboardDataSafely($user);
             $notificationCounts = $this->getNotificationCountsSafely($user);
             $recentNotifications = $this->getRecentNotificationsSafely($user);
+            $analytics = $this->analyticsService->getDashboardAnalytics();
             
             // Prepare view data with all required variables
             $viewData = array_merge($dashboardData, [
@@ -66,9 +72,11 @@ class DashboardController extends Controller
                 // Additional counts for dashboard display
                 'notificationCounts' => $notificationCounts,
                 'totalNotifications' => $notificationCounts['total_notifications'],
+                // Google Analytics data
+                'analytics' => $analytics,
             ]);
 
-            return view('admin.dashboard', $viewData);
+            return view('admin.dashboard', $viewData, );
             
         } catch (\Exception $e) {
             Log::error('Critical error loading admin dashboard', [
@@ -76,6 +84,7 @@ class DashboardController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+            $analytics = ['stats' => [], 'health' => []];
 
             // Return dashboard with safe fallback data
             return $this->getFallbackDashboard($e->getMessage());

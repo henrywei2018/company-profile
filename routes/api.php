@@ -141,3 +141,84 @@ Route::prefix('admin/chat')->middleware(['auth', 'admin'])->name('api.admin.chat
     Route::get('/operators/available', [ChatController::class, 'getAvailableOperators'])->name('operators.available');
     Route::get('/{chatSession}/messages', [ChatController::class, 'getChatMessages'])->name('messages');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Admin Google Analytics API
+|--------------------------------------------------------------------------
+*/
+Route::prefix('admin')->middleware(['auth', 'admin'])->name('api.admin.')->group(function () {
+    
+    Route::prefix('gtag')->name('gtag.')->group(function () {
+        
+        // Get dashboard data
+        Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'getAnalyticsData'])
+            ->name('dashboard');
+        
+        // Get specific metrics with period parameter
+        Route::get('/visitors/{period?}', function ($period = 7) {
+            return response()->json([
+                'success' => true,
+                'data' => app(App\Services\AnalyticsDashboardService::class)
+                    ->getAnalyticsDataByType('visitors', (int)$period)
+            ]);
+        })->name('visitors')->where('period', '[0-9]+');
+        
+        Route::get('/pages/{period?}', function ($period = 7) {
+            return response()->json([
+                'success' => true,
+                'data' => app(App\Services\AnalyticsDashboardService::class)
+                    ->getAnalyticsDataByType('pages', (int)$period)
+            ]);
+        })->name('pages')->where('period', '[0-9]+');
+        
+        Route::get('/referrers/{period?}', function ($period = 7) {
+            return response()->json([
+                'success' => true,
+                'data' => app(App\Services\AnalyticsDashboardService::class)
+                    ->getAnalyticsDataByType('referrers', (int)$period)
+            ]);
+        })->name('referrers')->where('period', '[0-9]+');
+        
+        Route::get('/browsers/{period?}', function ($period = 7) {
+            return response()->json([
+                'success' => true,
+                'data' => app(App\Services\AnalyticsDashboardService::class)
+                    ->getAnalyticsDataByType('browsers', (int)$period)
+            ]);
+        })->name('browsers')->where('period', '[0-9]+');
+        
+        Route::get('/countries/{period?}', function ($period = 7) {
+            return response()->json([
+                'success' => true,
+                'data' => app(App\Services\AnalyticsDashboardService::class)
+                    ->getAnalyticsDataByType('countries', (int)$period)
+            ]);
+        })->name('countries')->where('period', '[0-9]+');
+        
+        Route::get('/devices/{period?}', function ($period = 7) {
+            return response()->json([
+                'success' => true,
+                'data' => app(App\Services\AnalyticsDashboardService::class)
+                    ->getAnalyticsDataByType('devices', (int)$period)
+            ]);
+        })->name('devices')->where('period', '[0-9]+');
+        
+        // Bulk analytics data endpoint
+        Route::post('/bulk', function (Illuminate\Http\Request $request) {
+            $service = app(App\Services\AnalyticsDashboardService::class);
+            $types = $request->input('types', ['visitors', 'pages']);
+            $period = $request->input('period', 7);
+            
+            $data = [];
+            foreach ($types as $type) {
+                $data[$type] = $service->getAnalyticsDataByType($type, $period);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'data' => $data
+            ]);
+        })->name('bulk');
+    });
+});

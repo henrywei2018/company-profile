@@ -8,7 +8,7 @@
     'urgentItemsCount' => 0,
 ])
 <header
-    class="sticky top-0 inset-x-0 z-[20] w-full bg-white border-b border-gray-200 text-sm dark:bg-gray-800 dark:border-gray-700 lg:ps-64">
+    class="sticky top-0 inset-x-0 z-[20] w-full bg-white border-b border-gray-200 text-sm dark:bg-neutral-800 dark:border-gray-700 lg:ps-64">
     <nav class="w-full mx-auto px-4 py-2.5 sm:flex sm:items-center sm:justify-between sm:px-6 lg:px-8"
         aria-label="Global">
 
