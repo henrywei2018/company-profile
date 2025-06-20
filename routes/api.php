@@ -154,6 +154,12 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->name('api.admin.')->group
         // Get dashboard data
         Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'getAnalyticsData'])
             ->name('dashboard');
+        Route::post('analytics/refresh', [App\Http\Controllers\Admin\DashboardController::class, 'refreshAnalytics'])
+            ->name('analytics.refresh');
+        Route::get('analytics/status', [App\Http\Controllers\Admin\DashboardController::class, 'getAnalyticsStatus'])
+            ->name('analytics.status');
+        Route::post('analytics/clear-cache', [App\Http\Controllers\Admin\DashboardController::class, 'clearAnalyticsCache'])
+            ->name('analytics.clear-cache');
         
         // Get specific metrics with period parameter
         Route::get('/visitors/{period?}', function ($period = 7) {

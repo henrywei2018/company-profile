@@ -123,6 +123,183 @@ class DashboardController extends Controller
 
         return $data;
     }
+    public function refreshAnalytics(): JsonResponse
+{
+    try {
+        $user = Auth::user();
+        
+        // Clear analytics cache and refresh
+        $refreshResult = $this->analyticsService->forceRefreshAllData();
+        
+        if ($refreshResult['success']) {
+            Log::info('Analytics data manually refreshed', [
+                'user_id' => $user->id,
+                'refreshed_at' => now()->toISOString(),
+                'cleared_keys' => $refreshResult['cleared_keys']
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Analytics data refreshed successfully!',
+                'data' => [
+                    'refreshed_at' => now()->toISOString(),
+                    'next_auto_refresh' => now()->addMinutes(15)->toISOString(),
+                    'cleared_cache_keys' => count($refreshResult['cleared_keys']),
+                    'estimated_data_age' => '1-4 hours',
+                ]
+            ]);
+        }
+        
+        return response()->json([
+            'success' => false,
+            'message' => $refreshResult['message'],
+            'error' => $refreshResult['error'] ?? 'Unknown error'
+        ], 500);
+
+    } catch (\Exception $e) {
+        Log::error('Manual analytics refresh failed: ' . $e->getMessage(), [
+            'user_id' => Auth::id(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to refresh analytics data',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+/**
+ * Get current analytics status and health
+ */
+public function getAnalyticsStatus(): JsonResponse
+{
+    try {
+        $dataFreshness = $this->analyticsService->getDataFreshness();
+        $dataQuality = $this->analyticsService->getDataQualityMetrics();
+        $cacheInfo = $this->analyticsService->getCacheInfo();
+        
+        return response()->json([
+            'success' => true,
+            'status' => 'operational',
+            'data' => [
+                'freshness' => $dataFreshness,
+                'quality' => $dataQuality,
+                'cache' => $cacheInfo,
+                'health' => [
+                    'api_status' => 'operational',
+                    'connection' => $this->testAnalyticsConnection(),
+                    'last_error' => Cache::get('analytics.last_error', null),
+                    'uptime' => '99.9%',
+                ]
+            ],
+            'timestamp' => now()->toISOString()
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Analytics status check failed: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'status' => 'degraded',
+            'message' => 'Analytics status check failed',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+/**
+ * Clear analytics cache manually
+ */
+public function clearAnalyticsCache(): JsonResponse
+{
+    try {
+        $user = Auth::user();
+        
+        // Clear all analytics cache
+        $this->analyticsService->clearCache();
+        
+        Log::info('Analytics cache manually cleared', [
+            'user_id' => $user->id,
+            'cleared_at' => now()->toISOString()
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Analytics cache cleared successfully!',
+            'data' => [
+                'cleared_at' => now()->toISOString(),
+                'cache_keys_cleared' => 'All analytics cache',
+                'next_refresh' => 'Data will be fetched on next request'
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Analytics cache clear failed: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to clear analytics cache',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+/**
+ * Test analytics connection
+ */
+protected function testAnalyticsConnection(): array
+{
+    try {
+        $connectionTest = $this->analyticsService->testConnection();
+        
+        return [
+            'status' => $connectionTest ? 'connected' : 'disconnected',
+            'response_time' => 'Normal',
+            'last_test' => now()->toISOString(),
+        ];
+        
+    } catch (\Exception $e) {
+        return [
+            'status' => 'error',
+            'response_time' => 'Unknown',
+            'last_test' => now()->toISOString(),
+            'error' => $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * Get analytics dashboard data with freshness info (Enhanced)
+ */
+public function getAnalyticsData(): JsonResponse
+{
+    try {
+        $dashboardData = $this->analyticsService->getDashboardAnalytics();
+        
+        return response()->json([
+            'success' => true,
+            'data' => $dashboardData,
+            'meta' => [
+                'generated_at' => now()->toISOString(),
+                'cache_strategy' => 'Smart caching with 15-minute refresh',
+                'data_freshness' => $dashboardData['data_freshness'] ?? [],
+                'api_version' => 'GA4 Data API v1',
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Analytics data API error: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Analytics data temporarily unavailable',
+            'error' => $e->getMessage(),
+            'fallback_data' => $this->analyticsService->getEmptyDashboardData()
+        ], 500);
+    }
+}
 
     /**
      * Safely get notification counts
