@@ -746,45 +746,10 @@
 
 @push('scripts')
 <script>
-// Enhanced Dashboard Tab System
+// Enhanced Dashboard Tab System - FIXED VERSION
 let currentTab = 'app-stats';
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize dashboard
-    try {
-        initializeTabDashboard();
-    } catch (error) {
-        handleAdminError(error, 'dashboard initialization');
-    }
-});
-
-function initializeTabDashboard() {
-    // Set initial tab based on URL hash or default
-    const hash = window.location.hash.substring(1);
-    if (hash && (hash === 'app-stats' || hash === 'analytics-stats')) {
-        switchTab(hash);
-    } else {
-        switchTab('app-stats');
-    }
-
-    // Auto-refresh dashboard stats every 2 minutes for app stats
-    setInterval(function() {
-        if (currentTab === 'app-stats') {
-            updateDashboardStats();
-        }
-    }, 120000);
-
-    // Auto-refresh analytics every 15 minutes for analytics tab
-    setInterval(function() {
-        if (currentTab === 'analytics-stats') {
-            refreshAnalyticsData(true); // Silent refresh
-        }
-    }, 900000); // 15 minutes
-
-    // Set up event listeners
-    setupEventListeners();
-}
-
+// Define functions FIRST in global scope before DOMContentLoaded
 function switchTab(tabName) {
     // Update URL hash
     window.location.hash = tabName;
@@ -828,30 +793,13 @@ function switchTab(tabName) {
     console.log('Switched to tab:', tabName);
 }
 
-function initializeAnalyticsTab() {
-    // Initialize any analytics-specific features
-    updateAnalyticsLastUpdate();
-    
-    // Check if analytics data is available
-    const analyticsData = window.analyticsData || {};
-    if (Object.keys(analyticsData).length === 0) {
-        // Load analytics data if not already loaded
-        loadAnalyticsData();
-    }
-}
-
-function initializeAppStatsTab() {
-    // Initialize any app stats specific features
-    updateLastRefreshTime();
-    
-    // Refresh app stats
-    if (typeof updateDashboardStats === 'function') {
-        updateDashboardStats();
-    }
-}
-
 function refreshAllData() {
-    const button = event.target.closest('button');
+    const button = document.getElementById('refresh-all-btn') || event.target.closest('button');
+    if (!button) {
+        console.error('Refresh button not found');
+        return;
+    }
+    
     const originalText = button.innerHTML;
     
     // Show loading state
@@ -932,12 +880,8 @@ function refreshAppData() {
 }
 
 function changeAnalyticsPeriod(period) {
-    // Update analytics period
     console.log('Changing analytics period to:', period);
     showAnalyticsMessage(`Period changed to ${period} days`, 'info');
-    
-    // Here you would typically reload charts with new period
-    // loadAnalyticsCharts(period);
 }
 
 function updateLastRefreshTime() {
@@ -961,7 +905,6 @@ function updateAnalyticsLastUpdate() {
 }
 
 function loadAnalyticsData() {
-    // Load analytics data via AJAX
     fetch('/api/admin/gtag/dashboard', {
         headers: {
             'Accept': 'application/json',
@@ -977,54 +920,6 @@ function loadAnalyticsData() {
     })
     .catch(error => {
         console.error('Error loading analytics data:', error);
-    });
-}
-
-function setupEventListeners() {
-    // Listen for hash changes to switch tabs
-    window.addEventListener('hashchange', function() {
-        const hash = window.location.hash.substring(1);
-        if (hash && (hash === 'app-stats' || hash === 'analytics-stats')) {
-            switchTab(hash);
-        }
-    });
-    
-    // Tab click handlers
-    document.querySelectorAll('.dashboard-tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            const tabName = this.getAttribute('data-tab');
-            switchTab(tabName);
-        });
-    });
-}
-
-function updateDashboardStats() {
-    fetch('/admin/dashboard/stats')
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            updateStatCards(data.data);
-        }
-    })
-    .catch(error => {
-        console.error('Error updating dashboard stats:', error);
-    });
-}
-
-function updateStatCards(data) {
-    // Update stat card values safely
-    const statUpdates = {
-        'projects-total': data.projects?.total,
-        'quotations-total': data.quotations?.total,
-        'clients-total': data.clients?.total,
-        'messages-total': data.messages?.total
-    };
-
-    Object.entries(statUpdates).forEach(([elementId, value]) => {
-        const element = document.getElementById(elementId);
-        if (element && value !== undefined) {
-            element.textContent = value;
-        }
     });
 }
 
@@ -1053,11 +948,54 @@ function showAnalyticsMessage(message, type = 'info') {
     }, 3000);
 }
 
-// Global admin dashboard error handler
+// Helper functions
+function initializeAnalyticsTab() {
+    updateAnalyticsLastUpdate();
+    const analyticsData = window.analyticsData || {};
+    if (Object.keys(analyticsData).length === 0) {
+        loadAnalyticsData();
+    }
+}
+
+function initializeAppStatsTab() {
+    updateLastRefreshTime();
+    if (typeof updateDashboardStats === 'function') {
+        updateDashboardStats();
+    }
+}
+
+function updateDashboardStats() {
+    fetch('/admin/dashboard/stats')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateStatCards(data.data);
+        }
+    })
+    .catch(error => {
+        console.error('Error updating dashboard stats:', error);
+    });
+}
+
+function updateStatCards(data) {
+    const statUpdates = {
+        'projects-total': data.projects?.total,
+        'quotations-total': data.quotations?.total,
+        'clients-total': data.clients?.total,
+        'messages-total': data.messages?.total
+    };
+
+    Object.entries(statUpdates).forEach(([elementId, value]) => {
+        const element = document.getElementById(elementId);
+        if (element && value !== undefined) {
+            element.textContent = value;
+        }
+    });
+}
+
 function handleAdminError(error, context = 'admin dashboard') {
     console.error(`Admin dashboard error in ${context}:`, error);
     
-    // Show user-friendly error message
     const errorContainer = document.getElementById('admin-error-container');
     if (errorContainer) {
         errorContainer.innerHTML = `
@@ -1080,6 +1018,77 @@ function handleAdminError(error, context = 'admin dashboard') {
     }
 }
 
+// Set up event listeners and initialization after DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        initializeTabDashboard();
+    } catch (error) {
+        handleAdminError(error, 'dashboard initialization');
+    }
+});
+
+function initializeTabDashboard() {
+    // Set initial tab based on URL hash or default
+    const hash = window.location.hash.substring(1);
+    if (hash && (hash === 'app-stats' || hash === 'analytics-stats')) {
+        switchTab(hash);
+    } else {
+        switchTab('app-stats');
+    }
+
+    // Auto-refresh dashboard stats every 2 minutes for app stats
+    setInterval(function() {
+        if (currentTab === 'app-stats') {
+            updateDashboardStats();
+        }
+    }, 120000);
+
+    // Auto-refresh analytics every 15 minutes for analytics tab
+    setInterval(function() {
+        if (currentTab === 'analytics-stats') {
+            refreshAnalyticsData(true); // Silent refresh
+        }
+    }, 900000); // 15 minutes
+
+    // Set up event listeners
+    setupEventListeners();
+}
+
+function setupEventListeners() {
+    // Listen for hash changes to switch tabs
+    window.addEventListener('hashchange', function() {
+        const hash = window.location.hash.substring(1);
+        if (hash && (hash === 'app-stats' || hash === 'analytics-stats')) {
+            switchTab(hash);
+        }
+    });
+    
+    // Tab click handlers using event delegation
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('.dashboard-tab') || e.target.closest('.dashboard-tab')) {
+            const tab = e.target.matches('.dashboard-tab') ? e.target : e.target.closest('.dashboard-tab');
+            const tabName = tab.getAttribute('data-tab');
+            if (tabName) {
+                switchTab(tabName);
+            }
+        }
+    });
+
+    // Refresh button handler
+    const refreshBtn = document.getElementById('refresh-all-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', refreshAllData);
+    }
+
+    // Period selector handler
+    const periodSelector = document.getElementById('analytics-period');
+    if (periodSelector) {
+        periodSelector.addEventListener('change', function() {
+            changeAnalyticsPeriod(this.value);
+        });
+    }
+}
+
 // Keyboard shortcuts for tab navigation
 document.addEventListener('keydown', function(e) {
     // Ctrl+1 for App Stats, Ctrl+2 for Analytics
@@ -1092,8 +1101,7 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// Override global error handler for dashboard-specific errors
-window.handleAdminError = handleAdminError;
+// Make functions available globally IMMEDIATELY (not in DOMContentLoaded)
 window.switchTab = switchTab;
 window.refreshAllData = refreshAllData;
 window.refreshAnalyticsData = refreshAnalyticsData;
@@ -1101,7 +1109,8 @@ window.changeAnalyticsPeriod = changeAnalyticsPeriod;
 window.updateLastRefreshTime = updateLastRefreshTime;
 window.updateAnalyticsLastUpdate = updateAnalyticsLastUpdate;
 window.loadAnalyticsData = loadAnalyticsData;
-
+window.handleAdminError = handleAdminError;
+window.showAnalyticsMessage = showAnalyticsMessage;
 </script>
 
 <style>
