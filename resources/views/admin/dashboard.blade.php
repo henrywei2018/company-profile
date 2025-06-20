@@ -23,7 +23,7 @@
             
             <!-- Quick Actions -->
             <div class="flex items-center space-x-3">
-                <button onclick="refreshAllData()" 
+                <button id="refresh-all-btn" type="button" 
                         class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -59,8 +59,7 @@
     <div class="mb-8">
         <div class="border-b border-gray-200 dark:border-gray-700">
             <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                <button onclick="switchTab('app-stats')" 
-                        id="tab-app-stats"
+                <button id="tab-app-stats"
                         class="dashboard-tab active border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm dark:text-gray-400 dark:hover:text-gray-300"
                         data-tab="app-stats">
                     <div class="flex items-center">
@@ -74,8 +73,7 @@
                     </div>
                 </button>
                 
-                <button onclick="switchTab('analytics-stats')" 
-                        id="tab-analytics-stats"
+                <button id="tab-analytics-stats"
                         class="dashboard-tab border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm dark:text-gray-400 dark:hover:text-gray-300"
                         data-tab="analytics-stats">
                     <div class="flex items-center">
@@ -460,7 +458,7 @@
                         <!-- Analytics Actions -->
                         <div class="flex items-center space-x-2">
                             <!-- Manual Refresh Button -->
-                            <button onclick="refreshAnalyticsData()" 
+                            <button id="refresh-analytics-btn"
                                     class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -1085,6 +1083,14 @@ function setupEventListeners() {
     if (periodSelector) {
         periodSelector.addEventListener('change', function() {
             changeAnalyticsPeriod(this.value);
+        });
+    }
+
+    // Analytics refresh button handler
+    const refreshAnalyticsBtn = document.getElementById('refresh-analytics-btn');
+    if (refreshAnalyticsBtn) {
+        refreshAnalyticsBtn.addEventListener('click', function() {
+            refreshAnalyticsData();
         });
     }
 }
