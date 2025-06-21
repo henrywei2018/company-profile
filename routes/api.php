@@ -143,7 +143,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('api.admin.')->group
     
     // Basic Dashboard
     Route::get('/dashboard', [DashboardController::class, 'getAnalyticsData'])->name('dashboard');
-    Route::get('/stats', [DashboardController::class, 'getStats'])->name('stats');
+    Route::get('/stats', [DashboardController::class, 'getStatisticsSafely'])->name('stats');
     Route::post('/cache/clear', [DashboardController::class, 'clearCache'])->name('cache.clear');
     
     // Chat Management

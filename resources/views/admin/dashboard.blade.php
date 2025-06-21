@@ -7,6 +7,29 @@
     :waitingChatsCount="$waitingChatsCount ?? 0"
     :urgentItemsCount="$urgentItemsCount ?? 0">
     
+
+    @if(config('app.debug'))
+    <div class="mb-6 bg-gray-50 border border-gray-200 rounded-md p-4">
+        <h3 class="text-sm font-medium text-gray-700 mb-2">🔧 Debug Information</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div>
+                <strong>User:</strong> {{ auth()->user()->name ?? 'Not authenticated' }}<br>
+                <strong>User ID:</strong> {{ auth()->id() ?? 'N/A' }}<br>
+                <strong>Admin Role:</strong> {{ auth()->user()->is_admin ?? false ? 'Yes' : 'No' }}
+            </div>
+            <div>
+                <strong>Analytics Data:</strong> {{ isset($analytics) ? 'Available' : 'Missing' }}<br>
+                <strong>Analytics Type:</strong> {{ isset($analytics) ? gettype($analytics) : 'N/A' }}<br>
+                <strong>Analytics Count:</strong> {{ isset($analytics) && is_array($analytics) ? count($analytics) : 'N/A' }}
+            </div>
+            <div>
+                <strong>Environment:</strong> {{ app()->environment() }}<br>
+                <strong>URL:</strong> {{ request()->url() }}<br>
+                <strong>CSRF Token:</strong> {{ csrf_token() ? 'Present' : 'Missing' }}
+            </div>
+        </div>
+    </div>
+    @endif
     <!-- Page Header -->
     <div class="mb-8">
         <div class="flex items-center justify-between">
@@ -528,136 +551,524 @@
         </div>
     </div>
 
-    <!-- Tab Switching JavaScript -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Tab switching functionality
-            const tabButtons = document.querySelectorAll('.dashboard-tab');
-            const tabPanels = document.querySelectorAll('.tab-panel');
+    // Fixed Dashboard JavaScript Integration - Add to dashboard.blade.php
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching functionality
+    const tabButtons = document.querySelectorAll('.dashboard-tab');
+    const tabPanels = document.querySelectorAll('.tab-panel');
 
-            function switchTab(targetTab) {
-                // Remove active class from all tabs and panels
-                tabButtons.forEach(btn => {
-                    btn.classList.remove('active');
-                    btn.classList.remove('border-blue-500', 'text-blue-600');
-                    btn.classList.remove('dark:border-blue-400', 'dark:text-blue-400');
-                    btn.classList.add('border-transparent', 'text-gray-500');
-                    btn.classList.add('dark:text-gray-400');
-                });
-
-                tabPanels.forEach(panel => {
-                    panel.classList.add('hidden');
-                    panel.classList.remove('active');
-                });
-
-                // Add active class to target tab and panel
-                const targetButton = document.querySelector(`[data-tab="${targetTab}"]`);
-                const targetPanel = document.getElementById(`content-${targetTab}`);
-
-                if (targetButton && targetPanel) {
-                    targetButton.classList.add('active');
-                    targetButton.classList.remove('border-transparent', 'text-gray-500');
-                    targetButton.classList.remove('dark:text-gray-400');
-                    targetButton.classList.add('border-blue-500', 'text-blue-600');
-                    targetButton.classList.add('dark:border-blue-400', 'dark:text-blue-400');
-
-                    targetPanel.classList.remove('hidden');
-                    targetPanel.classList.add('active');
-
-                    // Initialize KPI dashboard if analytics-kpis tab is selected
-                    if (targetTab === 'analytics-kpis') {
-                        initializeKPIDashboard();
-                    }
-                }
-            }
-
-            // Add click event listeners to tab buttons
-            tabButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const targetTab = this.getAttribute('data-tab');
-                    switchTab(targetTab);
-                });
-            });
-
-            // Refresh all data functionality
-            const refreshBtn = document.getElementById('refresh-all-btn');
-            if (refreshBtn) {
-                refreshBtn.addEventListener('click', function() {
-                    // Add loading state
-                    this.disabled = true;
-                    this.querySelector('svg').classList.add('animate-spin');
-                    
-                    // Simulate refresh (you can implement actual refresh logic here)
-                    setTimeout(() => {
-                        this.disabled = false;
-                        this.querySelector('svg').classList.remove('animate-spin');
-                        document.getElementById('last-update-time').textContent = new Date().toLocaleTimeString('en-US', { 
-                            hour12: false, 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                        });
-                        
-                        // Show success message
-                        showNotification('Dashboard data refreshed successfully!', 'success');
-                        
-                        // Refresh KPI dashboard if it's the active tab
-                        const activeTab = document.querySelector('.dashboard-tab.active');
-                        if (activeTab && activeTab.getAttribute('data-tab') === 'analytics-kpis') {
-                            initializeKPIDashboard();
-                        }
-                    }, 2000);
-                });
-            }
-
-            // Initialize KPI Dashboard function
-            function initializeKPIDashboard() {
-                // Check if KPI dashboard is already initialized
-                if (window.kpiDashboard && typeof window.kpiDashboard.loadKPIData === 'function') {
-                    window.kpiDashboard.loadKPIData();
-                } else {
-                    // Initialize KPI dashboard if the class exists
-                    if (typeof KPIDashboard !== 'undefined') {
-                        window.kpiDashboard = new KPIDashboard();
-                    }
-                }
-            }
-
-            // Notification function
-            function showNotification(message, type = 'info') {
-                const notification = document.createElement('div');
-                notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-x-full`;
-                
-                const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
-                notification.classList.add(bgColor, 'text-white');
-                notification.textContent = message;
-                
-                document.body.appendChild(notification);
-                
-                // Animate in
-                setTimeout(() => {
-                    notification.classList.remove('translate-x-full');
-                }, 100);
-                
-                // Animate out and remove
-                setTimeout(() => {
-                    notification.classList.add('translate-x-full');
-                    setTimeout(() => {
-                        if (notification.parentNode) {
-                            notification.parentNode.removeChild(notification);
-                        }
-                    }, 300);
-                }, 3000);
-            }
-
-            // Debug analytics data structure (can be removed in production)
-            @if(isset($analytics) && config('app.debug'))
-            console.log('Analytics data structure:', @json($analytics));
-            @endif
-
-            // Set initial tab (app-stats by default)
-            switchTab('app-stats');
+    function switchTab(targetTab) {
+        // Remove active class from all tabs and panels
+        tabButtons.forEach(btn => {
+            btn.classList.remove('active');
+            btn.classList.remove('border-blue-500', 'text-blue-600');
+            btn.classList.remove('dark:border-blue-400', 'dark:text-blue-400');
+            btn.classList.add('border-transparent', 'text-gray-500');
+            btn.classList.add('dark:text-gray-400');
         });
-    </script>
+
+        tabPanels.forEach(panel => {
+            panel.classList.add('hidden');
+            panel.classList.remove('active');
+        });
+
+        // Add active class to target tab and panel
+        const targetButton = document.querySelector(`[data-tab="${targetTab}"]`);
+        const targetPanel = document.getElementById(`content-${targetTab}`);
+
+        if (targetButton && targetPanel) {
+            targetButton.classList.add('active');
+            targetButton.classList.remove('border-transparent', 'text-gray-500');
+            targetButton.classList.remove('dark:text-gray-400');
+            targetButton.classList.add('border-blue-500', 'text-blue-600');
+            targetButton.classList.add('dark:border-blue-400', 'dark:text-blue-400');
+
+            targetPanel.classList.remove('hidden');
+            targetPanel.classList.add('active');
+
+            // Initialize KPI dashboard if analytics-kpis tab is selected
+            if (targetTab === 'analytics-kpis') {
+                initializeKPIDashboard();
+            }
+
+            // Load system health if system-health tab is selected
+            if (targetTab === 'system-health') {
+                loadSystemHealth();
+            }
+        }
+    }
+
+    // Add click event listeners to tab buttons
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetTab = this.getAttribute('data-tab');
+            switchTab(targetTab);
+        });
+    });
+
+    // Refresh all data functionality
+    const refreshBtn = document.getElementById('refresh-all-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            // Add loading state
+            this.disabled = true;
+            this.querySelector('svg').classList.add('animate-spin');
+            
+            // Get the currently active tab
+            const activeTab = document.querySelector('.dashboard-tab.active');
+            const activeTabName = activeTab ? activeTab.getAttribute('data-tab') : 'app-stats';
+            
+            // Refresh based on active tab
+            refreshActiveTabData(activeTabName).then(() => {
+                this.disabled = false;
+                this.querySelector('svg').classList.remove('animate-spin');
+                updateLastRefreshTime();
+                showNotification('Dashboard data refreshed successfully!', 'success');
+            }).catch(error => {
+                this.disabled = false;
+                this.querySelector('svg').classList.remove('animate-spin');
+                showNotification('Failed to refresh data: ' + error.message, 'error');
+            });
+        });
+    }
+
+    // Initialize KPI Dashboard function
+    function initializeKPIDashboard() {
+        // Check if KPI dashboard is already initialized
+        if (window.kpiDashboard && typeof window.kpiDashboard.loadKPIData === 'function') {
+            window.kpiDashboard.loadKPIData();
+        } else {
+            // Initialize KPI dashboard if the class exists
+            if (typeof KPIDashboard !== 'undefined') {
+                window.kpiDashboard = new KPIDashboard();
+            } else {
+                // Create a simple fallback KPI loader
+                loadKPIDataFallback();
+            }
+        }
+    }
+
+    // Fallback KPI data loader with proper authentication
+    async function loadKPIDataFallback() {
+        try {
+            const response = await fetchWithAuth('/api/admin/analytics/kpi/dashboard?period=30');
+            const data = await response.json();
+            
+            if (data.success) {
+                console.log('KPI Data loaded:', data.data);
+                showNotification('KPI data loaded successfully', 'success');
+            } else {
+                throw new Error(data.message || 'Failed to load KPI data');
+            }
+        } catch (error) {
+            console.error('KPI Dashboard error:', error);
+            showKPIError(error.message);
+        }
+    }
+
+    // Load system health data
+    async function loadSystemHealth() {
+        const healthContainer = document.getElementById('content-system-health');
+        if (!healthContainer) return;
+
+        try {
+            // Try to load system health - use a safe fallback URL
+            const response = await fetchWithAuth('/api/admin/dashboard');
+            const data = await response.json();
+            
+            console.log('System health check completed');
+            showNotification('System health checked', 'success');
+        } catch (error) {
+            console.error('System health check failed:', error);
+            // Don't show error for this as it's not critical
+        }
+    }
+
+    // Enhanced fetch with authentication
+    async function fetchWithAuth(url, options = {}) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        
+        const defaultOptions = {
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...(csrfToken && { 'X-CSRF-TOKEN': csrfToken.getAttribute('content') }),
+                ...options.headers
+            },
+            credentials: 'same-origin',
+            ...options
+        };
+
+        const response = await fetch(url, defaultOptions);
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Authentication required. Please refresh the page and try again.');
+            }
+            if (response.status === 403) {
+                throw new Error('Access denied. You do not have permission to view this data.');
+            }
+            if (response.status === 500) {
+                throw new Error('Server error. Please try again later.');
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // Check if response is actually JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Server returned invalid response format');
+        }
+
+        return response;
+    }
+
+    // Refresh data based on active tab
+    async function refreshActiveTabData(tabName) {
+        switch (tabName) {
+            case 'analytics-kpis':
+                if (window.kpiDashboard && typeof window.kpiDashboard.loadKPIData === 'function') {
+                    await window.kpiDashboard.loadKPIData();
+                } else {
+                    await loadKPIDataFallback();
+                }
+                break;
+            case 'system-health':
+                await loadSystemHealth();
+                break;
+            case 'analytics-overview':
+                // Refresh analytics overview if needed
+                console.log('Analytics overview refresh not implemented');
+                break;
+            case 'app-stats':
+            default:
+                // Refresh application stats if needed
+                console.log('Application stats refresh not implemented');
+                break;
+        }
+    }
+
+    // Update last refresh time
+    function updateLastRefreshTime() {
+        const timeElement = document.getElementById('last-update-time');
+        if (timeElement) {
+            timeElement.textContent = new Date().toLocaleTimeString('en-US', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+        }
+    }
+
+    // Show KPI error in the dashboard
+    function showKPIError(message) {
+        const kpiContainer = document.getElementById('content-analytics-kpis');
+        if (kpiContainer) {
+            kpiContainer.innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-md p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800">KPI Dashboard Error</h3>
+                            <div class="mt-2 text-sm text-red-700">${message}</div>
+                            <div class="mt-4">
+                                <button onclick="window.location.reload()" class="bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded text-sm">
+                                    Refresh Page
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // Notification function
+    function showNotification(message, type = 'info') {
+        // Remove any existing notifications
+        const existingNotifications = document.querySelectorAll('.dashboard-notification');
+        existingNotifications.forEach(notification => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        });
+
+        const notification = document.createElement('div');
+        notification.className = `dashboard-notification fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-x-full`;
+        
+        const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+        notification.classList.add(bgColor, 'text-white');
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full');
+        }, 100);
+        
+        // Animate out and remove
+        setTimeout(() => {
+            notification.classList.add('translate-x-full');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
+    }
+
+    // Global functions for external access
+    window.showNotification = showNotification;
+    window.fetchWithAuth = fetchWithAuth;
+
+    // Debug analytics data structure (can be removed in production)
+    @if(isset($analytics) && config('app.debug'))
+    console.log('Analytics data structure:', @json($analytics));
+    @endif
+
+    // Set initial tab (app-stats by default)
+    switchTab('app-stats');
+
+    // Initialize first load
+    updateLastRefreshTime();
+});
+
+// Enhanced KPI Dashboard Class with better error handling
+class EnhancedKPIDashboard {
+    constructor() {
+        this.currentCategory = 'overview';
+        this.currentPeriod = 30;
+        this.refreshInterval = null;
+        this.kpiData = null;
+        this.isInitialized = false;
+
+        this.init();
+    }
+
+    async init() {
+        try {
+            await this.loadKPIData();
+            this.setupEventListeners();
+            this.startAutoRefresh();
+            this.isInitialized = true;
+        } catch (error) {
+            console.error('KPI Dashboard initialization failed:', error);
+            this.showError('Failed to initialize KPI dashboard: ' + error.message);
+        }
+    }
+
+    async loadKPIData(period = this.currentPeriod) {
+        try {
+            this.showLoadingState();
+
+            const response = await window.fetchWithAuth(`/api/admin/analytics/kpi/dashboard?period=${period}`);
+            const data = await response.json();
+
+            if (data.success) {
+                this.kpiData = data.data;
+                this.renderKPIDashboard();
+                this.hideLoadingState();
+                console.log('KPI data loaded successfully');
+            } else {
+                throw new Error(data.message || 'Failed to load KPI data');
+            }
+
+        } catch (error) {
+            console.error('KPI Dashboard error:', error);
+            this.showError(error.message);
+        }
+    }
+
+    renderKPIDashboard() {
+        if (!this.kpiData) return;
+
+        try {
+            this.renderOverviewKPIs();
+            this.renderCategoryContent(this.currentCategory);
+            console.log('KPI dashboard rendered successfully');
+        } catch (error) {
+            console.error('Error rendering KPI dashboard:', error);
+            this.showError('Failed to render dashboard: ' + error.message);
+        }
+    }
+
+    renderOverviewKPIs() {
+        const container = document.getElementById('overview-kpis');
+        if (!container) return;
+
+        const overview = this.kpiData.overview || {};
+        
+        if (Object.keys(overview).length === 0) {
+            container.innerHTML = '<div class="col-span-full text-center text-gray-500">No overview data available</div>';
+            return;
+        }
+
+        const kpiCards = Object.entries(overview).map(([key, data]) => {
+            return `
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                ${this.formatKPITitle(key)}
+                            </h4>
+                            <div class="flex items-center space-x-2">
+                                <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                                    ${this.formatKPIValue(key, data.current || data.value || 0)}
+                                </p>
+                                ${data.change_percent !== undefined ? `
+                                    <span class="text-xs ${data.change_percent >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                        ${data.change_percent >= 0 ? '+' : ''}${data.change_percent.toFixed(1)}%
+                                    </span>
+                                ` : ''}
+                            </div>
+                            ${data.status ? `
+                                <p class="text-xs mt-1 ${this.getStatusClass(data.status)}">
+                                    ${data.status}
+                                </p>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = kpiCards;
+    }
+
+    renderCategoryContent(category) {
+        const categoryData = this.kpiData[category];
+        if (!categoryData) return;
+
+        console.log(`Rendering ${category} category data:`, categoryData);
+        // Add specific category rendering logic here
+    }
+
+    formatKPITitle(key) {
+        return key.split('_').map(word =>
+            word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
+    }
+
+    formatKPIValue(key, value) {
+        if (value === undefined || value === null) return '0';
+
+        switch (key) {
+            case 'bounce_rate':
+                return `${typeof value === 'number' ? value.toFixed(1) : value}%`;
+            case 'avg_session_duration':
+            case 'average_session_duration':
+                return this.formatDuration(value);
+            default:
+                return typeof value === 'number' ? value.toLocaleString() : value;
+        }
+    }
+
+    formatDuration(seconds) {
+        if (!seconds || seconds === 0) return '0s';
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.floor(seconds % 60);
+        if (minutes === 0) return `${remainingSeconds}s`;
+        return `${minutes}m ${remainingSeconds}s`;
+    }
+
+    getStatusClass(status) {
+        const classes = {
+            'excellent': 'text-green-600',
+            'good': 'text-blue-600',
+            'warning': 'text-yellow-600',
+            'critical': 'text-red-600'
+        };
+        return classes[status] || 'text-gray-600';
+    }
+
+    showLoadingState() {
+        const container = document.getElementById('overview-kpis');
+        if (container) {
+            container.innerHTML = `
+                <div class="col-span-full flex justify-center items-center py-12">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span class="ml-2 text-gray-600">Loading KPI data...</span>
+                </div>
+            `;
+        }
+    }
+
+    hideLoadingState() {
+        // Loading state will be replaced by actual content
+    }
+
+    showError(message) {
+        const container = document.getElementById('overview-kpis');
+        if (container) {
+            container.innerHTML = `
+                <div class="col-span-full bg-red-50 border border-red-200 rounded-md p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800">KPI Error</h3>
+                            <div class="mt-2 text-sm text-red-700">${message}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (window.showNotification) {
+            window.showNotification(message, 'error');
+        }
+    }
+
+    setupEventListeners() {
+        // Period change listener
+        const periodSelect = document.getElementById('kpi-period');
+        if (periodSelect) {
+            periodSelect.addEventListener('change', (e) => {
+                this.currentPeriod = parseInt(e.target.value);
+                this.loadKPIData(this.currentPeriod);
+            });
+        }
+    }
+
+    startAutoRefresh() {
+        // Refresh every 5 minutes
+        this.refreshInterval = setInterval(() => {
+            this.loadKPIData();
+        }, 5 * 60 * 1000);
+    }
+
+    cleanup() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+        }
+    }
+}
+
+// Initialize enhanced KPI dashboard when needed
+window.initializeEnhancedKPIDashboard = function() {
+    if (!window.enhancedKpiDashboard) {
+        window.enhancedKpiDashboard = new EnhancedKPIDashboard();
+    }
+    return window.enhancedKpiDashboard;
+};
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (window.enhancedKpiDashboard) {
+        window.enhancedKpiDashboard.cleanup();
+    }
+});
+</script>
 
     <!-- Enhanced Styles -->
     <style>
