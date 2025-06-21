@@ -151,7 +151,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->name('api.admin.')->group
     
     Route::prefix('gtag')->name('gtag.')->group(function () {
         
-        // Get dashboard data
+        // Get dashboard data 
         Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'getAnalyticsData'])
             ->name('dashboard');
         Route::post('analytics/refresh', [App\Http\Controllers\Admin\DashboardController::class, 'refreshAnalytics'])
