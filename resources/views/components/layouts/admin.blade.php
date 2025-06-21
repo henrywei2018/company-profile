@@ -60,17 +60,8 @@
         else if (isDarkOrAuto && !html.classList.contains('dark')) html.classList.add('dark');
         else if (isLightOrAuto && !html.classList.contains('light')) html.classList.add('light');
     </script>
-    @if ($enableCharts)
-        <!-- Apexcharts -->
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.css">
-        <style type="text/css">
-            .apexcharts-tooltip.apexcharts-theme-light {
-                background-color: transparent !important;
-                border: none !important;
-                box-shadow: none !important;
-            }
-        </style>
-    @endif
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
 
 <body class="bg-gray-50 dark:bg-neutral-900">

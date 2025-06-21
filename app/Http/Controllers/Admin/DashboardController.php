@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Services\DashboardService;
 use App\Services\NotificationService;
 use App\Services\NavigationService;
-use App\Services\AnalyticsDashboardService;
 use App\Services\GoogleAnalyticsService;
 use App\Facades\Notifications;
 use Illuminate\Http\Request;
@@ -22,17 +21,14 @@ class DashboardController extends Controller
     protected DashboardService $dashboardService;
     protected NotificationService $notificationService;
     protected NavigationService $navigationService;
-    protected AnalyticsDashboardService $analyticsService;
 
     public function __construct(
         DashboardService $dashboardService,
         NotificationService $notificationService,
-        AnalyticsDashboardService $analyticsService
         
     ) {
         $this->dashboardService = $dashboardService;
         $this->notificationService = $notificationService;
-        $this->analyticsService = $analyticsService;
     }
 
     /**
