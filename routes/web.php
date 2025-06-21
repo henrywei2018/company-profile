@@ -186,9 +186,6 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/robots.txt', [RobotsController::class, 'robots'])->name('robots');
 
-Route::get('/test-analytics', [App\Http\Controllers\AnalyticsTestController::class, 'test'])
-    ->middleware(['auth', 'admin'])
-    ->name('test.analytics');
 /*
 |--------------------------------------------------------------------------
 | Role-Based Area Routes
