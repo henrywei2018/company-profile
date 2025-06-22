@@ -32,7 +32,7 @@
                 </button>
 
                 <!-- Export Button -->
-                <div class="relative">
+                {{-- <div class="relative">
                     <button id="export-toggle"
                         class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,7 +59,7 @@
                             </button>
                         </div>
                     </div>
-                </div>
+                </div> --}}
             </div>
         </div>
     </div>
@@ -380,12 +380,13 @@
                             <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
                                 ${this.formatTitle(key)}
                             </h4>
-                            <div class="flex items-center space-x-2">
-                                <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                            <div class="flex items-center space-x-1">
+                                <p class="text-lg font-bold text-gray-900 dark:text-white">
                                     ${this.formatValue(key, data.current || data.value || 0)}
                                 </p>
+                                <br>
                                 ${change !== 0 ? `
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${trendClass}">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${trendClass}">
                                         ${trendIcon} ${Math.abs(change)}%
                                     </span>
                                 ` : ''}
