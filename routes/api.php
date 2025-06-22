@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
+use App\Models\User;
 use App\Http\Controllers\Api\{
     ProjectController, ServiceController, PostController,
     ContactController, QuotationController, NotificationController
@@ -12,6 +13,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Api\Client\MessageController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Services\GoogleAnalyticsService;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -23,9 +25,6 @@ RateLimiter::for('client-api', fn(Request $request) =>
 );
 RateLimiter::for('admin-api', fn(Request $request) =>
     Limit::perMinute(120)->by($request->user()?->id ?: $request->ip())
-);
-RateLimiter::for('analytics-api', fn(Request $request) =>
-    Limit::perMinute(60)->by($request->user()?->id ?: $request->ip())
 );
 
 /*
@@ -88,20 +87,6 @@ Route::post('/quotation', [QuotationController::class, 'store'])->name('api.quot
 */
 Route::middleware(['auth'])->group(function () {
     
-    // Chat System (Client)
-    Route::prefix('chat')->name('api.chat.')->group(function () {
-        Route::post('/start', [ChatController::class, 'start'])->name('start');
-        Route::get('/session', [ChatController::class, 'getSession'])->name('session');
-        Route::post('/close', [ChatController::class, 'close'])->name('close');
-        Route::post('/send-message', [ChatController::class, 'sendMessage'])
-            ->middleware('throttle:30,1')->name('send-message');
-        Route::post('/typing', [ChatController::class, 'sendTyping'])
-            ->middleware('throttle:60,1')->name('typing');
-        Route::get('/messages', [ChatController::class, 'getMessages'])->name('messages');
-        Route::post('/update-info', [ChatController::class, 'updateClientInfo'])->name('update-info');
-        Route::get('/history', [ChatController::class, 'history'])->name('history');
-        Route::get('/online-status', [ChatController::class, 'onlineStatus'])->name('client-online-status');
-    });
 
     // Notifications (All Users)
     Route::prefix('notifications')->name('api.notifications.')->group(function () {

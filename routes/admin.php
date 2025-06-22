@@ -33,6 +33,11 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\UnifiedProfileController;
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
+    
+    // API Token Management
+    Route::post('/api-tokens/generate', [DashboardController::class, 'generateApiToken'])->name('admin.api-tokens.generate');
+    Route::get('/api-tokens', [DashboardController::class, 'listApiTokens'])->name('admin.api-tokens.list');
+    Route::delete('/api-tokens/revoke', [DashboardController::class, 'revokeApiToken'])->name('admin.api-tokens.revoke');
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');

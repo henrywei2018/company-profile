@@ -22,8 +22,12 @@ use App\Http\Controllers\Client\{
 };
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\UnifiedProfileController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Services\GoogleAnalyticsService;
 
 require __DIR__ . '/auth.php';
+
+
 
 /*
 |--------------------------------------------------------------------------
@@ -181,6 +185,331 @@ Route::middleware('auth')->group(function () {
         Route::post('/update-info', [App\Http\Controllers\ChatController::class, 'updateClientInfo'])->name('api.chat.update-info');
         Route::get('/history', [App\Http\Controllers\ChatController::class, 'history'])->name('api.chat.history');
         Route::get('/online-status', [App\Http\Controllers\ChatController::class, 'onlineStatus'])->name('api.chat.online-status');
+    });
+
+    Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
+        Route::prefix('analytics')->name('analytics.')->group(function () {
+            
+            // Basic Analytics Operations
+            Route::post('/refresh', [DashboardController::class, 'refreshAnalytics'])->name('refresh');
+            Route::get('/status', [DashboardController::class, 'getAnalyticsStatus'])->name('status');
+            Route::post('/clear-cache', [DashboardController::class, 'clearAnalyticsCache'])->name('clear-cache');
+            
+            // KPI Dashboard
+            Route::prefix('kpi')->name('kpi.')->group(function () {
+                
+                // Main KPI Endpoints
+                Route::get('/dashboard', [DashboardController::class, 'getKPIDashboard'])->name('dashboard');
+                Route::get('/realtime', [DashboardController::class, 'getRealTimeKPISummary'])->name('realtime');
+                Route::get('/alerts', [DashboardController::class, 'getKPIAlerts'])->name('alerts');
+                Route::get('/export', [DashboardController::class, 'exportKPIData'])->name('export');
+                
+                // Category-Specific KPIs
+                Route::get('/category/{category}', [DashboardController::class, 'getKPICategory'])
+                    ->name('category')
+                    ->where('category', 'overview|traffic|engagement|conversion|audience|acquisition|behavior|technical');
+                
+                // Bulk Operations
+                Route::post('/bulk', function(Request $request) {
+                    try {
+                        $categories = $request->input('categories', ['overview']);
+                        $period = $request->input('period', 30);
+                        
+                        $googleAnalytics = app(GoogleAnalyticsService::class);
+                        
+                        $data = [];
+                        foreach ($categories as $category) {
+                            $methodName = 'get' . ucfirst($category) . 'KPIs';
+                            if (method_exists($googleAnalytics, $methodName)) {
+                                $data[$category] = $googleAnalytics->$methodName($period);
+                            }
+                        }
+                        
+                        return response()->json([
+                            'success' => true,
+                            'data' => $data,
+                            'meta' => [
+                                'categories' => $categories,
+                                'period' => $period,
+                                'generated_at' => now()->toISOString()
+                            ]
+                        ]);
+                        
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Bulk KPI data fetch failed',
+                            'error' => $e->getMessage()
+                        ], 500);
+                    }
+                })->name('bulk');
+                
+                // Specific Metrics
+                Route::get('/metrics/{metric}', function($metric, Request $request) {
+                    try {
+                        $period = $request->get('period', 30);
+                        $googleAnalytics = app(GoogleAnalyticsService::class);
+                        
+                        $validMetrics = [
+                            'users' => 'getOverviewKPIs',
+                            'sessions' => 'getOverviewKPIs', 
+                            'pageviews' => 'getOverviewKPIs',
+                            'bounce_rate' => 'getEngagementKPIs',
+                            'session_duration' => 'getEngagementKPIs',
+                            'conversions' => 'getConversionKPIs'
+                        ];
+                        
+                        if (!isset($validMetrics[$metric])) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Invalid metric',
+                                'valid_metrics' => array_keys($validMetrics)
+                            ], 400);
+                        }
+                        
+                        $methodName = $validMetrics[$metric];
+                        $data = $googleAnalytics->$methodName($period);
+                        
+                        // Extract specific metric if it's from overview
+                        if ($methodName === 'getOverviewKPIs' && isset($data[$metric])) {
+                            $data = $data[$metric];
+                        }
+                        
+                        return response()->json([
+                            'success' => true,
+                            'data' => $data,
+                            'meta' => [
+                                'metric' => $metric,
+                                'period' => $period,
+                                'method' => $methodName
+                            ]
+                        ]);
+                        
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Failed to fetch {$metric} data",
+                            'error' => $e->getMessage()
+                        ], 500);
+                    }
+                })->name('metric')
+                ->where('metric', 'users|sessions|pageviews|bounce_rate|session_duration|conversions');
+                
+                // Comparisons
+                Route::post('/compare', function(Request $request) {
+                    try {
+                        $periods = $request->input('periods', [30, 30]); // [current, previous]
+                        $category = $request->input('category', 'overview');
+                        
+                        $googleAnalytics = app(GoogleAnalyticsService::class);
+                        $methodName = 'get' . ucfirst($category) . 'KPIs';
+                        
+                        if (!method_exists($googleAnalytics, $methodName)) {
+                            throw new \Exception("Invalid category: {$category}");
+                        }
+                        
+                        $currentData = $googleAnalytics->$methodName($periods[0]);
+                        $previousData = $googleAnalytics->$methodName($periods[1] ?? $periods[0]);
+                        
+                        // Calculate comparison
+                        $comparison = [];
+                        if (is_array($currentData) && is_array($previousData)) {
+                            foreach ($currentData as $key => $current) {
+                                if (isset($previousData[$key])) {
+                                    $previous = $previousData[$key];
+                                    if (is_numeric($current) && is_numeric($previous)) {
+                                        $change = $previous > 0 ? round((($current - $previous) / $previous) * 100, 2) : 0;
+                                        $comparison[$key] = [
+                                            'current' => $current,
+                                            'previous' => $previous,
+                                            'change_percent' => $change,
+                                            'trend' => $change > 0 ? 'up' : ($change < 0 ? 'down' : 'stable')
+                                        ];
+                                    }
+                                }
+                            }
+                        }
+                        
+                        return response()->json([
+                            'success' => true,
+                            'data' => [
+                                'current' => $currentData,
+                                'previous' => $previousData,
+                                'comparison' => $comparison
+                            ],
+                            'meta' => [
+                                'category' => $category,
+                                'periods' => $periods,
+                                'compared_at' => now()->toISOString()
+                            ]
+                        ]);
+                        
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Comparison failed',
+                            'error' => $e->getMessage()
+                        ], 500);
+                    }
+                })->name('compare');
+                
+                // Cache Management
+                Route::post('/cache/clear', function() {
+                    try {
+                        $user = auth()->user();
+                        $googleAnalytics = app(GoogleAnalyticsService::class);
+                        
+                        $googleAnalytics->clearKPICache();
+                        
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'KPI cache cleared successfully',
+                            'data' => [
+                                'cleared_at' => now()->toISOString(),
+                                'cleared_by' => $user->name,
+                                'cache_types' => ['kpi_dashboard', 'realtime_summary', 'category_data']
+                            ]
+                        ]);
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Failed to clear KPI cache',
+                            'error' => $e->getMessage()
+                        ], 500);
+                    }
+                })->name('cache.clear');
+                
+                // Connection Testing
+                Route::get('/test-connection', function() {
+                    try {
+                        $googleAnalytics = app(GoogleAnalyticsService::class);
+                        $connectionTest = $googleAnalytics->testAnalyticsConnection();
+                        
+                        return response()->json([
+                            'success' => $connectionTest['status'] === 'connected',
+                            'data' => $connectionTest,
+                            'meta' => [
+                                'tested_by' => auth()->user()->name,
+                                'tested_at' => now()->toISOString(),
+                                'service' => 'Google Analytics 4 API'
+                            ]
+                        ]);
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Connection test failed',
+                            'error' => $e->getMessage()
+                        ], 500);
+                    }
+                })->name('test-connection');
+                
+                // Refresh Operations
+                Route::middleware('throttle:30,1')->post('/refresh/{category?}', function($category = null, Request $request) {
+                    try {
+                        $period = $request->get('period', 30);
+                        $googleAnalytics = app(GoogleAnalyticsService::class);
+                        
+                        // Clear cache first
+                        $googleAnalytics->clearKPICache();
+                        
+                        if ($category) {
+                            $methodName = 'get' . ucfirst($category) . 'KPIs';
+                            if (!method_exists($googleAnalytics, $methodName)) {
+                                throw new \Exception("Invalid category: {$category}");
+                            }
+                            $data = $googleAnalytics->$methodName($period);
+                        } else {
+                            // Refresh all KPI data
+                            $data = $googleAnalytics->getKPIDashboard($period);
+                        }
+                        
+                        return response()->json([
+                            'success' => true,
+                            'data' => $data,
+                            'meta' => [
+                                'refreshed_at' => now()->toISOString(),
+                                'category' => $category ?: 'all',
+                                'cache_cleared' => true,
+                                'period' => $period
+                            ]
+                        ]);
+                        
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Refresh failed',
+                            'error' => $e->getMessage()
+                        ], 500);
+                    }
+                })->name('refresh');
+            });
+            
+            // Analytics Health & Trends
+            Route::get('/health', function() {
+                try {
+                    $googleAnalytics = app(GoogleAnalyticsService::class);
+                    $connectionTest = $googleAnalytics->testAnalyticsConnection();
+                    
+                    $health = [
+                        'status' => $connectionTest['status'] === 'connected' ? 'healthy' : 'degraded',
+                        'connection' => $connectionTest,
+                        'cache' => [
+                            'status' => 'operational',
+                            'last_clear' => \Cache::get('analytics.cache.last_clear', 'Never'),
+                        ],
+                        'api' => [
+                            'response_time' => 'Normal',
+                            'quota_usage' => 'Within limits',
+                            'last_error' => \Cache::get('analytics.last_error', null),
+                        ],
+                        'timestamp' => now()->toISOString()
+                    ];
+                    
+                    return response()->json([
+                        'success' => true,
+                        'health' => $health
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'success' => false,
+                        'health' => [
+                            'status' => 'error',
+                            'message' => 'Health check failed',
+                            'error' => $e->getMessage(),
+                            'timestamp' => now()->toISOString()
+                        ]
+                    ], 500);
+                }
+            })->name('health');
+            
+            Route::get('/trends/{period?}', function($period = 30, Request $request) {
+                try {
+                    $period = max(1, min(365, (int)$period));
+                    $googleAnalytics = app(GoogleAnalyticsService::class);
+                    
+                    $trends = $googleAnalytics->getTrendAnalysis($period);
+                    
+                    return response()->json([
+                        'success' => true,
+                        'data' => $trends,
+                        'meta' => [
+                            'period' => $period,
+                            'generated_at' => now()->toISOString(),
+                            'analysis_type' => 'trend_analysis'
+                        ]
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Trends analysis failed',
+                        'error' => $e->getMessage()
+                    ], 500);
+                }
+            })->name('trends')->where('period', '[0-9]+');
+        });
+        
     });
 });
 

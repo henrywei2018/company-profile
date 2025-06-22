@@ -269,6 +269,8 @@
             checkSystemHealth();
             setInterval(checkSystemHealth, 300000); // 5 minutes
         });
+
+        
     </script>
 
     @stack('scripts')

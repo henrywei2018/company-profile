@@ -497,7 +497,7 @@ class KPIDashboard {
         try {
             this.showLoadingState();
 
-            const response = await fetch(`/api/admin/analytics/kpi/dashboard?period=${period}`, {
+            const response = await fetch(`/admin/analytics/kpi/dashboard?period=${period}`, {
                 headers: {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')

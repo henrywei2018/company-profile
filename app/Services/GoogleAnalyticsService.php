@@ -22,13 +22,14 @@ class GoogleAnalyticsService
     protected array $defaultMetrics = [
         'sessions',
         'totalUsers',
-        'pageviews', 
-        'screenPageViews',
+        'screenPageViews',  
         'bounceRate',
         'averageSessionDuration',
         'conversions',
         'eventCount',
-        'activeUsers'
+        'activeUsers',
+        'newUsers',
+        'engagementRate'
     ];
 
     protected array $defaultDimensions = [
@@ -38,9 +39,9 @@ class GoogleAnalyticsService
         'deviceCategory',
         'operatingSystem',
         'browser',
-        'channelGrouping',
-        'source',
-        'medium',
+        'sessionDefaultChannelGroup',  
+        'sessionSource',              
+        'sessionMedium',             
         'pagePath',
         'pageTitle'
     ];
@@ -92,13 +93,14 @@ class GoogleAnalyticsService
         );
 
         try {
+            
             $current = $this->getMetricsForPeriod($currentPeriod, [
-                'totalUsers', 'sessions', 'pageviews', 'bounceRate', 
+                'totalUsers', 'sessions', 'screenPageViews', 'bounceRate', 
                 'averageSessionDuration', 'conversions'
             ]);
 
             $previous = $this->getMetricsForPeriod($previousPeriod, [
-                'totalUsers', 'sessions', 'pageviews', 'bounceRate', 
+                'totalUsers', 'sessions', 'screenPageViews', 'bounceRate', 
                 'averageSessionDuration', 'conversions'
             ]);
 
@@ -125,16 +127,17 @@ class GoogleAnalyticsService
                     'target' => $this->getKPITarget('sessions', $period),
                     'status' => $this->getKPIStatus('sessions', $current['sessions'] ?? 0, $period)
                 ],
+                
                 'pageviews' => [
-                    'current' => $current['pageviews'] ?? 0,
-                    'previous' => $previous['pageviews'] ?? 0,
+                    'current' => $current['screenPageViews'] ?? 0,
+                    'previous' => $previous['screenPageViews'] ?? 0,
                     'change_percent' => $this->calculatePercentageChange(
-                        $current['pageviews'] ?? 0, 
-                        $previous['pageviews'] ?? 0
+                        $current['screenPageViews'] ?? 0, 
+                        $previous['screenPageViews'] ?? 0
                     ),
-                    'trend' => $this->getTrendDirection($current['pageviews'] ?? 0, $previous['pageviews'] ?? 0),
+                    'trend' => $this->getTrendDirection($current['screenPageViews'] ?? 0, $previous['screenPageViews'] ?? 0),
                     'target' => $this->getKPITarget('pageviews', $period),
-                    'status' => $this->getKPIStatus('pageviews', $current['pageviews'] ?? 0, $period)
+                    'status' => $this->getKPIStatus('pageviews', $current['screenPageViews'] ?? 0, $period)
                 ],
                 'bounce_rate' => [
                     'current' => round(($current['bounceRate'] ?? 0) * 100, 2),
@@ -184,10 +187,10 @@ class GoogleAnalyticsService
         try {
             $periodObj = Period::days($period);
             
-            // Get traffic sources
-            $trafficSources = $this->getCustomData(['sessions'], ['source'], $periodObj);
-            $channels = $this->getCustomData(['sessions'], ['channelGrouping'], $periodObj);
-            $mediums = $this->getCustomData(['sessions'], ['medium'], $periodObj);
+            
+            $trafficSources = $this->getCustomData(['sessions'], ['sessionSource'], $periodObj);
+            $channels = $this->getCustomData(['sessions'], ['sessionDefaultChannelGroup'], $periodObj);
+            $mediums = $this->getCustomData(['sessions'], ['sessionMedium'], $periodObj);
             
             // Get daily traffic for trend analysis
             $dailyTraffic = $this->getCustomData(['sessions', 'totalUsers'], ['date'], $periodObj);
@@ -197,30 +200,30 @@ class GoogleAnalyticsService
                 'channel_distribution' => $channels->sortByDesc('sessions')->toArray(),
                 'medium_breakdown' => $mediums->sortByDesc('sessions')->toArray(),
                 'organic_traffic' => [
-                    'sessions' => $trafficSources->where('source', 'google')->sum('sessions'),
+                    'sessions' => $trafficSources->where('sessionSource', 'google')->sum('sessions'),
                     'percentage' => $this->calculatePercentage(
-                        $trafficSources->where('source', 'google')->sum('sessions'),
+                        $trafficSources->where('sessionSource', 'google')->sum('sessions'),
                         $trafficSources->sum('sessions')
                     )
                 ],
                 'direct_traffic' => [
-                    'sessions' => $trafficSources->where('source', '(direct)')->sum('sessions'),
+                    'sessions' => $trafficSources->where('sessionSource', '(direct)')->sum('sessions'),
                     'percentage' => $this->calculatePercentage(
-                        $trafficSources->where('source', '(direct)')->sum('sessions'),
+                        $trafficSources->where('sessionSource', '(direct)')->sum('sessions'),
                         $trafficSources->sum('sessions')
                     )
                 ],
                 'referral_traffic' => [
-                    'sessions' => $channels->where('channelGrouping', 'Referral')->sum('sessions'),
+                    'sessions' => $channels->where('sessionDefaultChannelGroup', 'Referral')->sum('sessions'),
                     'percentage' => $this->calculatePercentage(
-                        $channels->where('channelGrouping', 'Referral')->sum('sessions'),
+                        $channels->where('sessionDefaultChannelGroup', 'Referral')->sum('sessions'),
                         $channels->sum('sessions')
                     )
                 ],
                 'social_traffic' => [
-                    'sessions' => $channels->where('channelGrouping', 'Social')->sum('sessions'),
+                    'sessions' => $channels->where('sessionDefaultChannelGroup', 'Social')->sum('sessions'),
                     'percentage' => $this->calculatePercentage(
-                        $channels->where('channelGrouping', 'Social')->sum('sessions'),
+                        $channels->where('sessionDefaultChannelGroup', 'Social')->sum('sessions'),
                         $channels->sum('sessions')
                     )
                 ],
@@ -631,7 +634,12 @@ class GoogleAnalyticsService
         try {
             return Analytics::get($period, $metrics, $dimensions);
         } catch (\Exception $e) {
-            Log::error('Custom data error: ' . $e->getMessage());
+            Log::error('Custom data error: ' . json_encode([
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'status' => method_exists($e, 'getStatus') ? $e->getStatus() : 'UNKNOWN',
+                'details' => method_exists($e, 'getDetails') ? $e->getDetails() : []
+            ]));
             return collect();
         }
     }

@@ -37,14 +37,25 @@ class DashboardController extends Controller
     public function index()
     {
         try {
-            $user = Auth::user();
-            
-            // Log dashboard access for monitoring
-            Log::info('Admin dashboard accessed', [
-                'user_id' => $user->id,
-                'user_name' => $user->name,
-                'timestamp' => now()->toISOString()
+        $user = Auth::user();
+
+        if (!$user) {
+            Log::warning('Dashboard access attempted without authentication', [
+                'timestamp' => now()->toISOString(),
+                'ip' => request()->ip(),
+                // Optionally log headers/cookies for more trace
             ]);
+            // Return a 401 response if not authenticated
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        // Log user info for debug
+        Log::info('Admin dashboard accessed', [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'timestamp' => now()->toISOString(),
+            'roles' => $user->roles->pluck('name'), // if using roles
+        ]);
 
             // Get all dashboard data with error handling for each section
             $dashboardData = $this->getDashboardDataSafely($user);
@@ -1145,4 +1156,252 @@ class DashboardController extends Controller
             ]
         ];
     }
+
+    public function getSystemHealth(): JsonResponse
+{
+    try {
+        $user = Auth::user();
+        
+        // System health checks
+        $health = [
+            'status' => 'healthy',
+            'database' => $this->checkDatabaseHealth(),
+            'cache' => $this->checkCacheHealth(),
+            'storage' => $this->checkStorageHealth(),
+            'analytics' => $this->checkAnalyticsHealth(),
+            'queue' => $this->checkQueueHealth(),
+            'memory' => $this->getMemoryUsage(),
+            'timestamp' => now()->toISOString()
+        ];
+
+        // Determine overall health status
+        $issues = collect($health)->filter(function ($check) {
+            return is_array($check) && isset($check['status']) && $check['status'] !== 'healthy';
+        });
+
+        if ($issues->count() > 0) {
+            $health['status'] = $issues->contains('status', 'critical') ? 'critical' : 'warning';
+        }
+
+        return response()->json([
+            'success' => true,
+            'health' => $health,
+            'summary' => [
+                'total_checks' => 6,
+                'healthy' => 6 - $issues->count(),
+                'issues' => $issues->count(),
+                'status' => $health['status']
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('System health check failed: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'health' => [
+                'status' => 'critical',
+                'error' => 'Health check system failure',
+                'timestamp' => now()->toISOString()
+            ]
+        ], 500);
+    }
+}
+
+/**
+ * Check database health
+ */
+private function checkDatabaseHealth(): array
+{
+    try {
+        $start = microtime(true);
+        DB::select('SELECT 1');
+        $responseTime = round((microtime(true) - $start) * 1000, 2);
+        
+        return [
+            'status' => 'healthy',
+            'response_time' => $responseTime . 'ms',
+            'connection' => 'active'
+        ];
+    } catch (\Exception $e) {
+        return [
+            'status' => 'critical',
+            'error' => 'Database connection failed',
+            'details' => $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * Check cache health
+ */
+private function checkCacheHealth(): array
+{
+    try {
+        $testKey = 'health_check_' . time();
+        $testValue = 'test_data';
+        
+        Cache::put($testKey, $testValue, 60);
+        $retrieved = Cache::get($testKey);
+        Cache::forget($testKey);
+        
+        if ($retrieved === $testValue) {
+            return [
+                'status' => 'healthy',
+                'driver' => config('cache.default'),
+                'operations' => 'write/read successful'
+            ];
+        } else {
+            return [
+                'status' => 'warning',
+                'error' => 'Cache read/write mismatch'
+            ];
+        }
+    } catch (\Exception $e) {
+        return [
+            'status' => 'critical',
+            'error' => 'Cache system failure',
+            'details' => $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * Check storage health
+ */
+private function checkStorageHealth(): array
+{
+    try {
+        $storagePath = storage_path();
+        $freeSpace = disk_free_space($storagePath);
+        $totalSpace = disk_total_space($storagePath);
+        $usedSpace = $totalSpace - $freeSpace;
+        $usagePercent = round(($usedSpace / $totalSpace) * 100, 2);
+        
+        $status = 'healthy';
+        if ($usagePercent > 90) $status = 'critical';
+        elseif ($usagePercent > 80) $status = 'warning';
+        
+        return [
+            'status' => $status,
+            'free_space' => $this->formatBytes($freeSpace),
+            'total_space' => $this->formatBytes($totalSpace),
+            'usage_percent' => $usagePercent,
+            'writable' => is_writable($storagePath)
+        ];
+    } catch (\Exception $e) {
+        return [
+            'status' => 'critical',
+            'error' => 'Storage check failed',
+            'details' => $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * Check analytics health
+ */
+private function checkAnalyticsHealth(): array
+{
+    try {
+        $connectionTest = $this->googleAnalyticsService->testAnalyticsConnection();
+        
+        return [
+            'status' => $connectionTest['status'] === 'connected' ? 'healthy' : 'warning',
+            'connection' => $connectionTest['status'],
+            'message' => $connectionTest['message'] ?? 'Unknown status',
+            'last_check' => $connectionTest['timestamp'] ?? now()->toISOString()
+        ];
+    } catch (\Exception $e) {
+        return [
+            'status' => 'warning',
+            'error' => 'Analytics check failed',
+            'details' => $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * Check queue health
+ */
+private function checkQueueHealth(): array
+{
+    try {
+        // Check if queue workers are running (basic check)
+        $queueConnection = config('queue.default');
+        
+        return [
+            'status' => 'healthy',
+            'connection' => $queueConnection,
+            'driver' => config("queue.connections.{$queueConnection}.driver"),
+            'note' => 'Basic queue configuration check'
+        ];
+    } catch (\Exception $e) {
+        return [
+            'status' => 'warning',
+            'error' => 'Queue check failed',
+            'details' => $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * Get memory usage information
+ */
+private function getMemoryUsage(): array
+{
+    $memoryUsage = memory_get_usage(true);
+    $memoryLimit = $this->parseMemoryLimit(ini_get('memory_limit'));
+    $usagePercent = $memoryLimit > 0 ? round(($memoryUsage / $memoryLimit) * 100, 2) : 0;
+    
+    $status = 'healthy';
+    if ($usagePercent > 90) $status = 'critical';
+    elseif ($usagePercent > 80) $status = 'warning';
+    
+    return [
+        'status' => $status,
+        'current_usage' => $this->formatBytes($memoryUsage),
+        'memory_limit' => $this->formatBytes($memoryLimit),
+        'usage_percent' => $usagePercent,
+        'peak_usage' => $this->formatBytes(memory_get_peak_usage(true))
+    ];
+}
+
+/**
+ * Format bytes to human readable format
+ */
+private function formatBytes(int $bytes, int $precision = 2): string
+{
+    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    
+    for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+        $bytes /= 1024;
+    }
+    
+    return round($bytes, $precision) . ' ' . $units[$i];
+}
+
+/**
+ * Parse memory limit string to bytes
+ */
+private function parseMemoryLimit(string $memoryLimit): int
+{
+    if ($memoryLimit === '-1') {
+        return PHP_INT_MAX;
+    }
+    
+    $unit = strtolower(substr($memoryLimit, -1));
+    $value = (int) substr($memoryLimit, 0, -1);
+    
+    switch ($unit) {
+        case 'g':
+            $value *= 1024;
+        case 'm':
+            $value *= 1024;
+        case 'k':
+            $value *= 1024;
+    }
+    
+    return $value;
+}
 }

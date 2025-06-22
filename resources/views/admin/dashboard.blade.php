@@ -551,7 +551,6 @@
         </div>
     </div>
 
-    // Fixed Dashboard JavaScript Integration - Add to dashboard.blade.php
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Tab switching functionality
@@ -652,7 +651,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fallback KPI data loader with proper authentication
     async function loadKPIDataFallback() {
         try {
-            const response = await fetchWithAuth('/api/admin/analytics/kpi/dashboard?period=30');
+            const response = await fetchWithAuth('/admin/analytics/kpi/dashboard?period=30');
             const data = await response.json();
             
             if (data.success) {
@@ -674,7 +673,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             // Try to load system health - use a safe fallback URL
-            const response = await fetchWithAuth('/api/admin/dashboard');
+            const response = await fetchWithAuth('/admin/dashboard');
             const data = await response.json();
             
             console.log('System health check completed');
@@ -684,46 +683,45 @@ document.addEventListener('DOMContentLoaded', function() {
             // Don't show error for this as it's not critical
         }
     }
+async function fetchWithAuth(url, options = {}) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]');
+    
+    const defaultOptions = {
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            ...(csrfToken && { 'X-CSRF-TOKEN': csrfToken.getAttribute('content') }),
+            ...options.headers
+        },
+        credentials: 'include',
+        ...options
+    };
 
-    // Enhanced fetch with authentication
-    async function fetchWithAuth(url, options = {}) {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]');
-        
-        const defaultOptions = {
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                ...(csrfToken && { 'X-CSRF-TOKEN': csrfToken.getAttribute('content') }),
-                ...options.headers
-            },
-            credentials: 'same-origin',
-            ...options
-        };
+    const response = await fetch(url, defaultOptions);
 
-        const response = await fetch(url, defaultOptions);
-        
-        if (!response.ok) {
-            if (response.status === 401) {
-                throw new Error('Authentication required. Please refresh the page and try again.');
-            }
-            if (response.status === 403) {
-                throw new Error('Access denied. You do not have permission to view this data.');
-            }
-            if (response.status === 500) {
-                throw new Error('Server error. Please try again later.');
-            }
-            throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+        if (response.status === 401) {
+            throw new Error('Authentication required. Please refresh the page and try again.');
         }
-
-        // Check if response is actually JSON
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            throw new Error('Server returned invalid response format');
+        if (response.status === 403) {
+            throw new Error('Access denied. You do not have permission to view this data.');
         }
-
-        return response;
+        if (response.status === 500) {
+            throw new Error('Server error. Please try again later.');
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
     }
+
+    // Check if response is actually JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned invalid response format');
+    }
+
+    return response;
+}
+
 
     // Refresh data based on active tab
     async function refreshActiveTabData(tabName) {
@@ -864,27 +862,33 @@ class EnhancedKPIDashboard {
         }
     }
 
-    async loadKPIData(period = this.currentPeriod) {
-        try {
-            this.showLoadingState();
-
-            const response = await window.fetchWithAuth(`/api/admin/analytics/kpi/dashboard?period=${period}`);
-            const data = await response.json();
-
-            if (data.success) {
-                this.kpiData = data.data;
-                this.renderKPIDashboard();
-                this.hideLoadingState();
-                console.log('KPI data loaded successfully');
-            } else {
-                throw new Error(data.message || 'Failed to load KPI data');
-            }
-
-        } catch (error) {
-            console.error('KPI Dashboard error:', error);
-            this.showError(error.message);
+    async loadKPIData() {
+    try {
+        console.log('📊 Loading KPI Dashboard...');
+        const response = await this.fetchWithAuth('/admin/analytics/kpi/dashboard?period=30');
+        const data = await response.json();
+        
+        // Debug the actual data structure
+        console.log('🔍 Raw API Response:', data);
+        console.log('🔍 KPI Data Structure:', data.data);
+        
+        if (data.success) {
+            this.kpiData = data.data;
+            console.log('✅ KPI Data loaded:', this.kpiData);
+            
+            // Check what categories are available
+            console.log('📋 Available KPI categories:', Object.keys(this.kpiData));
+            
+            this.renderKPIDashboard();
+            this.showNotification('KPI data loaded successfully', 'success');
+        } else {
+            throw new Error(data.message || 'Failed to load KPI data');
         }
+    } catch (error) {
+        console.error('❌ KPI Dashboard error:', error);
+        this.showKPIError(error.message);
     }
+}
 
     renderKPIDashboard() {
         if (!this.kpiData) return;

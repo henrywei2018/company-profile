@@ -98,6 +98,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SeoMiddleware::class,
 
         ]);
+        
         $middleware->alias([
             'auth' => \Illuminate\Auth\Middleware\Authenticate::class,
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
