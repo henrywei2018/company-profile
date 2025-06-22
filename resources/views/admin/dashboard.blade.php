@@ -7,29 +7,6 @@
     :waitingChatsCount="$waitingChatsCount ?? 0"
     :urgentItemsCount="$urgentItemsCount ?? 0">
     
-
-    @if(config('app.debug'))
-    <div class="mb-6 bg-gray-50 border border-gray-200 rounded-md p-4">
-        <h3 class="text-sm font-medium text-gray-700 mb-2">🔧 Debug Information</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div>
-                <strong>User:</strong> {{ auth()->user()->name ?? 'Not authenticated' }}<br>
-                <strong>User ID:</strong> {{ auth()->id() ?? 'N/A' }}<br>
-                <strong>Admin Role:</strong> {{ auth()->user()->is_admin ?? false ? 'Yes' : 'No' }}
-            </div>
-            <div>
-                <strong>Analytics Data:</strong> {{ isset($analytics) ? 'Available' : 'Missing' }}<br>
-                <strong>Analytics Type:</strong> {{ isset($analytics) ? gettype($analytics) : 'N/A' }}<br>
-                <strong>Analytics Count:</strong> {{ isset($analytics) && is_array($analytics) ? count($analytics) : 'N/A' }}
-            </div>
-            <div>
-                <strong>Environment:</strong> {{ app()->environment() }}<br>
-                <strong>URL:</strong> {{ request()->url() }}<br>
-                <strong>CSRF Token:</strong> {{ csrf_token() ? 'Present' : 'Missing' }}
-            </div>
-        </div>
-    </div>
-    @endif
     <!-- Page Header -->
     <div class="mb-8">
         <div class="flex items-center justify-between">
