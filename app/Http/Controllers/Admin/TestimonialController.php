@@ -84,23 +84,21 @@ class TestimonialController extends Controller
      */
     public function create()
     {
-        $projects = Project::select('projects.id', 'projects.title', 'projects.client_id', 'projects.status')
-            ->with(['client' => function($query) {
-                $query->select('id', 'name', 'email', 'company', 'position');
-            }])
-            ->where('projects.status', '!=', 'cancelled')
-            ->orderBy('projects.title')
+        // Get only users who have completed projects
+        $clients = User::whereHas('projects', function($query) {
+            $query->where('status', 'completed');
+        })
+        ->select('id', 'name', 'email', 'company', 'position')
+        ->orderBy('name')
+        ->get();
+        
+        // Get all completed projects for initial load
+        $projects = Project::with('client')
+            ->where('status', 'completed')
+            ->select('id', 'title', 'client_id')
+            ->orderBy('title')
             ->get();
         
-        // Get all clients for the client selector
-        $clients = User::select('id', 'name', 'email', 'company', 'position')
-            ->where(function($query) {
-                $query->whereHas('projects') // Only clients who have projects
-                    ->orWhereHas('testimonials'); // Or clients who have given testimonials
-            })
-            ->orderBy('name')
-            ->get();
-
         return view('admin.testimonials.create', compact('projects', 'clients'));
     }
 
@@ -121,7 +119,6 @@ class TestimonialController extends Controller
             'featured' => 'boolean',
             'status' => 'required|in:pending,approved,rejected,featured',
             'admin_notes' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Fallback for traditional upload
         ]);
 
         DB::beginTransaction();
@@ -135,52 +132,38 @@ class TestimonialController extends Controller
                 $validated['approved_at'] = now();
             }
 
-            // Remove image from validated data to handle separately
-            $imageFile = null;
-            if (isset($validated['image'])) {
-                $imageFile = $validated['image'];
-                unset($validated['image']);
-            }
-
+            // Handle temporary image uploads
+            $sessionKey = 'temp_testimonial_images_' . session()->getId();
+            $tempImages = session($sessionKey, []);
+            
             // Create testimonial
             $testimonial = Testimonial::create($validated);
 
-            // Handle traditional image upload (fallback)
-            if ($request->hasFile('image') && $imageFile) {
-                $imagePath = $imageFile->store('testimonials/' . $testimonial->id, 'public');
-                $testimonial->update(['image' => $imagePath]);
+            // Process uploaded images
+            if (!empty($tempImages)) {
+                foreach ($tempImages as $tempImage) {
+                    if (Storage::disk('public')->exists($tempImage['path'])) {
+                        // Move from temp to permanent location
+                        $permanentPath = 'testimonials/' . basename($tempImage['path']);
+                        Storage::disk('public')->move($tempImage['path'], $permanentPath);
+                        
+                        // Update testimonial with image path
+                        $testimonial->update(['image' => $permanentPath]);
+                        break; // Only one image for testimonials
+                    }
+                }
+                
+                // Clear temp session
+                session()->forget($sessionKey);
             }
-
-            // Process temporary images from universal uploader
-            $this->processTempImagesFromSession($testimonial);
 
             DB::commit();
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Testimonial created successfully!',
-                    'testimonial' => $testimonial->fresh()
-                ]);
-            }
 
             return redirect()->route('admin.testimonials.index')
                 ->with('success', 'Testimonial created successfully!');
 
         } catch (\Exception $e) {
             DB::rollBack();
-
-            \Log::error('Testimonial creation failed: ' . $e->getMessage(), [
-                'request_data' => $request->except(['image', 'testimonial_images'])
-            ]);
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error creating testimonial: ' . $e->getMessage()
-                ], 500);
-            }
-
             return back()->withInput()
                 ->with('error', 'Error creating testimonial: ' . $e->getMessage());
         }
@@ -876,136 +859,100 @@ class TestimonialController extends Controller
             ], 500);
         }
     }
-    public function getClientProjects(Request $request, $clientId = null)
-{
-    try {
-        $query = Project::select('projects.id', 'projects.title', 'projects.client_id', 'projects.status')
-            ->with(['client' => function($query) {
-                $query->select('id', 'name', 'email', 'company', 'position');
-            }])
-            ->where('projects.status', '!=', 'cancelled')
-            ->orderBy('projects.title');
-
-        if ($clientId && $clientId !== 'null') {
-            // Get projects for specific client
-            $projects = $query->where('projects.client_id', $clientId)->get();
+    public function getClientDetails(Request $request, $clientId)
+    {
+        try {
+            $client = User::findOrFail($clientId);
             
-            // If no projects found for this client, optionally include unassigned projects
-            if ($projects->isEmpty()) {
-                $projects = Project::select('projects.id', 'projects.title', 'projects.client_id', 'projects.status')
-                    ->with(['client' => function($query) {
-                        $query->select('id', 'name', 'email', 'company', 'position');
-                    }])
-                    ->where('projects.status', '!=', 'cancelled')
-                    ->where(function($q) {
-                        $q->whereNull('projects.client_id')
-                          ->orWhere('projects.client_id', '');
-                    })
-                    ->orderBy('projects.title')
-                    ->get();
-            }
-        } else {
-            // Get all projects
-            $projects = $query->get();
+            return response()->json([
+                'success' => true,
+                'client' => [
+                    'id' => $client->id,
+                    'name' => $client->name,
+                    'email' => $client->email,
+                    'company' => $client->company ?? '',
+                    'position' => $client->position ?? '',
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Client not found'
+            ], 404);
         }
-
-        return response()->json([
-            'success' => true,
-            'projects' => $projects->map(function ($project) {
-                return [
-                    'id' => $project->id,
-                    'title' => $project->title,
-                    'client_id' => $project->client_id,
-                    'status' => $project->status,
-                    'client' => $project->client ? [
-                        'id' => $project->client->id,
-                        'name' => $project->client->name,
-                        'email' => $project->client->email,
-                        'company' => $project->client->company,
-                        'position' => $project->client->position,
-                    ] : null,
-                ];
-            }),
-            'count' => $projects->count()
-        ]);
-
-    } catch (\Exception $e) {
-        \Log::error('Failed to fetch client projects: ' . $e->getMessage(), [
-            'client_id' => $clientId,
-            'request' => $request->all()
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to load projects',
-            'projects' => []
-        ], 500);
     }
-}
+    public function getClientProjects(Request $request, $clientId)
+    {
+        try {
+            $projects = Project::where('client_id', $clientId)
+                ->where('status', 'completed')
+                ->select('id', 'title', 'client_id', 'completed_at', 'description')
+                ->orderBy('completed_at', 'desc')
+                ->get();
 
-/**
- * Alternative: Get projects with client filter via query parameter
- */
-public function getFilteredProjects(Request $request)
-{
-    try {
-        $clientId = $request->get('client_id');
-        $includeAll = $request->boolean('include_all', true);
-        
-        $query = Project::select('projects.id', 'projects.title', 'projects.client_id', 'projects.status')
-            ->with(['client' => function($query) {
-                $query->select('id', 'name', 'email', 'company', 'position');
-            }])
-            ->where('projects.status', '!=', 'cancelled')
-            ->orderBy('projects.title');
-
-        if ($clientId) {
-            if ($includeAll) {
-                // Include projects for this client AND unassigned projects
-                $query->where(function ($q) use ($clientId) {
-                    $q->where('projects.client_id', $clientId)
-                      ->orWhereNull('projects.client_id')
-                      ->orWhere('projects.client_id', '');
+            return response()->json([
+                'success' => true,
+                'projects' => $projects->map(function($project) {
+                    return [
+                        'id' => $project->id,
+                        'title' => $project->title,
+                        'client_id' => $project->client_id,
+                        'completed_at' => $project->completed_at ? $project->completed_at->format('M Y') : '',
+                        'description' => \Str::limit($project->description ?? '', 100)
+                    ];
+                }),
+                'count' => $projects->count()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching client projects: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+public function getClientsWithCompletedProjects(Request $request)
+    {
+        try {
+            $search = $request->get('search', '');
+            
+            $clients = User::whereHas('projects', function($query) {
+                $query->where('status', 'completed');
+            })
+            ->when($search, function($query, $search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('company', 'like', "%{$search}%");
                 });
-            } else {
-                // Only projects for this specific client
-                $query->where('projects.client_id', $clientId);
-            }
+            })
+            ->withCount(['projects' => function($query) {
+                $query->where('status', 'completed');
+            }])
+            ->select('id', 'name', 'email', 'company', 'position')
+            ->orderBy('name')
+            ->limit(50)
+            ->get();
+
+            return response()->json([
+                'success' => true,
+                'clients' => $clients->map(function($client) {
+                    return [
+                        'id' => $client->id,
+                        'name' => $client->name,
+                        'email' => $client->email,
+                        'company' => $client->company ?? '',
+                        'position' => $client->position ?? '',
+                        'completed_projects_count' => $client->projects_count,
+                        'display_text' => $client->name . ' (' . $client->email . ')' . 
+                                        ($client->company ? ' - ' . $client->company : ''),
+                    ];
+                })
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching clients: ' . $e->getMessage()
+            ], 500);
         }
-
-        $projects = $query->get();
-
-        return response()->json([
-            'success' => true,
-            'projects' => $projects->map(function ($project) {
-                return [
-                    'id' => $project->id,
-                    'title' => $project->title,
-                    'client_id' => $project->client_id,
-                    'client_name' => $project->client ? $project->client->name : null,
-                    'client_position' => $project->client ? $project->client->position : null,
-                    'client_company' => $project->client ? $project->client->company : null,
-                    'status' => $project->status,
-                    'display_text' => $project->title . ($project->client ? ' - ' . $project->client->name . ($project->client->position ? ' (' . $project->client->position . ')' : '') : '')
-                ];
-            }),
-            'count' => $projects->count(),
-            'filter' => [
-                'client_id' => $clientId,
-                'include_all' => $includeAll
-            ]
-        ]);
-
-    } catch (\Exception $e) {
-        \Log::error('Failed to fetch filtered projects: ' . $e->getMessage(), [
-            'request' => $request->all()
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to load projects',
-            'projects' => []
-        ], 500);
     }
-}
 }

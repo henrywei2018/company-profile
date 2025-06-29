@@ -1,4 +1,4 @@
-<x-layouts.admin title="Testimonials Management">
+<x-layouts.client title="Testimonials Management">
     <!-- Breadcrumb -->
     <x-admin.breadcrumb :items="['Testimonials' => '']" />
 
@@ -319,14 +319,4 @@
             </tr>
         @endforeach
     </x-admin.new.data-table>
-
-    <script>
-        function showStatistics() {
-            fetch('{{ route("admin.testimonials.statistics") }}')
-                .then(response => response.json())
-                .then(data => {
-                    alert(`Statistics:\nTotal: ${data.total}\nActive: ${data.active}\nFeatured: ${data.featured}\nPending: ${data.pending}\nAvg Rating: ${data.average_rating}/5`);
-                });
-        }
-    </script>
-</x-layouts.admin>
+</x-layouts.client>

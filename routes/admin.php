@@ -410,8 +410,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('/temp-upload', [TestimonialController::class, 'uploadTempImages'])->name('temp-upload');
         Route::delete('/temp-delete', [TestimonialController::class, 'deleteTempImage'])->name('temp-delete');
         Route::post('/cleanup-temp', [TestimonialController::class, 'cleanupTempFiles'])->name('cleanup-temp');
-        Route::get('/client-projects/{clientId?}', [TestimonialController::class, 'getClientProjects'])->name('client-projects');
-        Route::get('/filtered-projects', [TestimonialController::class, 'getFilteredProjects'])->name('filtered-projects');
+        Route::get('/ajax/clients', [TestimonialController::class, 'getClientsWithCompletedProjects'])->name('ajax.clients');
+        Route::get('/ajax/client/{client}/details', [TestimonialController::class, 'getClientDetails'])->name('ajax.client.details');
+        Route::get('/ajax/client/{client}/projects', [TestimonialController::class, 'getClientProjects'])->name('ajax.client.projects');
         Route::get('/', [TestimonialController::class, 'index'])->name('index');
         Route::get('/create', [TestimonialController::class, 'create'])->name('create');
         Route::post('/', [TestimonialController::class, 'store'])->name('store');

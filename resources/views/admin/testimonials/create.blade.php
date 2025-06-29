@@ -344,6 +344,19 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Get CSRF token for AJAX requests
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            // DOM elements
+            const clientSelect = document.getElementById('client_id');
+            const clientNameInput = document.getElementById('client_name');
+            const clientPositionInput = document.getElementById('client_position');
+            const clientCompanyInput = document.getElementById('client_company');
+            const projectSelect = document.getElementById('project_id');
+            const clientLoading = document.getElementById('client-loading');
+            const projectLoading = document.getElementById('project-loading');
+            const projectHelperText = document.getElementById('project-helper-text');
+            
             // Character count for content
             const contentTextarea = document.getElementById('content');
             const contentCount = document.getElementById('content-count');
@@ -381,23 +394,6 @@
                 });
             });
 
-            // Client selection auto-fill
-            const clientSelect = document.getElementById('client_id');
-            const clientNameInput = document.getElementById('client_name');
-            const clientCompanyInput = document.getElementById('client_company');
-            
-            clientSelect.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                if (selectedOption.value) {
-                    if (!clientNameInput.value) {
-                        clientNameInput.value = selectedOption.dataset.name || '';
-                    }
-                    if (!clientCompanyInput.value) {
-                        clientCompanyInput.value = selectedOption.dataset.company || '';
-                    }
-                }
-            });
-
             // Status change handling
             const statusSelect = document.getElementById('status');
             const isActiveCheckbox = document.getElementById('is_active');
@@ -415,7 +411,6 @@
                 }
             });
             
-            // Featured checkbox handling
             if (featuredCheckbox) {
                 featuredCheckbox.addEventListener('change', function() {
                     if (this.checked) {
@@ -423,6 +418,218 @@
                         isActiveCheckbox.checked = true;
                     }
                 });
+            }
+
+            // Enhanced client selection with AJAX
+            clientSelect.addEventListener('change', async function() {
+                const selectedClientId = this.value;
+                
+                if (!selectedClientId) {
+                    // Clear all fields if no client selected
+                    clearClientFields();
+                    clearProjectFields();
+                    return;
+                }
+
+                try {
+                    // Show loading state
+                    showClientLoading(true);
+                    
+                    // Get client details
+                    const clientResponse = await fetchWithErrorHandling(
+                        `/admin/testimonials/ajax/client/${selectedClientId}/details`
+                    );
+                    
+                    if (clientResponse.success) {
+                        fillClientFields(clientResponse.client);
+                    }
+                    
+                    // Get client's completed projects
+                    const projectsResponse = await fetchWithErrorHandling(
+                        `/admin/testimonials/ajax/client/${selectedClientId}/projects`
+                    );
+                    
+                    if (projectsResponse.success) {
+                        populateProjectSelect(projectsResponse.projects, projectsResponse.count);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error fetching client data:', error);
+                    showNotification('Error loading client data. Please try again.', 'error');
+                    clearClientFields();
+                    clearProjectFields();
+                } finally {
+                    showClientLoading(false);
+                }
+            });
+
+            // Helper functions
+            function showClientLoading(show) {
+                if (show) {
+                    clientLoading.classList.remove('hidden');
+                    clientSelect.disabled = true;
+                } else {
+                    clientLoading.classList.add('hidden');
+                    clientSelect.disabled = false;
+                }
+            }
+
+            function showProjectLoading(show) {
+                if (show) {
+                    projectLoading.classList.remove('hidden');
+                    projectSelect.disabled = true;
+                } else {
+                    projectLoading.classList.add('hidden');
+                    projectSelect.disabled = false;
+                }
+            }
+
+            function clearClientFields() {
+                clientNameInput.value = '';
+                clientPositionInput.value = '';
+                clientCompanyInput.value = '';
+                
+                // Make fields editable again
+                clientNameInput.readOnly = false;
+                clientPositionInput.readOnly = false;
+                clientCompanyInput.readOnly = false;
+                
+                // Update placeholders
+                clientNameInput.placeholder = 'Enter client name manually...';
+                clientPositionInput.placeholder = 'Enter position manually...';
+                clientCompanyInput.placeholder = 'Enter company manually...';
+            }
+
+            function fillClientFields(client) {
+                clientNameInput.value = client.name || '';
+                clientPositionInput.value = client.position || '';
+                clientCompanyInput.value = client.company || '';
+                
+                // Make fields read-only but allow manual editing
+                clientNameInput.readOnly = false;
+                clientPositionInput.readOnly = false;
+                clientCompanyInput.readOnly = false;
+                
+                // Update placeholders
+                clientNameInput.placeholder = 'Auto-filled from client profile';
+                clientPositionInput.placeholder = 'Auto-filled from client profile';
+                clientCompanyInput.placeholder = 'Auto-filled from client profile';
+            }
+
+            function clearProjectFields() {
+                projectSelect.innerHTML = '<option value="">Select a client first...</option>';
+                projectSelect.disabled = true;
+                updateProjectHelperText('Select a client above to view their completed projects');
+            }
+
+            function populateProjectSelect(projects, count) {
+                showProjectLoading(true);
+                
+                // Clear existing options
+                projectSelect.innerHTML = '<option value="">Select a project (optional)...</option>';
+                
+                if (projects && projects.length > 0) {
+                    projects.forEach(project => {
+                        const option = document.createElement('option');
+                        option.value = project.id;
+                        option.textContent = project.title;
+                        if (project.completed_at) {
+                            option.textContent += ` (Completed: ${project.completed_at})`;
+                        }
+                        option.setAttribute('data-client-id', project.client_id);
+                        option.setAttribute('data-description', project.description || '');
+                        projectSelect.appendChild(option);
+                    });
+                    
+                    updateProjectHelperText(`Found ${count} completed project(s) for this client`);
+                    projectSelect.disabled = false;
+                } else {
+                    updateProjectHelperText('No completed projects found for this client');
+                    projectSelect.disabled = true;
+                }
+                
+                showProjectLoading(false);
+            }
+
+            function updateProjectHelperText(text) {
+                projectHelperText.textContent = text;
+            }
+
+            // Fetch with error handling
+            async function fetchWithErrorHandling(url) {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.message || 'Request failed');
+                }
+
+                return data;
+            }
+
+            // Show notification helper function
+            function showNotification(message, type = 'info') {
+                if (typeof window.showToast === 'function') {
+                    window.showToast(message, type);
+                } else if (typeof window.showNotification === 'function') {
+                    window.showNotification(message, type);
+                } else {
+                    createToastNotification(message, type);
+                }
+            }
+
+            // Simple toast notification fallback
+            function createToastNotification(message, type = 'info') {
+                const toast = document.createElement('div');
+                toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white z-50 ${getToastColor(type)} transition-opacity duration-300 opacity-0`;
+                toast.textContent = message;
+                
+                document.body.appendChild(toast);
+                
+                // Animate in
+                setTimeout(() => {
+                    toast.classList.remove('opacity-0');
+                    toast.classList.add('opacity-100');
+                }, 100);
+                
+                // Remove after 4 seconds
+                setTimeout(() => {
+                    toast.classList.remove('opacity-100');
+                    toast.classList.add('opacity-0');
+                    setTimeout(() => {
+                        if (document.body.contains(toast)) {
+                            document.body.removeChild(toast);
+                        }
+                    }, 300);
+                }, 4000);
+            }
+
+            function getToastColor(type) {
+                switch(type) {
+                    case 'success': return 'bg-green-500';
+                    case 'error': return 'bg-red-500';
+                    case 'warning': return 'bg-yellow-500';
+                    default: return 'bg-blue-500';
+                }
+            }
+
+            // Initialize form state
+            const initialClientId = clientSelect.value;
+            if (initialClientId) {
+                // Trigger change event for pre-selected client (from old input)
+                clientSelect.dispatchEvent(new Event('change'));
             }
         });
     </script>
@@ -503,176 +710,6 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'warning': return 'bg-yellow-500';
             default: return 'bg-blue-500';
         }
-    }
-});
-document.addEventListener('DOMContentLoaded', function() {
-    const clientSelect = document.getElementById('client_id');
-    const projectSelect = document.getElementById('project_id');
-    const projectLoading = document.getElementById('project-loading');
-    const helperText = document.getElementById('project-helper-text');
-    
-    // Store all projects for filtering
-    let allProjects = [];
-    
-    // Initialize - store all project options
-    function initializeProjects() {
-        const options = projectSelect.querySelectorAll('option');
-        allProjects = Array.from(options).map(option => ({
-            value: option.value,
-            text: option.textContent.trim(),
-            clientId: option.getAttribute('data-client-id') || '',
-            element: option.cloneNode(true)
-        }));
-    }
-    
-    // Filter projects based on selected client
-    function filterProjects(selectedClientId) {
-        // Show loading state
-        showLoading(true);
-        
-        // Clear current options except the first one
-        projectSelect.innerHTML = '<option value="">Select project...</option>';
-        
-        if (!selectedClientId) {
-            // No client selected, show all projects
-            allProjects.forEach(project => {
-                if (project.value) { // Skip empty option
-                    projectSelect.appendChild(project.element.cloneNode(true));
-                }
-            });
-            updateHelperText('Select a client above to filter projects, or choose from all available projects');
-        } else {
-            // Filter projects for selected client
-            const clientProjects = allProjects.filter(project => 
-                project.value && (project.clientId === selectedClientId || project.clientId === '')
-            );
-            
-            if (clientProjects.length > 0) {
-                clientProjects.forEach(project => {
-                    projectSelect.appendChild(project.element.cloneNode(true));
-                });
-                updateHelperText(`Showing ${clientProjects.length} project(s) for selected client`);
-            } else {
-                // No projects for this client, but allow selecting from all projects
-                allProjects.forEach(project => {
-                    if (project.value) {
-                        projectSelect.appendChild(project.element.cloneNode(true));
-                    }
-                });
-                updateHelperText('No specific projects found for this client. Showing all available projects.');
-            }
-        }
-        
-        // Hide loading state
-        showLoading(false);
-        
-        // Reset project selection
-        projectSelect.value = '';
-        
-        // Trigger change event for any listeners
-        projectSelect.dispatchEvent(new Event('change'));
-    }
-    
-    // Alternative: Fetch projects via AJAX (more dynamic)
-    async function fetchClientProjects(clientId) {
-        try {
-            showLoading(true);
-            
-            const response = await fetch(`/admin/testimonials/client-projects/${clientId}`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to fetch projects');
-            }
-            
-            const data = await response.json();
-            
-            // Clear current options
-            projectSelect.innerHTML = '<option value="">Select project...</option>';
-            
-            // Add fetched projects
-            if (data.projects && data.projects.length > 0) {
-                data.projects.forEach(project => {
-                    const option = document.createElement('option');
-                    option.value = project.id;
-                    option.textContent = project.title;
-                    option.setAttribute('data-client-id', project.client_id || '');
-                    projectSelect.appendChild(option);
-                });
-                updateHelperText(`Found ${data.projects.length} project(s) for this client`);
-            } else {
-                // Fallback to all projects if none found for client
-                allProjects.forEach(project => {
-                    if (project.value) {
-                        projectSelect.appendChild(project.element.cloneNode(true));
-                    }
-                });
-                updateHelperText('No specific projects found for this client. Showing all available projects.');
-            }
-            
-        } catch (error) {
-            console.error('Error fetching client projects:', error);
-            
-            // Fallback to showing all projects
-            projectSelect.innerHTML = '<option value="">Select project...</option>';
-            allProjects.forEach(project => {
-                if (project.value) {
-                    projectSelect.appendChild(project.element.cloneNode(true));
-                }
-            });
-            updateHelperText('Error loading client projects. Showing all available projects.');
-        } finally {
-            showLoading(false);
-        }
-    }
-    
-    // Show/hide loading state
-    function showLoading(show) {
-        if (show) {
-            projectLoading.classList.remove('hidden');
-            projectSelect.disabled = true;
-        } else {
-            projectLoading.classList.add('hidden');
-            projectSelect.disabled = false;
-        }
-    }
-    
-    // Update helper text
-    function updateHelperText(text) {
-        helperText.textContent = text;
-    }
-    
-    // Event listener for client selection change
-    if (clientSelect) {
-        clientSelect.addEventListener('change', function() {
-            const selectedClientId = this.value;
-            
-            if (selectedClientId) {
-                // Option 1: Use client-side filtering (faster, works with existing data)
-                filterProjects(selectedClientId);
-                
-                // Option 2: Use AJAX to fetch fresh data (more accurate, requires endpoint)
-                // fetchClientProjects(selectedClientId);
-            } else {
-                // No client selected, show all projects
-                filterProjects('');
-            }
-        });
-    }
-    
-    // Initialize on page load
-    initializeProjects();
-    
-    // If a client is already selected (from old input), filter projects
-    const initialClientId = clientSelect ? clientSelect.value : '';
-    if (initialClientId) {
-        filterProjects(initialClientId);
     }
 });
 </script>
