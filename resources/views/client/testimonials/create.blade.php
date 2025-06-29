@@ -237,6 +237,86 @@
                     }
                 });
             });
+            document.addEventListener('DOMContentLoaded', function() {
+                const uploaderId = 'testimonial-photo-uploader-create-{{ uniqid() }}';
+
+                // Listen for universal uploader events
+                document.addEventListener('files-uploaded', function(event) {
+                    if (event.detail.component.startsWith('testimonial-photo-uploader-create-')) {
+                        handleTempImageUploadSuccess(event.detail);
+                    }
+                });
+
+                document.addEventListener('file-deleted', function(event) {
+                    if (event.detail.component.startsWith('testimonial-photo-uploader-create-')) {
+                        handleTempImageDelete(event.detail);
+                    }
+                });
+
+                // Handle temporary image upload success
+                function handleTempImageUploadSuccess(detail) {
+                    showNotification(detail.message || 'Client photo uploaded successfully!', 'success');
+
+                    // You can add any additional logic here if needed
+                    console.log('Temporary image uploaded:', detail);
+                }
+
+                // Handle temporary image deletion
+                function handleTempImageDelete(detail) {
+                    showNotification(detail.message || 'Client photo removed!', 'info');
+
+                    // You can add any additional logic here if needed
+                    console.log('Temporary image deleted:', detail);
+                }
+
+                // Show notification helper function
+                function showNotification(message, type = 'info') {
+                    // Check if you have a notification system, otherwise use a simple alert
+                    if (typeof window.showToast === 'function') {
+                        window.showToast(message, type);
+                    } else if (typeof window.showNotification === 'function') {
+                        window.showNotification(message, type);
+                    } else {
+                        // Create a simple toast notification
+                        createToastNotification(message, type);
+                    }
+                }
+
+                // Simple toast notification fallback
+                function createToastNotification(message, type = 'info') {
+                    const toast = document.createElement('div');
+                    toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white z-50 ${getToastColor(type)}`;
+                    toast.textContent = message;
+
+                    document.body.appendChild(toast);
+
+                    // Animate in
+                    setTimeout(() => {
+                        toast.classList.add('opacity-100');
+                    }, 100);
+
+                    // Remove after 3 seconds
+                    setTimeout(() => {
+                        toast.classList.add('opacity-0');
+                        setTimeout(() => {
+                            document.body.removeChild(toast);
+                        }, 300);
+                    }, 3000);
+                }
+
+                function getToastColor(type) {
+                    switch (type) {
+                        case 'success':
+                            return 'bg-green-500';
+                        case 'error':
+                            return 'bg-red-500';
+                        case 'warning':
+                            return 'bg-yellow-500';
+                        default:
+                            return 'bg-blue-500';
+                    }
+                }
+            });
         </script>
     @endpush
 </x-layouts.client>
