@@ -385,3 +385,55 @@
         });
     </script>
 </x-layouts.admin>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Listen for universal uploader events
+    document.addEventListener('files-uploaded', function(event) {
+        if (event.detail.component === 'testimonial-photo-uploader-edit-{{ $testimonial->id }}') {
+            handleImageUploadSuccess(event.detail);
+        }
+    });
+
+    document.addEventListener('file-deleted', function(event) {
+        if (event.detail.component === 'testimonial-photo-uploader-edit-{{ $testimonial->id }}') {
+            handleImageDelete(event.detail);
+        }
+    });
+
+    // Handle image upload success
+    function handleImageUploadSuccess(detail) {
+        showNotification(detail.message || 'Client photo uploaded successfully!', 'success');
+        
+        // Refresh the page to show the new image, or update the current image display
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+    }
+
+    // Handle image deletion
+    function handleImageDelete(detail) {
+        showNotification(detail.message || 'Client photo deleted successfully!', 'success');
+        
+        // Refresh the page to remove the image display
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+    }
+
+    // Show notification helper function
+    function showNotification(message, type = 'info') {
+        // Check if you have a notification system, otherwise use a simple alert
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, type);
+        } else if (typeof window.showNotification === 'function') {
+            window.showNotification(message, type);
+        } else {
+            // Fallback to browser alert
+            alert(message);
+        }
+    }
+});
+</script>
+@endpush

@@ -22,7 +22,7 @@
                     <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Basic information about the client</p>
                 </x-slot>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <!-- Link to User -->
                     <div class="md:col-span-2">
                         <label for="client_id" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
@@ -91,44 +91,101 @@
                         <label for="project_id" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                             Related Project (Optional)
                         </label>
-                        <select name="project_id" id="project_id" 
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300">
-                            <option value="">Select project...</option>
-                            @foreach($projects as $project)
-                                <option value="{{ $project->id }}" {{ old('project_id') == $project->id ? 'selected' : '' }}>
-                                    {{ $project->title }}
-                                </option>
-                            @endforeach
-                        </select>
+                        
+                        <div class="relative">
+                            <select name="project_id" id="project_id" 
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    data-client-id="{{ old('client_id') }}">
+                                <option value="">Select project...</option>
+                                @foreach($projects as $project)
+                                    <option value="{{ $project->id }}" 
+                                            data-client-id="{{ $project->client_id ?? '' }}"
+                                            {{ old('project_id') == $project->id ? 'selected' : '' }}>
+                                        {{ $project->title }}
+                                        @if($project->client && $project->client->name)
+                                            <span class="text-gray-500">- {{ $project->client->name }}</span>
+                                        @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                            
+                            <!-- Loading spinner -->
+                            <div id="project-loading" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2">
+                                <svg class="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        
+                        <!-- Helper text -->
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" id="project-helper-text">
+                            Select a client above to filter projects, or choose from all available projects
+                        </p>
+                        
                         @error('project_id')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
                     <!-- Client Photo -->
-                    <div class="md:col-span-2">
-                        <label for="image" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                            Client Photo (Optional)
-                        </label>
-                        <!-- Universal File Uploader for Client Photo -->
-                        <x-universal-file-uploader 
-                            :id="'testimonial-photo-uploader-' . uniqid()" 
-                            name="image" 
-                            :multiple="false" 
-                            :maxFiles="1"
-                            maxFileSize="2MB" 
-                            :acceptedFileTypes="['image/jpeg', 'image/png', 'image/jpg', 'image/gif']" 
-                            dropDescription="Drop client photo here or click to browse" 
-                            :singleMode="true"
-                            :showFileList="true"
-                            :galleryMode="false"
-                            containerClass="mb-2" 
-                            theme="minimal" />
-                        <p class="mt-1 text-sm text-gray-500">PNG, JPG, GIF up to 2MB</p>
-                        @error('image')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
+                    
+                        <div class="lg:col-span-2 space-y-6">
+                            <!-- Client Photo Section -->
+                            <div>
+                                <label for="image" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                                    Client Photo (Optional)
+                                </label>
+                                
+                                <!-- Universal File Uploader for Client Photo -->
+                                <x-universal-file-uploader 
+                                    :id="'testimonial-photo-uploader-create'"
+                                    name="testimonial_images" 
+                                    :multiple="false"
+                                    :maxFiles="1" 
+                                    maxFileSize="2MB" 
+                                    :acceptedFileTypes="['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']" 
+                                    :uploadEndpoint="route('admin.testimonials.temp-upload')" 
+                                    :deleteEndpoint="route('admin.testimonials.temp-delete')"
+                                    dropDescription="Drop client photo here or click to browse (Max 2MB)"
+                                    :enableCategories="false"
+                                    :enableDescription="false"
+                                    :enablePublicToggle="false"
+                                    :instantUpload="true" 
+                                    :galleryMode="false"
+                                    :replaceMode="false"
+                                    :singleMode="true"
+                                    containerClass="mb-4" 
+                                    theme="modern"
+                                    :showFileList="false"
+                                    :showProgress="true"
+                                    :dragOverlay="true" />
+
+                                <div class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                                    <p>• Recommended: Square images (1:1 ratio) work best for client photos</p>
+                                    <p>• Supported formats: JPEG, PNG, JPG, GIF, WebP</p>
+                                    <p>• Maximum file size: 2MB</p>
+                                    <p>• Images will be automatically optimized and resized</p>
+                                </div>
+
+                                @error('image')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="lg:col-span-1 space-y-6">
+                            <x-temp-files-display 
+                                :sessionKey="'temp_testimonial_images_' . session()->getId()"
+                                title="Uploaded Client Photo"
+                                emptyMessage="No client photo uploaded yet"
+                                :showPreview="true"
+                                :allowDelete="true"
+                                :deleteEndpoint="route('admin.testimonials.temp-delete')"
+                                gridCols="grid-cols-1"
+                                :componentId="'temp-display-testimonial'" />
+                        </div>
+                    
+
                 </div>
             </x-admin.card>
 
@@ -370,3 +427,253 @@
         });
     </script>
 </x-layouts.admin>
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploaderId = 'testimonial-photo-uploader-create-{{ uniqid() }}';
+    
+    // Listen for universal uploader events
+    document.addEventListener('files-uploaded', function(event) {
+        if (event.detail.component.startsWith('testimonial-photo-uploader-create-')) {
+            handleTempImageUploadSuccess(event.detail);
+        }
+    });
+
+    document.addEventListener('file-deleted', function(event) {
+        if (event.detail.component.startsWith('testimonial-photo-uploader-create-')) {
+            handleTempImageDelete(event.detail);
+        }
+    });
+
+    // Handle temporary image upload success
+    function handleTempImageUploadSuccess(detail) {
+        showNotification(detail.message || 'Client photo uploaded successfully!', 'success');
+        
+        // You can add any additional logic here if needed
+        console.log('Temporary image uploaded:', detail);
+    }
+
+    // Handle temporary image deletion
+    function handleTempImageDelete(detail) {
+        showNotification(detail.message || 'Client photo removed!', 'info');
+        
+        // You can add any additional logic here if needed
+        console.log('Temporary image deleted:', detail);
+    }
+
+    // Show notification helper function
+    function showNotification(message, type = 'info') {
+        // Check if you have a notification system, otherwise use a simple alert
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, type);
+        } else if (typeof window.showNotification === 'function') {
+            window.showNotification(message, type);
+        } else {
+            // Create a simple toast notification
+            createToastNotification(message, type);
+        }
+    }
+
+    // Simple toast notification fallback
+    function createToastNotification(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white z-50 ${getToastColor(type)}`;
+        toast.textContent = message;
+        
+        document.body.appendChild(toast);
+        
+        // Animate in
+        setTimeout(() => {
+            toast.classList.add('opacity-100');
+        }, 100);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            toast.classList.add('opacity-0');
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 300);
+        }, 3000);
+    }
+
+    function getToastColor(type) {
+        switch(type) {
+            case 'success': return 'bg-green-500';
+            case 'error': return 'bg-red-500';
+            case 'warning': return 'bg-yellow-500';
+            default: return 'bg-blue-500';
+        }
+    }
+});
+document.addEventListener('DOMContentLoaded', function() {
+    const clientSelect = document.getElementById('client_id');
+    const projectSelect = document.getElementById('project_id');
+    const projectLoading = document.getElementById('project-loading');
+    const helperText = document.getElementById('project-helper-text');
+    
+    // Store all projects for filtering
+    let allProjects = [];
+    
+    // Initialize - store all project options
+    function initializeProjects() {
+        const options = projectSelect.querySelectorAll('option');
+        allProjects = Array.from(options).map(option => ({
+            value: option.value,
+            text: option.textContent.trim(),
+            clientId: option.getAttribute('data-client-id') || '',
+            element: option.cloneNode(true)
+        }));
+    }
+    
+    // Filter projects based on selected client
+    function filterProjects(selectedClientId) {
+        // Show loading state
+        showLoading(true);
+        
+        // Clear current options except the first one
+        projectSelect.innerHTML = '<option value="">Select project...</option>';
+        
+        if (!selectedClientId) {
+            // No client selected, show all projects
+            allProjects.forEach(project => {
+                if (project.value) { // Skip empty option
+                    projectSelect.appendChild(project.element.cloneNode(true));
+                }
+            });
+            updateHelperText('Select a client above to filter projects, or choose from all available projects');
+        } else {
+            // Filter projects for selected client
+            const clientProjects = allProjects.filter(project => 
+                project.value && (project.clientId === selectedClientId || project.clientId === '')
+            );
+            
+            if (clientProjects.length > 0) {
+                clientProjects.forEach(project => {
+                    projectSelect.appendChild(project.element.cloneNode(true));
+                });
+                updateHelperText(`Showing ${clientProjects.length} project(s) for selected client`);
+            } else {
+                // No projects for this client, but allow selecting from all projects
+                allProjects.forEach(project => {
+                    if (project.value) {
+                        projectSelect.appendChild(project.element.cloneNode(true));
+                    }
+                });
+                updateHelperText('No specific projects found for this client. Showing all available projects.');
+            }
+        }
+        
+        // Hide loading state
+        showLoading(false);
+        
+        // Reset project selection
+        projectSelect.value = '';
+        
+        // Trigger change event for any listeners
+        projectSelect.dispatchEvent(new Event('change'));
+    }
+    
+    // Alternative: Fetch projects via AJAX (more dynamic)
+    async function fetchClientProjects(clientId) {
+        try {
+            showLoading(true);
+            
+            const response = await fetch(`/admin/testimonials/client-projects/${clientId}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch projects');
+            }
+            
+            const data = await response.json();
+            
+            // Clear current options
+            projectSelect.innerHTML = '<option value="">Select project...</option>';
+            
+            // Add fetched projects
+            if (data.projects && data.projects.length > 0) {
+                data.projects.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project.id;
+                    option.textContent = project.title;
+                    option.setAttribute('data-client-id', project.client_id || '');
+                    projectSelect.appendChild(option);
+                });
+                updateHelperText(`Found ${data.projects.length} project(s) for this client`);
+            } else {
+                // Fallback to all projects if none found for client
+                allProjects.forEach(project => {
+                    if (project.value) {
+                        projectSelect.appendChild(project.element.cloneNode(true));
+                    }
+                });
+                updateHelperText('No specific projects found for this client. Showing all available projects.');
+            }
+            
+        } catch (error) {
+            console.error('Error fetching client projects:', error);
+            
+            // Fallback to showing all projects
+            projectSelect.innerHTML = '<option value="">Select project...</option>';
+            allProjects.forEach(project => {
+                if (project.value) {
+                    projectSelect.appendChild(project.element.cloneNode(true));
+                }
+            });
+            updateHelperText('Error loading client projects. Showing all available projects.');
+        } finally {
+            showLoading(false);
+        }
+    }
+    
+    // Show/hide loading state
+    function showLoading(show) {
+        if (show) {
+            projectLoading.classList.remove('hidden');
+            projectSelect.disabled = true;
+        } else {
+            projectLoading.classList.add('hidden');
+            projectSelect.disabled = false;
+        }
+    }
+    
+    // Update helper text
+    function updateHelperText(text) {
+        helperText.textContent = text;
+    }
+    
+    // Event listener for client selection change
+    if (clientSelect) {
+        clientSelect.addEventListener('change', function() {
+            const selectedClientId = this.value;
+            
+            if (selectedClientId) {
+                // Option 1: Use client-side filtering (faster, works with existing data)
+                filterProjects(selectedClientId);
+                
+                // Option 2: Use AJAX to fetch fresh data (more accurate, requires endpoint)
+                // fetchClientProjects(selectedClientId);
+            } else {
+                // No client selected, show all projects
+                filterProjects('');
+            }
+        });
+    }
+    
+    // Initialize on page load
+    initializeProjects();
+    
+    // If a client is already selected (from old input), filter projects
+    const initialClientId = clientSelect ? clientSelect.value : '';
+    if (initialClientId) {
+        filterProjects(initialClientId);
+    }
+});
+</script>
+@endpush
