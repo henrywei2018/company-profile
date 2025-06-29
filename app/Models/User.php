@@ -10,6 +10,9 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use App\Traits\ImageableTrait;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\OtpVerificationMail;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -39,6 +42,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'login_count',
         'failed_login_attempts',
         'locked_at',
+        'otp_code',
+        'otp_expires_at',
         
         // Notification preferences fields from migration
         'email_notifications',
@@ -62,6 +67,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'otp_code',
     ];
 
     /**
@@ -78,6 +84,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'locked_at' => 'datetime',
         'login_count' => 'integer',
         'failed_login_attempts' => 'integer',
+        'otp_expires_at' => 'datetime',
         
         // Notification preferences casts
         'email_notifications' => 'boolean',
@@ -91,7 +98,66 @@ class User extends Authenticatable implements MustVerifyEmail
         'last_notification_sent_at' => 'datetime',
         'quiet_hours' => 'array', // JSON field for storing quiet hours
     ];
+    public function hasVerifiedEmail()
+    {
+        return ! is_null($this->email_verified_at);
+    }
+    public function markEmailAsVerified()
+    {
+        return $this->forceFill([
+            'email_verified_at' => $this->freshTimestamp(),
+        ])->save();
+    }
+    public function getEmailForVerification()
+    {
+        return $this->email;
+    }
+    public function sendEmailVerificationNotification()
+    {                
+        $this->generateOtp();        
+        $this->notify(new \App\Notifications\OtpVerificationNotification($this->otp_code));
+    }
+    public function sendOtpVerification()
+    {
+        $this->generateOtp();
+        
+        // Using the new Mailable instead of Notification
+        Mail::to($this->email)->send(new OtpVerificationMail($this, $this->otp_code));
+        
+    }
     
+    public function generateOtp()
+    {
+        $this->otp_code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $this->otp_expires_at = Carbon::now()->addMinutes(10); // 10 minutes expiry
+        $this->save();
+    }
+
+    /**
+     * Verify OTP code
+     */
+    public function verifyOtp($code)
+    {
+        if (!$this->otp_code || !$this->otp_expires_at) {
+            return false;
+        }
+
+        if (Carbon::now()->isAfter($this->otp_expires_at)) {
+            return false; // OTP expired
+        }
+
+        return $this->otp_code === $code;
+    }
+
+    /**
+     * Clear OTP after use
+     */
+    public function clearOtp()
+    {
+        $this->otp_code = null;
+        $this->otp_expires_at = null;
+        $this->save();
+    }
     /**
      * Get the projects associated with the user.
      */
@@ -378,7 +444,10 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->getAllPermissions()->count();
     }
-    
+    public function testimonials()
+    {
+        return $this->hasMany(Testimonial::class, 'client_id');
+    }
     /**
      * Check if user account is locked.
      */

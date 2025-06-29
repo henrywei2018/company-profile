@@ -27,7 +27,7 @@ class Project extends Model
         'short_description',
         'client_id',
         'quotation_id',
-        'project_category_id',
+        'category_id',
         'service_id',
         'status',
         'priority',
@@ -36,6 +36,7 @@ class Project extends Model
         'end_date',
         'estimated_completion_date',
         'actual_completion_date',
+        'value',
         'budget',
         'actual_cost',
         'progress_percentage',
@@ -227,25 +228,19 @@ class Project extends Model
         return $this->belongsTo(Quotation::class);
     }
 
-    /**
-     * Get the project category.
-     */
+  
     public function category()
     {
         return $this->belongsTo(ProjectCategory::class, 'category_id');
     }
 
-    /**
-     * Get the related service.
-     */
+
     public function service()
     {
         return $this->belongsTo(Service::class);
     }
 
-    /**
-     * Get the project images.
-     */
+
     public function images()
     {
         return $this->hasMany(ProjectImage::class);
@@ -259,10 +254,6 @@ class Project extends Model
         return $this->hasMany(ProjectFile::class);
     }
 
-    /**
-     * Alias for files() - for backward compatibility
-     * This fixes the "attachments" relationship error
-     */
     public function attachments()
     {
         return $this->files();
@@ -278,12 +269,12 @@ class Project extends Model
 
     public function testimonials()
     {
-        return $this->hasMany(\App\Models\Testimonial::class);
+        return $this->hasMany(Testimonial::class);
     }
 
     public function testimonial()
     {
-        return $this->hasOne(\App\Models\Testimonial::class);
+        return $this->hasOne(Testimonial::class);
     }
 
     /**
@@ -291,22 +282,15 @@ class Project extends Model
      */
     public function activeTestimonials()
     {
-        return $this->hasMany(\App\Models\Testimonial::class)->where('is_active', true);
+        return $this->hasMany(Testimonial::class)->active();
     }
 
-    /**
-     * Get featured testimonials for this project.
-     */
     public function featuredTestimonials()
     {
-        return $this->hasMany(\App\Models\Testimonial::class)
-            ->where('featured', true)
-            ->where('is_active', true);
+        return $this->hasMany(Testimonial::class)->featured();
     }
 
-    /**
-     * Get project updates/logs (if you have this feature)
-     */
+
     public function updates()
     {
         return $this->hasMany(ProjectUpdate::class)->latest();

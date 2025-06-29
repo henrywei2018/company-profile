@@ -1,4 +1,4 @@
-{{-- resources/views/admin/projects/show.blade.php - CLEAN TIMELINE VERSION --}}
+
 
 <x-layouts.admin title="Project Management">
     <!-- Fixed Header with Project Title -->

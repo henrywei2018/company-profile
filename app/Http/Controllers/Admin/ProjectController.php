@@ -826,14 +826,18 @@ class ProjectController extends Controller
             ->count();
 
         // Category breakdown
-        $stats['projects_by_category'] = Project::with('category')
-            ->select('category_id', DB::raw('count(*) as count'))
-            ->groupBy('category_id')
-            ->get()
-            ->mapWithKeys(function ($item) {
-                return [$item->category->name ?? 'Uncategorized' => $item->count];
-            })
-            ->toArray();
+        $stats['projects_by_category'] = Project::select('category_id', DB::raw('count(*) as count'))
+                ->groupBy('category_id')
+                ->get()
+                ->mapWithKeys(function ($item) {
+                    $categoryName = 'Uncategorized';
+                    if ($item->category_id) {
+                        $category = ProjectCategory::find($item->category_id);
+                        $categoryName = $category ? $category->name : 'Uncategorized';
+                    }
+                    return [$categoryName => $item->count];
+                })
+                ->toArray();
 
         // Recent projects
         $stats['recent_projects'] = Project::with(['client', 'category'])
@@ -955,27 +959,40 @@ class ProjectController extends Controller
     /**
      * Set project image as featured (AJAX)
      */
-    public function setFeaturedImage(Project $project, $imageId)
-    {
+    public function setFeaturedImage(Project $project, ProjectImage $image)
+{
+    try {
+        // Verify the image belongs to this project
+        if ($image->project_id !== $project->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Image does not belong to this project'
+            ], 404);
+        }
+
         // Reset all images to not featured
         $project->images()->update(['is_featured' => false]);
 
         // Set the specified image as featured
-        $image = $project->images()->find($imageId);
-        if ($image) {
-            $image->update(['is_featured' => true]);
+        $image->update(['is_featured' => true]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Featured image updated successfully!'
-            ]);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Featured image updated successfully!'
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Failed to set featured image: ' . $e->getMessage(), [
+            'project_id' => $project->id,
+            'image_id' => $image->id
+        ]);
 
         return response()->json([
             'success' => false,
-            'message' => 'Image not found'
-        ], 404);
+            'message' => 'Failed to set featured image: ' . $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * Soft delete project (if soft deletes are enabled).
@@ -1061,6 +1078,10 @@ class ProjectController extends Controller
             default => '#6b7280'
         };
     }
+    public function getImageUrlAttribute()
+{
+    return asset('storage/' . $this->image_path);
+}
     public function uploadTempImages(Request $request)
 {
     try {

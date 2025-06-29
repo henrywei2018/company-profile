@@ -1,18 +1,19 @@
-{{-- resources/views/admin/testimonials/create.blade.php --}}
-<x-layouts.admin title="Create Testimonial">
+{{-- resources/views/admin/testimonials/edit.blade.php --}}
+<x-layouts.admin title="Edit Testimonial">
     <!-- Breadcrumb -->
     <x-admin.breadcrumb :items="[
         'Testimonials' => route('admin.testimonials.index'),
-        'Create' => ''
+        'Edit' => ''
     ]" />
 
     <!-- Header -->
     <x-admin.header-section 
-        title="Create New Testimonial" 
-        description="Add a new client testimonial to showcase your work" />
+        title="Edit Testimonial" 
+        :description="'Edit testimonial from ' . $testimonial->client_name" />
 
-    <form action="{{ route('admin.testimonials.store') }}" method="POST" enctype="multipart/form-data">
+    <form action="{{ route('admin.testimonials.update', $testimonial) }}" method="POST" enctype="multipart/form-data">
         @csrf
+        @method('PUT')
         
         <div class="space-y-6">
             <!-- Client Information -->
@@ -33,7 +34,7 @@
                             <option value="">Select existing user...</option>
                             @foreach($clients as $client)
                                 <option value="{{ $client->id }}" 
-                                        {{ old('client_id') == $client->id ? 'selected' : '' }}
+                                        {{ old('client_id', $testimonial->client_id) == $client->id ? 'selected' : '' }}
                                         data-name="{{ $client->name }}" 
                                         data-email="{{ $client->email }}" 
                                         data-company="{{ $client->company ?? '' }}">
@@ -51,7 +52,7 @@
                         <label for="client_name" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                             Client Name <span class="text-red-500">*</span>
                         </label>
-                        <input type="text" name="client_name" id="client_name" value="{{ old('client_name') }}"
+                        <input type="text" name="client_name" id="client_name" value="{{ old('client_name', $testimonial->client_name) }}"
                                placeholder="Enter client name..."
                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('client_name') border-red-500 @enderror"
                                required>
@@ -65,7 +66,7 @@
                         <label for="client_position" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                             Position/Title
                         </label>
-                        <input type="text" name="client_position" id="client_position" value="{{ old('client_position') }}"
+                        <input type="text" name="client_position" id="client_position" value="{{ old('client_position', $testimonial->client_position) }}"
                                placeholder="e.g. CEO, Marketing Manager..."
                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300">
                         @error('client_position')
@@ -78,7 +79,7 @@
                         <label for="client_company" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                             Company/Organization
                         </label>
-                        <input type="text" name="client_company" id="client_company" value="{{ old('client_company') }}"
+                        <input type="text" name="client_company" id="client_company" value="{{ old('client_company', $testimonial->client_company) }}"
                                placeholder="Enter company name..."
                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300">
                         @error('client_company')
@@ -95,7 +96,7 @@
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300">
                             <option value="">Select project...</option>
                             @foreach($projects as $project)
-                                <option value="{{ $project->id }}" {{ old('project_id') == $project->id ? 'selected' : '' }}>
+                                <option value="{{ $project->id }}" {{ old('project_id', $testimonial->project_id) == $project->id ? 'selected' : '' }}>
                                     {{ $project->title }}
                                 </option>
                             @endforeach
@@ -104,6 +105,20 @@
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
+
+                    <!-- Current Image Display -->
+                    @if($testimonial->image)
+                        <div class="md:col-span-2">
+                            <div class="flex items-center space-x-4 mb-4">
+                                <img src="{{ $testimonial->image_url }}" alt="{{ $testimonial->client_name }}"
+                                     class="h-16 w-16 rounded-full object-cover">
+                                <div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">Current photo</p>
+                                    <p class="text-xs text-gray-500">Upload a new image to replace</p>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
 
                     <!-- Client Photo -->
                     <div class="md:col-span-2">
@@ -139,7 +154,7 @@
                         <textarea name="content" id="content" rows="5" 
                                   placeholder="Enter the testimonial content..."
                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('content') border-red-500 @enderror"
-                                  required>{{ old('content') }}</textarea>
+                                  required>{{ old('content', $testimonial->content) }}</textarea>
                         <div class="flex justify-between mt-1">
                             <p class="text-xs text-gray-500 dark:text-gray-400">Provide the client's testimonial text.</p>
                             <span id="content-count" class="text-xs text-gray-400">0 characters</span>
@@ -159,15 +174,15 @@
                                 <label class="cursor-pointer">
                                     <input type="radio" name="rating" value="{{ $i }}" 
                                            class="sr-only rating-input"
-                                           {{ old('rating', '5') == $i ? 'checked' : '' }}
+                                           {{ old('rating', $testimonial->rating) == $i ? 'checked' : '' }}
                                            required>
-                                    <svg class="h-8 w-8 rating-star {{ old('rating', '5') >= $i ? 'text-yellow-400' : 'text-gray-300' }} hover:text-yellow-400 transition-colors" 
+                                    <svg class="h-8 w-8 rating-star {{ old('rating', $testimonial->rating) >= $i ? 'text-yellow-400' : 'text-gray-300' }} hover:text-yellow-400 transition-colors" 
                                          fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                                     </svg>
                                 </label>
                             @endfor
-                            <span class="ml-2 text-sm text-gray-600 dark:text-gray-400" id="rating-text">5 stars</span>
+                            <span class="ml-2 text-sm text-gray-600 dark:text-gray-400" id="rating-text">{{ $testimonial->rating }} stars</span>
                         </div>
                         @error('rating')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -191,16 +206,16 @@
                         </label>
                         <select name="status" id="status" required
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300">
-                            <option value="pending" {{ old('status', 'pending') === 'pending' ? 'selected' : '' }}>
+                            <option value="pending" {{ old('status', $testimonial->status ?? 'pending') === 'pending' ? 'selected' : '' }}>
                                 Pending Review
                             </option>
-                            <option value="approved" {{ old('status') === 'approved' ? 'selected' : '' }}>
+                            <option value="approved" {{ old('status', $testimonial->status) === 'approved' ? 'selected' : '' }}>
                                 Approved
                             </option>
-                            <option value="featured" {{ old('status') === 'featured' ? 'selected' : '' }}>
+                            <option value="featured" {{ old('status', $testimonial->status) === 'featured' ? 'selected' : '' }}>
                                 Featured
                             </option>
-                            <option value="rejected" {{ old('status') === 'rejected' ? 'selected' : '' }}>
+                            <option value="rejected" {{ old('status', $testimonial->status) === 'rejected' ? 'selected' : '' }}>
                                 Rejected
                             </option>
                         </select>
@@ -218,7 +233,7 @@
                                name="is_active" 
                                id="is_active" 
                                value="1"
-                               {{ old('is_active', true) ? 'checked' : '' }}
+                               {{ old('is_active', $testimonial->is_active) ? 'checked' : '' }}
                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                         <label for="is_active" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">
                             Active - Whether this testimonial is active and visible
@@ -232,7 +247,7 @@
                                name="featured" 
                                id="featured" 
                                value="1"
-                               {{ old('featured', false) ? 'checked' : '' }}
+                               {{ old('featured', $testimonial->featured) ? 'checked' : '' }}
                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                         <label for="featured" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">
                             Featured - Mark this testimonial as featured
@@ -254,7 +269,7 @@
                     </label>
                     <textarea name="admin_notes" id="admin_notes" rows="3" 
                               placeholder="Internal notes for admin use only..."
-                              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300">{{ old('admin_notes') }}</textarea>
+                              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300">{{ old('admin_notes', $testimonial->admin_notes) }}</textarea>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">These notes are only visible to administrators and are not displayed publicly.</p>
                     @error('admin_notes')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -271,7 +286,7 @@
             </a>
             <button type="submit" 
                     class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                Create Testimonial
+                Update Testimonial
             </button>
         </div>
     </form>
@@ -323,10 +338,8 @@
             clientSelect.addEventListener('change', function() {
                 const selectedOption = this.options[this.selectedIndex];
                 if (selectedOption.value) {
-                    if (!clientNameInput.value) {
+                    if (confirm('Auto-fill client details from selected user account?')) {
                         clientNameInput.value = selectedOption.dataset.name || '';
-                    }
-                    if (!clientCompanyInput.value) {
                         clientCompanyInput.value = selectedOption.dataset.company || '';
                     }
                 }

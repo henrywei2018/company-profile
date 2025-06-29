@@ -406,9 +406,27 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     });
 
     // Testimonials
-    Route::resource('testimonials', TestimonialController::class);
-    Route::post('/testimonials/{testimonial}/toggle-active', [TestimonialController::class, 'toggleActive'])->name('testimonials.toggle-active');
-    Route::post('/testimonials/{testimonial}/toggle-featured', [TestimonialController::class, 'toggleFeatured'])->name('testimonials.toggle-featured');
+    Route::prefix('testimonials')->name('testimonials.')->group(function () {
+        Route::get('/', [TestimonialController::class, 'index'])->name('index');
+        Route::get('/create', [TestimonialController::class, 'create'])->name('create');
+        Route::post('/', [TestimonialController::class, 'store'])->name('store');
+        Route::get('/{testimonial}', [TestimonialController::class, 'show'])->name('show');
+        Route::get('/{testimonial}/edit', [TestimonialController::class, 'edit'])->name('edit');
+        Route::put('/{testimonial}', [TestimonialController::class, 'update'])->name('update');
+        Route::delete('/{testimonial}', [TestimonialController::class, 'destroy'])->name('destroy');
+        
+        // Status management
+        Route::patch('/{testimonial}/toggle-active', [TestimonialController::class, 'toggleActive'])->name('toggle-active');
+        Route::patch('/{testimonial}/toggle-featured', [TestimonialController::class, 'toggleFeatured'])->name('toggle-featured');
+        Route::patch('/{testimonial}/approve', [TestimonialController::class, 'approve'])->name('approve');
+        Route::patch('/{testimonial}/reject', [TestimonialController::class, 'reject'])->name('reject');
+        
+        // Bulk actions
+        Route::post('/bulk-action', [TestimonialController::class, 'bulkAction'])->name('bulk-action');
+        
+        // API endpoints
+        Route::get('/api/statistics', [TestimonialController::class, 'statistics'])->name('statistics');
+    });
 
     // Certifications
     Route::resource('certifications', CertificationController::class);
