@@ -135,6 +135,8 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
     });
 
     Route::prefix('testimonials')->name('testimonials.')->group(function () {
+        Route::post('/temp-upload', [TestimonialController::class, 'uploadTempImages'])->name('temp-upload');
+        Route::delete('/temp-delete', [TestimonialController::class, 'deleteTempImage'])->name('temp-delete');
         Route::get('/', [TestimonialController::class, 'index'])->name('index');
         Route::get('/create', [TestimonialController::class, 'create'])->name('create');
         Route::post('/', [TestimonialController::class, 'store'])->middleware('throttle:3,1')->name('store');
@@ -142,6 +144,8 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::get('/{testimonial}/edit', [TestimonialController::class, 'edit'])->name('edit');
         Route::put('/{testimonial}', [TestimonialController::class, 'update'])->name('update');
         Route::delete('/{testimonial}', [TestimonialController::class, 'destroy'])->name('destroy');
+        Route::post('/{testimonial}/upload-image', [TestimonialController::class, 'uploadImages'])->name('upload-image');
+        Route::delete('/{testimonial}/delete-image', [TestimonialController::class, 'deleteImage'])->name('delete-image');
         Route::get('/available-projects', [TestimonialController::class, 'availableProjects'])->name('available-projects');
         Route::get('/{testimonial}/preview', [TestimonialController::class, 'preview'])->name('preview');
         Route::get('/statistics', [TestimonialController::class, 'getStatistics'])->name('statistics');
