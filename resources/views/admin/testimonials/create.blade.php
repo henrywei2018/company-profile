@@ -110,11 +110,20 @@
                         <label for="image" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                             Client Photo (Optional)
                         </label>
-                        <input type="file" 
-                               name="image" 
-                               id="image" 
-                               accept="image/*"
-                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-300">
+                        <!-- Universal File Uploader for Client Photo -->
+                        <x-universal-file-uploader 
+                            :id="'testimonial-photo-uploader-' . uniqid()" 
+                            name="image" 
+                            :multiple="false" 
+                            :maxFiles="1"
+                            maxFileSize="2MB" 
+                            :acceptedFileTypes="['image/jpeg', 'image/png', 'image/jpg', 'image/gif']" 
+                            dropDescription="Drop client photo here or click to browse" 
+                            :singleMode="true"
+                            :showFileList="true"
+                            :galleryMode="false"
+                            containerClass="mb-2" 
+                            theme="minimal" />
                         <p class="mt-1 text-sm text-gray-500">PNG, JPG, GIF up to 2MB</p>
                         @error('image')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
