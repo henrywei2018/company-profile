@@ -135,20 +135,25 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
     });
 
     Route::prefix('testimonials')->name('testimonials.')->group(function () {
-        Route::post('/temp-upload', [TestimonialController::class, 'uploadTempImages'])->name('temp-upload');
-        Route::delete('/temp-delete', [TestimonialController::class, 'deleteTempImage'])->name('temp-delete');
+        
+        // Temporary file upload routes (MUST come before resource routes to avoid conflicts)
+        Route::post('/upload-temp', [TestimonialController::class, 'uploadTemp'])->name('upload-temp');
+        Route::delete('/delete-temp', [TestimonialController::class, 'deleteTemp'])->name('delete-temp');
+        
+        // Standard CRUD routes
         Route::get('/', [TestimonialController::class, 'index'])->name('index');
         Route::get('/create', [TestimonialController::class, 'create'])->name('create');
-        Route::post('/', [TestimonialController::class, 'store'])->middleware('throttle:3,1')->name('store');
+        Route::post('/', [TestimonialController::class, 'store'])->name('store');
         Route::get('/{testimonial}', [TestimonialController::class, 'show'])->name('show');
         Route::get('/{testimonial}/edit', [TestimonialController::class, 'edit'])->name('edit');
         Route::put('/{testimonial}', [TestimonialController::class, 'update'])->name('update');
         Route::delete('/{testimonial}', [TestimonialController::class, 'destroy'])->name('destroy');
-        Route::post('/{testimonial}/upload-image', [TestimonialController::class, 'uploadImages'])->name('upload-image');
-        Route::delete('/{testimonial}/delete-image', [TestimonialController::class, 'deleteImage'])->name('delete-image');
-        Route::get('/available-projects', [TestimonialController::class, 'availableProjects'])->name('available-projects');
+        
+        // API endpoints for client dashboard
+        Route::get('/api/stats', [TestimonialController::class, 'getStats'])->name('api.stats');
+        
+        // Additional client-specific routes if needed
         Route::get('/{testimonial}/preview', [TestimonialController::class, 'preview'])->name('preview');
-        Route::get('/statistics', [TestimonialController::class, 'getStatistics'])->name('statistics');
     });
 
     Route::prefix('chat')->name('chat.')->group(function () {

@@ -131,8 +131,6 @@
                     <!-- Client Photo -->
                     
                         <div class="lg:col-span-2 space-y-6">
-                            <!-- Client Photo Section -->
-                            <div>
                                 <label for="image" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                                     Client Photo (Optional)
                                 </label>
@@ -171,7 +169,6 @@
                                 @error('image')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
-                            </div>
                         </div>
                         <div class="lg:col-span-1 space-y-6">
                             <x-temp-files-display 
