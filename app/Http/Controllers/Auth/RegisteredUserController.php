@@ -41,11 +41,7 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
-
-        // Send OTP verification email
-        $user->sendOtpVerification();
-
-        event(new Registered($user));
+        
         Auth::login($user);
 
         return redirect()->route('verification.otp');

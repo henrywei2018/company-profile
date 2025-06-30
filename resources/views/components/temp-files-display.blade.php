@@ -3,7 +3,7 @@
 
 @props([
     'sessionKey' => 'temp_testimonial_images_' . session()->getId(),
-    'title' => 'Uploaded Files',
+    'title' => 'Uploaded',
     'emptyMessage' => 'No files uploaded yet',
     'showPreview' => true,
     'allowDelete' => true,
@@ -25,7 +25,6 @@
     
     <div class="flex items-center justify-between mb-4">
         <h4 class="text-lg font-semibold text-gray-900 dark:text-white" x-text="title"></h4>
-        <span class="text-sm text-gray-500 dark:text-gray-400" x-show="files.length > 0" x-text="files.length + ' file(s)'"></span>
     </div>
 
     <!-- Empty State -->
@@ -94,10 +93,6 @@
                                x-text="file.file_name || 'Unknown file'"></p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1"
                                x-text="file.size || file.file_size || 'Unknown size'"></p>
-                            <template x-if="file.category">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 mt-1"
-                                      x-text="file.category.charAt(0).toUpperCase() + file.category.slice(1)"></span>
-                            </template>
                         </div>
                         
                         <button x-show="allowDelete && deleteEndpoint" 

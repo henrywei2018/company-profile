@@ -93,25 +93,19 @@ class GoogleAnalyticsService
         );
 
         try {
-            
-            $current = $this->getMetricsForPeriod($currentPeriod, [
-                'totalUsers', 'sessions', 'screenPageViews', 'bounceRate', 
+            $metricsList = [
+                'totalUsers', 'sessions', 'screenPageViews', 'bounceRate',
                 'averageSessionDuration', 'conversions'
-            ]);
+            ];
 
-            $previous = $this->getMetricsForPeriod($previousPeriod, [
-                'totalUsers', 'sessions', 'screenPageViews', 'bounceRate', 
-                'averageSessionDuration', 'conversions'
-            ]);
+            $current = $this->getMetricsForPeriod($currentPeriod, $metricsList);
+            $previous = $this->getMetricsForPeriod($previousPeriod, $metricsList);
 
             return [
                 'total_users' => [
                     'current' => $current['totalUsers'] ?? 0,
                     'previous' => $previous['totalUsers'] ?? 0,
-                    'change_percent' => $this->calculatePercentageChange(
-                        $current['totalUsers'] ?? 0, 
-                        $previous['totalUsers'] ?? 0
-                    ),
+                    'change_percent' => $this->calculatePercentageChange($current['totalUsers'] ?? 0, $previous['totalUsers'] ?? 0),
                     'trend' => $this->getTrendDirection($current['totalUsers'] ?? 0, $previous['totalUsers'] ?? 0),
                     'target' => $this->getKPITarget('total_users', $period),
                     'status' => $this->getKPIStatus('total_users', $current['totalUsers'] ?? 0, $period)
@@ -119,22 +113,15 @@ class GoogleAnalyticsService
                 'sessions' => [
                     'current' => $current['sessions'] ?? 0,
                     'previous' => $previous['sessions'] ?? 0,
-                    'change_percent' => $this->calculatePercentageChange(
-                        $current['sessions'] ?? 0, 
-                        $previous['sessions'] ?? 0
-                    ),
+                    'change_percent' => $this->calculatePercentageChange($current['sessions'] ?? 0, $previous['sessions'] ?? 0),
                     'trend' => $this->getTrendDirection($current['sessions'] ?? 0, $previous['sessions'] ?? 0),
                     'target' => $this->getKPITarget('sessions', $period),
                     'status' => $this->getKPIStatus('sessions', $current['sessions'] ?? 0, $period)
                 ],
-                
                 'pageviews' => [
                     'current' => $current['screenPageViews'] ?? 0,
                     'previous' => $previous['screenPageViews'] ?? 0,
-                    'change_percent' => $this->calculatePercentageChange(
-                        $current['screenPageViews'] ?? 0, 
-                        $previous['screenPageViews'] ?? 0
-                    ),
+                    'change_percent' => $this->calculatePercentageChange($current['screenPageViews'] ?? 0, $previous['screenPageViews'] ?? 0),
                     'trend' => $this->getTrendDirection($current['screenPageViews'] ?? 0, $previous['screenPageViews'] ?? 0),
                     'target' => $this->getKPITarget('pageviews', $period),
                     'status' => $this->getKPIStatus('pageviews', $current['screenPageViews'] ?? 0, $period)
@@ -142,21 +129,15 @@ class GoogleAnalyticsService
                 'bounce_rate' => [
                     'current' => round(($current['bounceRate'] ?? 0) * 100, 2),
                     'previous' => round(($previous['bounceRate'] ?? 0) * 100, 2),
-                    'change_percent' => $this->calculatePercentageChange(
-                        $current['bounceRate'] ?? 0, 
-                        $previous['bounceRate'] ?? 0
-                    ),
-                    'trend' => $this->getTrendDirection($previous['bounceRate'] ?? 0, $current['bounceRate'] ?? 0), // Inverted for bounce rate
+                    'change_percent' => $this->calculatePercentageChange($current['bounceRate'] ?? 0, $previous['bounceRate'] ?? 0),
+                    'trend' => $this->getTrendDirection($previous['bounceRate'] ?? 0, $current['bounceRate'] ?? 0), // inverted
                     'target' => $this->getKPITarget('bounce_rate', $period),
                     'status' => $this->getKPIStatus('bounce_rate', ($current['bounceRate'] ?? 0) * 100, $period)
                 ],
                 'avg_session_duration' => [
                     'current' => round($current['averageSessionDuration'] ?? 0, 0),
                     'previous' => round($previous['averageSessionDuration'] ?? 0, 0),
-                    'change_percent' => $this->calculatePercentageChange(
-                        $current['averageSessionDuration'] ?? 0, 
-                        $previous['averageSessionDuration'] ?? 0
-                    ),
+                    'change_percent' => $this->calculatePercentageChange($current['averageSessionDuration'] ?? 0, $previous['averageSessionDuration'] ?? 0),
                     'trend' => $this->getTrendDirection($current['averageSessionDuration'] ?? 0, $previous['averageSessionDuration'] ?? 0),
                     'target' => $this->getKPITarget('avg_session_duration', $period),
                     'status' => $this->getKPIStatus('avg_session_duration', $current['averageSessionDuration'] ?? 0, $period)
@@ -164,10 +145,7 @@ class GoogleAnalyticsService
                 'conversions' => [
                     'current' => $current['conversions'] ?? 0,
                     'previous' => $previous['conversions'] ?? 0,
-                    'change_percent' => $this->calculatePercentageChange(
-                        $current['conversions'] ?? 0, 
-                        $previous['conversions'] ?? 0
-                    ),
+                    'change_percent' => $this->calculatePercentageChange($current['conversions'] ?? 0, $previous['conversions'] ?? 0),
                     'trend' => $this->getTrendDirection($current['conversions'] ?? 0, $previous['conversions'] ?? 0),
                     'target' => $this->getKPITarget('conversions', $period),
                     'status' => $this->getKPIStatus('conversions', $current['conversions'] ?? 0, $period)
@@ -186,15 +164,12 @@ class GoogleAnalyticsService
     {
         try {
             $periodObj = Period::days($period);
-            
-            
+
             $trafficSources = $this->getCustomData(['sessions'], ['sessionSource'], $periodObj);
             $channels = $this->getCustomData(['sessions'], ['sessionDefaultChannelGroup'], $periodObj);
             $mediums = $this->getCustomData(['sessions'], ['sessionMedium'], $periodObj);
-            
-            // Get daily traffic for trend analysis
             $dailyTraffic = $this->getCustomData(['sessions', 'totalUsers'], ['date'], $periodObj);
-            
+
             return [
                 'top_sources' => $trafficSources->sortByDesc('sessions')->take(10)->values()->toArray(),
                 'channel_distribution' => $channels->sortByDesc('sessions')->toArray(),
@@ -243,21 +218,21 @@ class GoogleAnalyticsService
     {
         try {
             $periodObj = Period::days($period);
-            
-            // Get engagement metrics
+
             $engagementData = $this->getCustomData([
-                'averageSessionDuration', 'bounceRate', 'pageviewsPerSession', 
-                'eventCount', 'engagementRate'
+                'averageSessionDuration', 'bounceRate', 'screenPageViews', 'sessions', 'eventCount', 'engagementRate'
             ], [], $periodObj);
-            
-            // Get page engagement
+
+            $screenPageViews = $engagementData->first()['screenPageViews'] ?? 0;
+            $sessions = $engagementData->first()['sessions'] ?? 0;
+            $pagesPerSession = $sessions > 0 ? round($screenPageViews / $sessions, 2) : 0;
+
             $pageEngagement = $this->getCustomData([
-                'averageSessionDuration', 'bounceRate'
+                'averageSessionDuration', 'bounceRate', 'screenPageViews'
             ], ['pagePath'], $periodObj);
-            
-            // Get event data
-            $events = $this->getCustomData(['eventCount'], ['eventName'], $periodObj);
-            
+
+            $events = $this->getCustomData(['eventCount', 'eventName'], [], $periodObj);
+
             return [
                 'average_session_duration' => [
                     'value' => round($engagementData->first()['averageSessionDuration'] ?? 0, 2),
@@ -271,9 +246,9 @@ class GoogleAnalyticsService
                     'status' => $this->getEngagementStatus('bounce_rate', ($engagementData->first()['bounceRate'] ?? 0) * 100)
                 ],
                 'pages_per_session' => [
-                    'value' => round($engagementData->first()['pageviewsPerSession'] ?? 0, 2),
+                    'value' => $pagesPerSession,
                     'benchmark' => '2-4 pages',
-                    'status' => $this->getEngagementStatus('pages_per_session', $engagementData->first()['pageviewsPerSession'] ?? 0)
+                    'status' => $this->getEngagementStatus('pages_per_session', $pagesPerSession)
                 ],
                 'engagement_rate' => [
                     'value' => round(($engagementData->first()['engagementRate'] ?? 0) * 100, 2),
@@ -306,26 +281,23 @@ class GoogleAnalyticsService
     {
         try {
             $periodObj = Period::days($period);
-            
-            // Get conversion data
+
             $conversions = $this->getCustomData([
                 'conversions', 'sessions', 'totalUsers'
             ], [], $periodObj);
-            
-            // Get conversion by source
+
             $conversionBySource = $this->getCustomData([
                 'conversions', 'sessions'
-            ], ['source'], $periodObj);
-            
-            // Get conversion by page
+            ], ['sessionSource'], $periodObj);
+
             $conversionByPage = $this->getCustomData([
                 'conversions', 'sessions'
             ], ['pagePath'], $periodObj);
-            
+
             $totalConversions = $conversions->sum('conversions');
             $totalSessions = $conversions->sum('sessions');
             $totalUsers = $conversions->sum('totalUsers');
-            
+
             return [
                 'total_conversions' => $totalConversions,
                 'conversion_rate' => [
@@ -368,17 +340,15 @@ class GoogleAnalyticsService
     {
         try {
             $periodObj = Period::days($period);
-            
-            // Get audience data
+
             $countries = $this->getCustomData(['sessions'], ['country'], $periodObj);
             $cities = $this->getCustomData(['sessions'], ['city'], $periodObj);
             $devices = $this->getCustomData(['sessions'], ['deviceCategory'], $periodObj);
             $browsers = $this->getCustomData(['sessions'], ['browser'], $periodObj);
             $os = $this->getCustomData(['sessions'], ['operatingSystem'], $periodObj);
-            
-            // Get user types (new vs returning)
+
             $userTypes = $this->getCustomData(['sessions'], ['newVsReturning'], $periodObj);
-            
+
             return [
                 'geographic_distribution' => [
                     'top_countries' => $countries->sortByDesc('sessions')->take(10)->values()->toArray(),
@@ -430,34 +400,32 @@ class GoogleAnalyticsService
     {
         try {
             $periodObj = Period::days($period);
-            
-            // Get acquisition data
-            $sources = $this->getCustomData(['sessions', 'totalUsers'], ['source'], $periodObj);
-            $mediums = $this->getCustomData(['sessions', 'totalUsers'], ['medium'], $periodObj);
-            $campaigns = $this->getCustomData(['sessions', 'totalUsers'], ['campaign'], $periodObj);
-            
+
+            $sources = $this->getCustomData(['sessions', 'totalUsers'], ['sessionSource'], $periodObj);
+            $mediums = $this->getCustomData(['sessions', 'totalUsers'], ['sessionMedium'], $periodObj);
+            $campaigns = $this->getCustomData(['sessions', 'totalUsers'], ['campaignName'], $periodObj);
+
             return [
                 'user_acquisition' => [
                     'total_new_users' => $sources->sum('totalUsers'),
-                    'cost_per_acquisition' => 0, // Would need cost data from Google Ads API
+                    'cost_per_acquisition' => null, // GA4 does not provide cost natively
                     'top_acquisition_sources' => $sources->sortByDesc('totalUsers')->take(10)->values()->toArray(),
                 ],
                 'session_acquisition' => [
                     'total_sessions' => $sources->sum('sessions'),
-                    'average_sessions_per_user' => round($sources->sum('totalUsers') > 0 ? 
-                        $sources->sum('sessions') / $sources->sum('totalUsers') : 0, 2),
+                    'average_sessions_per_user' => round($sources->sum('totalUsers') > 0 ? $sources->sum('sessions') / $sources->sum('totalUsers') : 0, 2),
                     'top_session_sources' => $sources->sortByDesc('sessions')->take(10)->values()->toArray(),
                 ],
                 'marketing_channels' => [
-                    'organic_search' => $mediums->where('medium', 'organic')->sum('sessions'),
-                    'paid_search' => $mediums->where('medium', 'cpc')->sum('sessions'),
-                    'social_media' => $mediums->where('medium', 'social')->sum('sessions'),
-                    'email' => $mediums->where('medium', 'email')->sum('sessions'),
-                    'referral' => $mediums->where('medium', 'referral')->sum('sessions'),
-                    'direct' => $mediums->where('medium', '(none)')->sum('sessions'),
+                    'organic_search' => $mediums->where('sessionMedium', 'organic')->sum('sessions'),
+                    'paid_search' => $mediums->where('sessionMedium', 'cpc')->sum('sessions'),
+                    'social_media' => $mediums->where('sessionMedium', 'social')->sum('sessions'),
+                    'email' => $mediums->where('sessionMedium', 'email')->sum('sessions'),
+                    'referral' => $mediums->where('sessionMedium', 'referral')->sum('sessions'),
+                    'direct' => $mediums->where('sessionMedium', '(none)')->sum('sessions'),
                 ],
                 'campaign_performance' => $campaigns
-                    ->filter(fn($item) => $item['campaign'] !== '(not set)')
+                    ->filter(fn($item) => $item['campaignName'] !== '(not set)')
                     ->sortByDesc('sessions')
                     ->take(10)
                     ->values()
@@ -476,21 +444,21 @@ class GoogleAnalyticsService
     {
         try {
             $periodObj = Period::days($period);
-            
-            // Get behavior data
+
+            // Only GA4-supported metrics
             $pages = $this->getCustomData([
-                'pageviews', 'uniquePageviews', 'averageTimeOnPage', 'exitRate'
+                'screenPageViews', 'averageSessionDuration', 'bounceRate'
             ], ['pagePath', 'pageTitle'], $periodObj);
-            
+
             $landingPages = $this->getCustomData([
                 'sessions', 'bounceRate'
             ], ['landingPage'], $periodObj);
-            
+
             return [
                 'content_performance' => [
-                    'most_viewed_pages' => $pages->sortByDesc('pageviews')->take(10)->values()->toArray(),
-                    'highest_time_on_page' => $pages->sortByDesc('averageTimeOnPage')->take(10)->values()->toArray(),
-                    'highest_exit_rate' => $pages->sortByDesc('exitRate')->take(10)->values()->toArray(),
+                    'most_viewed_pages' => $pages->sortByDesc('screenPageViews')->take(10)->values()->toArray(),
+                    'highest_time_on_page' => $pages->sortByDesc('averageSessionDuration')->take(10)->values()->toArray(),
+                    'highest_bounce_pages' => $pages->sortByDesc('bounceRate')->take(10)->values()->toArray(),
                     'total_pages_viewed' => $pages->count(),
                 ],
                 'landing_page_performance' => [
@@ -502,7 +470,10 @@ class GoogleAnalyticsService
                         ->toArray(),
                 ],
                 'site_search' => $this->getSiteSearchData($period),
-                'user_flow' => $this->getUserFlowData($period),
+                'user_flow' => [
+                    'top_entry_points' => $landingPages->sortByDesc('sessions')->take(5)->values()->toArray(),
+                    'top_exit_points' => [], // GA4 does not provide exit page. You can leave empty.
+                ],
             ];
         } catch (\Exception $e) {
             Log::error('Behavior KPIs error: ' . $e->getMessage());
@@ -515,32 +486,21 @@ class GoogleAnalyticsService
      */
     public function getTechnicalKPIs(int $period = 30): array
     {
-        try {
-            $periodObj = Period::days($period);
-            
-            // Get technical performance data
-            $loadTimes = $this->getCustomData(['avgPageLoadTime'], ['pagePath'], $periodObj);
-            $errors = $this->getCustomData(['exceptions'], [], $periodObj);
-            
-            return [
-                'site_speed' => [
-                    'average_page_load_time' => round($loadTimes->avg('avgPageLoadTime') ?? 0, 2),
-                    'slowest_pages' => $loadTimes->sortByDesc('avgPageLoadTime')->take(10)->values()->toArray(),
-                    'fastest_pages' => $loadTimes->sortBy('avgPageLoadTime')->take(10)->values()->toArray(),
-                    'speed_benchmark' => '3 seconds',
-                    'status' => $this->getSpeedStatus($loadTimes->avg('avgPageLoadTime') ?? 0),
-                ],
-                'technical_issues' => [
-                    'total_exceptions' => $errors->sum('exceptions'),
-                    'error_rate' => $this->calculatePercentage($errors->sum('exceptions'), $errors->sum('sessions')),
-                ],
-                'mobile_performance' => $this->getMobilePerformanceData($period),
-                'browser_compatibility' => $this->getBrowserCompatibilityData($period),
-            ];
-        } catch (\Exception $e) {
-            Log::error('Technical KPIs error: ' . $e->getMessage());
-            return $this->getEmptyTechnicalKPIs();
-        }
+        return [
+            'site_speed' => [
+                'average_page_load_time' => null, // Not available in GA4
+                'slowest_pages' => [],
+                'fastest_pages' => [],
+                'speed_benchmark' => null,
+                'status' => 'not_available'
+            ],
+            'technical_issues' => [
+                'total_exceptions' => null, // Not available in GA4
+                'error_rate' => null,
+            ],
+            'mobile_performance' => [],
+            'browser_compatibility' => ['browser_performance' => []],
+        ];
     }
 
     /**
@@ -630,7 +590,7 @@ class GoogleAnalyticsService
     protected function getCustomData(array $metrics, array $dimensions = [], Period $period = null): Collection
     {
         $period = $period ?: Period::days(7);
-        
+
         try {
             return Analytics::get($period, $metrics, $dimensions);
         } catch (\Exception $e) {

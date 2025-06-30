@@ -137,8 +137,8 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
     Route::prefix('testimonials')->name('testimonials.')->group(function () {
         
         // Temporary file upload routes (MUST come before resource routes to avoid conflicts)
-        Route::post('/upload-temp', [TestimonialController::class, 'uploadTemp'])->name('upload-temp');
-        Route::delete('/delete-temp', [TestimonialController::class, 'deleteTemp'])->name('delete-temp');
+        Route::post('/temp-upload', [TestimonialController::class, 'uploadTempImages'])->name('temp-upload');
+        Route::delete('/temp-delete', [TestimonialController::class, 'deleteTempImage'])->name('temp-delete');
         
         // Standard CRUD routes
         Route::get('/', [TestimonialController::class, 'index'])->name('index');

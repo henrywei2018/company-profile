@@ -144,18 +144,6 @@
                         Behavior
                     </div>
                 </button>
-
-                <button data-category="technical" class="kpi-tab">
-                    <div class="flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Technical
-                    </div>
-                </button>
             </nav>
         </div>
     </div>
@@ -795,158 +783,226 @@
         }
 
         renderRealtimeSummary() {
-            const container = document.getElementById('realtime-summary');
-            if (!container) return;
+    const container = document.getElementById('realtime-summary');
+    if (!container) return;
 
-            // Use data from this.data.overview (edit keys as per your actual structure!)
-            const activeUsers = this.data?.overview?.users?.current || 0;
-            const sessions = this.data?.overview?.sessions?.current || 0;
-            const conversions = this.data?.overview?.conversions?.current || 0;
+    // Attempt to get real-time active users from a separate real-time block
+    const activeUsers = this.data?.realtime?.active_users
+        ?? this.data?.overview?.active_users
+        ?? this.data?.overview?.users?.current
+        ?? 0;
 
-            container.innerHTML = `
-                <div class="text-center">
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                        ${activeUsers}
-                    </div>
-                    <div class="text-sm text-gray-600 dark:text-gray-400">Active Users</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                        ${sessions}
-                    </div>
-                    <div class="text-sm text-gray-600 dark:text-gray-400">Today's Sessions</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                        ${conversions}
-                    </div>
-                    <div class="text-sm text-gray-600 dark:text-gray-400">Today's Conversions</div>
-                </div>
-            `;
-        }
+    // Sessions & conversions (today and yesterday)
+    const todaySessions = this.data?.realtime?.today_sessions
+        ?? this.data?.overview?.sessions?.current
+        ?? 0;
+    const yesterdaySessions = this.data?.realtime?.yesterday_sessions
+        ?? this.data?.overview?.sessions?.previous
+        ?? 0;
+
+    const todayConversions = this.data?.realtime?.today_conversions
+        ?? this.data?.overview?.conversions?.current
+        ?? 0;
+    const yesterdayConversions = this.data?.realtime?.yesterday_conversions
+        ?? this.data?.overview?.conversions?.previous
+        ?? 0;
+
+    // Calculate percentage change and trend direction
+    function percentChange(current, previous) {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return (((current - previous) / previous) * 100).toFixed(1);
+    }
+    function trendIcon(current, previous) {
+        if (current > previous) return '▲';
+        if (current < previous) return '▼';
+        return '→';
+    }
+    function trendClass(current, previous) {
+        if (current > previous) return 'text-green-600';
+        if (current < previous) return 'text-red-600';
+        return 'text-gray-500';
+    }
+
+    // Format last updated
+    const lastUpdated = this.data?.meta?.generated_at
+        ? new Date(this.data.meta.generated_at).toLocaleString()
+        : new Date().toLocaleString();
+
+    container.innerHTML = `
+        <div class="text-center">
+            <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                ${activeUsers}
+            </div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Active Users (now)</div>
+        </div>
+        <div class="text-center">
+            <div class="flex flex-col items-center">
+                <span class="text-2xl font-bold text-gray-900 dark:text-white mb-1">${todaySessions}</span>
+                <span class="flex items-center text-sm ${trendClass(todaySessions, yesterdaySessions)}">
+                    ${trendIcon(todaySessions, yesterdaySessions)}
+                    ${percentChange(todaySessions, yesterdaySessions)}%
+                </span>
+            </div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Today's Sessions</div>
+            <div class="text-xs text-gray-400 mt-1">Yesterday: ${yesterdaySessions}</div>
+        </div>
+        <div class="text-center">
+            <div class="flex flex-col items-center">
+                <span class="text-2xl font-bold text-gray-900 dark:text-white mb-1">${todayConversions}</span>
+                <span class="flex items-center text-sm ${trendClass(todayConversions, yesterdayConversions)}">
+                    ${trendIcon(todayConversions, yesterdayConversions)}
+                    ${percentChange(todayConversions, yesterdayConversions)}%
+                </span>
+            </div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Today's Conversions</div>
+            <div class="text-xs text-gray-400 mt-1">Yesterday: ${yesterdayConversions}</div>
+        </div>
+        <div class="col-span-full mt-6 text-xs text-gray-500 dark:text-gray-400 text-right">
+            <span class="italic">Last updated: ${lastUpdated}</span>
+        </div>
+    `;
+}
+
 
 
         renderEngagingPagesTable(pages) {
-            if (!pages || pages.length === 0) {
-                return `
-            <div class="text-center py-8 text-gray-500">
-                No engaging pages data available
-            </div>
-        `;
-            }
-
-            return `
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead>
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Page</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Avg Time on Page</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Page Views</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bounce Rate</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    ${pages.map(page => `
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${page.pagePath || page.page || 'Unknown'}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${page.avgTimeOnPage || page.avg_time || '0s'}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${page.pageviews || page.views || 0}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${page.bounceRate || page.bounce_rate || 0}%
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
+    if (!pages || pages.length === 0) {
+        return `
+        <div class="text-center py-8 text-gray-500">
+            No engaging pages data available
         </div>
+        `;
+    }
+
+    // Helper: Format seconds to mm:ss
+    function formatDuration(seconds) {
+        if (!seconds || isNaN(seconds)) return '--';
+        const min = Math.floor(seconds / 60);
+        const sec = Math.floor(seconds % 60);
+        return `${min}m ${sec < 10 ? '0' : ''}${sec}s`;
+    }
+
+    return `
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead>
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Page</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Avg. Session Duration</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Page Views</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bounce Rate</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                ${pages.map(page => `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                            ${page.pagePath || page.page || 'Unknown'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                            ${formatDuration(page.averageSessionDuration)}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                            ${page.screenPageViews !== undefined ? page.screenPageViews : (page.pageviews !== undefined ? page.pageviews : '--')}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                            ${page.bounceRate !== undefined ? (page.bounceRate * 100).toFixed(2) + '%' : '--'}
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
     `;
-        }
+}
+
 
         renderConversionFunnel(funnel) {
-            if (!funnel || funnel.length === 0) {
-                return `
-            <div class="text-center py-8 text-gray-500">
-                No conversion funnel data available
-            </div>
+    if (!funnel || funnel.length === 0) {
+        return `
+        <div class="text-center py-8 text-gray-500">
+            No conversion funnel data available
+        </div>
         `;
-            }
+    }
+    const baseValue = funnel[0]?.value ?? funnel[0]?.users ?? funnel[0]?.count ?? 0;
 
+    return `
+    <div class="space-y-4">
+        ${funnel.map((step, index) => {
+            const value = step.value ?? step.users ?? step.count ?? 0;
+            const pctRaw = baseValue ? ((value / baseValue) * 100) : 0;
+            const pct = pctRaw > 100 ? 100 : pctRaw.toFixed(1); // visually never exceed 100%
+            const pctLabel = pctRaw.toFixed(1) + '%';
             return `
-        <div class="space-y-4">
-            ${funnel.map((step, index) => {
-                const percentage = step.percentage || ((step.users / funnel[0].users) * 100).toFixed(1);
-                return `
-                    <div class="relative">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                ${step.step || step.name || `Step ${index + 1}`}
-                            </span>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">
-                                ${step.users || step.count || 0} users (${percentage}%)
-                            </span>
-                        </div>
-                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-8">
-                            <div class="bg-blue-600 h-8 rounded-full flex items-center justify-end pr-2"
-                                style="width: ${percentage}%">
-                                <span class="text-xs text-white font-medium">${percentage}%</span>
-                            </div>
+                <div class="relative">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            ${step.step || step.name || `Step ${index + 1}`}
+                        </span>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">
+                            ${value} (${pctLabel}${pctRaw > 100 ? ' ⚠' : ''})
+                        </span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-8">
+                        <div class="bg-blue-600 h-8 rounded-full flex items-center justify-end pr-2"
+                            style="width: ${pct}%">
+                            <span class="text-xs text-white font-medium">${pctLabel}</span>
                         </div>
                     </div>
-                `;
-            }).join('')}
-        </div>
+                </div>
+            `;
+        }).join('')}
+    </div>
     `;
-        }
+}
 
-        renderConvertingSourcesTable(sources) {
-            if (!sources || sources.length === 0) {
-                return `
-            <div class="text-center py-8 text-gray-500">
-                No converting sources data available
-            </div>
+
+renderConvertingSourcesTable(sources) {
+    if (!sources || sources.length === 0) {
+        return `
+        <div class="text-center py-8 text-gray-500">
+            No converting sources data available
+        </div>
         `;
-            }
+    }
 
-            return `
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead>
+    return `
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead>
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Source</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Conversions</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Conversion Rate</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sessions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                ${sources.map(source => `
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Source</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Conversions</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Conversion Rate</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Revenue</th>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                            ${source.source || source.sessionSource || source.name || 'Unknown'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                            ${source.conversions ?? source.conversion_count ?? '--'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                            ${source.conversion_rate !== undefined
+                                ? source.conversion_rate + '%'
+                                : (source.conversionRate !== undefined ? source.conversionRate + '%' : '--')}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                            ${source.sessions ?? '--'}
+                        </td>
                     </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    ${sources.map(source => `
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${source.source || source.name || 'Unknown'}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${source.conversions || source.conversion_count || 0}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${source.conversionRate || source.conversion_rate || 0}%
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                $${source.revenue || source.total_revenue || 0}
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
     `;
-        }
+}
+
 
         renderAudienceDemographicsTable(audience) {
             const demographics = audience.demographics || {};
@@ -1001,193 +1057,225 @@
         }
 
         renderAudienceCharts(audience) {
-            // Countries Chart
-            if (audience.geographic && audience.geographic.top_countries) {
-                const countries = audience.geographic.top_countries.slice(0, 5);
-                this.createChart('countries-chart', {
-                    type: 'bar',
-                    data: {
-                        labels: countries.map(c => c.country || 'Unknown'),
-                        datasets: [{
-                            label: 'Sessions',
-                            data: countries.map(c => parseInt(c.sessions) || 0),
-                            backgroundColor: '#3B82F6'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        indexAxis: 'y',
-                        scales: {
-                            x: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
+    // Countries Chart (Bar)
+    const countries = audience?.geographic_distribution?.top_countries || [];
+    if (countries.length > 0) {
+        this.createChart('countries-chart', {
+            type: 'bar',
+            data: {
+                labels: countries.map(c => c.country || 'Unknown'),
+                datasets: [{
+                    label: 'Sessions',
+                    data: countries.map(c => parseInt(c.sessions) || 0),
+                    backgroundColor: '#3B82F6'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: { beginAtZero: true }
+                }
             }
+        });
+    }
 
-            // Devices Chart
-            if (audience.device_breakdown) {
-                this.createChart('devices-chart', {
-                    type: 'doughnut',
-                    data: {
-                        labels: audience.device_breakdown.map(d => d.deviceCategory || d.device ||
-                            'Unknown'),
-                        datasets: [{
-                            data: audience.device_breakdown.map(d => parseInt(d.sessions) || 0),
-                            backgroundColor: ['#3B82F6', '#10B981', '#F59E0B']
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom'
-                            }
-                        }
-                    }
-                });
+    // Device Chart (Doughnut)
+    const devices = audience?.device_breakdown?.devices || [];
+    if (devices.length > 0) {
+        this.createChart('devices-chart', {
+            type: 'doughnut',
+            data: {
+                labels: devices.map(d => d.deviceCategory || 'Unknown'),
+                datasets: [{
+                    data: devices.map(d => parseInt(d.sessions) || 0),
+                    backgroundColor: ['#3B82F6', '#10B981', '#F59E0B']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
             }
+        });
+    }
 
-            // User Types Chart
-            if (audience.user_types) {
-                this.createChart('user-types-chart', {
-                    type: 'pie',
-                    data: {
-                        labels: audience.user_types.map(u => u.userType || u.type || 'Unknown'),
-                        datasets: [{
-                            data: audience.user_types.map(u => parseInt(u.sessions) || 0),
-                            backgroundColor: ['#8B5CF6', '#EC4899']
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom'
-                            }
-                        }
-                    }
-                });
+    // Browsers Chart (Horizontal Bar)
+    const browsers = audience?.technology_profile?.top_browsers || [];
+    if (browsers.length > 0) {
+        this.createChart('browsers-chart', {
+            type: 'bar',
+            data: {
+                labels: browsers.map(b => b.browser || 'Unknown'),
+                datasets: [{
+                    label: 'Sessions',
+                    data: browsers.map(b => parseInt(b.sessions) || 0),
+                    backgroundColor: '#6366F1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: { x: { beginAtZero: true } }
             }
-        }
+        });
+    }
+
+    // User Types Chart (Pie)
+    const userTypes = audience?.user_loyalty?.user_types || [];
+    if (userTypes.length > 0) {
+        this.createChart('user-types-chart', {
+            type: 'pie',
+            data: {
+                labels: userTypes.map(u => {
+                    // GA4 uses "new" and "returning" for newVsReturning
+                    return u.newVsReturning === 'new'
+                        ? 'New'
+                        : (u.newVsReturning === 'returning' ? 'Returning' : 'Unknown');
+                }),
+                datasets: [{
+                    data: userTypes.map(u => parseInt(u.sessions) || 0),
+                    backgroundColor: ['#8B5CF6', '#EC4899']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+}
+
 
         renderAcquisitionSourcesTable(sources) {
-            if (!sources || sources.length === 0) {
-                return `
-            <div class="text-center py-8 text-gray-500">
-                No acquisition sources data available
-            </div>
+    if (!sources || sources.length === 0) {
+        return `
+        <div class="text-center py-8 text-gray-500">
+            No acquisition sources data available
+        </div>
         `;
-            }
+    }
 
-            return `
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead>
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Source / Medium</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Users</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">New Users</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sessions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    ${sources.map(source => `
+    return `
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead>
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Source / Medium</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Users</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">New Users</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sessions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                ${sources.map(source => {
+                    // Prefer GA4 field order: source, medium, users, newUsers, sessions
+                    const src = source.sourceMedium 
+                        || (source.source && source.medium 
+                            ? `${source.source} / ${source.medium}` 
+                            : source.source || 'Unknown');
+                    const users = source.users ?? source.totalUsers ?? 0;
+                    const newUsers = source.newUsers ?? source.new_users ?? 0;
+                    const sessions = source.sessions ?? 0;
+
+                    return `
                         <tr>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${source.sourceMedium || source.source || 'Unknown'}
+                                ${src}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${source.users || 0}
+                                ${users}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${source.newUsers || source.new_users || 0}
+                                ${newUsers}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${source.sessions || 0}
+                                ${sessions}
                             </td>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    </div>
     `;
-        }
+}
+
 
         renderAcquisitionCharts(acquisition) {
-            if (acquisition.marketing_channels && acquisition.marketing_channels.length > 0) {
-                this.createChart('marketing-channels-chart', {
-                    type: 'bar',
-                    data: {
-                        labels: acquisition.marketing_channels.map(c => c.channel || c.channelGrouping ||
-                            'Unknown'),
-                        datasets: [{
-                            label: 'Users',
-                            data: acquisition.marketing_channels.map(c => parseInt(c.users) || 0),
-                            backgroundColor: '#10B981'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
+    const channels = acquisition.marketing_channels;
+    if (channels && Object.keys(channels).length > 0) {
+        // Prepare labels and values
+        const labels = [];
+        const values = [];
+        Object.entries(channels).forEach(([key, value]) => {
+            if (value > 0) {
+                // Convert snake_case to Title Case
+                const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                labels.push(label);
+                values.push(value);
+            }
+        });
+
+        if (labels.length > 0) {
+            this.createChart('marketing-channels-chart', {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Sessions',
+                        data: values,
+                        backgroundColor: '#10B981'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
                         }
                     }
-                });
-            }
+                }
+            });
         }
+    }
+}
+
 
         renderMostViewedPagesTable(pages) {
-            if (!pages || pages.length === 0) {
-                return `
-            <div class="text-center py-8 text-gray-500">
-                No page views data available
-            </div>
-        `;
-            }
+  if (!pages || pages.length === 0) {
+    return `<div class="text-center py-8 text-gray-500">
+      No page views data available
+    </div>`;
+  }
+  return `
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead>
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Page</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Views</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bounce Rate</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          ${pages.map(page => `
+            <tr>
+              <td class="px-6 py-4">${page.pagePath || 'Unknown'}</td>
+              <td class="px-6 py-4">${page.screenPageViews || 0}</td>
+              <td class="px-6 py-4">${page.bounceRate !== undefined ? (page.bounceRate*100).toFixed(2)+'%' : '--'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
 
-            return `
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead>
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Page</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Page Views</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Unique Views</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Avg Time</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    ${pages.map(page => `
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                <div class="truncate max-w-xs" title="${page.pagePath || page.page || 'Unknown'}">
-                                    ${page.pagePath || page.page || 'Unknown'}
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${page.pageviews || page.views || 0}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${page.uniquePageviews || page.unique_views || 0}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${page.avgTimeOnPage || page.avg_time || '0s'}
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
-        }
 
         renderLandingPagesTable(pages) {
             if (!pages || pages.length === 0) {
@@ -1235,107 +1323,113 @@
         }
 
         renderSiteSpeedMetrics(siteSpeed) {
-            if (!siteSpeed) {
-                return `
-            <div class="text-center py-8 text-gray-500">
-                No site speed data available
-            </div>
-        `;
-            }
-
-            const metrics = siteSpeed.metrics || {};
-            const recommendations = siteSpeed.recommendations || [];
-
-            return `
-        <div class="space-y-6">
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                    <h5 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Avg Page Load Time</h5>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                        ${metrics.avgPageLoadTime || metrics.avg_page_load_time || '0'}s
-                    </p>
-                </div>
-                <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                    <h5 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Avg Server Response</h5>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                        ${metrics.avgServerResponseTime || metrics.avg_server_response_time || '0'}ms
-                    </p>
-                </div>
-                <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                    <h5 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Avg Page Download</h5>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                        ${metrics.avgPageDownloadTime || metrics.avg_page_download_time || '0'}s
-                    </p>
-                </div>
-                <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                    <h5 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Avg DOM Interactive</h5>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                        ${metrics.avgDomInteractiveTime || metrics.avg_dom_interactive_time || '0'}s
-                    </p>
-                </div>
-            </div>
-            
-            ${recommendations.length > 0 ? `
-                <div>
-                    <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Performance Recommendations</h5>
-                    <ul class="space-y-2">
-                        ${recommendations.map(rec => `
-                            <li class="flex items-start">
-                                <svg class="w-5 h-5 text-yellow-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                </svg>
-                                <span class="text-sm text-gray-600 dark:text-gray-400">${rec}</span>
-                            </li>
-                        `).join('')}
-                    </ul>
-                </div>
-            ` : ''}
+    if (!siteSpeed) {
+        return `
+        <div class="text-center py-8 text-gray-500">
+            No site speed data available
         </div>
+        `;
+    }
+
+    // Metrics: support snake_case and camelCase, always fallback to zero
+    const metrics = siteSpeed.metrics || {};
+    const avgLoad = metrics.avgPageLoadTime ?? metrics.avg_page_load_time ?? 0;
+    const avgResp = metrics.avgServerResponseTime ?? metrics.avg_server_response_time ?? 0;
+    const avgDownload = metrics.avgPageDownloadTime ?? metrics.avg_page_download_time ?? 0;
+    const avgDom = metrics.avgDomInteractiveTime ?? metrics.avg_dom_interactive_time ?? 0;
+    const recommendations = siteSpeed.recommendations || [];
+
+    return `
+    <div class="space-y-6">
+        <div class="grid grid-cols-2 gap-4">
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                <h5 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Avg Page Load Time</h5>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                    ${avgLoad}s
+                </p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                <h5 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Avg Server Response</h5>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                    ${avgResp}ms
+                </p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                <h5 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Avg Page Download</h5>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                    ${avgDownload}s
+                </p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                <h5 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Avg DOM Interactive</h5>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                    ${avgDom}s
+                </p>
+            </div>
+        </div>
+        
+        ${recommendations.length > 0 ? `
+            <div>
+                <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Performance Recommendations</h5>
+                <ul class="space-y-2">
+                    ${recommendations.map(rec => `
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-yellow-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">${rec}</span>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        ` : ''}
+    </div>
     `;
-        }
+}
+
 
         renderBrowserPerformanceTable(browsers) {
-            if (!browsers || browsers.length === 0) {
-                return `
-            <div class="text-center py-8 text-gray-500">
-                No browser performance data available
-            </div>
-        `;
-            }
-
-            return `
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead>
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Browser</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Version</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sessions</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Avg Load Time</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    ${browsers.map(browser => `
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${browser.browser || 'Unknown'}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${browser.browserVersion || browser.version || 'N/A'}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${browser.sessions || 0}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                ${browser.avgPageLoadTime || browser.avg_load_time || '0'}s
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
+    if (!browsers || browsers.length === 0) {
+        return `
+        <div class="text-center py-8 text-gray-500">
+            No browser performance data available
         </div>
+        `;
+    }
+
+    return `
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead>
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Browser</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Version</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sessions</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Avg Load Time</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                ${browsers.map(browser => {
+                    const name = browser.browser || browser.name || 'Unknown';
+                    const version = browser.browserVersion || browser.version || 'N/A';
+                    const sessions = browser.sessions ?? 0;
+                    const loadTime = browser.avgPageLoadTime ?? browser.avg_load_time ?? '0';
+                    return `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">${name}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">${version}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">${sessions}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">${loadTime}s</td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    </div>
     `;
-        }
+}
+
+        
         renderNoData(container) {
             container.innerHTML = `
             <div class="text-center py-12">

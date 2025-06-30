@@ -113,29 +113,23 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->email;
     }
     public function sendEmailVerificationNotification()
-    {                
-        $this->generateOtp();        
-        $this->notify(new \App\Notifications\OtpVerificationNotification($this->otp_code));
-    }
-    public function sendOtpVerification()
     {
-        $this->generateOtp();
-        
-        // Using the new Mailable instead of Notification
-        Mail::to($this->email)->send(new OtpVerificationMail($this, $this->otp_code));
-        
+     
     }
-    
     public function generateOtp()
     {
         $this->otp_code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $this->otp_expires_at = Carbon::now()->addMinutes(10); // 10 minutes expiry
         $this->save();
     }
-
-    /**
-     * Verify OTP code
-     */
+    public function hasValidOtp(): bool
+    {
+        $isValid = $this->otp_code && 
+                $this->otp_expires_at && 
+                !$this->otp_expires_at->isPast();               
+                
+        return $isValid;
+    }
     public function verifyOtp($code)
     {
         if (!$this->otp_code || !$this->otp_expires_at) {
@@ -148,15 +142,19 @@ class User extends Authenticatable implements MustVerifyEmail
 
         return $this->otp_code === $code;
     }
-
-    /**
-     * Clear OTP after use
-     */
     public function clearOtp()
     {
         $this->otp_code = null;
         $this->otp_expires_at = null;
         $this->save();
+    }
+    public function getOtpRemainingMinutes(): int
+    {
+        if (!$this->otp_expires_at) {
+            return 0;
+        }
+        
+        return max(0, Carbon::now()->diffInMinutes($this->otp_expires_at, false));
     }
     /**
      * Get the projects associated with the user.

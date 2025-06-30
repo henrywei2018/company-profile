@@ -14,6 +14,14 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use App\Models\User;
+use App\Models\Project;
+use App\Models\Quotation;
+use App\Models\Message;
+use App\Models\Testimonial;
+use App\Models\Service;
+use App\Models\ChatSession;
+use App\Models\Certification;
 
 class DashboardController extends Controller
 {
@@ -659,44 +667,81 @@ class DashboardController extends Controller
      * Get real-time stats for AJAX updates
      */
     public function getStats(): JsonResponse
-    {
-        try {
-            $user = Auth::user();
-            $notificationCounts = $this->getNotificationCountsSafely($user);
-            
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'notifications' => [
-                        'unread' => $notificationCounts['unread_database_notifications'],
-                        'total' => $notificationCounts['total_notifications'],
-                    ],
-                    'messages' => [
-                        'unread' => $notificationCounts['unread_messages'],
-                    ],
-                    'quotations' => [
-                        'pending' => $notificationCounts['pending_quotations'],
-                    ],
-                    'projects' => [
-                        'overdue' => $notificationCounts['overdue_projects'],
-                    ],
-                    'chat' => [
-                        'waiting' => $notificationCounts['waiting_chats'],
-                    ],
-                    'urgent_items' => $notificationCounts['urgent_items'],
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to get admin stats: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'data' => [],
-                'error' => 'Unable to fetch current statistics'
-            ], 500);
-        }
+{
+    try {
+        $user = Auth::user();
+        
+        // Get fresh statistics
+        $stats = $this->getAdminStatistics();
+        
+        // Additional real-time calculations
+        $stats['active_users'] = User::where('last_login_at', '>=', now()->subDays(7))->count();
+        $stats['active_projects'] = Project::where('status', 'active')->count();
+        $stats['pending_quotations'] = Quotation::where('status', 'pending')->count();
+        $stats['unread_messages'] = Message::where('is_read', false)
+            ->count();
+        
+        // Log the stats request
+        Log::info('Dashboard stats requested', [
+            'user_id' => $user->id,
+            'stats' => $stats
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'data' => $stats,
+            'timestamp' => now()->toISOString(),
+            'cached' => false
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error('Failed to get dashboard stats: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Unable to fetch statistics',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
+
+/**
+ * Get admin statistics with caching
+ */
+protected function getAdminStatistics(): array
+{
+    $cacheKey = 'admin_stats_' . Auth::id();
+    
+    return Cache::remember($cacheKey, 300, function () {
+        return [
+            'users_count' => User::count(),
+            'projects_count' => Project::count(),
+            'quotations_count' => Quotation::count(),
+            'messages_count' => Message::count(),
+            'testimonials_count' => Testimonial::where('is_active', true)->count(),
+            'services_count' => Service::where('is_active', true)->count(),
+            'certifications_count' => Certification::count(),
+            'chat_sessions_count' => ChatSession::count(),
+            
+            // Growth metrics
+            'new_users_this_month' => User::where('created_at', '>=', now()->startOfMonth())->count(),
+            'new_projects_this_month' => Project::where('created_at', '>=', now()->startOfMonth())->count(),
+            'new_quotations_this_month' => Quotation::where('created_at', '>=', now()->startOfMonth())->count(),
+            
+            // Status breakdowns
+            'project_status_breakdown' => Project::selectRaw('status, count(*) as count')
+                ->groupBy('status')
+                ->pluck('count', 'status')
+                ->toArray(),
+            
+            'quotation_status_breakdown' => Quotation::selectRaw('status, count(*) as count')
+                ->groupBy('status')
+                ->pluck('count', 'status')
+                ->toArray(),
+        ];
+    });
+}
+
 
     /**
      * Clear dashboard cache
@@ -737,26 +782,26 @@ class DashboardController extends Controller
         try {
             return [
                 'projects' => [
-                    'total' => \App\Models\Project::count(),
-                    'active' => \App\Models\Project::whereIn('status', ['in_progress', 'on_hold'])->count(),
-                    'completed' => \App\Models\Project::where('status', 'completed')->count(),
+                    'total' => Project::count(),
+                    'active' => Project::whereIn('status', ['in_progress', 'on_hold'])->count(),
+                    'completed' => Project::where('status', 'completed')->count(),
                     'change_percentage' => 0,
                 ],
                 'quotations' => [
-                    'total' => \App\Models\Quotation::count(),
-                    'pending' => \App\Models\Quotation::where('status', 'pending')->count(),
-                    'approved' => \App\Models\Quotation::where('status', 'approved')->count(),
+                    'total' => Quotation::count(),
+                    'pending' => Quotation::where('status', 'pending')->count(),
+                    'approved' => Quotation::where('status', 'approved')->count(),
                     'conversion_rate' => 0,
                 ],
                 'clients' => [
-                    'total' => \App\Models\User::role('client')->count(),
-                    'active' => \App\Models\User::role('client')->where('is_active', true)->count(),
-                    'verified' => \App\Models\User::role('client')->whereNotNull('email_verified_at')->count(),
+                    'total' => User::role('client')->count(),
+                    'active' => User::role('client')->where('is_active', true)->count(),
+                    'verified' => User::role('client')->whereNotNull('email_verified_at')->count(),
                 ],
                 'messages' => [
-                    'total' => \App\Models\Message::count(),
-                    'unread' => \App\Models\Message::where('is_read', false)->count(),
-                    'urgent' => \App\Models\Message::where('priority', 'urgent')->where('is_read', false)->count(),
+                    'total' => Message::count(),
+                    'unread' => Message::where('is_read', false)->count(),
+                    'urgent' => Message::where('priority', 'urgent')->where('is_read', false)->count(),
                 ],
             ];
         } catch (\Exception $e) {
@@ -776,7 +821,7 @@ class DashboardController extends Controller
             $activities = [];
             
             // Recent projects
-            $recentProjects = \App\Models\Project::with(['client'])
+            $recentProjects = Project::with(['client'])
                 ->latest()
                 ->limit(3)
                 ->get()
@@ -813,17 +858,17 @@ class DashboardController extends Controller
     {
         try {
             return [
-                'overdue_projects' => \App\Models\Project::where('status', 'in_progress')
+                'overdue_projects' => Project::where('status', 'in_progress')
                     ->where('end_date', '<', now())
                     ->whereNotNull('end_date')
                     ->count(),
-                'pending_quotations' => \App\Models\Quotation::where('status', 'pending')
+                'pending_quotations' => Quotation::where('status', 'pending')
                     ->where('created_at', '<', now()->subHours(24))
                     ->count(),
-                'urgent_messages' => \App\Models\Message::where('priority', 'urgent')
+                'urgent_messages' => Message::where('priority', 'urgent')
                     ->where('is_read', false)
                     ->count(),
-                'waiting_chats' => \App\Models\ChatSession::where('status', 'waiting')->count(),
+                'waiting_chats' => ChatSession::where('status', 'waiting')->count(),
             ];
         } catch (\Exception $e) {
             Log::warning('Failed to get alerts safely', ['error' => $e->getMessage()]);
@@ -863,13 +908,13 @@ class DashboardController extends Controller
     {
         try {
             return [
-                'pending_quotations' => \App\Models\Quotation::where('status', 'pending')->count(),
-                'unread_messages' => \App\Models\Message::where('is_read', false)->count(),
-                'overdue_projects' => \App\Models\Project::where('status', 'in_progress')
+                'pending_quotations' => Quotation::where('status', 'pending')->count(),
+                'unread_messages' => Message::where('is_read', false)->count(),
+                'overdue_projects' => Project::where('status', 'in_progress')
                     ->where('end_date', '<', now())
                     ->whereNotNull('end_date')
                     ->count(),
-                'waiting_chats' => \App\Models\ChatSession::where('status', 'waiting')->count(),
+                'waiting_chats' => ChatSession::where('status', 'waiting')->count(),
             ];
         } catch (\Exception $e) {
             Log::warning('Failed to get pending items safely', ['error' => $e->getMessage()]);
@@ -931,7 +976,7 @@ class DashboardController extends Controller
     protected function getUnreadMessagesCountFallback(): int
     {
         try {
-            return \App\Models\Message::where('is_read', false)->count();
+            return Message::where('is_read', false)->count();
         } catch (\Exception $e) {
             return 0;
         }
@@ -940,7 +985,7 @@ class DashboardController extends Controller
     protected function getPendingQuotationsCountFallback(): int
     {
         try {
-            return \App\Models\Quotation::where('status', 'pending')->count();
+            return Quotation::where('status', 'pending')->count();
         } catch (\Exception $e) {
             return 0;
         }
@@ -949,7 +994,7 @@ class DashboardController extends Controller
     protected function getOverdueProjectsCountFallback(): int
     {
         try {
-            return \App\Models\Project::where('status', 'in_progress')
+            return Project::where('status', 'in_progress')
                 ->where('end_date', '<', now())
                 ->whereNotNull('end_date')
                 ->count();
@@ -961,7 +1006,7 @@ class DashboardController extends Controller
     protected function getWaitingChatsCountFallback(): int
     {
         try {
-            return \App\Models\ChatSession::where('status', 'waiting')->count();
+            return ChatSession::where('status', 'waiting')->count();
         } catch (\Exception $e) {
             return 0;
         }
@@ -970,7 +1015,7 @@ class DashboardController extends Controller
     protected function getUrgentItemsCountFallback(): int
     {
         try {
-            return \App\Models\Message::where('priority', 'urgent')
+            return Message::where('priority', 'urgent')
                 ->where('is_read', false)
                 ->count();
         } catch (\Exception $e) {

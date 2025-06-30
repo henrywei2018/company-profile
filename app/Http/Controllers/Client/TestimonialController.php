@@ -288,6 +288,74 @@ class TestimonialController extends Controller
                 return $base . " was updated";
         }
     }
+    private function optimizeImage($imagePath)
+    {
+        try {
+            if (extension_loaded('gd')) {
+                $imageInfo = getimagesize($imagePath);
+                if (!$imageInfo)
+                    return;
+
+                $width = $imageInfo[0];
+                $height = $imageInfo[1];
+                $type = $imageInfo[2];
+
+                // Only resize if image is larger than 800px
+                if ($width > 800 || $height > 800) {
+                    $maxDimension = 800;
+                    $ratio = min($maxDimension / $width, $maxDimension / $height);
+                    $newWidth = (int) ($width * $ratio);
+                    $newHeight = (int) ($height * $ratio);
+
+                    // Create new image resource
+                    $newImage = imagecreatetruecolor($newWidth, $newHeight);
+
+                    // Load original image
+                    switch ($type) {
+                        case IMAGETYPE_JPEG:
+                            $source = imagecreatefromjpeg($imagePath);
+                            break;
+                        case IMAGETYPE_PNG:
+                            $source = imagecreatefrompng($imagePath);
+                            imagealphablending($newImage, false);
+                            imagesavealpha($newImage, true);
+                            break;
+                        case IMAGETYPE_GIF:
+                            $source = imagecreatefromgif($imagePath);
+                            break;
+                        default:
+                            return; // Unsupported format
+                    }
+
+                    // Resize
+                    imagecopyresampled($newImage, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+
+                    // Save optimized image
+                    switch ($type) {
+                        case IMAGETYPE_JPEG:
+                            imagejpeg($newImage, $imagePath, 85);
+                            break;
+                        case IMAGETYPE_PNG:
+                            imagepng($newImage, $imagePath, 8);
+                            break;
+                        case IMAGETYPE_GIF:
+                            imagegif($newImage, $imagePath);
+                            break;
+                    }
+
+                    // Clean up memory
+                    imagedestroy($newImage);
+                    imagedestroy($source);
+                }
+            }
+        } catch (\Exception $e) {
+            // Optimization failed, but don't throw error - just log it
+            \Log::warning('Image optimization failed', [
+                'error' => $e->getMessage(),
+                'path' => $imagePath
+            ]);
+        }
+    }
 
     /**
      * Show the form for creating a new testimonial
@@ -361,16 +429,26 @@ class TestimonialController extends Controller
             $testimonialData = array_merge($validated, [
                 'client_id' => $user->id,
                 'client_name' => $user->name,
-                'client_position' => $user->position,
-                'client_company' => $user->company,
+                'client_position' => $user->position ?? null,
+                'client_company' => $user->company ?? null,
                 'status' => 'pending', // All client submissions start as pending
             ]);
 
-            // Handle image upload if present
+            // Handle image upload using universal uploader
             if ($request->hasFile('image')) {
                 $testimonialData['image'] = $this->handleImageUpload($request->file('image'));
             } elseif ($request->filled('temp_files')) {
                 $testimonialData['image'] = $this->processTempFiles($request->temp_files);
+            } else {
+                // Check for universal uploader temp images in session
+                $sessionKey = 'temp_testimonial_images_' . session()->getId();
+                $tempImages = session($sessionKey, []);
+
+                if (!empty($tempImages)) {
+                    $testimonialData['image'] = $this->processUniversalUploaderFiles($tempImages);
+                    // Clear the session after processing
+                    session()->forget($sessionKey);
+                }
             }
 
             $testimonial = Testimonial::create($testimonialData);
@@ -382,6 +460,11 @@ class TestimonialController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Client testimonial creation failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+
             return back()->withInput()
                 ->with('error', 'Error creating testimonial: ' . $e->getMessage());
         }
@@ -445,76 +528,71 @@ class TestimonialController extends Controller
         $user = auth()->user();
 
         $validated = $request->validate([
-            'project_id' => 'nullable|exists:projects,id',
-            'content' => 'required|string|min:10|max:1000',
+            'project_id' => [
+                'nullable',
+                'exists:projects,id',
+                function ($attribute, $value, $fail) use ($user) {
+                    if ($value && !Project::where('id', $value)->where('client_id', $user->id)->exists()) {
+                        $fail('You can only link testimonials to your own projects.');
+                    }
+                }
+            ],
+            'content' => 'required|string|min:50|max:1500',
             'rating' => 'required|integer|min:1|max:5',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'temp_files' => 'nullable|array', // For universal uploader temp files
-            'temp_files.*' => 'string', // Temp file IDs
+            'temp_files' => 'nullable|array',
+            'temp_files.*' => 'string',
         ]);
-
-        // Verify project belongs to authenticated user if project_id is provided
-        if ($validated['project_id']) {
-            $project = Project::where('id', $validated['project_id'])
-                ->where('client_id', $user->id)
-                ->first();
-
-            if (!$project) {
-                return back()->withInput()
-                    ->with('error', 'You can only link testimonials to your own projects.');
-            }
-        }
 
         DB::beginTransaction();
         try {
+            // Handle image upload
+            if ($request->hasFile('image')) {
+                // Delete old image if exists
+                if ($testimonial->image) {
+                    Storage::disk('public')->delete($testimonial->image);
+                }
+                $validated['image'] = $this->handleImageUpload($request->file('image'));
+            } elseif ($request->filled('temp_files')) {
+                // Delete old image if exists
+                if ($testimonial->image) {
+                    Storage::disk('public')->delete($testimonial->image);
+                }
+                $validated['image'] = $this->processTempFiles($request->temp_files);
+            } else {
+                // Check for universal uploader temp images in session
+                $sessionKey = 'temp_testimonial_images_' . session()->getId();
+                $tempImages = session($sessionKey, []);
+
+                if (!empty($tempImages)) {
+                    // Delete old image if exists
+                    if ($testimonial->image) {
+                        Storage::disk('public')->delete($testimonial->image);
+                    }
+                    $validated['image'] = $this->processUniversalUploaderFiles($tempImages);
+                    // Clear the session after processing
+                    session()->forget($sessionKey);
+                }
+            }
+
             // Reset status to pending when updated
             $validated['status'] = 'pending';
-            $validated['submitted_at'] = now();
 
-            // Remove temp_files from validated data before updating testimonial
-            $tempFiles = $validated['temp_files'] ?? [];
-            unset($validated['temp_files']);
-
-            // Handle image upload - check both regular upload and temp files
-            $imagePath = null;
-            $shouldUpdateImage = false;
-
-            // First, check for regular file upload
-            if ($request->hasFile('image')) {
-                // Delete old image
-                if ($testimonial->image) {
-                    Storage::disk('public')->delete($testimonial->image);
-                }
-
-                $imagePath = $request->file('image')->store('testimonials', 'public');
-                $shouldUpdateImage = true;
-            }
-            // Then, check for temp files from universal uploader
-            elseif (!empty($tempFiles)) {
-                // Delete old image
-                if ($testimonial->image) {
-                    Storage::disk('public')->delete($testimonial->image);
-                }
-
-                $imagePath = $this->processTempFiles($tempFiles, 'testimonials');
-                $shouldUpdateImage = true;
-            }
-
-            // Update testimonial
             $testimonial->update($validated);
-
-            // Update image path if we have a new one
-            if ($shouldUpdateImage && $imagePath) {
-                $testimonial->update(['image' => $imagePath]);
-            }
 
             DB::commit();
 
             return redirect()->route('client.testimonials.index')
-                ->with('success', 'Testimonial updated successfully! It will be reviewed again.');
+                ->with('success', 'Testimonial updated successfully! It will be reviewed again by our team.');
 
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Client testimonial update failed', [
+                'user_id' => $user->id,
+                'testimonial_id' => $testimonial->id,
+                'error' => $e->getMessage()
+            ]);
+
             return back()->withInput()
                 ->with('error', 'Error updating testimonial: ' . $e->getMessage());
         }
@@ -525,12 +603,9 @@ class TestimonialController extends Controller
      */
     public function destroy(Testimonial $testimonial)
     {
-        // Ensure the testimonial belongs to the authenticated user
         if ($testimonial->client_id !== auth()->id()) {
             abort(403, 'You can only delete your own testimonials.');
         }
-
-        // Only allow deletion if testimonial is pending or rejected
         if (!in_array($testimonial->status, ['pending', 'rejected'])) {
             return redirect()->route('client.testimonials.index')
                 ->with('error', 'You can only delete testimonials that are pending or rejected.');
@@ -556,16 +631,7 @@ class TestimonialController extends Controller
     public function getStats()
     {
         $user = auth()->user();
-
-        $stats = [
-            'total' => Testimonial::where('client_id', $user->id)->count(),
-            'pending' => Testimonial::where('client_id', $user->id)->where('status', 'pending')->count(),
-            'approved' => Testimonial::where('client_id', $user->id)->where('status', 'approved')->count(),
-            'rejected' => Testimonial::where('client_id', $user->id)->where('status', 'rejected')->count(),
-            'featured' => Testimonial::where('client_id', $user->id)->where('status', 'featured')->count(),
-        ];
-
-        return response()->json($stats);
+        return response()->json($this->getClientTestimonialStats($user->id));
     }
 
     /**
@@ -585,7 +651,7 @@ class TestimonialController extends Controller
         }
 
         // Generate new filename
-        $extension = File::extension($tempPath);
+        $extension = File::extension($tempPath) ?: 'jpg';
         $newFilename = Str::uuid() . '.' . $extension;
         $destinationPath = "{$destinationFolder}/{$newFilename}";
 
@@ -608,52 +674,44 @@ class TestimonialController extends Controller
     /**
      * Handle temporary file uploads for universal uploader
      */
-    public function uploadTemp(Request $request)
+    public function uploadTempImages(Request $request)
     {
-        $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-        ]);
-
         try {
-            $file = $request->file('image');
-            $tempId = Str::uuid();
-            $tempPath = storage_path("app/temp/uploads/{$tempId}");
+            // Validation for single file upload (matching universal uploader expectations)
+            $request->validate([
+                'testimonial_images' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            ]);
 
-            // Ensure temp directory exists
-            $tempDir = dirname($tempPath);
-            if (!File::exists($tempDir)) {
-                File::makeDirectory($tempDir, 0755, true);
+            $file = $request->file('testimonial_images');
+            $sessionKey = 'temp_testimonial_images_' . session()->getId();
+
+            try {
+                $fileData = $this->processTemporaryImageUpload($file);
+
+                // Store temp file info in session (universal uploader compatible format)
+                session()->put($sessionKey, $fileData);
+
+                \Log::info("Client testimonial temp image uploaded", [
+                    'session_key' => $sessionKey,
+                    'file_path' => $fileData['file_path'],
+                    'user_id' => auth()->id()
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Client photo uploaded successfully!',
+                    'files' => [$fileData] // Wrap in array for universal uploader compatibility
+                ]);
+
+            } catch (\Exception $e) {
+                \Log::error('Client testimonial temp image upload failed: ' . $e->getMessage());
+                throw new \Exception('Failed to upload client photo: ' . $e->getMessage());
             }
 
-            // Move file to temp location
-            $file->move($tempDir, $tempId);
-
-            // Log for debugging
-            \Log::info("Client testimonial temp upload successful", [
-                'temp_id' => $tempId,
-                'original_name' => $file->getClientOriginalName(),
-                'size' => $file->getSize(),
-                'user_id' => auth()->id()
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'temp_id' => $tempId,
-                'filename' => $file->getClientOriginalName(),
-                'size' => $file->getSize(),
-                'type' => $file->getMimeType(),
-                'url' => url("storage/temp/uploads/{$tempId}"), // For preview if needed
-            ]);
-
         } catch (\Exception $e) {
-            \Log::error('Client testimonial temp upload failed', [
-                'error' => $e->getMessage(),
-                'user_id' => auth()->id()
-            ]);
-
             return response()->json([
                 'success' => false,
-                'error' => 'Upload failed: ' . $e->getMessage()
+                'message' => 'Upload failed: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -661,40 +719,122 @@ class TestimonialController extends Controller
     /**
      * Delete temporary files
      */
-    public function deleteTemp(Request $request)
+    public function deleteTempImage(Request $request)
     {
-        $request->validate([
-            'temp_id' => 'required|string',
-        ]);
-
         try {
-            $tempPath = storage_path("app/temp/uploads/{$request->temp_id}");
+            $sessionKey = 'temp_testimonial_images_' . session()->getId();
 
-            if (File::exists($tempPath)) {
-                File::delete($tempPath);
+            // Get temp file data from session
+            $tempData = session()->get($sessionKey);
 
-                \Log::info("Client testimonial temp file deleted", [
-                    'temp_id' => $request->temp_id,
+            if ($tempData && isset($tempData['temp_path'])) {
+                Storage::disk('public')->delete($tempData['temp_path']);
+                session()->forget($sessionKey);
+
+                \Log::info("Client testimonial temp image deleted", [
+                    'session_key' => $sessionKey,
                     'user_id' => auth()->id()
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Client photo removed successfully!'
                 ]);
             }
 
             return response()->json([
-                'success' => true,
-                'message' => 'Temporary file deleted successfully'
-            ]);
+                'success' => false,
+                'message' => 'No client photo found'
+            ], 404);
 
         } catch (\Exception $e) {
-            \Log::error('Client testimonial temp delete failed', [
-                'error' => $e->getMessage(),
-                'temp_id' => $request->temp_id,
-                'user_id' => auth()->id()
-            ]);
-
+            \Log::error('Client testimonial temp image delete failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'error' => 'Delete failed: ' . $e->getMessage()
+                'message' => 'Failed to delete client photo: ' . $e->getMessage()
             ], 500);
         }
+    }
+    protected function processTemporaryImageUpload($file)
+    {
+        $filename = 'temp_client_testimonial_' . Str::random(10) . '_' . time() . '.' . $file->getClientOriginalExtension();
+        $tempPath = 'temp/testimonials/' . $filename;
+
+        // Store in temp directory
+        $storedPath = $file->storeAs('temp/testimonials', $filename, 'public');
+
+        return [
+            'id' => 'temp_' . time(),
+            'name' => 'Client Photo',
+            'file_name' => $file->getClientOriginalName(),
+            'file_path' => $storedPath,
+            'temp_path' => $storedPath,
+            'file_type' => $file->getMimeType(),
+            'file_size' => $file->getSize(),
+            'category' => 'profile',
+            'url' => Storage::disk('public')->url($storedPath),
+            'download_url' => Storage::disk('public')->url($storedPath),
+            'size' => $this->formatFileSize($file->getSize()),
+            'type' => 'temp',
+            'created_at' => now()->format('M j, Y H:i')
+        ];
+    }
+    protected function processUniversalUploaderFiles($tempImages)
+    {
+        if (empty($tempImages) || !isset($tempImages['temp_path'])) {
+            return null;
+        }
+
+        $tempPath = $tempImages['temp_path'];
+
+        if (!Storage::disk('public')->exists($tempPath)) {
+            throw new \Exception("Temporary file not found: {$tempPath}");
+        }
+
+        // Generate new filename for permanent storage
+        $extension = pathinfo($tempImages['file_name'], PATHINFO_EXTENSION);
+        $newFilename = Str::uuid() . '.' . $extension;
+        $permanentPath = 'testimonials/' . $newFilename;
+
+        // Move from temp to permanent location
+        $success = Storage::disk('public')->move($tempPath, $permanentPath);
+
+        if (!$success) {
+            throw new \Exception("Failed to move temporary file to permanent storage");
+        }
+
+        return $permanentPath;
+    }
+    private function handleImageUpload($file)
+    {
+        try {
+            $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('testimonials', $filename, 'public');
+
+            // Optional: Optimize image
+            if (extension_loaded('gd') || extension_loaded('imagick')) {
+                $this->optimizeImage(storage_path('app/public/' . $path));
+            }
+
+            return $path;
+
+        } catch (\Exception $e) {
+            \Log::error('Client testimonial image upload failed', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+            throw new \Exception('Image upload failed: ' . $e->getMessage());
+        }
+    }
+    protected function formatFileSize($bytes)
+    {
+        if ($bytes >= 1073741824) {
+            return number_format($bytes / 1073741824, 2) . ' GB';
+        } elseif ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 2) . ' MB';
+        } elseif ($bytes >= 1024) {
+            return number_format($bytes / 1024, 2) . ' KB';
+        }
+        return $bytes . ' bytes';
     }
 }

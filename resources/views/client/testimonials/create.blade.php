@@ -39,6 +39,11 @@
                             <option value="{{ $project->id }}"
                                 {{ old('project_id') == $project->id ? 'selected' : '' }}>
                                 {{ $project->title }}
+                                @if($project->status === 'completed')
+                                    <span class="text-green-600">(Completed)</span>
+                                @elseif($project->status === 'in_progress') 
+                                    <span class="text-blue-600">(In Progress)</span>
+                                @endif
                             </option>
                         @endforeach
                     </select>
@@ -89,35 +94,57 @@
                     @enderror
                     <div class="flex justify-between mt-1">
                         <p class="text-xs text-gray-500 dark:text-gray-400">
-                            Minimum 10 characters, maximum 1000 characters.
+                            Minimum 50 characters, maximum 1500 characters.
                         </p>
-                        <span id="char-count" class="text-xs text-gray-500 dark:text-gray-400">0/1000</span>
+                        <span id="char-count" class="text-xs text-gray-500 dark:text-gray-400">0/1500</span>
                     </div>
                 </div>
 
                 <!-- Photo Upload -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2 space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <div class="lg:col-span-3 space-y-6">
                         <label for="image" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                             Client Photo (Optional)
                         </label>
 
-                        <!-- Universal File Uploader for Client Photo -->
-                        <x-universal-file-uploader :id="'testimonial-photo-uploader-create'" name="testimonial_images" :multiple="false"
-                            :maxFiles="1" maxFileSize="2MB" :acceptedFileTypes="['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']" :uploadEndpoint="route('admin.testimonials.temp-upload')" :deleteEndpoint="route('admin.testimonials.temp-delete')"
-                            dropDescription="Drop client photo here or click to browse (Max 2MB)" :enableCategories="false"
-                            :enableDescription="false" :enablePublicToggle="false" :instantUpload="true" :galleryMode="false" :replaceMode="false"
-                            :singleMode="true" containerClass="mb-4" theme="modern" :showFileList="false"
-                            :showProgress="true" :dragOverlay="true" />
+                        <!-- Universal File Uploader for Client Photo - FIXED ROUTES -->
+                        <x-universal-file-uploader 
+                            :id="'testimonial-photo-uploader-create'" 
+                            name="testimonial_images" 
+                            :multiple="false"
+                            :maxFiles="1" 
+                            maxFileSize="2MB" 
+                            :acceptedFileTypes="['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']" 
+                            :uploadEndpoint="route('client.testimonials.temp-upload')" 
+                            :deleteEndpoint="route('client.testimonials.temp-delete')"
+                            dropDescription="Drop client photo here or click to browse (Max 2MB)" 
+                            :enableCategories="false"
+                            :enableDescription="false" 
+                            :enablePublicToggle="false" 
+                            :instantUpload="true" 
+                            :galleryMode="false" 
+                            :replaceMode="false"
+                            :singleMode="true" 
+                            containerClass="mb-4" 
+                            theme="modern" 
+                            :showFileList="false"
+                            :showProgress="true" 
+                            :dragOverlay="true" />
 
                         @error('image')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
                     <div class="lg:col-span-1 space-y-6">
-                        <x-temp-files-display :sessionKey="'temp_testimonial_images_' . session()->getId()" title="Uploaded Client Photo"
-                            emptyMessage="No client photo uploaded yet" :showPreview="true" :allowDelete="true"
-                            :deleteEndpoint="route('admin.testimonials.temp-delete')" gridCols="grid-cols-1" :componentId="'temp-display-testimonial'" />
+                        <x-temp-files-display 
+                            :sessionKey="'temp_testimonial_images_' . session()->getId()" 
+                            title="Uploaded"
+                            emptyMessage="No client photo uploaded yet" 
+                            :showPreview="true" 
+                            :allowDelete="true"
+                            :deleteEndpoint="route('client.testimonials.temp-delete')" 
+                            gridCols="grid-cols-1" 
+                            :componentId="'temp-display-testimonial'" />
                     </div>
                 </div>
 
@@ -168,6 +195,7 @@
                         currentRating = index + 1;
                         ratingInput.value = currentRating;
                         updateStars(currentRating);
+                        validateForm(); // Check form validity when rating changes
                     });
 
                     star.addEventListener('mouseenter', function() {
@@ -199,56 +227,85 @@
                 // Character count functionality
                 function updateCharCount() {
                     const length = contentTextarea.value.length;
-                    charCount.textContent = `${length}/1000`;
+                    charCount.textContent = `${length}/1500`;
 
-                    if (length > 1000) {
+                    if (length > 1500) {
                         charCount.classList.add('text-red-500');
                         charCount.classList.remove('text-gray-500');
+                    } else if (length < 50) {
+                        charCount.classList.add('text-yellow-500');
+                        charCount.classList.remove('text-gray-500', 'text-red-500');
                     } else {
-                        charCount.classList.remove('text-red-500');
+                        charCount.classList.remove('text-red-500', 'text-yellow-500');
                         charCount.classList.add('text-gray-500');
                     }
 
-                    // Enable/disable submit button
-                    submitBtn.disabled = length < 10 || length > 1000 || currentRating === 0;
+                    validateForm();
+                }
+
+                // Form validation
+                function validateForm() {
+                    const length = contentTextarea.value.length;
+                    const isValid = length >= 50 && length <= 1500 && currentRating > 0;
+                    
+                    submitBtn.disabled = !isValid;
+                    
+                    if (!isValid) {
+                        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    } else {
+                        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
                 }
 
                 contentTextarea.addEventListener('input', updateCharCount);
                 updateCharCount(); // Initial call
 
-                // Form validation
+                // Enhanced form validation on submit
                 document.querySelector('form').addEventListener('submit', function(e) {
                     if (currentRating === 0) {
                         e.preventDefault();
-                        alert('Please select a rating before submitting.');
+                        showNotification('Please select a rating before submitting.', 'error');
                         return false;
                     }
 
-                    if (contentTextarea.value.length < 10) {
+                    const length = contentTextarea.value.length;
+                    if (length < 50) {
                         e.preventDefault();
-                        alert('Please write at least 10 characters for your testimonial.');
+                        showNotification('Please write at least 50 characters for your testimonial.', 'error');
                         return false;
                     }
 
-                    if (contentTextarea.value.length > 1000) {
+                    if (length > 1500) {
                         e.preventDefault();
-                        alert('Your testimonial is too long. Please keep it under 1000 characters.');
+                        showNotification('Your testimonial is too long. Please keep it under 1500 characters.', 'error');
                         return false;
                     }
+
+                    // Show loading state
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = `
+                        <span class="flex items-center">
+                            <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Submitting...
+                        </span>
+                    `;
                 });
-            });
-            document.addEventListener('DOMContentLoaded', function() {
-                const uploaderId = 'testimonial-photo-uploader-create-{{ uniqid() }}';
+
+                // Universal uploader event handling
+                const uploaderId = 'testimonial-photo-uploader-create';
 
                 // Listen for universal uploader events
                 document.addEventListener('files-uploaded', function(event) {
-                    if (event.detail.component.startsWith('testimonial-photo-uploader-create-')) {
+                    if (event.detail.component && event.detail.component.includes(uploaderId)) {
                         handleTempImageUploadSuccess(event.detail);
                     }
                 });
 
                 document.addEventListener('file-deleted', function(event) {
-                    if (event.detail.component.startsWith('testimonial-photo-uploader-create-')) {
+                    if (event.detail.component && event.detail.component.includes(uploaderId)) {
                         handleTempImageDelete(event.detail);
                     }
                 });
@@ -256,17 +313,13 @@
                 // Handle temporary image upload success
                 function handleTempImageUploadSuccess(detail) {
                     showNotification(detail.message || 'Client photo uploaded successfully!', 'success');
-
-                    // You can add any additional logic here if needed
-                    console.log('Temporary image uploaded:', detail);
+                    console.log('Client testimonial temp image uploaded:', detail);
                 }
 
                 // Handle temporary image deletion
                 function handleTempImageDelete(detail) {
                     showNotification(detail.message || 'Client photo removed!', 'info');
-
-                    // You can add any additional logic here if needed
-                    console.log('Temporary image deleted:', detail);
+                    console.log('Client testimonial temp image deleted:', detail);
                 }
 
                 // Show notification helper function
@@ -285,23 +338,26 @@
                 // Simple toast notification fallback
                 function createToastNotification(message, type = 'info') {
                     const toast = document.createElement('div');
-                    toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white z-50 ${getToastColor(type)}`;
+                    toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white z-50 transition-opacity duration-300 ${getToastColor(type)}`;
                     toast.textContent = message;
+                    toast.style.opacity = '0';
 
                     document.body.appendChild(toast);
 
                     // Animate in
                     setTimeout(() => {
-                        toast.classList.add('opacity-100');
+                        toast.style.opacity = '1';
                     }, 100);
 
-                    // Remove after 3 seconds
+                    // Remove after 4 seconds
                     setTimeout(() => {
-                        toast.classList.add('opacity-0');
+                        toast.style.opacity = '0';
                         setTimeout(() => {
-                            document.body.removeChild(toast);
+                            if (document.body.contains(toast)) {
+                                document.body.removeChild(toast);
+                            }
                         }, 300);
-                    }, 3000);
+                    }, 4000);
                 }
 
                 function getToastColor(type) {
