@@ -431,8 +431,9 @@ async function markAllAsRead() {
 // Toggle individual message read status
 async function toggleMessageRead(messageId, markAsRead) {
     try {
-        const response = await fetch(`{{ url('client/messages') }}/${messageId}/toggle-read`, {
-            method: 'POST',
+        // Use the API route instead of the regular route for better AJAX support
+        const response = await fetch(`{{ url('client/messages/api') }}/${messageId}/toggle-read`, {
+            method: 'POST', // API route uses POST
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
@@ -456,7 +457,7 @@ async function toggleMessageRead(messageId, markAsRead) {
                 updateMessageRowStatus(messageRow, data.is_read);
             }
             
-            // Update button in message detail view
+            // Update button in message detail view if present
             updateToggleButton(messageId, data.is_read);
             
         } else {
@@ -467,54 +468,45 @@ async function toggleMessageRead(messageId, markAsRead) {
         showNotification('error', 'An error occurred while updating message status');
     }
 }
-
 // Update message row visual status
 function updateMessageRowStatus(messageRow, isRead) {
     if (isRead) {
+        // Mark as read - remove unread styling
         messageRow.classList.remove('bg-blue-50', 'dark:bg-blue-900/20');
-        messageRow.classList.add('bg-white', 'dark:bg-gray-800');
-        messageRow.setAttribute('data-unread', 'false');
+        messageRow.classList.add('bg-white', 'dark:bg-neutral-800');
         
-        // Remove unread indicator
-        const indicator = messageRow.querySelector('.unread-indicator');
-        if (indicator) {
-            indicator.remove();
+        // Remove unread indicator dot
+        const unreadDot = messageRow.querySelector('.w-2.h-2.bg-blue-500');
+        if (unreadDot) {
+            unreadDot.remove();
         }
     } else {
-        messageRow.classList.remove('bg-white', 'dark:bg-gray-800');
+        // Mark as unread - add unread styling
+        messageRow.classList.remove('bg-white', 'dark:bg-neutral-800');
         messageRow.classList.add('bg-blue-50', 'dark:bg-blue-900/20');
-        messageRow.setAttribute('data-unread', 'true');
         
-        // Add unread indicator if not exists
-        if (!messageRow.querySelector('.unread-indicator')) {
-            const indicator = document.createElement('div');
-            indicator.className = 'unread-indicator w-2 h-2 bg-blue-500 rounded-full absolute top-2 left-2';
-            messageRow.style.position = 'relative';
-            messageRow.appendChild(indicator);
+        // Add unread indicator dot if not present
+        const subjectCell = messageRow.querySelector('a[href*="messages"]');
+        if (subjectCell && !messageRow.querySelector('.w-2.h-2.bg-blue-500')) {
+            const unreadDot = document.createElement('span');
+            unreadDot.className = 'ml-2 w-2 h-2 bg-blue-500 rounded-full';
+            subjectCell.parentNode.appendChild(unreadDot);
         }
     }
 }
-
 // Update toggle button in message detail view
 function updateToggleButton(messageId, isRead) {
-    const button = document.querySelector(`button[onclick*="${messageId}"]`);
-    if (button) {
-        const svg = button.querySelector('svg');
-        
+    const toggleButton = document.querySelector(`[onclick*="toggleMessageRead(${messageId}"]`);
+    if (toggleButton) {
         if (isRead) {
-            // Show "Mark Unread" option
-            svg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>`;
-            button.innerHTML = button.innerHTML.replace(/Mark Read|Mark Unread/, 'Mark Unread');
-            button.setAttribute('onclick', `toggleMessageRead(${messageId}, false)`);
+            toggleButton.textContent = 'Mark as Unread';
+            toggleButton.className = toggleButton.className.replace('bg-blue-600', 'bg-gray-600');
         } else {
-            // Show "Mark Read" option
-            svg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>`;
-            button.innerHTML = button.innerHTML.replace(/Mark Read|Mark Unread/, 'Mark Read');
-            button.setAttribute('onclick', `toggleMessageRead(${messageId}, true)`);
+            toggleButton.textContent = 'Mark as Read';
+            toggleButton.className = toggleButton.className.replace('bg-gray-600', 'bg-blue-600');
         }
     }
 }
-
 // Bulk actions
 async function bulkAction(action) {
     if (selectedMessages.size === 0) {

@@ -134,37 +134,35 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Attachments (Optional)
                             </label>
-                            <div
-                                class="flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
-                                <div class="space-y-1 text-center">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none"
-                                        viewBox="0 0 48 48">
-                                        <path
-                                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                    </svg>
-                                    <div class="flex text-sm text-gray-600 dark:text-gray-400">
-                                        <label for="attachments"
-                                            class="relative cursor-pointer bg-white dark:bg-gray-700 rounded-md font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                                            <span>Upload files</span>
-                                            <input id="attachments" name="attachments[]" type="file" class="sr-only"
-                                                multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar"
-                                                onchange="displaySelectedFiles(this)">
-                                        </label>
-                                        <p class="pl-1">or drag and drop</p>
-                                    </div>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">
-                                        PNG, JPG, PDF, DOC, XLS, ZIP up to 10MB each (max 5 files)
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- Selected Files Display -->
-                            <div id="selected-files" class="mt-3 space-y-2" style="display: none;">
-                                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Selected Files:</h4>
-                                <div id="file-list" class="space-y-1"></div>
-                            </div>
-
+                            <x-universal-file-uploader 
+                                name="attachments"
+                                :multiple="true"
+                                :maxFiles="5"
+                                maxFileSize="10MB"
+                                :acceptedFileTypes="[
+                                    'image/*',
+                                    'application/pdf',
+                                    'application/msword',
+                                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                    'application/vnd.ms-excel',
+                                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                    'text/plain',
+                                    'application/zip',
+                                    'application/x-rar-compressed'
+                                ]"
+                                dropDescription="Drop files here or click to browse"
+                                uploadEndpoint="{{ route('client.messages.temp-upload') }}"
+                                deleteEndpoint="{{ route('client.messages.temp-delete') }}"
+                                :enableCategories="false"
+                                :enableDescription="false"
+                                :enablePublicToggle="false"
+                                :autoUpload="true"
+                                :uploadOnDrop="true"
+                                :compact="false"
+                                theme="default"
+                                id="message-attachments"
+                            />
+                            
                             @error('attachments')
                                 <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                             @enderror
@@ -172,6 +170,9 @@
                                 <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                             @enderror
                         </div>
+
+                        <!-- Hidden field to store uploaded file paths -->
+                        <input type="hidden" name="temp_files" id="temp_files" value="">
 
                         <!-- Action Buttons -->
                         <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
@@ -396,7 +397,6 @@
         submitBtn.innerHTML =
             '<svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Sending...';
 
-        // Re-enable button after 10 seconds to prevent infinite disabled state
         setTimeout(() => {
             submitBtn.disabled = false;
             submitBtn.innerHTML =
@@ -404,7 +404,6 @@
         }, 10000);
     });
 
-    // Auto-save draft (optional feature)
     let autosaveTimer;
     const messageTextarea = document.getElementById('message');
     const subjectInput = document.getElementById('subject');
@@ -439,7 +438,6 @@
         }
     }
 
-    // Auto-save functionality
     [subjectInput, messageTextarea].forEach(element => {
         element.addEventListener('input', function() {
             clearTimeout(autosaveTimer);
@@ -447,13 +445,61 @@
         });
     });
 
-    // Load draft on page load
     window.addEventListener('load', loadDraft);
 
-    // Clear draft on successful submission
     window.addEventListener('beforeunload', function() {
         if (document.querySelector('.alert-success')) {
             localStorage.removeItem('message_draft');
         }
     });
+        document.addEventListener('DOMContentLoaded', function() {
+            const tempFilesInput = document.getElementById('temp_files');
+            const form = document.getElementById('message-form');
+            let uploadedFiles = [];
+
+            window.addEventListener('files-uploaded', function(event) {
+                if (event.detail.component === 'message-attachments') {
+                    if (event.detail.files) {
+                        uploadedFiles.push(...event.detail.files);
+                        updateTempFilesInput();
+                    }
+                }
+            });
+
+            window.addEventListener('file-deleted', function(event) {
+                if (event.detail.component === 'message-attachments') {
+                    uploadedFiles = uploadedFiles.filter(file => file.id !== event.detail.file.id);
+                    updateTempFilesInput();
+                }
+            });
+
+            function updateTempFilesInput() {
+                const filePaths = uploadedFiles.map(file => file.path || file.file_path);
+                tempFilesInput.value = JSON.stringify(filePaths);
+            }
+
+            // Form submission handling
+            form.addEventListener('submit', function(e) {
+                const submitBtn = document.getElementById('submit-btn');
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `
+                    <svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Sending...
+                `;
+
+                // Re-enable button after 10 seconds to prevent infinite disabled state
+                setTimeout(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = `
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                        Send Message
+                    `;
+                }, 10000);
+            });
+        });
 </script>

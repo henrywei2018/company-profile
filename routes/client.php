@@ -111,30 +111,50 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
     });
 
     Route::prefix('messages')->name('messages.')->group(function () {
-        
-        // ===== RESOURCE ROUTES (UI Pages) =====
+    
         Route::get('/', [MessageController::class, 'index'])->name('index');
-        Route::get('create', [MessageController::class, 'create'])->name('create');  
+        Route::get('/create', [MessageController::class, 'create'])->name('create');  
         Route::post('/', [MessageController::class, 'store'])->name('store');
-        Route::get('{message}', [MessageController::class, 'show'])->name('show');
-        Route::post('{message}/reply', [MessageController::class, 'reply'])
+        Route::get('/{message}', [MessageController::class, 'show'])->name('show');
+        
+        Route::post('/{message}/reply', [MessageController::class, 'reply'])
+            ->middleware('throttle:10,1')
             ->name('reply');
-        Route::patch('{message}/urgent', [MessageController::class, 'markUrgent'])
+            
+        Route::patch('/{message}/urgent', [MessageController::class, 'markUrgent'])
             ->name('mark-urgent');
-        Route::patch('{message}/toggle-read', [MessageController::class, 'toggleRead'])
+            
+        Route::patch('/{message}/toggle-read', [MessageController::class, 'toggleRead'])
             ->name('toggle-read');
-        Route::post('bulk-action', [MessageController::class, 'bulkAction'])
+        
+        Route::post('/bulk-action', [MessageController::class, 'bulkAction'])
+            ->middleware('throttle:20,1')
             ->name('bulk-action');
-        Route::get('project/{project}', [MessageController::class, 'projectMessages'])
+        Route::get('/project/{project}', [MessageController::class, 'projectMessages'])
             ->name('project')
             ->where('project', '[0-9]+');
-        Route::get('{message}/attachments/{attachment}/download', 
-            [MessageController::class, 'downloadAttachment'])
+        
+        Route::get('/{message}/attachments/{attachment}/download', [MessageController::class, 'downloadAttachment'])
             ->name('attachment.download')
             ->where(['message' => '[0-9]+', 'attachment' => '[0-9]+']);
+        Route::post('/temp-upload', [MessageController::class, 'uploadTempAttachment'])
+            ->middleware('throttle:30,1')
+            ->name('temp-upload');
+            
+        Route::delete('/temp-delete', [MessageController::class, 'deleteTempAttachment'])
+            ->middleware('throttle:30,1')
+            ->name('temp-delete');
+            
+        Route::get('/temp-files', [MessageController::class, 'getTempFiles'])
+            ->middleware('throttle:60,1')
+            ->name('temp-files');
+            
+        Route::post('/cleanup-temp', [MessageController::class, 'cleanupTempFiles'])
+            ->middleware('throttle:10,1')
+            ->name('cleanup-temp');
         
         Route::prefix('api')->name('api.')->group(function () {
-            // Single endpoint for all statistics (replaces individual count endpoints)
+            
             Route::get('/statistics', [MessageController::class, 'getStatistics'])
                 ->middleware('throttle:120,1')
                 ->name('statistics');
