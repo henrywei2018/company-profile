@@ -18,7 +18,7 @@ class OtpVerificationController extends Controller
         $this->middleware('auth');
     }
 
-    public function show(): View
+    public function show(): View|RedirectResponse
     {
         $user = Auth::user();
         
@@ -29,24 +29,14 @@ class OtpVerificationController extends Controller
         }
         
         $needsNewOtp = !$user->otp_code || 
-                      !$user->otp_expires_at || 
-                      $user->otp_expires_at->isPast();
+                    !$user->otp_expires_at || 
+                    $user->otp_expires_at->isPast();
         
         if ($needsNewOtp) {
-            \Log::info('Generating OTP for user: ' . $user->email . ' (Reason: ' . 
-                      (!$user->otp_code ? 'No OTP exists' : 
-                       (!$user->otp_expires_at ? 'No expiry set' : 'OTP expired')) . ')');
-            
-            $user->generateOtp();
-            
-            try {
-                Mail::to($user->email)->send(new OtpVerificationMail($user, $user->otp_code));
-                \Log::info('OTP email sent to: ' . $user->email . ' with code: ' . $user->otp_code);
-            } catch (\Exception $e) {
-                \Log::error('Failed to send OTP email to: ' . $user->email . ' - Error: ' . $e->getMessage());
-            }
+            \Log::info('Generating new OTP for user: ' . $user->email);
+            $user->generateAndSendOtp();
         } else {
-            \Log::info('Valid OTP already exists for user: ' . $user->email . ' - Code: ' . $user->otp_code . ' - Expires: ' . $user->otp_expires_at);
+            \Log::info('Valid OTP already exists for user: ' . $user->email . ' - Code: ' . $user->otp_code);
         }
         
         return view('auth.verify-otp');
@@ -91,33 +81,11 @@ class OtpVerificationController extends Controller
 
         \Log::info('OTP resend requested for user: ' . $user->email);
 
-        // Check if current OTP is still valid
-        $hasValidOtp = $user->hasValidOtp();
-        
-        if ($hasValidOtp) {
-            \Log::info('Resending existing valid OTP for: ' . $user->email . ' - Code: ' . $user->otp_code . ' - Expires: ' . $user->otp_expires_at);
-            
-            try {
-                Mail::to($user->email)->send(new OtpVerificationMail($user, $user->otp_code));
-                \Log::info('Existing OTP resent successfully to: ' . $user->email);
-                return back()->with('status', 'Verification code has been resent to your email address.');
-            } catch (\Exception $e) {
-                \Log::error('Failed to resend existing OTP to: ' . $user->email . ' - Error: ' . $e->getMessage());
-                return back()->withErrors(['otp' => 'Failed to send verification code. Please try again.']);
-            }
+        // Always generate new OTP for resend
+        if ($user->generateAndSendOtp()) {
+            return back()->with('status', 'A new verification code has been sent to your email address.');
         } else {
-            \Log::info('Generating new OTP for resend (existing OTP expired) for: ' . $user->email);
-            
-            $user->generateOtp();
-            
-            try {
-                Mail::to($user->email)->send(new OtpVerificationMail($user, $user->otp_code));
-                \Log::info('New OTP generated and sent to: ' . $user->email . ' - Code: ' . $user->otp_code);
-                return back()->with('status', 'A new verification code has been sent to your email address.');
-            } catch (\Exception $e) {
-                \Log::error('Failed to send new OTP to: ' . $user->email . ' - Error: ' . $e->getMessage());
-                return back()->withErrors(['otp' => 'Failed to send verification code. Please try again.']);
-            }
+            return back()->withErrors(['otp' => 'Failed to send verification code. Please try again.']);
         }
     }
 }

@@ -114,13 +114,39 @@ class User extends Authenticatable implements MustVerifyEmail
     }
     public function sendEmailVerificationNotification()
     {
-     
+     $this->generateAndSendOtp();
     }
-    public function generateOtp()
+    public function sendOtpEmail()
+    {
+        try {
+            Mail::to($this->email)->send(new OtpVerificationMail($this, $this->otp_code));
+            \Log::info('OTP email sent successfully', [
+                'user_email' => $this->email,
+                'otp_code' => $this->otp_code
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            \Log::error('Failed to send OTP email', [
+                'user_email' => $this->email,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+    public function generateAndSendOtp()
+    {
+        $this->generateOtp(true);
+        return $this->sendOtpEmail();
+    }
+    public function generateOtp($sendEmail = true)
     {
         $this->otp_code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $this->otp_expires_at = Carbon::now()->addMinutes(10); // 10 minutes expiry
         $this->save();
+        
+        if ($sendEmail) {
+            $this->sendOtpEmail();
+        }
     }
     public function hasValidOtp(): bool
     {

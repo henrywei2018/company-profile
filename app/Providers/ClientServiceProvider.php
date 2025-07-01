@@ -188,19 +188,7 @@ class ClientServiceProvider extends ServiceProvider
      */
     protected function registerClientEventListeners(): void
     {
-        // Listen for client registration events
-        if (class_exists(\Illuminate\Auth\Events\Registered::class)) {
-            $this->app['events']->listen(
-                \Illuminate\Auth\Events\Registered::class,
-                function ($event) {
-                    if ($event->user->hasRole('client')) {
-                        \App\Facades\Notifications::send('user.welcome', $event->user, $event->user);
-                    }
-                }
-            );
-        }
 
-        // Clear client cache on relevant model changes
         $this->app['events']->listen([
             'eloquent.saved: App\Models\Project',
             'eloquent.deleted: App\Models\Project',

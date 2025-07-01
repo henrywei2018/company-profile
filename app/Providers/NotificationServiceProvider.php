@@ -112,7 +112,6 @@ class NotificationServiceProvider extends ServiceProvider
             Project::observe(ProjectObserver::class);
             Quotation::observe(QuotationObserver::class);
             Message::observe(MessageObserver::class);
-            User::observe(UserObserver::class);
             Testimonial::observe(TestimonialObserver::class);
             ChatSession::observe(ChatSessionObserver::class);
             Certification::observe(CertificationObserver::class);
