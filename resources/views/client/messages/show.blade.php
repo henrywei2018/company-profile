@@ -191,40 +191,53 @@
     </x-admin.card>
 
     <!-- Reply Form -->
-    @if ($canReply)
-        <x-admin.card>
-            <x-slot name="title">Send Reply</x-slot>
-
-            <form action="{{ route('client.messages.reply', $rootMessage) }}" method="POST"
-                enctype="multipart/form-data">
-                @csrf
-
-                <div class="space-y-4">
-                    <!-- Message Content -->
-                    <div>
-                        <label for="message" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Your Reply <span class="text-red-500">*</span>
-                        </label>
-                        <textarea name="message" id="message" rows="6" required
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                            placeholder="Type your reply here...">{{ old('message') }}</textarea>
-                        @error('message')
-                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                        @enderror
-                    </div>
-<x-universal-file-uploader 
-                        name="attachments"
+    {{-- resources/views/client/messages/show.blade.php - Reply section updated with Universal Uploader --}}
+@if(in_array($message->type, ['admin_to_client', 'support_response']))
+    <!-- Reply Form -->
+    <x-admin.card class="mt-6">
+        <x-slot name="title">Reply to Message</x-slot>
+        
+        <form action="{{ route('client.messages.reply', $message) }}" method="POST" enctype="multipart/form-data" id="reply-form">
+            @csrf
+            
+            <div class="space-y-6">
+                <!-- Reply Message -->
+                <div>
+                    <label for="message" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Your Reply <span class="text-red-500">*</span>
+                    </label>
+                    <textarea
+                        id="message"
+                        name="message"
+                        rows="6"
+                        required
+                        placeholder="Type your reply here..."
+                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                    >{{ old('message') }}</textarea>
+                    @error('message')
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
+                
+                <!-- Attachments using Universal Uploader -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                        Attachments (Optional)
+                    </label>
+                    
+                    <x-universal-file-uploader 
+                        name="files"
                         :multiple="true"
                         :maxFiles="5"
                         maxFileSize="10MB"
                         :acceptedFileTypes="[
-                            'image/*',
+                            'image/jpeg', 'image/png', 'image/gif', 'image/webp',
                             'application/pdf',
                             'application/msword',
                             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                             'application/vnd.ms-excel',
                             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                            'text/plain',
+                            'text/plain', 'text/csv',
                             'application/zip',
                             'application/x-rar-compressed'
                         ]"
@@ -266,24 +279,73 @@
                         Send Reply
                     </button>
                 </div>
-                </div>
-            </form>
-        </x-admin.card>
-    @else
-        <x-admin.card>
-            <div class="text-center py-8">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor"
-                    viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">Cannot reply to this message</h3>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    This conversation may be closed or you may not have permission to reply.
-                </p>
             </div>
-        </x-admin.card>
-    @endif
+        </form>
+    </x-admin.card>
+
+    @push('scripts')
+    <script>
+        // Handle reply form universal uploader events
+        document.addEventListener('DOMContentLoaded', function() {
+            const replyTempFilesInput = document.getElementById('reply_temp_files');
+            const replyForm = document.getElementById('reply-form');
+            let replyUploadedFiles = [];
+
+            // Listen for file upload events for reply form
+            window.addEventListener('files-uploaded', function(event) {
+                if (event.detail.component === 'reply-attachments') {
+                    // Store uploaded file information
+                    if (event.detail.files) {
+                        replyUploadedFiles.push(...event.detail.files);
+                        updateReplyTempFilesInput();
+                    }
+                }
+            });
+
+            // Listen for file deletion events for reply form
+            window.addEventListener('file-deleted', function(event) {
+                if (event.detail.component === 'reply-attachments') {
+                    // Remove deleted file from array
+                    replyUploadedFiles = replyUploadedFiles.filter(file => file.id !== event.detail.file.id);
+                    updateReplyTempFilesInput();
+                }
+            });
+
+            function updateReplyTempFilesInput() {
+                // Store file paths in hidden input for form submission
+                const filePaths = replyUploadedFiles.map(file => file.path || file.file_path);
+                replyTempFilesInput.value = JSON.stringify(filePaths);
+            }
+
+            // Reply form submission handling
+            if (replyForm) {
+                replyForm.addEventListener('submit', function(e) {
+                    const submitBtn = document.getElementById('reply-submit-btn');
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = `
+                        <svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Sending...
+                    `;
+
+                    // Re-enable button after 10 seconds to prevent infinite disabled state
+                    setTimeout(() => {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = `
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                            </svg>
+                            Send Reply
+                        `;
+                    }, 10000);
+                });
+            }
+        });
+    </script>
+    @endpush
+@endif
 
     <!-- Related Messages (if any) -->
     @if ($relatedMessages->count() > 0)

@@ -131,63 +131,60 @@
 
                         <!-- File Attachments -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Attachments (Optional)
-                            </label>
-                            <x-universal-file-uploader 
-                                name="attachments"
-                                :multiple="true"
-                                :maxFiles="5"
-                                maxFileSize="10MB"
-                                :acceptedFileTypes="[
-                                    'image/*',
-                                    'application/pdf',
-                                    'application/msword',
-                                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                    'application/vnd.ms-excel',
-                                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                    'text/plain',
-                                    'application/zip',
-                                    'application/x-rar-compressed'
-                                ]"
-                                dropDescription="Drop files here or click to browse"
-                                uploadEndpoint="{{ route('client.messages.temp-upload') }}"
-                                deleteEndpoint="{{ route('client.messages.temp-delete') }}"
-                                :enableCategories="false"
-                                :enableDescription="false"
-                                :enablePublicToggle="false"
-                                :autoUpload="true"
-                                :uploadOnDrop="true"
-                                :compact="false"
-                                theme="default"
-                                id="message-attachments"
-                            />
-                            
-                            @error('attachments')
-                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                            @enderror
-                            @error('attachments.*')
-                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                            @enderror
-                        </div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                            Attachments (Optional)
+                        </label>
+                        
+                        <x-universal-file-uploader 
+                            name="files"
+                            :multiple="true"
+                            :maxFiles="5"
+                            maxFileSize="10MB"
+                            :acceptedFileTypes="[
+                                'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+                                'application/pdf',
+                                'application/msword',
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                'application/vnd.ms-excel',
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                'text/plain', 'text/csv',
+                                'application/zip',
+                                'application/x-rar-compressed'
+                            ]"
+                            dropDescription="Drop files here or click to browse"
+                            uploadEndpoint="{{ route('client.messages.temp-upload') }}"
+                            deleteEndpoint="{{ route('client.messages.temp-delete') }}"
+                            :enableCategories="false"
+                            :enableDescription="false"
+                            :enablePublicToggle="false"
+                            :autoUpload="true"
+                            :uploadOnDrop="true"
+                            :compact="false"
+                            theme="default"
+                            id="message-attachments"
+                        />
+                        
+                        @error('attachments')
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                        @enderror
+                        @error('attachments.*')
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                        @enderror
+                    </div>
 
-                        <!-- Hidden field to store uploaded file paths -->
-                        <input type="hidden" name="temp_files" id="temp_files" value="">
+                    <!-- Hidden field to store uploaded file paths -->
+                    <input type="hidden" name="temp_files" id="temp_files" value="">
 
-                        <!-- Action Buttons -->
-                        <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-                            <x-admin.button href="{{ route('client.messages.index') }}" color="light" type="button">
-                                Cancel
-                            </x-admin.button>
-
-                            <x-admin.button type="submit" color="primary" id="submit-btn">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                                </svg>
-                                Send Message
-                            </x-admin.button>
-                        </div>
+                    <!-- Submit Button -->
+                    <div class="flex justify-end">
+                        <button type="submit" id="submit-btn"
+                            class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                            </svg>
+                            Send Message
+                        </button>
+                    </div>
                     </div>
                 </form>
             </x-admin.card>
