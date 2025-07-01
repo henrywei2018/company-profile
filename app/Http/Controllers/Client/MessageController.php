@@ -100,75 +100,149 @@ class MessageController extends Controller
      * Store a newly created message - COMPLETE WITH ALL FIELDS
      */
     public function store(Request $request)
-    {
-        $user = auth()->user();
+{
+    $user = auth()->user();
+    
 
-        // FIXED: Match validation with getClientMessageTypes() values
+    try {
+        // Simplified validation - remove the 'type' field validation
         $validated = $request->validate([
-            'type' => 'required|in:general,support,project_inquiry,complaint,feedback',
             'priority' => 'nullable|in:normal,urgent',
             'subject' => 'required|string|max:255',
             'message' => 'required|string|min:10',
-            'temp_files' => 'nullable|string', // JSON string of temp file paths
+            'temp_files' => 'nullable|string',
+            'project_id' => 'nullable|exists:projects,id', // if you have project selection
+        ]);
+        
+        Log::info('Validation passed', ['validated_data' => $validated]);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        Log::error('Validation failed', [
+            'user_id' => $user->id,
+            'errors' => $e->errors(),
+            'request_data' => $request->except(['temp_files', '_token'])
+        ]);
+        throw $e;
+    }
+
+    try {
+        DB::beginTransaction();
+        
+        Log::info('Database transaction started');
+
+        // Create the message - always set type to 'client_to_admin'
+        $messageData = [
+            'type' => 'client_to_admin',
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'company' => $user->company,
+            'subject' => $validated['subject'],
+            'message' => $validated['message'],
+            'priority' => $validated['priority'] ?? 'normal',
+            'user_id' => $user->id,
+            'project_id' => $validated['project_id'] ?? null, // if you have project selection
+            'is_read' => false,
+            'is_replied' => false,
+        ];
+        
+        Log::info('Creating message with data', $messageData);
+        
+        $message = Message::create($messageData);
+        
+        Log::info('Message created successfully', [
+            'message_id' => $message->id,
+            'message_type' => $message->type
         ]);
 
-        try {
-            DB::beginTransaction();
-
-            // Create the message with ALL required fields
-            $message = Message::create([
-                'type' => 'client_to_admin',
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'company' => $user->company,
-                'subject' => $validated['subject'],
-                'message' => $validated['message'],
-                'priority' => $validated['priority'] ?? 'normal',
-                'user_id' => $user->id,
-                'is_read' => false,
-                'is_replied' => false,
+        // Handle temp files if any
+        $attachmentCount = 0;
+        if ($request->filled('temp_files')) {
+            Log::info('Processing temp files', [
+                'temp_files_raw' => $request->input('temp_files')
             ]);
-
-            // Handle temp files if any
-            $attachmentCount = 0;
-            if ($request->filled('temp_files')) {
-                $tempFilePaths = json_decode($request->input('temp_files'), true);
-
-                if (is_array($tempFilePaths)) {
-                    foreach ($tempFilePaths as $tempPath) {
+            
+            $tempFilePaths = json_decode($request->input('temp_files'), true);
+            
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('JSON decode error for temp_files', [
+                    'json_error' => json_last_error_msg(),
+                    'temp_files_raw' => $request->input('temp_files')
+                ]);
+            } elseif (is_array($tempFilePaths)) {
+                Log::info('Found temp files to process', [
+                    'file_count' => count($tempFilePaths),
+                    'file_paths' => $tempFilePaths
+                ]);
+                
+                foreach ($tempFilePaths as $tempPath) {
+                    try {
                         if ($this->moveTempFileToMessage($tempPath, $message)) {
                             $attachmentCount++;
+                            Log::info('Attachment processed successfully', [
+                                'temp_path' => $tempPath,
+                                'message_id' => $message->id
+                            ]);
+                        } else {
+                            Log::warning('Failed to process attachment', [
+                                'temp_path' => $tempPath,
+                                'message_id' => $message->id
+                            ]);
                         }
+                    } catch (\Exception $attachmentError) {
+                        Log::error('Attachment processing error', [
+                            'temp_path' => $tempPath,
+                            'message_id' => $message->id,
+                            'error' => $attachmentError->getMessage()
+                        ]);
                     }
                 }
             }
-
-            // Clean up temp directory after successful processing
-            $this->cleanupSessionTempFiles();
-
-            // Clear dashboard cache
-            $this->dashboardService->clearCache($user);
-
-            DB::commit();
-
-            $successMessage = 'Message sent successfully!';
-            if ($attachmentCount > 0) {
-                $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
-            }
-
-            return redirect()->route('client.messages.index')
-                ->with('success', $successMessage);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Failed to create message: ' . $e->getMessage());
-
-            return redirect()->back()
-                ->withErrors(['error' => 'Failed to send message. Please try again.'])
-                ->withInput();
         }
+
+        // Clear dashboard cache
+        try {
+            $this->dashboardService->clearCache($user);
+            Log::info('Dashboard cache cleared successfully');
+        } catch (\Exception $cacheError) {
+            Log::warning('Failed to clear dashboard cache', [
+                'error' => $cacheError->getMessage()
+            ]);
+        }
+
+        DB::commit();
+        
+        Log::info('Message submission completed successfully', [
+            'message_id' => $message->id,
+            'attachment_count' => $attachmentCount,
+            'user_id' => $user->id
+        ]);
+
+        $successMessage = 'Message sent successfully!';
+        if ($attachmentCount > 0) {
+            $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
+        }
+
+        return redirect()->route('client.messages.index')
+            ->with('success', $successMessage);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        
+        Log::error('Message submission failed', [
+            'user_id' => $user->id,
+            'error_message' => $e->getMessage(),
+            'error_file' => $e->getFile(),
+            'error_line' => $e->getLine(),
+            'stack_trace' => $e->getTraceAsString(),
+            'request_data' => $request->except(['temp_files', '_token'])
+        ]);
+
+        return redirect()->back()
+            ->withErrors(['error' => 'Failed to send message. Please try again.'])
+            ->withInput();
     }
+}
 
     /**
      * Display the specified message with auto mark-as-read

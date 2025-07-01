@@ -38,6 +38,7 @@
                         <!-- Type and Priority Row -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <!-- Message Type -->
+                            <input type="hidden" name="type" value="client_to_admin">
                             @if ($projects->count() > 0)
                             <div>
                                 <label for="project_id"
@@ -165,6 +166,16 @@
                     </div>
                     </div>
                 </form>
+                @if($errors->any())
+<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 mt-4">
+    <strong>Validation Errors:</strong>
+    <ul class="mt-2">
+        @foreach($errors->all() as $error)
+            <li>• {{ $error }}</li>
+        @endforeach
+    </ul>
+</div>
+@endif
             </x-admin.card>
         </div>
 
@@ -243,6 +254,27 @@
 </x-layouts.client>
 
 <script>
+    document.getElementById('message-form').addEventListener('submit', function(e) {
+    console.log('Form submitting...');
+    console.log('Subject:', document.getElementById('subject').value);
+    console.log('Message length:', document.getElementById('message').value.length);
+    console.log('Priority:', document.getElementById('priority').value);
+    
+    // Basic validation
+    if (!document.getElementById('subject').value.trim()) {
+        e.preventDefault();
+        alert('Please enter a subject');
+        return;
+    }
+    
+    if (!document.getElementById('message').value.trim() || document.getElementById('message').value.trim().length < 10) {
+        e.preventDefault();
+        alert('Please enter a message (at least 10 characters)');
+        return;
+    }
+    
+    console.log('Form validation passed');
+});
     // Character counter for message
     document.getElementById('message').addEventListener('input', function() {
         const charCount = this.value.length;
