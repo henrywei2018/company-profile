@@ -1,8 +1,5 @@
 <?php
 
-// Update your existing app/Models/Message.php file
-// Add these changes to the Message model
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -181,9 +178,9 @@ class Message extends Model
     {
         return $query->where(function ($query) use ($search) {
             $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('subject', 'like', "%{$search}%")
-                  ->orWhere('message', 'like', "%{$search}%");
+                ->orWhere('email', 'like', "%{$search}%")
+                ->orWhere('subject', 'like', "%{$search}%")
+                ->orWhere('message', 'like', "%{$search}%");
         });
     }
 
@@ -212,26 +209,35 @@ class Message extends Model
      */
     public function getThreadMessages()
     {
-        // Check if parent_id column exists before using it
-        if (!$this->getConnection()->getSchemaBuilder()->hasColumn('messages', 'parent_id')) {
-            return collect(); // Return empty collection if column doesn't exist
-        }
-
-        // If this message has a parent, get the root message
+        // Get the root message
         $rootMessage = $this->parent_id ? $this->parent : $this;
         
-        // Get all messages in this thread (root + all its replies)
-        return Message::where('id', $rootMessage->id)
-                     ->orWhere('parent_id', $rootMessage->id)
-                     ->orderBy('created_at');
+        // Get all messages in this thread
+        return Message::where(function($query) use ($rootMessage) {
+            $query->where('id', $rootMessage->id)
+                ->orWhere('parent_id', $rootMessage->id);
+        })->orderBy('created_at');
+    }
+    public function getCompleteThread()
+    {
+        return $this->getThreadMessages()->with(['attachments', 'user'])->get();
+    }
+    public function getThreadStats()
+    {
+        $thread = $this->getCompleteThread();
+        
+        return [
+            'total_messages' => $thread->count(),
+            'client_messages' => $thread->where('type', '!=', 'admin_to_client')->count(),
+            'admin_messages' => $thread->where('type', 'admin_to_client')->count(),
+            'has_unread' => $thread->where('is_read', false)->count() > 0,
+            'last_activity' => $thread->max('created_at'),
+        ];
     }
 
-    /**
-     * Get the root message of this thread.
-     */
-    public function getRootMessage()
+    public function isRootMessage()
     {
-        return $this->parent_id ? $this->parent : $this;
+        return is_null($this->parent_id);
     }
 
     /**
@@ -367,6 +373,19 @@ class Message extends Model
             return 4; // Lowest priority - replied and read
         }
     }
+    public function getStatusColorAttribute()
+    {
+        switch ($this->display_status) {
+            case 'urgent':
+                return 'text-red-600 bg-red-100';
+            case 'unread':
+                return 'text-blue-600 bg-blue-100';
+            case 'replied':
+                return 'text-green-600 bg-green-100';
+            default:
+                return 'text-gray-600 bg-gray-100';
+        }
+    }
 
     /**
      * Get the formatted date attribute.
@@ -391,7 +410,7 @@ class Message extends Model
      */
     public function getPriorityColorAttribute()
     {
-        return match($this->priority) {
+        return match ($this->priority) {
             'urgent' => 'red',
             'high' => 'orange',
             'normal' => 'blue',
@@ -407,7 +426,7 @@ class Message extends Model
      */
     public function getFormattedPriorityAttribute()
     {
-        return match($this->priority) {
+        return match ($this->priority) {
             'urgent' => 'Urgent',
             'high' => 'High',
             'normal' => 'Normal',
@@ -422,7 +441,7 @@ class Message extends Model
     public function addAttachment($file)
     {
         $path = $file->store('message-attachments', 'public');
-        
+
         return $this->attachments()->create([
             'file_path' => $path,
             'file_name' => $file->getClientOriginalName(),

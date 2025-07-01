@@ -443,17 +443,19 @@ public function getUnreadCount(User $user): int
  */
 public function getMessageThread(Message $message): \Illuminate\Database\Eloquent\Collection
 {
-    // Get root message
+    // Get the root message
     $rootMessage = $message->parent_id ? $message->parent : $message;
     
-    // Get all messages in thread
-    return Message::where(function($query) use ($rootMessage) {
+    // Get all messages in this thread (root + all its replies)
+    $thread = Message::where(function($query) use ($rootMessage) {
         $query->where('id', $rootMessage->id)
               ->orWhere('parent_id', $rootMessage->id);
     })
     ->with(['attachments', 'user'])
     ->orderBy('created_at')
     ->get();
+    
+    return $thread;
 }
 
 /**
@@ -561,14 +563,16 @@ protected function getActivityAction(Message $message): string
  */
 public function canReplyToMessage(Message $message, User $user): bool
 {
-    // Client owns the message or conversation
-    if ($message->user_id !== $user->id) {
+    // Get the root message for the thread
+    $rootMessage = $message->parent_id ? $message->parent : $message;
+    
+    // Client must own the original conversation
+    if ($rootMessage->user_id !== $user->id) {
         return false;
     }
     
-    // Can reply to admin messages or in existing conversation
-    return in_array($message->type, ['admin_to_client', 'support_response']) ||
-           ($message->parent_id && $message->parent->user_id === $user->id);
+    // Can reply to any message in their own thread
+    return true;
 }
 
 /**
@@ -601,18 +605,21 @@ public function createClientReply(Message $originalMessage, string $replyText, a
 {
     $user = $originalMessage->user;
     
+    // Ensure we're always linking to the root message
+    $rootMessage = $originalMessage->parent_id ? $originalMessage->parent : $originalMessage;
+    
     $replyData = [
         'name' => $user->name,
         'email' => $user->email,
         'phone' => $user->phone,
         'company' => $user->company,
-        'subject' => 'Re: ' . $originalMessage->subject,
+        'subject' => 'Re: ' . $rootMessage->subject,
         'message' => $replyText,
         'type' => 'client_reply',
         'user_id' => $user->id,
-        'project_id' => $originalMessage->project_id,
-        'parent_id' => $originalMessage->id,
-        'priority' => $originalMessage->priority,
+        'project_id' => $rootMessage->project_id,
+        'parent_id' => $rootMessage->id, // Always link to root
+        'priority' => $rootMessage->priority,
         'is_read' => false,
         'is_replied' => false,
     ];

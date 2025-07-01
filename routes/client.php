@@ -132,6 +132,21 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
             [MessageController::class, 'downloadAttachment'])
             ->name('attachment.download')
             ->where(['message' => '[0-9]+', 'attachment' => '[0-9]+']);
+        
+        Route::prefix('api')->name('api.')->group(function () {
+            // Single endpoint for all statistics (replaces individual count endpoints)
+            Route::get('/statistics', [MessageController::class, 'getStatistics'])
+                ->middleware('throttle:120,1')
+                ->name('statistics');
+                
+            Route::post('/mark-all-read', [MessageController::class, 'markAllAsRead'])
+                ->middleware('throttle:10,1')
+                ->name('mark-all-read');
+                
+            Route::post('/{message}/toggle-read', [MessageController::class, 'apiToggleRead'])
+                ->middleware('throttle:60,1')
+                ->name('toggle-read');
+        });
     });
 
     Route::prefix('testimonials')->name('testimonials.')->group(function () {
@@ -165,9 +180,9 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
     Route::prefix('api')->name('api.')->group(function () {
         Route::get('/dashboard/stats', [ClientDashboardController::class, 'getRealtimeStats'])->name('dashboard.stats');
         Route::get('/notifications/count', [NotificationController::class, 'getUnreadCount'])->name('notifications.count');
-        Route::get('/messages/count', [MessageController::class, 'getUnreadCount'])->name('messages.count');
         Route::get('/projects/stats', [ProjectController::class, 'getStatistics'])->name('projects.stats');
         Route::get('/quotations/stats', [QuotationController::class, 'getStatistics'])->name('quotations.stats');
+    
     });
 });
 

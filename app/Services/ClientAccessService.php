@@ -366,12 +366,16 @@ public function canAccessMessage(User $user, Message $message): bool
  */
 public function canReplyToMessage(User $user, Message $message): bool
 {
-    if (!$this->canAccessMessage($user, $message)) {
+    // Get the root message
+    $rootMessage = $message->parent_id ? $message->parent : $message;
+    
+    // Must own the original conversation
+    if ($rootMessage->user_id !== $user->id) {
         return false;
     }
     
-    // Can reply to admin messages or support responses
-    return in_array($message->type, ['admin_to_client', 'support_response']);
+    // Can always reply to messages in their own threads
+    return true;
 }
 
 /**
@@ -379,10 +383,10 @@ public function canReplyToMessage(User $user, Message $message): bool
  */
 public function canEscalateMessage(User $user, Message $message): bool
 {
-    // Can only escalate own messages that aren't already urgent
-    return $message->user_id === $user->id && 
-           $message->priority !== 'urgent' &&
-           !$message->is_replied;
+    $rootMessage = $message->parent_id ? $message->parent : $message;
+    
+    return $rootMessage->user_id === $user->id && 
+           $rootMessage->priority !== 'urgent';
 }
 
 /**

@@ -322,102 +322,280 @@
 </x-admin.card>
 
 </x-layouts.client>
-
 <script>
+let currentStatistics = {!! json_encode($statistics ?? []) !!};
 
-    // Auto-refresh unread count
-    setInterval(async () => {
-        try {
-            const response = await fetch('{{ route('api.client.messages.unread-count') }}');
-            const data = await response.json();
+// Auto-refresh statistics (replaces individual count calls)
+setInterval(async () => {
+    await refreshStatistics();
+}, 30000);
 
-            if (data.success) {
-                document.getElementById('unread-count').textContent = data.count;
-            }
-        } catch (error) {
-            console.error('Failed to refresh unread count:', error);
+// Centralized statistics refresh
+async function refreshStatistics() {
+    try {
+        const response = await fetch('{{ route('client.messages.api.statistics') }}');
+        const data = await response.json();
+
+        if (data.success) {
+            currentStatistics = data.data;
+            updateStatisticsDisplay(data.data);
         }
-    }, 30000);
+    } catch (error) {
+        console.error('Failed to refresh statistics:', error);
+    }
+}
 
-    // Mark all as read function
-    async function markAllAsRead() {
-        try {
-            const response = await fetch('{{ route('api.client.messages.mark-all-read') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
-                        'content')
-                }
-            });
+// Update all statistics in the UI
+function updateStatisticsDisplay(stats) {
+    // Update counts in various places
+    const updates = {
+        'unread-count': stats.unread || 0,
+        'total-count': stats.total || 0,
+        'urgent-count': stats.urgent || 0,
+        'pending-replies-count': stats.pending_replies || 0
+    };
 
-            const data = await response.json();
-
-            if (data.success) {
-                showNotification('success', data.message || 'All messages marked as read');
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                showNotification('error', 'Failed to mark messages as read');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            showNotification('error', 'An error occurred');
+    Object.entries(updates).forEach(([elementId, value]) => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = value;
         }
+    });
+
+    // Update header unread count (if exists)
+    const headerUnreadCount = document.querySelector('[data-unread-count]');
+    if (headerUnreadCount) {
+        headerUnreadCount.textContent = stats.unread || 0;
     }
 
-    // Toggle individual message read status
-    async function toggleMessageRead(messageId, markAsRead) {
-        try {
-            const response = await fetch(`/client/messages/${messageId}/toggle-read`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
-                        'content')
-                }
-            });
+    // Show/hide "Mark All Read" button
+    const markAllButton = document.querySelector('[onclick="markAllAsRead()"]');
+    if (markAllButton) {
+        markAllButton.style.display = (stats.unread > 0) ? 'inline-flex' : 'none';
+    }
+}
 
-            if (response.ok) {
-                // Update UI
-                const messageItem = document.querySelector(`[data-message-id="${messageId}"]`);
-                const unreadIndicator = messageItem.querySelector('.unread-indicator');
+// Mark all as read function
+async function markAllAsRead() {
+    const button = event.target.closest('button');
+    const originalContent = button.innerHTML;
+    
+    // Show loading state
+    button.disabled = true;
+    button.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Marking as read...
+    `;
 
-                if (markAsRead) {
-                    messageItem.classList.remove('bg-blue-50', 'dark:bg-blue-900/20');
-                    messageItem.classList.add('bg-white', 'dark:bg-gray-800');
-                    if (unreadIndicator) unreadIndicator.remove();
-                } else {
-                    messageItem.classList.remove('bg-white', 'dark:bg-gray-800');
-                    messageItem.classList.add('bg-blue-50', 'dark:bg-blue-900/20');
-                    if (!unreadIndicator) {
-                        const indicator = document.createElement('span');
-                        indicator.className = 'unread-indicator w-2 h-2 bg-blue-500 rounded-full';
-                        messageItem.querySelector('.flex.items-center.space-x-2.ml-2').appendChild(indicator);
-                    }
-                }
-
-                // Update unread count
-                const unreadCountEl = document.getElementById('unread-count');
-                const currentCount = parseInt(unreadCountEl.textContent);
-                unreadCountEl.textContent = markAsRead ? currentCount - 1 : currentCount + 1;
+    try {
+        const response = await fetch('{{ route('client.messages.api.mark-all-read') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             }
-        } catch (error) {
-            console.error('Error toggling read status:', error);
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showNotification('success', data.message || 'All messages marked as read');
+            
+            // Update statistics from response
+            if (data.statistics) {
+                currentStatistics = data.statistics;
+                updateStatisticsDisplay(data.statistics);
+            }
+            
+            // Update message rows in the UI
+            document.querySelectorAll('.message-row[data-unread="true"]').forEach(row => {
+                updateMessageRowStatus(row, true);
+            });
+            
+        } else {
+            showNotification('error', data.message || 'Failed to mark messages as read');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('error', 'An error occurred');
+    } finally {
+        // Restore button
+        button.disabled = false;
+        button.innerHTML = originalContent;
+    }
+}
+
+// Toggle individual message read status
+async function toggleMessageRead(messageId, markAsRead) {
+    try {
+        const response = await fetch(`{{ url('client/messages') }}/${messageId}/toggle-read`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showNotification('success', data.message);
+            
+            // Update statistics from response
+            if (data.statistics) {
+                currentStatistics = data.statistics;
+                updateStatisticsDisplay(data.statistics);
+            }
+            
+            // Update the specific message row
+            const messageRow = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (messageRow) {
+                updateMessageRowStatus(messageRow, data.is_read);
+            }
+            
+            // Update button in message detail view
+            updateToggleButton(messageId, data.is_read);
+            
+        } else {
+            showNotification('error', data.message || 'Failed to update message status');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('error', 'An error occurred while updating message status');
+    }
+}
+
+// Update message row visual status
+function updateMessageRowStatus(messageRow, isRead) {
+    if (isRead) {
+        messageRow.classList.remove('bg-blue-50', 'dark:bg-blue-900/20');
+        messageRow.classList.add('bg-white', 'dark:bg-gray-800');
+        messageRow.setAttribute('data-unread', 'false');
+        
+        // Remove unread indicator
+        const indicator = messageRow.querySelector('.unread-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    } else {
+        messageRow.classList.remove('bg-white', 'dark:bg-gray-800');
+        messageRow.classList.add('bg-blue-50', 'dark:bg-blue-900/20');
+        messageRow.setAttribute('data-unread', 'true');
+        
+        // Add unread indicator if not exists
+        if (!messageRow.querySelector('.unread-indicator')) {
+            const indicator = document.createElement('div');
+            indicator.className = 'unread-indicator w-2 h-2 bg-blue-500 rounded-full absolute top-2 left-2';
+            messageRow.style.position = 'relative';
+            messageRow.appendChild(indicator);
         }
     }
+}
 
-    function showNotification(type, message) {
-        const notification = document.createElement('div');
-        notification.className = `fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${
-        type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 
-        'bg-red-100 text-red-800 border border-red-200'
+// Update toggle button in message detail view
+function updateToggleButton(messageId, isRead) {
+    const button = document.querySelector(`button[onclick*="${messageId}"]`);
+    if (button) {
+        const svg = button.querySelector('svg');
+        
+        if (isRead) {
+            // Show "Mark Unread" option
+            svg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>`;
+            button.innerHTML = button.innerHTML.replace(/Mark Read|Mark Unread/, 'Mark Unread');
+            button.setAttribute('onclick', `toggleMessageRead(${messageId}, false)`);
+        } else {
+            // Show "Mark Read" option
+            svg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>`;
+            button.innerHTML = button.innerHTML.replace(/Mark Read|Mark Unread/, 'Mark Read');
+            button.setAttribute('onclick', `toggleMessageRead(${messageId}, true)`);
+        }
+    }
+}
+
+// Bulk actions
+async function bulkAction(action) {
+    if (selectedMessages.size === 0) {
+        showNotification('error', 'No messages selected');
+        return;
+    }
+    
+    try {
+        const response = await fetch('{{ route("client.messages.bulk-action") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                action: action,
+                message_ids: Array.from(selectedMessages)
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showNotification('success', data.message || 'Action completed successfully');
+            
+            // Refresh statistics after bulk action
+            await refreshStatistics();
+            
+            // Clear selection
+            clearSelection();
+            
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showNotification('error', data.message || 'Action failed');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('error', 'An error occurred');
+    }
+}
+
+// Enhanced notification system
+function showNotification(type, message) {
+    // Remove existing notifications
+    document.querySelectorAll('.notification-toast').forEach(n => n.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = `notification-toast fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 transform transition-all duration-300 ${
+        type === 'success' 
+            ? 'bg-green-100 text-green-800 border border-green-200' 
+            : 'bg-red-100 text-red-800 border border-red-200'
     }`;
-        notification.textContent = message;
+    
+    notification.innerHTML = `
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                ${type === 'success' 
+                    ? '<svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>'
+                    : '<svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>'
+                }
+                <span>${message}</span>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-gray-400 hover:text-gray-600">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+            </button>
+        </div>
+    `;
 
-        document.body.appendChild(notification);
+    document.body.appendChild(notification);
 
-        setTimeout(() => {
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
             notification.remove();
-        }, 3000);
-    }
+        }
+    }, 5000);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Initial statistics display
+    updateStatisticsDisplay(currentStatistics);
+});
 </script>

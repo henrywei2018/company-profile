@@ -14,18 +14,18 @@ use Illuminate\Support\Facades\Log;
 
 class MessageController extends Controller
 {
-    
+
     public function index(Request $request)
     {
         $query = Message::query()
             ->with(['user', 'attachments', 'repliedBy'])
             ->excludeAdminMessages();
-        
+
         // Apply search filter
         if ($request->filled('search')) {
             $query->search($request->search);
         }
-        
+
         // Apply status filter  
         if ($request->filled('status')) {
             switch ($request->status) {
@@ -46,17 +46,17 @@ class MessageController extends Controller
                     break;
             }
         }
-        
+
         // Apply type filter
         if ($request->filled('type')) {
             $query->where('type', $request->type);
         }
-        
+
         // Apply date range filter
         if ($request->filled('created_from') || $request->filled('created_to')) {
             if ($request->filled('created_from') && $request->filled('created_to')) {
                 $query->whereBetween('created_at', [
-                    $request->created_from . ' 00:00:00', 
+                    $request->created_from . ' 00:00:00',
                     $request->created_to . ' 23:59:59'
                 ]);
             } elseif ($request->filled('created_from')) {
@@ -103,8 +103,8 @@ class MessageController extends Controller
     {
         // Get all verified users with 'client' role using Spatie
         $clients = User::whereHas('roles', function ($query) {
-                $query->where('name', 'client');
-            })
+            $query->where('name', 'client');
+        })
             ->whereNotNull('email_verified_at')
             ->where('is_active', true) // Only active clients
             ->orderBy('name')
@@ -205,12 +205,12 @@ class MessageController extends Controller
             // Determine recipient details
             if ($validated['recipient_type'] === 'existing_client') {
                 $client = User::findOrFail($validated['user_id']);
-                
+
                 // Final verification of client role
                 if (!$client->hasRole('client')) {
                     throw new \Exception('Selected user is not a client.');
                 }
-                
+
                 $recipientName = $client->name;
                 $recipientEmail = $client->email;
                 $userId = $client->id;
@@ -264,22 +264,22 @@ class MessageController extends Controller
                     Notifications::send('message.reply', $message, $tempNotifiable);
                     $logMessage = "Direct message sent to custom email: {$recipientName} ({$recipientEmail})";
                 }
-                
+
                 Log::info($logMessage, [
                     'message_id' => $message->id,
                     'sent_by' => auth()->id(),
                     'attachments' => $attachmentCount
                 ]);
-                
+
             } catch (\Exception $e) {
                 Log::error('Failed to send direct message notification: ' . $e->getMessage(), [
                     'message_id' => $message->id,
                     'recipient_email' => $recipientEmail
                 ]);
-                
+
                 // Still commit the transaction but show warning
                 DB::commit();
-                
+
                 return redirect()->route('admin.messages.index')
                     ->with('warning', "Message saved successfully but there was an issue sending the email notification to {$recipientName}. Please check your email configuration.");
             }
@@ -298,7 +298,7 @@ class MessageController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to create direct message: ' . $e->getMessage());
-            
+
             return redirect()->back()
                 ->withErrors(['error' => 'Failed to send message. Please try again.'])
                 ->withInput();
@@ -326,13 +326,13 @@ class MessageController extends Controller
 
             // Check if user exists
             $user = User::where('email', $validated['email'])->first();
-            
+
             // Determine priority and check for urgent keywords
             $priority = $validated['priority'] ?? 'normal';
-            $isUrgent = $priority === 'urgent' || 
-                       str_contains(strtolower($validated['subject']), 'urgent') ||
-                       str_contains(strtolower($validated['subject']), 'emergency');
-            
+            $isUrgent = $priority === 'urgent' ||
+                str_contains(strtolower($validated['subject']), 'urgent') ||
+                str_contains(strtolower($validated['subject']), 'emergency');
+
             // Create the message
             $message = Message::create([
                 'type' => 'contact_form',
@@ -367,7 +367,7 @@ class MessageController extends Controller
             try {
                 // Create temporary notifiable for sender
                 $senderNotifiable = new \App\Services\TempNotifiable($validated['email'], $validated['name']);
-                
+
                 // Send auto-reply to sender if enabled
                 if (settings('message_auto_reply_enabled', true)) {
                     Notifications::send('message.auto_reply', $message, $senderNotifiable);
@@ -405,7 +405,7 @@ class MessageController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to store public message: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to send message. Please try again.'
@@ -440,7 +440,7 @@ class MessageController extends Controller
             ->latest()
             ->take(5)
             ->get();
-        
+
         $totalClientMessages = Message::where('email', $message->email)
             ->excludeAdminMessages()
             ->count();
@@ -449,9 +449,9 @@ class MessageController extends Controller
         $pendingQuotations = \App\Models\Quotation::where('status', 'pending')->count();
 
         return view('admin.messages.show', compact(
-            'message', 
-            'relatedMessages', 
-            'clientMessages', 
+            'message',
+            'relatedMessages',
+            'clientMessages',
             'totalClientMessages',
             'unreadMessages',
             'pendingQuotations'
@@ -526,10 +526,10 @@ class MessageController extends Controller
 
             } catch (\Exception $e) {
                 Log::error('Failed to send reply notification: ' . $e->getMessage());
-                
+
                 // Still commit but show warning
                 DB::commit();
-                
+
                 return redirect()->route('admin.messages.show', $message)
                     ->with('warning', 'Reply saved but there was an issue sending the email notification.');
             }
@@ -547,7 +547,7 @@ class MessageController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to send reply: ' . $e->getMessage());
-            
+
             return redirect()->back()
                 ->with('error', 'Failed to send reply. Please try again.')
                 ->withInput();
@@ -579,25 +579,25 @@ class MessageController extends Controller
     {
         try {
             DB::beginTransaction();
-            
+
             $message->load('attachments');
-            
+
             // Delete all attachments
             foreach ($message->attachments as $attachment) {
                 $attachment->delete();
             }
-            
+
             $message->delete();
-            
+
             DB::commit();
-            
+
             return redirect()->route('admin.messages.index')
                 ->with('success', 'Message deleted successfully!');
-                
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to delete message: ' . $e->getMessage());
-            
+
             return redirect()->back()
                 ->with('error', 'Failed to delete message. Please try again.');
         }
@@ -621,9 +621,9 @@ class MessageController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Failed to mark messages as read: ' . $e->getMessage());
-            
+
             return redirect()->back()
-                ->with('error', 'Failed to update messages. Please try again.');
+                ->with('error', 'Failed to mark messages as read. Please try again.');
         }
     }
 
@@ -632,31 +632,27 @@ class MessageController extends Controller
      */
     public function destroyMultiple(Request $request)
     {
-        $request->validate(['ids' => 'required|string']);
-
-        $ids = array_filter(explode(',', $request->ids));
-        
-        if (empty($ids)) {
-            return redirect()->back()->with('error', 'No messages selected for deletion.');
-        }
+        $validated = $request->validate([
+            'message_ids' => 'required|array',
+            'message_ids.*' => 'integer|exists:messages,id',
+        ]);
 
         try {
             DB::beginTransaction();
 
-            $messages = Message::whereIn('id', $ids)
-                ->excludeAdminMessages()
-                ->with('attachments')
-                ->get();
-            
+            $messages = Message::whereIn('id', $validated['message_ids'])->get();
             $count = 0;
+
             foreach ($messages as $message) {
+                // Delete attachments first
                 foreach ($message->attachments as $attachment) {
                     $attachment->delete();
                 }
+
                 $message->delete();
                 $count++;
             }
-            
+
             DB::commit();
 
             return redirect()->back()
@@ -665,7 +661,7 @@ class MessageController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to delete multiple messages: ' . $e->getMessage());
-            
+
             return redirect()->back()
                 ->with('error', 'Failed to delete messages. Please try again.');
         }
@@ -676,17 +672,23 @@ class MessageController extends Controller
      */
     public function downloadAttachment(Message $message, $attachmentId)
     {
-        $attachment = MessageAttachment::findOrFail($attachmentId);
-        
-        if ($attachment->message_id !== $message->id) {
-            abort(403, 'Unauthorized access to attachment');
+        try {
+            $attachment = $message->attachments()->findOrFail($attachmentId);
+
+            // Check if file exists
+            if (!Storage::disk('public')->exists($attachment->file_path)) {
+                abort(404, 'File not found.');
+            }
+
+            return Storage::disk('public')->download(
+                $attachment->file_path,
+                $attachment->file_name
+            );
+
+        } catch (\Exception $e) {
+            Log::error('Failed to download attachment: ' . $e->getMessage());
+            abort(404, 'Attachment not found.');
         }
-        
-        if (!Storage::disk('public')->exists($attachment->file_path)) {
-            abort(404, 'Attachment file not found');
-        }
-        
-        return Storage::disk('public')->download($attachment->file_path, $attachment->file_name);
     }
 
     /**
@@ -695,53 +697,46 @@ class MessageController extends Controller
     public function handleEmailReply(Request $request)
     {
         try {
-            // This method would handle webhooks from email providers
-            // when clients reply directly to email notifications
-            
+            // Log the incoming webhook for debugging
+            Log::info('Email reply webhook received', $request->all());
+
+            // Basic validation
             $validated = $request->validate([
-                'message_id' => 'required',
+                'message_id' => 'required|exists:messages,id',
+                'reply_content' => 'required|string',
                 'from_email' => 'required|email',
-                'subject' => 'required|string',
-                'body' => 'required|string',
-                'in_reply_to' => 'nullable|string',
             ]);
 
-            // Find the original message
-            $originalMessage = Message::where('id', $validated['message_id'])
-                ->orWhere('email', $validated['from_email'])
-                ->first();
+            $message = Message::findOrFail($validated['message_id']);
 
-            if (!$originalMessage) {
-                Log::warning('Email reply received but original message not found', $validated);
-                return response()->json(['status' => 'not_found'], 404);
-            }
-
-            // Create reply message
+            // Create reply
             $reply = Message::create([
-                'type' => 'client_to_admin',
-                'name' => $originalMessage->name,
-                'email' => $validated['from_email'],
-                'subject' => $validated['subject'],
-                'message' => $validated['body'],
-                'parent_id' => $originalMessage->id,
-                'user_id' => $originalMessage->user_id,
+                'parent_id' => $message->id,
+                'user_id' => $message->user_id,
+                'subject' => 'Re: ' . $message->subject,
+                'message' => $validated['reply_content'],
+                'type' => 'email_reply',
+                'priority' => $message->priority,
+                'project_id' => $message->project_id,
                 'is_read' => false,
-                'is_replied' => false,
             ]);
 
-            // Send notification to admin about the reply
-            Notifications::send('message.created', $reply);
+            // Mark original message as replied
+            $message->markAsReplied();
 
-            Log::info('Email reply processed successfully', [
-                'reply_id' => $reply->id,
-                'original_message_id' => $originalMessage->id
+            return response()->json([
+                'success' => true,
+                'message' => 'Email reply processed successfully',
+                'reply_id' => $reply->id
             ]);
-
-            return response()->json(['status' => 'processed', 'message_id' => $reply->id]);
 
         } catch (\Exception $e) {
             Log::error('Failed to process email reply webhook: ' . $e->getMessage());
-            return response()->json(['status' => 'error'], 500);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process email reply'
+            ], 500);
         }
     }
 
@@ -757,5 +752,24 @@ class MessageController extends Controller
             'today_messages' => Message::excludeAdminMessages()->whereDate('created_at', today())->count(),
             'urgent_messages' => Message::excludeAdminMessages()->where('priority', 'urgent')->unread()->count(),
         ];
+    }
+    public function getStatisticsApi()
+    {
+        try {
+            $statistics = $this->getStats(); // Use existing method
+
+            return response()->json([
+                'success' => true,
+                'data' => $statistics
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get admin message statistics: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get statistics'
+            ], 500);
+        }
     }
 }

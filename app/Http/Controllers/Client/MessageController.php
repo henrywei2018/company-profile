@@ -35,7 +35,7 @@ class MessageController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        
+
         // Validate filters
         $filters = $request->validate([
             'search' => 'nullable|string|max:255',
@@ -54,10 +54,10 @@ class MessageController extends Controller
 
         // Get message statistics for dashboard
         $statistics = $this->messageService->getMessageStatistics($user);
-        
+
         // Get filter options
         $filterOptions = $this->clientAccessService->getMessageFilters($user);
-        
+
         // Get recent activities
         $recentActivity = $this->messageService->getRecentActivity($user, 5);
 
@@ -76,15 +76,15 @@ class MessageController extends Controller
     public function create(Request $request)
     {
         $user = auth()->user();
-        
+
         // Get user's projects for context selection
         $projects = $this->clientAccessService->getClientProjects($user)
             ->orderBy('title')
             ->get(['id', 'title', 'status']);
-            
+
         // Get available message types
         $messageTypes = $this->getClientMessageTypes();
-        
+
         // Pre-fill data from query parameters
         $prefillData = $request->only(['subject', 'project_id', 'type', 'priority']);
 
@@ -101,7 +101,7 @@ class MessageController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
-        
+
         $validated = $request->validate([
             'subject' => 'required|string|max:255',
             'message' => 'required|string|max:5000',
@@ -143,7 +143,7 @@ class MessageController extends Controller
             $messageData,
             $request->file('attachments', [])
         );
-        
+
         // Clear dashboard cache
         $this->dashboardService->clearCache($user);
 
@@ -155,93 +155,114 @@ class MessageController extends Controller
      * Display the specified message with thread.
      */
     public function show(Message $message)
-    {
-        $user = auth()->user();
-        
-        // Ensure message belongs to authenticated client
-        if (!$this->clientAccessService->canAccessMessage($user, $message)) {
-            abort(403, 'Unauthorized access to this message.');
-        }
-        
-        // Load relationships
-        $message->load([
-            'attachments',
-            'project',
-            'parent',
-            'replies' => fn($q) => $q->orderBy('created_at'),
-            'replies.attachments'
-        ]);
-
-        // Mark as read if it's a message TO the client and unread
-        if (!$message->is_read && $this->isMessageToClient($message)) {
-            $this->messageService->markAsRead($message, $user);
-        }
-
-        // Get conversation thread
-        $thread = $this->messageService->getMessageThread($message);
-        
-        // Get related messages from same project
-        $relatedMessages = collect();
-        if ($message->project_id) {
-            $relatedMessages = $this->clientAccessService->getProjectMessages($user, $message->project_id)
-                ->where('id', '!=', $message->id)
-                ->with(['attachments'])
-                ->orderBy('created_at', 'desc')
-                ->limit(5)
-                ->get();
-        }
-
-        // Check if user can reply to this message
-        $canReply = $this->clientAccessService->canReplyToMessage($user, $message);
-        
-        // Check if user can escalate priority
-        $canEscalate = $this->clientAccessService->canEscalateMessage($user, $message);
-
-        return view('client.messages.show', compact(
-            'message',
-            'thread',
-            'relatedMessages',
-            'canReply',
-            'canEscalate'
-        ));
+{
+    $user = auth()->user();
+    
+    // Ensure message belongs to authenticated client
+    if (!$this->clientAccessService->canAccessMessage($user, $message)) {
+        abort(403, 'Unauthorized access to this message.');
     }
+    
+    // Load all necessary relationships
+    $message->load([
+        'attachments',
+        'project',
+        'user',
+        'parent',
+        'replies' => fn($q) => $q->with(['attachments', 'user'])->orderBy('created_at'),
+    ]);
+
+    // Mark as read if it's a message TO the client and unread
+    if (!$message->is_read && $this->isMessageToClient($message)) {
+        $this->messageService->markAsRead($message, $user);
+        $this->dashboardService->clearCache($user);
+    }
+
+    // Get the complete conversation thread (root + all replies)
+    $thread = $this->messageService->getMessageThread($message);
+    
+    // Get the root message for the conversation
+    $rootMessage = $message->parent_id ? $message->parent : $message;
+    
+    // Get related messages from same project (excluding current thread)
+    $relatedMessages = collect();
+    if ($message->project_id) {
+        $threadMessageIds = $thread->pluck('id')->toArray();
+        $relatedMessages = $this->clientAccessService->getProjectMessages($user, $message->project_id)
+            ->whereNotIn('id', $threadMessageIds)
+            ->with(['attachments'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+    }
+
+    // Check permissions
+    $canReply = $this->clientAccessService->canReplyToMessage($user, $message);
+    $canEscalate = $this->clientAccessService->canEscalateMessage($user, $message);
+
+    return view('client.messages.show', compact(
+        'message',
+        'rootMessage',
+        'thread',
+        'relatedMessages',
+        'canReply',
+        'canEscalate'
+    ));
+}
 
     /**
      * Reply to an admin message.
      */
     public function reply(Request $request, Message $message)
-    {
-        $user = auth()->user();
-        
-        // Security checks
-        if (!$this->clientAccessService->canAccessMessage($user, $message)) {
-            abort(403, 'Unauthorized access to this message.');
-        }
-        
-        if (!$this->clientAccessService->canReplyToMessage($user, $message)) {
-            return redirect()->back()
-                ->with('error', 'You cannot reply to this message.');
-        }
-        
-        $validated = $request->validate([
-            'message' => 'required|string|max:5000',
-            'attachments.*' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif,zip,rar',
-            'attachments' => 'nullable|array|max:5',
-        ]);
+{
+    $user = auth()->user();
+    
+    // Security checks
+    if (!$this->clientAccessService->canAccessMessage($user, $message)) {
+        abort(403, 'Unauthorized access to this message.');
+    }
+    
+    if (!$this->clientAccessService->canReplyToMessage($user, $message)) {
+        return redirect()->back()
+            ->with('error', 'You cannot reply to this message.');
+    }
+    
+    $validated = $request->validate([
+        'message' => 'required|string|max:5000|min:10',
+        'attachments.*' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif,zip,rar',
+        'attachments' => 'nullable|array|max:5',
+    ]);
 
+    try {
+        // Get the root message for threading
+        $rootMessage = $message->parent_id ? $message->parent : $message;
+        
         // Create reply using service
         $reply = $this->messageService->createClientReply(
-            $message,
+            $rootMessage, // Always link to root message for proper threading
             $validated['message'],
             $request->file('attachments', [])
         );
         
+        // Mark original message as replied if it's from admin
+        if ($message->type === 'admin_to_client') {
+            $message->update(['is_replied' => true, 'replied_at' => now()]);
+        }
+        
         // Clear dashboard cache
         $this->dashboardService->clearCache($user);
 
-        return redirect()->route('client.messages.show', $message)
+        return redirect()->route('client.messages.show', $rootMessage)
             ->with('success', 'Reply sent successfully!');
+            
+    } catch (\Exception $e) {
+        \Log::error('Failed to send reply: ' . $e->getMessage());
+        
+        return redirect()->back()
+            ->with('error', 'Failed to send reply. Please try again.')
+            ->withInput();
     }
+}
 
     /**
      * Mark message as urgent (escalate priority).
@@ -249,17 +270,17 @@ class MessageController extends Controller
     public function markUrgent(Message $message)
     {
         $user = auth()->user();
-        
+
         if (!$this->clientAccessService->canEscalateMessage($user, $message)) {
             return redirect()->back()
                 ->with('error', 'You cannot escalate this message priority.');
         }
-        
+
         $message->update(['priority' => 'urgent']);
-        
+
         // Clear dashboard cache
         $this->dashboardService->clearCache($user);
-        
+
         return redirect()->back()
             ->with('success', 'Message marked as urgent. We will prioritize your request.');
     }
@@ -270,7 +291,7 @@ class MessageController extends Controller
     public function toggleRead(Message $message)
     {
         $user = auth()->user();
-        
+
         // Ensure message belongs to authenticated client
         if (!$this->clientAccessService->canAccessMessage($user, $message)) {
             abort(403, 'Unauthorized access to this message.');
@@ -283,7 +304,7 @@ class MessageController extends Controller
             $this->messageService->markAsRead($message, $user);
             $status = 'read';
         }
-        
+
         // Clear dashboard cache
         $this->dashboardService->clearCache($user);
 
@@ -297,13 +318,13 @@ class MessageController extends Controller
     public function projectMessages(Request $request, $projectId)
     {
         $user = auth()->user();
-        
+
         // Verify project access
         $project = \App\Models\Project::findOrFail($projectId);
         if (!$this->clientAccessService->canAccessProject($user, $project)) {
             abort(403, 'Unauthorized access to this project.');
         }
-        
+
         $filters = $request->validate([
             'search' => 'nullable|string|max:255',
             'type' => 'nullable|string',
@@ -311,38 +332,38 @@ class MessageController extends Controller
             'sort' => 'nullable|string|in:created_at,updated_at,subject',
             'direction' => 'nullable|string|in:asc,desc',
         ]);
-        
+
         // Get project messages
         $query = $this->clientAccessService->getProjectMessages($user, $projectId);
-        
+
         // Apply filters
         if (!empty($filters['search'])) {
-            $query->where(function($q) use ($filters) {
+            $query->where(function ($q) use ($filters) {
                 $q->where('subject', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('message', 'like', '%' . $filters['search'] . '%');
+                    ->orWhere('message', 'like', '%' . $filters['search'] . '%');
             });
         }
-        
+
         if (!empty($filters['type'])) {
             $query->where('type', $filters['type']);
         }
-        
+
         if (isset($filters['read'])) {
             $isRead = $filters['read'] === 'read';
             $query->where('is_read', $isRead);
         }
-        
+
         // Sort
         $sortField = $filters['sort'] ?? 'created_at';
         $sortDirection = $filters['direction'] ?? 'desc';
         $query->orderBy($sortField, $sortDirection);
-        
+
         $messages = $query->with(['attachments', 'parent', 'replies'])
             ->paginate(15);
 
         return view('client.messages.project', compact(
-            'messages', 
-            'project', 
+            'messages',
+            'project',
             'filters'
         ));
     }
@@ -353,23 +374,23 @@ class MessageController extends Controller
     public function bulkAction(Request $request)
     {
         $user = auth()->user();
-        
+
         $validated = $request->validate([
             'action' => 'required|string|in:mark_read,mark_unread,delete',
             'message_ids' => 'required|array',
             'message_ids.*' => 'integer|exists:messages,id',
         ]);
-        
+
         // Get messages that belong to the client
         $messages = $this->clientAccessService->getClientMessages($user)
             ->whereIn('id', $validated['message_ids'])
             ->get();
-        
+
         if ($messages->isEmpty()) {
             return redirect()->back()
                 ->with('error', 'No valid messages selected.');
         }
-        
+
         $count = 0;
         foreach ($messages as $message) {
             switch ($validated['action']) {
@@ -379,28 +400,30 @@ class MessageController extends Controller
                         $count++;
                     }
                     break;
-                    
+
                 case 'mark_unread':
                     if ($message->is_read) {
                         $this->messageService->markAsUnread($message);
                         $count++;
                     }
                     break;
-                    
+
                 case 'delete':
                     // Only allow deletion of client's own messages (not admin replies)
-                    if ($message->user_id === $user->id && 
-                        !in_array($message->type, ['admin_to_client'])) {
+                    if (
+                        $message->user_id === $user->id &&
+                        !in_array($message->type, ['admin_to_client'])
+                    ) {
                         $message->delete();
                         $count++;
                     }
                     break;
             }
         }
-        
+
         // Clear dashboard cache
         $this->dashboardService->clearCache($user);
-        
+
         $actionName = str_replace('_', ' ', $validated['action']);
         return redirect()->back()
             ->with('success', "{$count} messages {$actionName}.");
@@ -412,21 +435,21 @@ class MessageController extends Controller
     public function downloadAttachment(Message $message, MessageAttachment $attachment)
     {
         $user = auth()->user();
-        
+
         // Security checks
         if (!$this->clientAccessService->canAccessMessage($user, $message)) {
             abort(403, 'Unauthorized access to this message.');
         }
-        
+
         if ($attachment->message_id !== $message->id) {
             abort(403, 'Invalid attachment for this message.');
         }
-        
+
         // Check if file exists
         if (!Storage::disk('public')->exists($attachment->file_path)) {
             abort(404, 'File not found.');
         }
-        
+
         return Storage::disk('public')->download(
             $attachment->file_path,
             $attachment->file_name
@@ -440,18 +463,123 @@ class MessageController extends Controller
     {
         return [
             'general' => 'General Inquiry',
-            'support' => 'Technical Support', 
+            'support' => 'Technical Support',
             'project_inquiry' => 'Project Related',
             'complaint' => 'Complaint',
             'feedback' => 'Feedback',
         ];
     }
+    public function getStatistics()
+    {
+        $user = auth()->user();
+
+        try {
+            // Use existing MessageService method that already provides all needed data
+            $statistics = $this->messageService->getMessageStatistics($user);
+
+            return response()->json([
+                'success' => true,
+                'data' => $statistics
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get message statistics: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get statistics'
+            ], 500);
+        }
+    }
+    public function markAllAsRead()
+    {
+        $user = auth()->user();
+
+        try {
+            $messages = $this->clientAccessService->getClientMessages($user)
+                ->where('is_read', false)
+                ->get();
+
+            $count = 0;
+            foreach ($messages as $message) {
+                $this->messageService->markAsRead($message, $user);
+                $count++;
+            }
+
+            // Clear dashboard cache
+            $this->dashboardService->clearCache($user);
+
+            // Return updated statistics
+            $updatedStats = $this->messageService->getMessageStatistics($user);
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$count} messages marked as read",
+                'count' => $count,
+                'statistics' => $updatedStats
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to mark all messages as read: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to mark messages as read'
+            ], 500);
+        }
+    }
+    public function apiToggleRead(Message $message)
+    {
+        $user = auth()->user();
+
+        try {
+            // Security check
+            if (!$this->clientAccessService->canAccessMessage($user, $message)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            if ($message->is_read) {
+                $this->messageService->markAsUnread($message);
+                $status = 'unread';
+                $isRead = false;
+            } else {
+                $this->messageService->markAsRead($message, $user);
+                $status = 'read';
+                $isRead = true;
+            }
+
+            // Clear dashboard cache
+            $this->dashboardService->clearCache($user);
+
+            // Get updated statistics
+            $updatedStats = $this->messageService->getMessageStatistics($user);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Message marked as {$status}",
+                'is_read' => $isRead,
+                'status' => $status,
+                'statistics' => $updatedStats
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to toggle message read status: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update message status'
+            ], 500);
+        }
+    }
 
     /**
      * Check if message is directed to client.
      */
-    protected function isMessageToClient(Message $message): bool
-    {
-        return in_array($message->type, ['admin_to_client', 'support_response']);
-    }
+    private function isMessageToClient(Message $message): bool
+{
+    return in_array($message->type, ['admin_to_client', 'support_response']);
+}
 }

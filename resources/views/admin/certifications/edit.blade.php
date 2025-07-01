@@ -145,14 +145,6 @@
                                 dropDescription="Drop new certification file here or click to browse" :instantUpload="true"
                                 :singleMode="true" :replaceMode="true" containerClass="mb-4" theme="modern" />
 
-                            <!-- Traditional Upload Fallback -->
-                            <div class="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded border">
-                                <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                                    Or use traditional upload:
-                                </p>
-                                <input type="file" name="image" accept="image/*,application/pdf"
-                                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                            </div>
                         </div>
                     </div>
                 </x-admin.card>
@@ -187,16 +179,6 @@
                                 </span>
                             </div>
                         @endif
-                    </div>
-                </x-admin.card>
-
-                <!-- Tips -->
-                <x-admin.card title="Tips">
-                    <div class="text-sm text-gray-600 dark:text-gray-400 space-y-2">
-                        <p><strong>Expiry Tracking:</strong> Set reminder notifications before certificates expire.</p>
-                        <p><strong>Image Quality:</strong> Use high-resolution scans for better presentation.</p>
-                        <p><strong>Sorting:</strong> Lower sort numbers appear first in listings.</p>
-                        <p><strong>Status:</strong> Inactive certifications are hidden from public view.</p>
                     </div>
                 </x-admin.card>
             </div>
