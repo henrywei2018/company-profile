@@ -38,54 +38,7 @@
                         <!-- Type and Priority Row -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <!-- Message Type -->
-                            <div>
-                                <label for="type"
-                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Type
-                                </label>
-                                <select id="type" name="type"
-                                    class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                    @foreach ($messageTypes as $value => $label)
-                                        <option value="{{ $value }}"
-                                            {{ old('type', $prefillData['type'] ?? 'general') === $value ? 'selected' : '' }}>
-                                            {{ $label }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('type')
-                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <!-- Priority -->
-                            <div>
-                                <label for="priority"
-                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Priority
-                                </label>
-                                <select id="priority" name="priority"
-                                    class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                    <option value="low"
-                                        {{ old('priority', $prefillData['priority'] ?? 'normal') === 'low' ? 'selected' : '' }}>
-                                        Low</option>
-                                    <option value="normal"
-                                        {{ old('priority', $prefillData['priority'] ?? 'normal') === 'normal' ? 'selected' : '' }}>
-                                        Normal</option>
-                                    <option value="high"
-                                        {{ old('priority', $prefillData['priority'] ?? 'normal') === 'high' ? 'selected' : '' }}>
-                                        High</option>
-                                    <option value="urgent"
-                                        {{ old('priority', $prefillData['priority'] ?? 'normal') === 'urgent' ? 'selected' : '' }}>
-                                        Urgent</option>
-                                </select>
-                                @error('priority')
-                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <!-- Project Selection -->
-                        @if ($projects->count() > 0)
+                            @if ($projects->count() > 0)
                             <div>
                                 <label for="project_id"
                                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -106,6 +59,31 @@
                                 @enderror
                             </div>
                         @endif
+
+                            <!-- Priority -->
+                            <div>
+                                <label for="priority"
+                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Priority
+                                </label>
+                                <select id="priority" name="priority"
+                                    class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                    
+                                    <option value="normal"
+                                        {{ old('priority', $prefillData['priority'] ?? 'normal') === 'normal' ? 'selected' : '' }}>
+                                        Normal</option>
+                                    <option value="urgent"
+                                        {{ old('priority', $prefillData['priority'] ?? 'normal') === 'urgent' ? 'selected' : '' }}>
+                                        Urgent</option>
+                                </select>
+                                @error('priority')
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Project Selection -->
+                        
 
                         <!-- Message Content -->
                         <div>

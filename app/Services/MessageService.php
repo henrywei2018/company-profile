@@ -67,7 +67,7 @@ class MessageService
 
         // Set response deadline for urgent messages
         if ($messageData['priority'] === 'urgent' && !isset($messageData['response_deadline'])) {
-            $messageData['response_deadline'] = now()->addHours(4);
+            $messageData['response_deadline'] = now()->addHours(2);
         }
 
         // Create the message
