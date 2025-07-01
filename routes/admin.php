@@ -437,17 +437,17 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     });
 
     // Certifications
-    Route::resource('certifications', CertificationController::class);
     Route::prefix('certifications')->name('certifications.')->group(function () {
         Route::post('/temp-upload', [CertificationController::class, 'uploadTempImages'])->name('temp-upload');
-        Route::delete('/temp-delete', [CertificationController::class, 'deleteTempImage'])->name('temp-delete');
+        Route::delete('/temp-delete', [CertificationController::class, 'deleteTempImage'])->name('temp-delete'); // Changed back to DELETE
         Route::get('/temp-files', [CertificationController::class, 'getTempFiles'])->name('temp-files');
         Route::post('/cleanup-temp', [CertificationController::class, 'cleanupTempFiles'])->name('cleanup-temp');
-        Route::post('/certifications/{certification}/toggle-active', [CertificationController::class, 'toggleActive'])->name('certifications.toggle-active');
-        Route::post('/certifications/update-order', [CertificationController::class, 'updateOrder'])->name('certifications.update-order');
-
+        Route::post('/{certification}/toggle-active', [CertificationController::class, 'toggleActive'])->name('toggle-active');
+        Route::post('/update-order', [CertificationController::class, 'updateOrder'])->name('update-order');
     });
-    // Posts
+    Route::resource('certifications', CertificationController::class);
+
+        // Posts
     Route::resource('posts', PostController::class)->names('posts');
 
     // Additional custom post routes

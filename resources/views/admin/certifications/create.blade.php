@@ -79,6 +79,10 @@
                             :instantUpload="true" :autoUpload="true" :singleMode="true" containerClass="mb-4"
                             theme="modern" />
                     </div>
+                    <x-temp-files-display sessionKey="certification_temp_files_{{ session()->getId() }}"
+                        title="Upload Status" emptyMessage="No certificate file uploaded yet" :showPreview="true"
+                        :allowDelete="true" deleteEndpoint="{{ route('admin.certifications.temp-delete') }}"
+                        gridCols="grid-cols-1" componentId="cert-temp-display" />
                 </x-admin.card>
             </div>
         </div>
@@ -103,99 +107,180 @@
             </div>
         </div>
     </form>
+        @push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadSummaryCard = document.getElementById('upload-summary-card');
+            const submitBtn = document.getElementById('submit-btn');
+            const traditionalUpload = document.getElementById('traditional-upload-fallback');
 
-    @push('scripts')
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                // Load existing temp files on page load (following banner pattern)
-                loadExistingTempFiles();
+            let hasUploadedFiles = false;
+            let tempDisplayComponent = null;
 
-                // Listen for universal uploader events (following banner pattern)
-                document.addEventListener('files-uploaded', function(event) {
-                    if (event.detail.component && event.detail.component.includes('certification')) {
-                        console.log('Certification file uploaded:', event.detail.files);
-                        // Optional: Hide traditional upload
-                        const traditionalUpload = document.querySelector('input[name="image"]');
-                        if (traditionalUpload) {
-                            traditionalUpload.closest('div').style.display = 'none';
-                        }
-                    }
-                });
-
-                document.addEventListener('files-deleted', function(event) {
-                    if (event.detail.component && event.detail.component.includes('certification')) {
-                        console.log('Certification file deleted');
-                        // Optional: Show traditional upload
-                        const traditionalUpload = document.querySelector('input[name="image"]');
-                        if (traditionalUpload) {
-                            traditionalUpload.closest('div').style.display = 'block';
-                        }
-                    }
-                });
-
-                // Load existing temp files function (following banner pattern)
-                function loadExistingTempFiles() {
-                    fetch('{{ route('admin.certifications.temp-files') }}', {
-                            method: 'GET',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
-                                    'content')
-                            }
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success && data.files.length > 0) {
-                                console.log('Found existing temp files:', data.files);
-
-                                // Find the universal uploader and set existing files
-                                const uploader = document.querySelector('[id*="certification"]');
-                                if (uploader && uploader.__x) {
-                                    // Set existing files in Alpine.js component
-                                    uploader.__x.$data.existingFiles = data.files;
-
-                                    // Hide traditional upload if temp files exist
-                                    const traditionalUpload = document.querySelector('input[name="image"]');
-                                    if (traditionalUpload) {
-                                        traditionalUpload.closest('div').style.display = 'none';
-                                    }
-                                }
-                            } else {
-                                console.log('No existing temp files found');
-                            }
-                        })
-                        .catch(error => {
-                            console.warn('Could not load existing temp files:', error);
-                        });
+            // Get reference to temp display component
+            setTimeout(() => {
+                const tempDisplayElement = document.getElementById('cert-temp-display');
+                if (tempDisplayElement && tempDisplayElement.__x) {
+                    tempDisplayComponent = tempDisplayElement.__x.$data;
+                    
+                    // Override the addFiles method to prevent automatic addition
+                    const originalAddFiles = tempDisplayComponent.addFiles;
+                    tempDisplayComponent.addFiles = function(newFiles) {
+                        console.log('addFiles called, but blocked to prevent duplicates');
+                        // Don't call the original addFiles to prevent duplicates
+                        // Instead, we'll refresh from server
+                        setTimeout(() => {
+                            refreshTempFilesFromServer();
+                        }, 100);
+                    };
                 }
+            }, 100);
 
-                // Form submission handler (following banner pattern)
-                const form = document.querySelector('form');
-                if (form) {
-                    form.addEventListener('submit', function(e) {
-                        console.log('Form submitting with certification data...');
-
-                        // Basic validation
-                        const name = document.querySelector('input[name="name"]')?.value?.trim();
-                        const issuer = document.querySelector('input[name="issuer"]')?.value?.trim();
-
-                        if (!name) {
-                            e.preventDefault();
-                            alert('Please enter a certification name.');
-                            document.querySelector('input[name="name"]')?.focus();
-                            return;
+            // Listen for file uploads from universal uploader
+            document.addEventListener('files-uploaded', function(event) {
+                if (event.detail.component && event.detail.component.includes('certification-uploader')) {
+                    const files = event.detail.files || [];
+                    console.log('Files uploaded event received:', files);
+                    
+                    if (files.length > 0) {
+                        hasUploadedFiles = true;
+                        showUploadSummary(true);
+                        
+                        // Hide traditional upload
+                        if (traditionalUpload) {
+                            traditionalUpload.style.display = 'none';
                         }
 
-                        if (!issuer) {
-                            e.preventDefault();
-                            alert('Please enter the issuing organization.');
-                            document.querySelector('input[name="issuer"]')?.focus();
-                            return;
-                        }
-                    });
+                        // Refresh temp display from server instead of letting it auto-add
+                        setTimeout(() => {
+                            refreshTempFilesFromServer();
+                        }, 200);
+                    }
                 }
             });
-        </script>
-    @endpush
-</x-layouts.admin>
+
+            // Listen for file deletions
+            document.addEventListener('files-deleted', function(event) {
+                if (event.detail.component && (
+                    event.detail.component.includes('certification-uploader') || 
+                    event.detail.component.includes('cert-temp-display')
+                )) {
+                    console.log('File deleted event received');
+                    hasUploadedFiles = false;
+                    showUploadSummary(false);
+                    
+                    // Show traditional upload
+                    if (traditionalUpload) {
+                        traditionalUpload.style.display = 'block';
+                    }
+
+                    // Refresh temp display
+                    setTimeout(() => {
+                        refreshTempFilesFromServer();
+                    }, 100);
+                }
+            });
+
+            // Refresh temp files display from server (authoritative source)
+            function refreshTempFilesFromServer() {
+                fetch('{{ route('admin.certifications.temp-files') }}', {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Server response:', data);
+                    
+                    if (data.success && tempDisplayComponent) {
+                        // Clear existing files first to prevent any accumulation
+                        tempDisplayComponent.files = [];
+                        
+                        // Set files directly from server response
+                        if (data.files && data.files.length > 0) {
+                            tempDisplayComponent.files = [...data.files]; // Create new array to trigger reactivity
+                        }
+
+                        // Update UI state
+                        if (data.files && data.files.length > 0) {
+                            hasUploadedFiles = true;
+                            showUploadSummary(true);
+                            if (traditionalUpload) {
+                                traditionalUpload.style.display = 'none';
+                            }
+                        } else {
+                            hasUploadedFiles = false;
+                            showUploadSummary(false);
+                            if (traditionalUpload) {
+                                traditionalUpload.style.display = 'block';
+                            }
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Could not refresh temp files:', error);
+                });
+            }
+
+            // Show/hide upload summary
+            function showUploadSummary(show) {
+                if (show && uploadSummaryCard) {
+                    uploadSummaryCard.classList.remove('hidden');
+                    if (submitBtn) {
+                        submitBtn.textContent = `{{ isset($certification) ? 'Update' : 'Create' }} Certification (1 file ready)`;
+                    }
+                } else {
+                    if (uploadSummaryCard) {
+                        uploadSummaryCard.classList.add('hidden');
+                    }
+                    if (submitBtn) {
+                        submitBtn.textContent = `{{ isset($certification) ? 'Update Certification' : 'Create Certification' }}`;
+                    }
+                }
+            }
+
+            // Form validation
+            const form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    const name = document.querySelector('input[name="name"]')?.value?.trim();
+                    const issuer = document.querySelector('input[name="issuer"]')?.value?.trim();
+
+                    if (!name) {
+                        e.preventDefault();
+                        alert('Please enter a certification name.');
+                        document.querySelector('input[name="name"]')?.focus();
+                        return;
+                    }
+
+                    if (!issuer) {
+                        e.preventDefault();
+                        alert('Please enter the issuing organization.');
+                        document.querySelector('input[name="issuer"]')?.focus();
+                        return;
+                    }
+
+                    // Show loading state
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = `
+                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Processing...
+                        `;
+                    }
+                });
+            }
+
+            // Initial check for existing files
+            setTimeout(() => {
+                refreshTempFilesFromServer();
+            }, 300);
+        });
+    </script>
+@endpush
+    </x-layouts.admin>

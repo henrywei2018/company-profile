@@ -78,23 +78,23 @@ class CertificationController extends Controller
             'sort_order' => 'nullable|integer|min:0',
             'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf|max:10240', // Traditional upload fallback
         ]);
-        
+
         if (!isset($validated['sort_order'])) {
             $validated['sort_order'] = Certification::max('sort_order') + 1;
         }
-        
+
         // Create certification
         $certification = Certification::create($validated);
-        
+
         // Process temporary files from universal uploader (follows banner pattern)
         $this->processTempImagesFromSession($certification);
-        
+
         // Handle traditional file upload as fallback
         if ($request->hasFile('image')) {
             $path = $this->processFileUpload($request->file('image'));
             $certification->update(['image' => $path]);
         }
-        
+
         return redirect()->route('admin.certifications.index')
             ->with('success', 'Certification created successfully!');
     }
@@ -130,24 +130,24 @@ class CertificationController extends Controller
             'sort_order' => 'nullable|integer|min:0',
             'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf|max:10240', // Traditional upload fallback
         ]);
-        
+
         // Update certification
         $certification->update($validated);
-        
+
         // Process temporary files from universal uploader (follows banner pattern)
         $this->processTempImagesFromSession($certification);
-        
+
         // Handle traditional file upload as fallback
         if ($request->hasFile('image')) {
             // Delete old file if exists
             if ($certification->image) {
                 Storage::disk('public')->delete($certification->image);
             }
-            
+
             $path = $this->processFileUpload($request->file('image'));
             $certification->update(['image' => $path]);
         }
-        
+
         return redirect()->route('admin.certifications.index')
             ->with('success', 'Certification updated successfully!');
     }
@@ -161,10 +161,10 @@ class CertificationController extends Controller
         if ($certification->image) {
             Storage::disk('public')->delete($certification->image);
         }
-        
+
         // Delete certification
         $certification->delete();
-        
+
         return redirect()->route('admin.certifications.index')
             ->with('success', 'Certification deleted successfully!');
     }
@@ -197,49 +197,42 @@ class CertificationController extends Controller
         }
 
         return response()->json(['success' => true]);
-    }public function uploadTempImages(Request $request)
+    }
+    public function uploadTempImages(Request $request)
     {
         try {
             $request->validate([
-                'certification_files' => 'required|file|mimes:jpeg,png,jpg,gif,pdf|max:10240',
+                'certification_files' => 'required|file|mimes:jpeg,png,jpg,gif,webp,pdf|max:10240',
             ]);
 
             $file = $request->file('certification_files');
-            
-            // Generate unique temp identifier (following banner pattern)
-            $tempId = 'temp_certification_' . uniqid() . '_' . time();
-            $tempFilename = $tempId . '.' . $file->getClientOriginalExtension();
-            $tempPath = $file->storeAs('temp/certifications', $tempFilename, 'public');
-
-            // Enhanced temp file metadata (following banner pattern)
-            $tempFileData = [
-                'temp_id' => $tempId,
-                'temp_path' => $tempPath,
-                'original_name' => $file->getClientOriginalName(),
-                'file_size' => $file->getSize(),
-                'mime_type' => $file->getMimeType(),
-                'uploaded_at' => now()->toISOString(),
-                'session_id' => session()->getId()
-            ];
-
-            // Store in session (following banner pattern)
             $sessionKey = 'certification_temp_files_' . session()->getId();
+
+            // ALWAYS clear existing temp file for single file mode
+            $existingTempData = session()->get($sessionKey);
+            if ($existingTempData && isset($existingTempData['temp_path'])) {
+                if (Storage::disk('public')->exists($existingTempData['temp_path'])) {
+                    Storage::disk('public')->delete($existingTempData['temp_path']);
+                }
+            }
+
+            // Process new file upload with CLEAN data structure
+            $tempFileData = $this->processTemporaryFileUpload($file);
+
+            // Store in session
             session()->put($sessionKey, $tempFileData);
 
+            \Log::info("Certification temp file uploaded", [
+                'session_key' => $sessionKey,
+                'temp_id' => $tempFileData['temp_id'],
+                'file_name' => $tempFileData['original_name']
+            ]);
+
+            // Return SINGLE file in array (for universal uploader compatibility)
             return response()->json([
                 'success' => true,
-                'message' => 'File uploaded successfully!',
-                'files' => [[
-                    'id' => $tempId,
-                    'temp_id' => $tempId,
-                    'name' => 'Certification File',
-                    'file_name' => $file->getClientOriginalName(),
-                    'url' => Storage::disk('public')->url($tempPath),
-                    'size' => $this->formatFileSize($file->getSize()),
-                    'type' => str_starts_with($file->getMimeType(), 'image/') ? 'image' : 'pdf',
-                    'is_temp' => true,
-                    'created_at' => now()->format('M j, Y H:i')
-                ]]
+                'message' => 'Certificate file uploaded successfully!',
+                'files' => [$this->formatFileForDisplay($tempFileData)]
             ]);
 
         } catch (\Exception $e) {
@@ -257,44 +250,115 @@ class CertificationController extends Controller
     public function deleteTempImage(Request $request)
     {
         try {
-            // Handle both JSON and form data (following banner pattern)
-            $input = [];
+            $tempId = null;
+
+            // Handle DELETE request with JSON body
             if ($request->isJson()) {
-                $input = $request->json()->all();
+                $jsonData = $request->json()->all();
+                $tempId = $jsonData['temp_id'] ?? $jsonData['id'] ?? $jsonData['file_id'] ?? null;
+
+                \Log::info('DELETE request JSON data:', $jsonData);
             } else {
-                $input = $request->all();
+                // Handle form data or query parameters
+                $tempId = $request->input('temp_id') ??
+                    $request->input('id') ??
+                    $request->input('file_id') ??
+                    $request->query('temp_id') ??
+                    $request->query('id');
             }
-            
-            $tempId = $input['temp_id'] ?? $input['id'] ?? $request->input('temp_id') ?? $request->input('id') ?? $request->getContent();
-            
+
+            // If still no temp_id, try raw content
+            if (empty($tempId)) {
+                $content = $request->getContent();
+                if (!empty($content) && $content !== '{}') {
+                    // Try to decode JSON from raw content
+                    $decoded = json_decode($content, true);
+                    if (is_array($decoded)) {
+                        $tempId = $decoded['temp_id'] ?? $decoded['id'] ?? $decoded['file_id'] ?? null;
+                    } else {
+                        // Use raw content as temp_id
+                        $tempId = $content;
+                    }
+                }
+            }
+
+            \Log::info('Certification temp file deletion attempt', [
+                'method' => $request->method(),
+                'temp_id' => $tempId,
+                'content_type' => $request->header('Content-Type'),
+                'raw_content' => $request->getContent(),
+                'is_json' => $request->isJson(),
+                'session_id' => session()->getId()
+            ]);
+
+            if (empty($tempId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No file ID provided'
+                ], 400);
+            }
+
             $sessionKey = 'certification_temp_files_' . session()->getId();
             $tempFileData = session()->get($sessionKey);
 
-            if ($tempFileData && $tempFileData['temp_id'] === $tempId) {
-                // Delete physical file
-                if (Storage::disk('public')->exists($tempFileData['temp_path'])) {
-                    Storage::disk('public')->delete($tempFileData['temp_path']);
-                }
-
-                // Remove from session
-                session()->forget($sessionKey);
+            if (!$tempFileData) {
+                \Log::warning('No temp file data found in session', [
+                    'session_key' => $sessionKey,
+                    'temp_id' => $tempId
+                ]);
 
                 return response()->json([
-                    'success' => true,
-                    'message' => 'File deleted successfully!'
-                ]);
+                    'success' => false,
+                    'message' => 'No temporary file found in session'
+                ], 404);
             }
 
+            // Verify this is the correct file (if temp_id is provided)
+            if (isset($tempFileData['temp_id']) && $tempFileData['temp_id'] !== $tempId) {
+                \Log::warning('Temp ID mismatch', [
+                    'provided_temp_id' => $tempId,
+                    'session_temp_id' => $tempFileData['temp_id']
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File not found or ID mismatch'
+                ], 404);
+            }
+
+            // Delete physical file
+            if (isset($tempFileData['temp_path']) && Storage::disk('public')->exists($tempFileData['temp_path'])) {
+                Storage::disk('public')->delete($tempFileData['temp_path']);
+                \Log::info('Physical file deleted', ['path' => $tempFileData['temp_path']]);
+            }
+
+            // Clear from session
+            session()->forget($sessionKey);
+
+            \Log::info("Certification temp file deleted successfully", [
+                'session_key' => $sessionKey,
+                'temp_id' => $tempId,
+                'file_path' => $tempFileData['temp_path'] ?? 'unknown',
+                'user_id' => auth()->id()
+            ]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'File not found'
-            ], 404);
+                'success' => true,
+                'message' => 'Certificate file deleted successfully!'
+            ]);
 
         } catch (\Exception $e) {
-            \Log::error('Certification temp file deletion failed: ' . $e->getMessage());
+            \Log::error('Certification temp file deletion failed', [
+                'error' => $e->getMessage(),
+                'temp_id' => $tempId ?? 'unknown',
+                'session_id' => session()->getId(),
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete file: ' . $e->getMessage()
+                'message' => 'Failed to delete certificate file: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -303,57 +367,61 @@ class CertificationController extends Controller
      * Get temporary files info (following banner pattern)
      */
     public function getTempFiles(Request $request)
+{
+    try {
+        $sessionKey = 'certification_temp_files_' . session()->getId();
+        $tempFileData = session()->get($sessionKey);
+        
+        $files = [];
+        if ($tempFileData && Storage::disk('public')->exists($tempFileData['temp_path'])) {
+            $files[] = $this->formatFileForDisplay($tempFileData);
+        }
+
+        return response()->json([
+            'success' => true,
+            'files' => $files
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Failed to get certification temp files: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to get temporary files'
+        ], 500);
+    }
+}
+    protected function clearExistingTempFile($sessionKey)
     {
-        try {
-            $sessionKey = 'certification_temp_files_' . session()->getId();
-            $tempFileData = session()->get($sessionKey);
-            
-            $files = [];
-            if ($tempFileData && Storage::disk('public')->exists($tempFileData['temp_path'])) {
-                $files[] = [
-                    'id' => $tempFileData['temp_id'],
-                    'temp_id' => $tempFileData['temp_id'],
-                    'name' => 'Certification File',
-                    'file_name' => $tempFileData['original_name'],
-                    'url' => Storage::disk('public')->url($tempFileData['temp_path']),
-                    'size' => $this->formatFileSize($tempFileData['file_size']),
-                    'type' => str_starts_with($tempFileData['mime_type'], 'image/') ? 'image' : 'pdf',
-                    'is_temp' => true,
-                    'created_at' => \Carbon\Carbon::parse($tempFileData['uploaded_at'])->format('M j, Y H:i')
-                ];
+        $existingTempData = session()->get($sessionKey);
+
+        if ($existingTempData && isset($existingTempData['temp_path'])) {
+            // Delete physical file
+            if (Storage::disk('public')->exists($existingTempData['temp_path'])) {
+                Storage::disk('public')->delete($existingTempData['temp_path']);
+                \Log::info('Deleted existing temp file', ['path' => $existingTempData['temp_path']]);
             }
 
-            return response()->json([
-                'success' => true,
-                'files' => $files
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Failed to get temp files: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get temporary files'
-            ], 500);
+            // Clear session
+            session()->forget($sessionKey);
         }
     }
     public function cleanupTempFiles(Request $request)
     {
         try {
             $sessionKey = 'certification_temp_files_' . session()->getId();
-            $tempFileData = session()->get($sessionKey);
+            $this->clearExistingTempFile($sessionKey);
 
-            if ($tempFileData && isset($tempFileData['temp_path'])) {
-                if (Storage::disk('public')->exists($tempFileData['temp_path'])) {
-                    Storage::disk('public')->delete($tempFileData['temp_path']);
-                }
-                session()->forget($sessionKey);
-            }
-
-            return response()->json(['success' => true]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Temporary files cleaned up successfully'
+            ]);
 
         } catch (\Exception $e) {
             \Log::error('Certification temp file cleanup failed: ' . $e->getMessage());
-            return response()->json(['success' => false], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cleanup temporary files'
+            ], 500);
         }
     }
 
@@ -366,17 +434,27 @@ class CertificationController extends Controller
         $tempFileData = session()->get($sessionKey);
 
         if (empty($tempFileData)) {
+            \Log::info('No temp files found for certification', [
+                'certification_id' => $certification->id,
+                'session_key' => $sessionKey
+            ]);
             return;
         }
 
         try {
             if (!Storage::disk('public')->exists($tempFileData['temp_path'])) {
                 \Log::warning('Temporary file not found during processing: ' . $tempFileData['temp_path']);
+                session()->forget($sessionKey);
                 return;
             }
 
             $this->moveTempFileToPermanent($tempFileData, $certification);
-            
+
+            \Log::info('Successfully processed temp file for certification', [
+                'certification_id' => $certification->id,
+                'temp_file' => $tempFileData['original_name']
+            ]);
+
         } catch (\Exception $e) {
             \Log::error('Failed to process temp file: ' . $e->getMessage(), [
                 'certification_id' => $certification->id,
@@ -386,10 +464,33 @@ class CertificationController extends Controller
 
         // Clear processed temporary file from session
         session()->forget($sessionKey);
-        
-        // Also cleanup any physical temp files for this session
+
+        // Also cleanup any other temp files for this session
         $this->cleanupSessionTempFiles(session()->getId());
     }
+    protected function processTemporaryFileUpload($file)
+{
+    $tempId = 'cert_temp_' . time() . '_' . Str::random(8);
+    $filename = $tempId . '.' . $file->getClientOriginalExtension();
+    
+    // Store file
+    $storedPath = $file->storeAs('temp/certifications', $filename, 'public');
+
+    if (!$storedPath) {
+        throw new \Exception('Failed to store temporary file');
+    }
+
+    // Return CLEAN data structure (only what we need)
+    return [
+        'temp_id' => $tempId,
+        'temp_path' => $storedPath,
+        'original_name' => $file->getClientOriginalName(),
+        'file_size' => $file->getSize(),
+        'mime_type' => $file->getMimeType(),
+        'uploaded_at' => now()->toISOString(),
+        'session_id' => session()->getId()
+    ];
+}
 
     /**
      * Move temporary file to permanent location (following banner pattern)
@@ -398,7 +499,7 @@ class CertificationController extends Controller
     {
         try {
             $tempPath = $tempFileData['temp_path'];
-            
+
             if (!Storage::disk('public')->exists($tempPath)) {
                 throw new \Exception('Temporary file not found: ' . $tempPath);
             }
@@ -416,14 +517,14 @@ class CertificationController extends Controller
             if (Storage::disk('public')->move($tempPath, $permanentPath)) {
                 // Update certification with new file path
                 $certification->update(['image' => $permanentPath]);
-                
+
                 \Log::info('Temporary file moved to permanent location', [
                     'certification_id' => $certification->id,
                     'from' => $tempPath,
                     'to' => $permanentPath,
                     'original_name' => $tempFileData['original_name']
                 ]);
-                
+
                 return $permanentPath;
             } else {
                 throw new \Exception('Failed to move file from temp to permanent location');
@@ -446,10 +547,10 @@ class CertificationController extends Controller
         if (!$extension) {
             $extension = pathinfo($originalName, PATHINFO_EXTENSION);
         }
-        
+
         $timestamp = now()->format('YmdHis');
         $random = Str::random(6);
-        
+
         return "certification_{$certificationId}_{$timestamp}_{$random}.{$extension}";
     }
 
@@ -460,7 +561,7 @@ class CertificationController extends Controller
     {
         try {
             $tempDir = 'temp/certifications';
-            
+
             if (!Storage::disk('public')->exists($tempDir)) {
                 return;
             }
@@ -471,9 +572,11 @@ class CertificationController extends Controller
             foreach ($files as $file) {
                 // Check if file belongs to this session or is old
                 $filename = basename($file);
-                if (str_contains($filename, $sessionId) || 
-                    Storage::disk('public')->lastModified($file) < now()->subHours(1)->timestamp) {
-                    
+                if (
+                    str_contains($filename, $sessionId) ||
+                    Storage::disk('public')->lastModified($file) < now()->subHours(1)->timestamp
+                ) {
+
                     Storage::disk('public')->delete($file);
                     $deletedCount++;
                 }
@@ -500,15 +603,33 @@ class CertificationController extends Controller
         }
     }
 
-    /**
-     * Format file size helper (following banner pattern)
-     */
     protected function formatFileSize($bytes)
     {
-        if ($bytes === 0) return '0 Bytes';
-        $k = 1024;
-        $sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        $i = floor(log($bytes, $k));
-        return number_format($bytes / pow($k, $i), 2) . ' ' . $sizes[$i];
+        if ($bytes >= 1073741824) {
+            return number_format($bytes / 1073741824, 2) . ' GB';
+        } elseif ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 2) . ' MB';
+        } elseif ($bytes >= 1024) {
+            return number_format($bytes / 1024, 2) . ' KB';
+        } else {
+            return $bytes . ' bytes';
+        }
     }
+    protected function formatFileForDisplay(array $tempFileData)
+{
+    return [
+        'id' => $tempFileData['temp_id'],
+        'temp_id' => $tempFileData['temp_id'],
+        'name' => 'Certification File',
+        'file_name' => $tempFileData['original_name'],
+        'file_path' => $tempFileData['temp_path'],
+        'file_type' => $tempFileData['mime_type'],
+        'url' => Storage::disk('public')->url($tempFileData['temp_path']),
+        'size' => $this->formatFileSize($tempFileData['file_size']),
+        'type' => str_starts_with($tempFileData['mime_type'], 'image/') ? 'image' : 'pdf',
+        'is_temp' => true,
+        'category' => 'certification',
+        'created_at' => \Carbon\Carbon::parse($tempFileData['uploaded_at'])->format('M j, Y H:i')
+    ];
+}
 }
