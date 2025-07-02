@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\MessageAttachment;
+
 use App\Services\ClientAccessService;
 use App\Services\MessageService;
 use App\Services\DashboardService;
@@ -13,6 +14,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Http\JsonResponse;
+use App\Models\User;
+
 
 class MessageController extends Controller
 {
@@ -460,10 +464,12 @@ class MessageController extends Controller
     {
         $user = auth()->user();
 
+        // Validate request
         $validated = $request->validate([
-            'action' => 'required|string|in:mark_read,mark_unread,delete',
-            'message_ids' => 'required|array|min:1|max:100', // Add limits for safety
+            'action' => 'required|string|in:mark_read,mark_unread,delete,delete_thread,archive',
+            'message_ids' => 'required|array|min:1',
             'message_ids.*' => 'integer|exists:messages,id',
+            'force' => 'sometimes|boolean', // For admin force delete
         ]);
 
         // Security check: Get only messages that belong to the client
@@ -474,6 +480,21 @@ class MessageController extends Controller
 
         if (empty($allowedMessageIds)) {
             return $this->bulkActionResponse('error', 'No valid messages selected.', 0);
+        }
+
+        // Validate bulk operation permissions
+        $validation = $this->messageService->validateBulkOperation(
+            $validated['action'], 
+            $allowedMessageIds, 
+            $user
+        );
+
+        if (!$validation['valid']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Operation not allowed',
+                'errors' => $validation['errors']
+            ], 400);
         }
 
         $count = 0;
@@ -492,8 +513,27 @@ class MessageController extends Controller
                     break;
 
                 case 'delete':
-                    $count = $this->handleBulkDelete($allowedMessageIds, $user);
+                    // Single message deletion (current behavior)
+                    $count = $this->messageService->bulkDeleteMessages($allowedMessageIds, $user, [
+                        'delete_threads' => false
+                    ]);
                     break;
+
+                case 'delete_thread':
+                    // Delete thread participation
+                    $count = $this->messageService->bulkDeleteMessages($allowedMessageIds, $user, [
+                        'delete_threads' => true
+                    ]);
+                    $actionName = 'conversations deleted';
+                    break;
+
+                case 'archive':
+                    // Archive messages (safer alternative)
+                    $count = $this->messageService->clientBulkArchive($allowedMessageIds, $user);
+                    break;
+
+                default:
+                    throw new \Exception('Invalid action specified');
             }
 
             // Clear dashboard cache after successful operation
@@ -501,7 +541,6 @@ class MessageController extends Controller
 
             DB::commit();
 
-            // Log bulk action for audit
             Log::info('Bulk action performed', [
                 'user_id' => $user->id,
                 'action' => $validated['action'],
@@ -509,7 +548,17 @@ class MessageController extends Controller
                 'message_ids' => $allowedMessageIds
             ]);
 
-            return $this->bulkActionResponse('success', "{$count} messages {$actionName}.", $count);
+            $responseData = ['warnings' => $validation['warnings']];
+            
+            // Add warnings if any
+            if (!empty($validation['warnings'])) {
+                $message = "{$count} {$actionName} completed with warnings";
+                $response = $this->bulkActionResponse('success', $message, $count, $responseData);
+                return $response;
+            }
+
+            $message = "{$count} {$actionName} completed successfully";
+            return $this->bulkActionResponse('success', $message, $count, $responseData);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -521,7 +570,7 @@ class MessageController extends Controller
                 'error' => $e->getMessage()
             ]);
 
-            return $this->bulkActionResponse('error', 'Failed to perform bulk action. Please try again.', 0);
+            return $this->bulkActionResponse('error', 'Failed to perform bulk action: ' . $e->getMessage(), 0);
         }
     }
 
@@ -659,57 +708,57 @@ class MessageController extends Controller
     }
 
    
-public function downloadAttachment(Message $message, $attachmentId)
-{
-    $user = auth()->user();
+    public function downloadAttachment(Message $message, $attachmentId)
+    {
+        $user = auth()->user();
 
-    try {
-        // Only check if user can access the message
-        if (!$this->clientAccessService->canAccessMessage($user, $message)) {
-            abort(403, 'Unauthorized access to this message.');
-        }
+        try {
+            // Only check if user can access the message
+            if (!$this->clientAccessService->canAccessMessage($user, $message)) {
+                abort(403, 'Unauthorized access to this message.');
+            }
 
-        // Find the attachment by ID (no need to check message relationship)
-        $attachment = MessageAttachment::findOrFail($attachmentId);
+            // Find the attachment by ID (no need to check message relationship)
+            $attachment = MessageAttachment::findOrFail($attachmentId);
 
-        // Check if file exists
-        if (!Storage::disk('public')->exists($attachment->file_path)) {
-            Log::warning('Attachment file not found', [
+            // Check if file exists
+            if (!Storage::disk('public')->exists($attachment->file_path)) {
+                Log::warning('Attachment file not found', [
+                    'user_id' => $user->id,
+                    'message_id' => $message->id,
+                    'attachment_id' => $attachmentId,
+                    'file_path' => $attachment->file_path
+                ]);
+                abort(404, 'File not found.');
+            }
+
+            Log::info('Attachment downloaded', [
                 'user_id' => $user->id,
                 'message_id' => $message->id,
                 'attachment_id' => $attachmentId,
-                'file_path' => $attachment->file_path
+                'file_name' => $attachment->file_name
             ]);
-            abort(404, 'File not found.');
+
+            // Return the file download
+            return Storage::disk('public')->download(
+                $attachment->file_path,
+                $attachment->file_name
+            );
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            abort(404, 'Attachment not found.');
+            
+        } catch (\Exception $e) {
+            Log::error('Attachment download failed', [
+                'user_id' => $user->id,
+                'message_id' => $message->id,
+                'attachment_id' => $attachmentId,
+                'error' => $e->getMessage()
+            ]);
+
+            abort(500, 'Download failed. Please try again.');
         }
-
-        Log::info('Attachment downloaded', [
-            'user_id' => $user->id,
-            'message_id' => $message->id,
-            'attachment_id' => $attachmentId,
-            'file_name' => $attachment->file_name
-        ]);
-
-        // Return the file download
-        return Storage::disk('public')->download(
-            $attachment->file_path,
-            $attachment->file_name
-        );
-
-    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-        abort(404, 'Attachment not found.');
-        
-    } catch (\Exception $e) {
-        Log::error('Attachment download failed', [
-            'user_id' => $user->id,
-            'message_id' => $message->id,
-            'attachment_id' => $attachmentId,
-            'error' => $e->getMessage()
-        ]);
-
-        abort(500, 'Download failed. Please try again.');
     }
-}
 
     public function uploadTempAttachment(Request $request)
     {
@@ -728,7 +777,7 @@ public function downloadAttachment(Message $message, $attachmentId)
             
             // Ensure directory exists
             if (!Storage::disk('public')->exists($directory)) {
-                Storage::disk('public')->makeDirectory($directory, 0755, true);
+                Storage::disk('public')->makeDirectory($directory);
             }
 
             foreach ($request->file('files') as $file) {
@@ -793,9 +842,32 @@ public function downloadAttachment(Message $message, $attachmentId)
         }
     }
 
-    /**
-     * Delete temporary attachment - FIXED FOR UNIVERSAL UPLOADER
-     */
+    public function destroy(Message $message)
+    {
+        $user = auth()->user();
+
+        try {
+            // Get deletion options for UI feedback
+            $options = $this->messageService->getClientDeletionOptions($message, $user);
+            
+            if (!$options['can_delete']) {
+                return redirect()->back()
+                    ->with('error', 'You cannot delete this message');
+            }
+
+            // Use the new client-safe deletion
+            $this->messageService->deleteMessageForClient($message, $user, [
+                'delete_thread' => request('delete_thread', false)
+            ]);
+
+            return redirect()->route('client.messages.index')
+                ->with('success', 'Message deleted successfully');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', $e->getMessage());
+        }
+    }
     public function deleteTempAttachment(Request $request)
     {
         try {
@@ -995,11 +1067,6 @@ public function downloadAttachment(Message $message, $attachmentId)
         }
     }
 
-    // ===== API METHODS =====
-
-    /**
-     * Get message statistics for AJAX
-     */
     public function getStatistics()
     {
         $user = auth()->user();
@@ -1110,12 +1177,22 @@ public function downloadAttachment(Message $message, $attachmentId)
             ], 500);
         }
     }
+    public function archive(Message $message)
+    {
+        $user = auth()->user();
 
-    // ===== PRIVATE HELPER METHODS =====
+        try {
+            $this->messageService->archiveMessageForClient($message, $user);
+            
+            return redirect()->route('client.messages.index')
+                ->with('success', 'Message archived successfully');
 
-    /**
-     * Auto-mark messages as read when viewing thread
-     */
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', $e->getMessage());
+        }
+    }
+
     private function autoMarkMessagesAsRead($thread, $user)
     {
         $markedCount = 0;
@@ -1168,53 +1245,6 @@ public function downloadAttachment(Message $message, $attachmentId)
             'support_response',
             'admin_reply'
         ]);
-    }
-
-    /**
-     * Handle bulk delete with proper security checks
-     */
-    private function handleBulkDelete(array $messageIds, $user): int
-    {
-        // Get messages that can be deleted (client's own messages, not admin replies)
-        $deletableMessages = Message::whereIn('id', $messageIds)
-            ->where('user_id', $user->id)
-            ->whereNotIn('type', ['admin_to_client', 'admin_reply'])
-            ->get();
-
-        $deletedCount = 0;
-
-        foreach ($deletableMessages as $message) {
-            try {
-                // Delete attachments first (will be handled by model event)
-                $message->delete();
-                $deletedCount++;
-            } catch (\Exception $e) {
-                Log::warning('Failed to delete message in bulk action', [
-                    'message_id' => $message->id,
-                    'user_id' => $user->id,
-                    'error' => $e->getMessage()
-                ]);
-                // Continue with other messages
-            }
-        }
-
-        return $deletedCount;
-    }
-
-    /**
-     * Return consistent response for bulk actions
-     */
-    private function bulkActionResponse(string $type, string $message, int $count)
-    {
-        if (request()->expectsJson()) {
-            return response()->json([
-                'success' => $type === 'success',
-                'message' => $message,
-                'count' => $count
-            ], $type === 'success' ? 200 : 422);
-        }
-
-        return redirect()->back()->with($type, $message);
     }
 
     /**
@@ -1322,5 +1352,162 @@ public function downloadAttachment(Message $message, $attachmentId)
             'complaint' => 'Complaint',
             'feedback' => 'Feedback',
         ];
+    }
+    public function getBulkActions()
+    {
+        $user = auth()->user();
+        $options = $this->messageService->getBulkOperationOptions($user);
+
+        return response()->json([
+            'success' => true,
+            'actions' => $options['available_operations'],
+            'default_delete_mode' => $options['default_delete_mode'],
+            'recommended_operation' => $options['recommended_operation'] ?? null,
+        ]);
+    }
+    private function bulkActionResponse(string $type, string $message, int $count, array $extra = []): JsonResponse
+    {
+        $response = [
+            'success' => $type === 'success',
+            'message' => $message,
+            'count' => $count,
+        ];
+
+        if ($type === 'success') {
+            // Get updated statistics after successful operation
+            try {
+                $response['statistics'] = $this->messageService->getMessageStatistics(auth()->user());
+            } catch (\Exception $e) {
+                // Don't fail the response if stats fail
+                Log::warning('Failed to get updated statistics after bulk action', [
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        return response()->json(array_merge($response, $extra));
+    }
+
+    /**
+     * Bulk action with confirmation (for destructive actions)
+     */
+    public function bulkActionWithConfirmation(Request $request)
+    {
+        $user = auth()->user();
+
+        $validated = $request->validate([
+            'action' => 'required|string|in:delete,delete_thread',
+            'message_ids' => 'required|array|min:1',
+            'message_ids.*' => 'integer|exists:messages,id',
+            'confirmed' => 'required|boolean',
+        ]);
+
+        if (!$validated['confirmed']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Action requires confirmation',
+                'requires_confirmation' => true
+            ], 400);
+        }
+
+        // Get security-filtered message IDs
+        $allowedMessageIds = $this->clientAccessService->getClientMessages($user)
+            ->whereIn('id', $validated['message_ids'])
+            ->pluck('id')
+            ->toArray();
+
+        if (empty($allowedMessageIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No valid messages selected'
+            ], 400);
+        }
+
+        // Get deletion impact information
+        $impactInfo = $this->getActionImpactInfo($validated['action'], $allowedMessageIds, $user);
+
+        if ($impactInfo['high_impact']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This action has high impact',
+                'impact_info' => $impactInfo,
+                'requires_double_confirmation' => true
+            ], 400);
+        }
+
+        // Proceed with the action
+        return $this->bulkAction($request);
+    }
+
+    /**
+     * Get impact information for destructive actions
+     */
+    private function getActionImpactInfo(string $action, array $messageIds, User $user): array
+    {
+        $messages = Message::whereIn('id', $messageIds)
+            ->where('user_id', $user->id)
+            ->get();
+
+        $impactInfo = [
+            'total_messages' => $messages->count(),
+            'urgent_messages' => $messages->where('priority', 'urgent')->count(),
+            'replied_messages' => $messages->where('is_replied', true)->count(),
+            'project_linked' => $messages->whereNotNull('project_id')->count(),
+            'with_attachments' => $messages->filter(fn($m) => $m->attachments()->count() > 0)->count(),
+            'high_impact' => false,
+        ];
+
+        // Determine if this is high impact
+        $impactInfo['high_impact'] = 
+            $impactInfo['urgent_messages'] > 0 || 
+            $impactInfo['replied_messages'] > 5 || 
+            $impactInfo['project_linked'] > 3;
+
+        return $impactInfo;
+    }
+
+    /**
+     * Preview bulk action results (without executing)
+     */
+    public function previewBulkAction(Request $request)
+    {
+        $user = auth()->user();
+
+        $validated = $request->validate([
+            'action' => 'required|string|in:mark_read,mark_unread,delete,delete_thread,archive',
+            'message_ids' => 'required|array|min:1',
+            'message_ids.*' => 'integer|exists:messages,id',
+        ]);
+
+        // Get security-filtered message IDs
+        $allowedMessageIds = $this->clientAccessService->getClientMessages($user)
+            ->whereIn('id', $validated['message_ids'])
+            ->pluck('id')
+            ->toArray();
+
+        // Validate operation
+        $validation = $this->messageService->validateBulkOperation(
+            $validated['action'], 
+            $allowedMessageIds, 
+            $user
+        );
+
+        // Get preview information
+        $preview = [
+            'action' => $validated['action'],
+            'total_selected' => count($validated['message_ids']),
+            'valid_messages' => count($allowedMessageIds),
+            'invalid_messages' => count($validated['message_ids']) - count($allowedMessageIds),
+            'validation' => $validation,
+        ];
+
+        if (in_array($validated['action'], ['delete', 'delete_thread'])) {
+            $preview['impact_info'] = $this->getActionImpactInfo($validated['action'], $allowedMessageIds, $user);
+        }
+
+        return response()->json([
+            'success' => true,
+            'preview' => $preview
+        ]);
     }
 }
