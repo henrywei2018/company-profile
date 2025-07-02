@@ -103,149 +103,149 @@ class MessageController extends Controller
      * Store a newly created message - COMPLETE WITH ALL FIELDS
      */
     public function store(Request $request)
-{
-    $user = auth()->user();
-    
+    {
+        $user = auth()->user();
 
-    try {
-        // Simplified validation - remove the 'type' field validation
-        $validated = $request->validate([
-            'priority' => 'nullable|in:normal,urgent',
-            'subject' => 'required|string|max:255',
-            'message' => 'required|string|min:10',
-            'temp_files' => 'nullable|string',
-            'project_id' => 'nullable|exists:projects,id', // if you have project selection
-        ]);
-        
-        Log::info('Validation passed', ['validated_data' => $validated]);
 
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        Log::error('Validation failed', [
-            'user_id' => $user->id,
-            'errors' => $e->errors(),
-            'request_data' => $request->except(['temp_files', '_token'])
-        ]);
-        throw $e;
-    }
-
-    try {
-        DB::beginTransaction();
-        
-        Log::info('Database transaction started');
-
-        // Create the message - always set type to 'client_to_admin'
-        $messageData = [
-            'type' => 'client_to_admin',
-            'name' => $user->name,
-            'email' => $user->email,
-            'phone' => $user->phone,
-            'company' => $user->company,
-            'subject' => $validated['subject'],
-            'message' => $validated['message'],
-            'priority' => $validated['priority'] ?? 'normal',
-            'user_id' => $user->id,
-            'project_id' => $validated['project_id'] ?? null, // if you have project selection
-            'is_read' => false,
-            'is_replied' => false,
-        ];
-        
-        Log::info('Creating message with data', $messageData);
-        
-        $message = Message::create($messageData);
-        
-        Log::info('Message created successfully', [
-            'message_id' => $message->id,
-            'message_type' => $message->type
-        ]);
-
-        // Handle temp files if any
-        $attachmentCount = 0;
-        if ($request->filled('temp_files')) {
-            Log::info('Processing temp files', [
-                'temp_files_raw' => $request->input('temp_files')
+        try {
+            // Simplified validation - remove the 'type' field validation
+            $validated = $request->validate([
+                'priority' => 'nullable|in:normal,urgent',
+                'subject' => 'required|string|max:255',
+                'message' => 'required|string|min:10',
+                'temp_files' => 'nullable|string',
+                'project_id' => 'nullable|exists:projects,id', // if you have project selection
             ]);
-            
-            $tempFilePaths = json_decode($request->input('temp_files'), true);
-            
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                Log::error('JSON decode error for temp_files', [
-                    'json_error' => json_last_error_msg(),
+
+            Log::info('Validation passed', ['validated_data' => $validated]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation failed', [
+                'user_id' => $user->id,
+                'errors' => $e->errors(),
+                'request_data' => $request->except(['temp_files', '_token'])
+            ]);
+            throw $e;
+        }
+
+        try {
+            DB::beginTransaction();
+
+            Log::info('Database transaction started');
+
+            // Create the message - always set type to 'client_to_admin'
+            $messageData = [
+                'type' => 'client_to_admin',
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'company' => $user->company,
+                'subject' => $validated['subject'],
+                'message' => $validated['message'],
+                'priority' => $validated['priority'] ?? 'normal',
+                'user_id' => $user->id,
+                'project_id' => $validated['project_id'] ?? null, // if you have project selection
+                'is_read' => false,
+                'is_replied' => false,
+            ];
+
+            Log::info('Creating message with data', $messageData);
+
+            $message = Message::create($messageData);
+
+            Log::info('Message created successfully', [
+                'message_id' => $message->id,
+                'message_type' => $message->type
+            ]);
+
+            // Handle temp files if any
+            $attachmentCount = 0;
+            if ($request->filled('temp_files')) {
+                Log::info('Processing temp files', [
                     'temp_files_raw' => $request->input('temp_files')
                 ]);
-            } elseif (is_array($tempFilePaths)) {
-                Log::info('Found temp files to process', [
-                    'file_count' => count($tempFilePaths),
-                    'file_paths' => $tempFilePaths
-                ]);
-                
-                foreach ($tempFilePaths as $tempPath) {
-                    try {
-                        if ($this->moveTempFileToMessage($tempPath, $message)) {
-                            $attachmentCount++;
-                            Log::info('Attachment processed successfully', [
+
+                $tempFilePaths = json_decode($request->input('temp_files'), true);
+
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    Log::error('JSON decode error for temp_files', [
+                        'json_error' => json_last_error_msg(),
+                        'temp_files_raw' => $request->input('temp_files')
+                    ]);
+                } elseif (is_array($tempFilePaths)) {
+                    Log::info('Found temp files to process', [
+                        'file_count' => count($tempFilePaths),
+                        'file_paths' => $tempFilePaths
+                    ]);
+
+                    foreach ($tempFilePaths as $tempPath) {
+                        try {
+                            if ($this->moveTempFileToMessage($tempPath, $message)) {
+                                $attachmentCount++;
+                                Log::info('Attachment processed successfully', [
+                                    'temp_path' => $tempPath,
+                                    'message_id' => $message->id
+                                ]);
+                            } else {
+                                Log::warning('Failed to process attachment', [
+                                    'temp_path' => $tempPath,
+                                    'message_id' => $message->id
+                                ]);
+                            }
+                        } catch (\Exception $attachmentError) {
+                            Log::error('Attachment processing error', [
                                 'temp_path' => $tempPath,
-                                'message_id' => $message->id
-                            ]);
-                        } else {
-                            Log::warning('Failed to process attachment', [
-                                'temp_path' => $tempPath,
-                                'message_id' => $message->id
+                                'message_id' => $message->id,
+                                'error' => $attachmentError->getMessage()
                             ]);
                         }
-                    } catch (\Exception $attachmentError) {
-                        Log::error('Attachment processing error', [
-                            'temp_path' => $tempPath,
-                            'message_id' => $message->id,
-                            'error' => $attachmentError->getMessage()
-                        ]);
                     }
                 }
             }
-        }
 
-        // Clear dashboard cache
-        try {
-            $this->dashboardService->clearCache($user);
-            Log::info('Dashboard cache cleared successfully');
-        } catch (\Exception $cacheError) {
-            Log::warning('Failed to clear dashboard cache', [
-                'error' => $cacheError->getMessage()
+            // Clear dashboard cache
+            try {
+                $this->dashboardService->clearCache($user);
+                Log::info('Dashboard cache cleared successfully');
+            } catch (\Exception $cacheError) {
+                Log::warning('Failed to clear dashboard cache', [
+                    'error' => $cacheError->getMessage()
+                ]);
+            }
+
+            DB::commit();
+
+            Log::info('Message submission completed successfully', [
+                'message_id' => $message->id,
+                'attachment_count' => $attachmentCount,
+                'user_id' => $user->id
             ]);
+
+            $successMessage = 'Message sent successfully!';
+            if ($attachmentCount > 0) {
+                $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
+            }
+
+            return redirect()->route('client.messages.index')
+                ->with('success', $successMessage);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Message submission failed', [
+                'user_id' => $user->id,
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString(),
+                'request_data' => $request->except(['temp_files', '_token'])
+            ]);
+
+            return redirect()->back()
+                ->withErrors(['error' => 'Failed to send message. Please try again.'])
+                ->withInput();
         }
-
-        DB::commit();
-        
-        Log::info('Message submission completed successfully', [
-            'message_id' => $message->id,
-            'attachment_count' => $attachmentCount,
-            'user_id' => $user->id
-        ]);
-
-        $successMessage = 'Message sent successfully!';
-        if ($attachmentCount > 0) {
-            $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
-        }
-
-        return redirect()->route('client.messages.index')
-            ->with('success', $successMessage);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        
-        Log::error('Message submission failed', [
-            'user_id' => $user->id,
-            'error_message' => $e->getMessage(),
-            'error_file' => $e->getFile(),
-            'error_line' => $e->getLine(),
-            'stack_trace' => $e->getTraceAsString(),
-            'request_data' => $request->except(['temp_files', '_token'])
-        ]);
-
-        return redirect()->back()
-            ->withErrors(['error' => 'Failed to send message. Please try again.'])
-            ->withInput();
     }
-}
 
     /**
      * Display the specified message with auto mark-as-read
@@ -253,12 +253,12 @@ class MessageController extends Controller
     public function show(Message $message)
     {
         $user = auth()->user();
-        
+
         // Ensure message belongs to authenticated client
         if (!$this->clientAccessService->canAccessMessage($user, $message)) {
             abort(403, 'Unauthorized access to this message.');
         }
-        
+
         // Load all necessary relationships
         $message->load([
             'attachments',
@@ -270,13 +270,13 @@ class MessageController extends Controller
 
         // Get the root message for the conversation
         $rootMessage = $message->parent_id ? $message->parent : $message;
-        
+
         // Get the complete conversation thread (root + all replies)
         $thread = $this->messageService->getMessageThread($message);
-        
+
         // AUTO MARK AS READ - Mark entire thread that should be read by client
         $this->autoMarkMessagesAsRead($thread, $user);
-        
+
         // Get related messages from same project (excluding current thread)
         $relatedMessages = collect();
         if ($message->project_id) {
@@ -310,151 +310,151 @@ class MessageController extends Controller
      * Reply to a message - COMPLETE WITH ALL FIELDS
      */
     public function reply(Request $request, Message $message)
-{
-    $user = auth()->user();
+    {
+        $user = auth()->user();
 
-    // Security checks
-    if (!$this->clientAccessService->canAccessMessage($user, $message)) {
-        abort(403, 'Unauthorized access to this message.');
-    }
+        // Security checks
+        if (!$this->clientAccessService->canAccessMessage($user, $message)) {
+            abort(403, 'Unauthorized access to this message.');
+        }
 
-    if (!$this->clientAccessService->canReplyToMessage($user, $message)) {
-        return redirect()->back()
-            ->with('error', 'You cannot reply to this message.');
-    }
+        if (!$this->clientAccessService->canReplyToMessage($user, $message)) {
+            return redirect()->back()
+                ->with('error', 'You cannot reply to this message.');
+        }
 
-    $validated = $request->validate([
-        'message' => 'required|string|max:5000|min:10',
-        'temp_files' => 'nullable|string', // JSON string of temp file paths
-    ]);
-
-    try {
-        DB::beginTransaction();
-
-        // Get the root message for threading
-        $rootMessage = $message->parent_id ? $message->parent : $message;
-
-        // Create reply message
-        $reply = Message::create([
-            'type' => 'client_reply',
-            'name' => $user->name,
-            'email' => $user->email,
-            'phone' => $user->phone ?? '',
-            'company' => $user->company ?? '',
-            'subject' => 'Re: ' . $rootMessage->subject,
-            'message' => $validated['message'],
-            'priority' => $rootMessage->priority,
-            'user_id' => $user->id,
-            'project_id' => $rootMessage->project_id, // Keep project context
-            'parent_id' => $rootMessage->id,
-            'is_read' => false,
-            'is_replied' => false,
-            'requires_response' => true,
+        $validated = $request->validate([
+            'message' => 'required|string|max:5000|min:10',
+            'temp_files' => 'nullable|string', // JSON string of temp file paths
         ]);
 
-        Log::info('Reply message created', [
-            'reply_id' => $reply->id,
-            'parent_id' => $rootMessage->id,
-            'user_id' => $user->id
-        ]);
+        try {
+            DB::beginTransaction();
 
-        // Handle temp files - IMPROVED FOR UNIVERSAL UPLOADER
-        $attachmentCount = 0;
-        if ($request->filled('temp_files')) {
-            Log::info('Processing reply temp files', [
-                'temp_files_raw' => $request->input('temp_files')
+            // Get the root message for threading
+            $rootMessage = $message->parent_id ? $message->parent : $message;
+
+            // Create reply message
+            $reply = Message::create([
+                'type' => 'client_reply',
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'company' => $user->company ?? '',
+                'subject' => 'Re: ' . $rootMessage->subject,
+                'message' => $validated['message'],
+                'priority' => $rootMessage->priority,
+                'user_id' => $user->id,
+                'project_id' => $rootMessage->project_id, // Keep project context
+                'parent_id' => $rootMessage->id,
+                'is_read' => false,
+                'is_replied' => false,
+                'requires_response' => true,
             ]);
-            
-            $tempFilePaths = json_decode($request->input('temp_files'), true);
-            
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                Log::error('JSON decode error for reply temp_files', [
-                    'json_error' => json_last_error_msg(),
+
+            Log::info('Reply message created', [
+                'reply_id' => $reply->id,
+                'parent_id' => $rootMessage->id,
+                'user_id' => $user->id
+            ]);
+
+            // Handle temp files - IMPROVED FOR UNIVERSAL UPLOADER
+            $attachmentCount = 0;
+            if ($request->filled('temp_files')) {
+                Log::info('Processing reply temp files', [
                     'temp_files_raw' => $request->input('temp_files')
                 ]);
-            } elseif (is_array($tempFilePaths)) {
-                Log::info('Found reply temp files to process', [
-                    'file_count' => count($tempFilePaths),
-                    'file_paths' => $tempFilePaths
-                ]);
-                
-                foreach ($tempFilePaths as $tempPath) {
-                    try {
-                        if ($this->moveTempFileToMessage($tempPath, $reply)) {
-                            $attachmentCount++;
-                            Log::info('Reply attachment processed successfully', [
+
+                $tempFilePaths = json_decode($request->input('temp_files'), true);
+
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    Log::error('JSON decode error for reply temp_files', [
+                        'json_error' => json_last_error_msg(),
+                        'temp_files_raw' => $request->input('temp_files')
+                    ]);
+                } elseif (is_array($tempFilePaths)) {
+                    Log::info('Found reply temp files to process', [
+                        'file_count' => count($tempFilePaths),
+                        'file_paths' => $tempFilePaths
+                    ]);
+
+                    foreach ($tempFilePaths as $tempPath) {
+                        try {
+                            if ($this->moveTempFileToMessage($tempPath, $reply)) {
+                                $attachmentCount++;
+                                Log::info('Reply attachment processed successfully', [
+                                    'temp_path' => $tempPath,
+                                    'reply_id' => $reply->id
+                                ]);
+                            } else {
+                                Log::warning('Failed to process reply attachment', [
+                                    'temp_path' => $tempPath,
+                                    'reply_id' => $reply->id
+                                ]);
+                            }
+                        } catch (\Exception $attachmentError) {
+                            Log::error('Reply attachment processing error', [
                                 'temp_path' => $tempPath,
-                                'reply_id' => $reply->id
-                            ]);
-                        } else {
-                            Log::warning('Failed to process reply attachment', [
-                                'temp_path' => $tempPath,
-                                'reply_id' => $reply->id
+                                'reply_id' => $reply->id,
+                                'error' => $attachmentError->getMessage()
                             ]);
                         }
-                    } catch (\Exception $attachmentError) {
-                        Log::error('Reply attachment processing error', [
-                            'temp_path' => $tempPath,
-                            'reply_id' => $reply->id,
-                            'error' => $attachmentError->getMessage()
-                        ]);
                     }
                 }
             }
-        }
 
-        // Clean up temp directory after successful processing
-        try {
-            $this->cleanupSessionTempFiles();
-        } catch (\Exception $cleanupError) {
-            Log::warning('Failed to cleanup temp files after reply: ' . $cleanupError->getMessage());
-        }
+            // Clean up temp directory after successful processing
+            try {
+                $this->cleanupSessionTempFiles();
+            } catch (\Exception $cleanupError) {
+                Log::warning('Failed to cleanup temp files after reply: ' . $cleanupError->getMessage());
+            }
 
-        // Mark original message as replied if it's from admin
-        if ($message->type === 'admin_to_client') {
-            $message->update([
-                'is_replied' => true, 
-                'replied_at' => now(),
-                'replied_by' => $user->id
+            // Mark original message as replied if it's from admin
+            if ($message->type === 'admin_to_client') {
+                $message->update([
+                    'is_replied' => true,
+                    'replied_at' => now(),
+                    'replied_by' => $user->id
+                ]);
+            }
+
+            // Clear dashboard cache
+            $this->dashboardService->clearCache($user);
+
+            DB::commit();
+
+            $successMessage = 'Reply sent successfully!';
+            if ($attachmentCount > 0) {
+                $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
+            }
+
+            Log::info('Reply sent successfully', [
+                'reply_id' => $reply->id,
+                'attachment_count' => $attachmentCount,
+                'user_id' => $user->id
             ]);
+
+            return redirect()->route('client.messages.show', $rootMessage)
+                ->with('success', $successMessage);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to send reply', [
+                'user_id' => $user->id,
+                'message_id' => $message->id,
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Failed to send reply. Please try again.')
+                ->withInput();
         }
-
-        // Clear dashboard cache
-        $this->dashboardService->clearCache($user);
-
-        DB::commit();
-
-        $successMessage = 'Reply sent successfully!';
-        if ($attachmentCount > 0) {
-            $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
-        }
-
-        Log::info('Reply sent successfully', [
-            'reply_id' => $reply->id,
-            'attachment_count' => $attachmentCount,
-            'user_id' => $user->id
-        ]);
-
-        return redirect()->route('client.messages.show', $rootMessage)
-            ->with('success', $successMessage);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        
-        Log::error('Failed to send reply', [
-            'user_id' => $user->id,
-            'message_id' => $message->id,
-            'error_message' => $e->getMessage(),
-            'error_file' => $e->getFile(),
-            'error_line' => $e->getLine(),
-            'stack_trace' => $e->getTraceAsString()
-        ]);
-
-        return redirect()->back()
-            ->with('error', 'Failed to send reply. Please try again.')
-            ->withInput();
     }
-}
 
     /**
      * Bulk action for multiple messages - OPTIMIZED FOR SERVICES
@@ -483,8 +483,8 @@ class MessageController extends Controller
 
         // Validate bulk operation permissions
         $validation = $this->messageService->validateBulkOperation(
-            $validated['action'], 
-            $allowedMessageIds, 
+            $validated['action'],
+            $allowedMessageIds,
             $user
         );
 
@@ -548,7 +548,7 @@ class MessageController extends Controller
             ]);
 
             $responseData = ['warnings' => $validation['warnings']];
-            
+
             // Add warnings if any
             if (!empty($validation['warnings'])) {
                 $message = "{$count} {$actionName} completed with warnings";
@@ -561,7 +561,7 @@ class MessageController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Bulk action failed', [
                 'user_id' => $user->id,
                 'action' => $validated['action'],
@@ -706,7 +706,7 @@ class MessageController extends Controller
         ));
     }
 
-   
+
     public function downloadAttachment(Message $message, $attachmentId)
     {
         $user = auth()->user();
@@ -746,7 +746,7 @@ class MessageController extends Controller
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             abort(404, 'Attachment not found.');
-            
+
         } catch (\Exception $e) {
             Log::error('Attachment download failed', [
                 'user_id' => $user->id,
@@ -773,7 +773,7 @@ class MessageController extends Controller
 
             $uploadedFiles = [];
             $directory = 'temp/message-attachments/' . session()->getId();
-            
+
             // Ensure directory exists
             if (!Storage::disk('public')->exists($directory)) {
                 Storage::disk('public')->makeDirectory($directory);
@@ -789,7 +789,7 @@ class MessageController extends Controller
 
                     // Store the file
                     $storedPath = $file->storeAs($directory, $filename, 'public');
-                    
+
                     if ($storedPath) {
                         $uploadedFiles[] = [
                             'id' => uniqid(),
@@ -833,7 +833,7 @@ class MessageController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Temp attachment upload failed: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Upload failed: ' . $e->getMessage()
@@ -848,7 +848,7 @@ class MessageController extends Controller
         try {
             // Get deletion options for UI feedback
             $options = $this->messageService->getClientDeletionOptions($message, $user);
-            
+
             if (!$options['can_delete']) {
                 return redirect()->back()
                     ->with('error', 'You cannot delete this message');
@@ -884,7 +884,7 @@ class MessageController extends Controller
                 if ($tempId) {
                     $directory = 'temp/message-attachments/' . session()->getId();
                     $files = Storage::disk('public')->files($directory);
-                    
+
                     foreach ($files as $file) {
                         if (str_contains($file, $tempId) || str_contains(basename($file), $tempId)) {
                             $filePath = $file;
@@ -912,7 +912,7 @@ class MessageController extends Controller
 
             if (Storage::disk('public')->exists($filePath)) {
                 $deleted = Storage::disk('public')->delete($filePath);
-                
+
                 if ($deleted) {
                     return response()->json([
                         'success' => true,
@@ -928,7 +928,7 @@ class MessageController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Temp attachment deletion failed: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Delete failed: ' . $e->getMessage()
@@ -943,7 +943,7 @@ class MessageController extends Controller
     {
         try {
             $directory = 'temp/message-attachments/' . session()->getId();
-            
+
             if (!Storage::disk('public')->exists($directory)) {
                 return response()->json([
                     'success' => true,
@@ -954,7 +954,7 @@ class MessageController extends Controller
 
             $files = Storage::disk('public')->files($directory);
             $fileData = [];
-            
+
             foreach ($files as $file) {
                 if (Storage::disk('public')->exists($file)) {
                     $originalName = basename($file);
@@ -994,7 +994,7 @@ class MessageController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Get temp files failed: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to get files: ' . $e->getMessage(),
@@ -1011,7 +1011,7 @@ class MessageController extends Controller
     {
         try {
             $directory = 'temp/message-attachments/' . session()->getId();
-            
+
             if (!Storage::disk('public')->exists($directory)) {
                 return response()->json([
                     'success' => true,
@@ -1027,7 +1027,7 @@ class MessageController extends Controller
             foreach ($files as $file) {
                 try {
                     $lastModified = Storage::disk('public')->lastModified($file);
-                    
+
                     if ($lastModified < $cutoffTime) {
                         if (Storage::disk('public')->delete($file)) {
                             $deletedCount++;
@@ -1057,7 +1057,7 @@ class MessageController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Temp cleanup failed: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Cleanup failed: ' . $e->getMessage(),
@@ -1182,7 +1182,7 @@ class MessageController extends Controller
 
         try {
             $this->messageService->archiveMessageForClient($message, $user);
-            
+
             return redirect()->route('client.messages.index')
                 ->with('success', 'Message archived successfully');
 
@@ -1196,24 +1196,24 @@ class MessageController extends Controller
     {
         $markedCount = 0;
         $currentTime = now();
-        
+
         // Handle both single message and thread collection
         $messages = is_iterable($thread) ? $thread : [$thread];
-        
+
         foreach ($messages as $message) {
             // Only mark as read if it's unread and directed to client
             if (!$message->is_read && $this->isMessageToClient($message)) {
                 try {
                     $this->messageService->markAsRead($message, $user);
                     $markedCount++;
-                    
+
                     Log::info('Auto-marked message as read', [
                         'message_id' => $message->id,
                         'user_id' => $user->id,
                         'message_type' => $message->type,
                         'marked_at' => $currentTime->toISOString()
                     ]);
-                    
+
                 } catch (\Exception $e) {
                     Log::warning('Failed to auto-mark message as read', [
                         'message_id' => $message->id,
@@ -1223,14 +1223,14 @@ class MessageController extends Controller
                 }
             }
         }
-        
+
         if ($markedCount > 0) {
             Log::info("Auto-marked {$markedCount} messages as read", [
                 'user_id' => $user->id,
                 'context' => 'thread_view'
             ]);
         }
-        
+
         return $markedCount;
     }
 
@@ -1250,33 +1250,30 @@ class MessageController extends Controller
      * Clean up session temp files
      */
     private function cleanupSessionTempFiles(): void
-{
-    try {
-        $directory = 'temp/message-attachments/' . session()->getId();
-        
-        if (Storage::disk('public')->exists($directory)) {
-            $files = Storage::disk('public')->files($directory);
-            
-            foreach ($files as $file) {
-                Storage::disk('public')->delete($file);
-            }
-            
-            // Remove empty directory
-            Storage::disk('public')->deleteDirectory($directory);
-            
-            Log::info('Session temp files cleaned up', [
-                'directory' => $directory,
-                'files_count' => count($files)
-            ]);
-        }
-    } catch (\Exception $e) {
-        Log::warning('Failed to cleanup session temp files: ' . $e->getMessage());
-    }
-}
+    {
+        try {
+            $directory = 'temp/message-attachments/' . session()->getId();
 
-    /**
-     * Move temp file to permanent message attachment location
-     */
+            if (Storage::disk('public')->exists($directory)) {
+                $files = Storage::disk('public')->files($directory);
+
+                foreach ($files as $file) {
+                    Storage::disk('public')->delete($file);
+                }
+
+                // Remove empty directory
+                Storage::disk('public')->deleteDirectory($directory);
+
+                Log::info('Session temp files cleaned up', [
+                    'directory' => $directory,
+                    'files_count' => count($files)
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to cleanup session temp files: ' . $e->getMessage());
+        }
+    }
+
     private function moveTempFileToMessage(string $tempPath, Message $message): bool
     {
         try {
@@ -1293,17 +1290,17 @@ class MessageController extends Controller
 
             // Get original filename from temp path
             $tempFilename = basename($tempPath);
-            
+
             // Extract original name if it follows our naming pattern: uniqid_originalname.ext
             if (preg_match('/^[a-f0-9]+_(.+)$/', $tempFilename, $matches)) {
                 $originalFilename = $matches[1];
             } else {
                 $originalFilename = $tempFilename;
             }
-            
+
             // Generate permanent file path
             $permanentPath = 'message-attachments/' . $message->id . '/' . $originalFilename;
-            
+
             // Ensure directory exists
             $directory = dirname($permanentPath);
             if (!Storage::disk('public')->exists($directory)) {
@@ -1315,7 +1312,7 @@ class MessageController extends Controller
                 // Get file info
                 $fileSize = Storage::disk('public')->size($permanentPath);
                 $mimeType = Storage::disk('public')->mimeType($permanentPath);
-                
+
                 // Create attachment record using MessageAttachment model structure
                 $message->attachments()->create([
                     'file_path' => $permanentPath,
@@ -1334,14 +1331,11 @@ class MessageController extends Controller
                 'temp_path' => $tempPath,
                 'message_id' => $message->id
             ]);
-            
+
             return false;
         }
     }
 
-    /**
-     * Get available message types for clients
-     */
     protected function getClientMessageTypes(): array
     {
         return [
@@ -1387,9 +1381,6 @@ class MessageController extends Controller
         return response()->json(array_merge($response, $extra));
     }
 
-    /**
-     * Bulk action with confirmation (for destructive actions)
-     */
     public function bulkActionWithConfirmation(Request $request)
     {
         $user = auth()->user();
@@ -1438,9 +1429,6 @@ class MessageController extends Controller
         return $this->bulkAction($request);
     }
 
-    /**
-     * Get impact information for destructive actions
-     */
     private function getActionImpactInfo(string $action, array $messageIds, User $user): array
     {
         $messages = Message::whereIn('id', $messageIds)
@@ -1457,17 +1445,13 @@ class MessageController extends Controller
         ];
 
         // Determine if this is high impact
-        $impactInfo['high_impact'] = 
-            $impactInfo['urgent_messages'] > 0 || 
-            $impactInfo['replied_messages'] > 5 || 
+        $impactInfo['high_impact'] =
+            $impactInfo['urgent_messages'] > 0 ||
+            $impactInfo['replied_messages'] > 5 ||
             $impactInfo['project_linked'] > 3;
 
         return $impactInfo;
     }
-
-    /**
-     * Preview bulk action results (without executing)
-     */
     public function previewBulkAction(Request $request)
     {
         $user = auth()->user();
@@ -1486,8 +1470,8 @@ class MessageController extends Controller
 
         // Validate operation
         $validation = $this->messageService->validateBulkOperation(
-            $validated['action'], 
-            $allowedMessageIds, 
+            $validated['action'],
+            $allowedMessageIds,
             $user
         );
 

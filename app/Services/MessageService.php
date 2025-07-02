@@ -976,10 +976,8 @@ class MessageService
      */
     public function canReplyToMessage(Message $message, User $user): bool
     {
-        // Get the root message for the thread
         $rootMessage = $message->parent_id ? $message->parent : $message;
 
-        // Client must own the original conversation
         if ($rootMessage->user_id !== $user->id) {
             return false;
         }

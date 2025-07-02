@@ -201,15 +201,40 @@
                             </div>
 
                             <!-- Attachments -->
-                            <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-                                <label for="attachments" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Attachments (optional)
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                    Attachments (Optional)
                                 </label>
-                                <input type="file" name="attachments[]" id="attachments" multiple
-                                       class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/20 dark:file:text-blue-300">
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    Max size: 10MB per file. Allowed types: PDF, DOC, DOCX, JPG, PNG, ZIP.
-                                </p>
+                                
+                                <x-universal-file-uploader 
+                                    name="files"
+                                    :multiple="true"
+                                    :maxFiles="5"
+                                    maxFileSize="10MB"
+                                    :acceptedFileTypes="[
+                                        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+                                        'application/pdf',
+                                        'application/msword',
+                                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                        'application/vnd.ms-excel',
+                                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                        'text/plain', 'text/csv',
+                                        'application/zip',
+                                        'application/x-rar-compressed'
+                                    ]"
+                                    dropDescription="Drop files here or click to browse"
+                                    uploadEndpoint="{{ route('admin.messages.temp-upload') }}"
+                                    deleteEndpoint="{{ route('admin.messages.temp-delete') }}"
+                                    :enableCategories="false"
+                                    :enableDescription="false"
+                                    :enablePublicToggle="false"
+                                    :autoUpload="true"
+                                    :uploadOnDrop="true"
+                                    :compact="false"
+                                    theme="default"
+                                    id="message-attachments"
+                                />
+                                
                                 @error('attachments')
                                     <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                                 @enderror
@@ -217,6 +242,9 @@
                                     <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                                 @enderror
                             </div>
+
+                            <!-- Hidden field to store uploaded file paths -->
+                            <input type="hidden" name="temp_files" id="temp_files" value="">
                         </div>
                     </x-admin.card>
 

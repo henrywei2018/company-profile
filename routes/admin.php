@@ -326,9 +326,23 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('/bulk-priority', [MessageController::class, 'bulkUpdatePriority'])->name('bulk-priority');
         Route::post('/bulk-forward', [MessageController::class, 'bulkForward'])->name('bulk-forward');
         
-        // File Downloads
+        // File
         Route::get('/{message}/attachments/{attachmentId}/download', [MessageController::class, 'downloadAttachment'])->name('attachments.download');
-        
+        Route::post('/temp-upload', [MessageController::class, 'uploadTempAttachment'])
+            ->middleware('throttle:30,1')
+            ->name('temp-upload');
+            
+        Route::delete('/temp-delete', [MessageController::class, 'deleteTempAttachment'])
+            ->middleware('throttle:30,1')
+            ->name('temp-delete');
+            
+        Route::get('/temp-files', [MessageController::class, 'getTempFiles'])
+            ->middleware('throttle:60,1')
+            ->name('temp-files');
+            
+        Route::post('/cleanup-temp', [MessageController::class, 'cleanupTempFiles'])
+            ->middleware('throttle:10,1')
+            ->name('cleanup-temp');
         // Export & Statistics
         Route::get('/export', [MessageController::class, 'export'])->name('export');
         Route::get('/statistics', [MessageController::class, 'statistics'])->name('statistics');

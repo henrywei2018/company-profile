@@ -1,3 +1,4 @@
+
 {{-- resources/views/admin/messages/show.blade.php --}}
 <x-layouts.admin 
     title="Message Details" 
@@ -25,7 +26,7 @@
                         </li>
                     </ol>
                 </nav>
-                <h1 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ $message->subject }}</h1>
+                <h1 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ $rootMessage->subject }}</h1>
             </div>
 
             <div class="mt-4 sm:mt-0 flex gap-3">
@@ -38,7 +39,7 @@
                 </a>
                 
                 @if($canReply)
-                    <a href="{{ route('admin.messages.reply', $message) }}" 
+                    <a href="{{ route('admin.messages.reply', $rootMessage) }}" 
                         class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
@@ -50,117 +51,154 @@
         </div>
 
         <!-- Message Thread -->
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <!-- Main Content -->
-            <div class="xl:col-span-2 space-y-6">
-                <!-- Original Message -->
+        <div class="grid grid-cols-1 xl:grid-cols-6 gap-6">
+            <!-- Main Content - Conversation Thread -->
+            <div class="xl:col-span-4 space-y-6">
+                
+                <!-- Thread Header -->
                 <x-admin.card>
                     <x-slot name="title">
                         <div class="flex items-center justify-between">
-                            <span>Original Message</span>
+                            <span>Conversation ({{ $thread->count() }} messages)</span>
                             <div class="flex items-center space-x-2">
-                                <!-- Priority Badge -->
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                                    {{ $message->priority === 'urgent' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 
-                                       ($message->priority === 'high' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' : 
-                                       ($message->priority === 'normal' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 
-                                       'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200')) }}">
-                                    {{ ucfirst($message->priority ?? 'normal') }}
-                                </span>
-
-                                <!-- Type Badge -->
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                                    {{ $message->type === 'support' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 
-                                       ($message->type === 'complaint' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 
-                                       ($message->type === 'project_inquiry' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 
-                                       'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200')) }}">
-                                    {{ ucfirst(str_replace('_', ' ', $message->type)) }}
-                                </span>
-
-                                <!-- Read Status -->
-                                @if(!$message->is_read)
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                                        Unread
+                                @if($thread->where('is_read', false)->where('type', 'admin_to_client')->count() > 0)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                                        {{ $thread->where('is_read', false)->where('type', 'admin_to_client')->count() }} unread
                                     </span>
                                 @endif
+                                
+                                <!-- Thread Priority Badge -->
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                    {{ $rootMessage->priority === 'urgent' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 
+                                       ($rootMessage->priority === 'high' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' : 
+                                       ($rootMessage->priority === 'normal' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 
+                                       'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200')) }}">
+                                    {{ ucfirst($rootMessage->priority ?? 'normal') }}
+                                </span>
+
+                                <!-- Thread Type Badge -->
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                    {{ $rootMessage->type === 'support' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 
+                                       ($rootMessage->type === 'complaint' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 
+                                       ($rootMessage->type === 'project_inquiry' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 
+                                       'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200')) }}">
+                                    {{ ucfirst(str_replace('_', ' ', $rootMessage->type)) }}
+                                </span>
                             </div>
                         </div>
                     </x-slot>
 
-                    <div class="space-y-4">
-                        <!-- Message Header -->
-                        <div class="flex items-start space-x-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <div class="flex-shrink-0">
-                                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                                    <span class="text-sm font-medium text-blue-600 dark:text-blue-400">
-                                        {{ substr($message->name, 0, 2) }}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">{{ $message->name }}</h3>
-                                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ $message->email }}</p>
-                                        @if($message->user)
-                                            <p class="text-xs text-blue-600 dark:text-blue-400">
-                                                Client ID: {{ $message->user->id }} | 
-                                                <a href="{{ route('admin.users.show', $message->user) }}" class="hover:underline">View Profile</a>
-                                            </p>
+                    <!-- Threaded Conversation Display -->
+                    <div class="space-y-3" id="conversation-thread">
+                        @foreach($thread as $index => $threadMessage)
+                            <div class="flex {{ $threadMessage->type === 'admin_to_client' ? 'flex-row-reverse' : '' }} gap-4" 
+                                 data-message-id="{{ $threadMessage->id }}">
+                                
+                                <!-- Avatar -->
+                                <div class="flex-shrink-0">
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center
+                                        {{ $threadMessage->type === 'admin_to_client' 
+                                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' 
+                                            : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' }}">
+                                        @if($threadMessage->type === 'admin_to_client')
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                        @else
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                            </svg>
                                         @endif
                                     </div>
-                                    <div class="text-right">
-                                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                                            {{ $message->created_at->format('M j, Y \a\t g:i A') }}
-                                        </p>
-                                        <p class="text-xs text-gray-400 dark:text-gray-500">
-                                            {{ $message->created_at->diffForHumans() }}
-                                        </p>
+                                </div>
+
+                                <!-- Message Content -->
+                                <div class="flex-1 min-w-0">
+                                    <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 {{ $threadMessage->type === 'admin_to_client' ? 'border-l-4 border-green-400' : 'border-l-4 border-blue-400' }} break-words overflow-hidden">
+                                        
+                                        <!-- Message Header -->
+                                        <div class="flex items-center justify-between mb-2">
+                                            <div class="flex items-center gap-3 min-w-0 flex-1">
+                                                <span class="font-medium text-sm {{ $threadMessage->type === 'admin_to_client' ? 'text-green-700 dark:text-green-400' : 'text-gray-900 dark:text-white' }}">
+                                                    {{ $threadMessage->type === 'admin_to_client' ? 'Admin Reply' : $threadMessage->name }}
+                                                </span>
+                                                @if($threadMessage->type !== 'admin_to_client')
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ $threadMessage->email }}</span>
+                                                @endif
+                                                @if(!$threadMessage->is_read && $threadMessage->type === 'admin_to_client')
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                                                        New
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                                    {{ $threadMessage->created_at->format('M j, Y H:i') }}
+                                                </span>
+                                                <!-- Message Actions Dropdown -->
+                                                <div class="relative" x-data="{ open: false }">
+                                                    <button @click="open = !open" class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
+                                                        </svg>
+                                                    </button>
+                                                    <div x-show="open" @click.away="open = false" x-transition 
+                                                         class="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 border border-gray-200 dark:border-gray-700">
+                                                        <div class="py-1">
+                                                            @if($threadMessage->type !== 'admin_to_client')
+                                                                <a href="{{ route('admin.messages.reply', $threadMessage) }}" 
+                                                                   class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                                    Reply to this message
+                                                                </a>
+                                                            @endif
+                                                            <form action="{{ route('admin.messages.toggle-read', $threadMessage) }}" method="POST" class="block">
+                                                                @csrf
+                                                                <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                                    Mark as {{ $threadMessage->is_read ? 'unread' : 'read' }}
+                                                                </button>
+                                                            </form>
+                                                            <button onclick="copyMessageText({{ $threadMessage->id }})" 
+                                                                    class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                                Copy message text
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        @if($threadMessage->subject !== $rootMessage->subject)
+                                            <p class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                                                {{ $threadMessage->subject }}
+                                            </p>
+                                        @endif
+                                        
+                                        <div class="text-sm text-gray-700 dark:text-gray-300 break-words overflow-wrap-anywhere" id="message-text-{{ $threadMessage->id }}">
+                                            {{ $threadMessage->message }}
+                                        </div>
+                                        
+                                        @if($threadMessage->attachments && $threadMessage->attachments->count() > 0)
+                                            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3 font-medium">
+                                                    Attachments ({{ $threadMessage->attachments->count() }}):
+                                                </p>
+                                                <div class="flex flex-wrap gap-2">
+                                                    @foreach($threadMessage->attachments as $attachment)
+                                                        <a href="{{ route('admin.messages.attachments.download', ['message' => $threadMessage->id, 'attachmentId' => $attachment->id]) }}" 
+                                                           class="inline-flex items-center px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                                                            <svg class="w-3 h-3 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                                                            </svg>
+                                                            {{ \Illuminate\Support\Str::limit($attachment->file_name, 20) }}
+                                                        </a>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Message Content -->
-                        <div class="prose dark:prose-invert max-w-none">
-                            <div class="whitespace-pre-wrap text-gray-900 dark:text-white">{{ $message->message }}</div>
-                        </div>
-
-                        <!-- Attachments -->
-                        @if($message->attachments && $message->attachments->count() > 0)
-                            <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-                                <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
-                                    Attachments ({{ $message->attachments->count() }})
-                                </h4>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    @foreach($message->attachments as $attachment)
-                                        <div class="flex items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                            <div class="flex-shrink-0">
-                                                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-                                                </svg>
-                                            </div>
-                                            <div class="ml-3 flex-1 min-w-0">
-                                                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                                    {{ $attachment->file_name }}
-                                                </p>
-                                                <p class="text-xs text-gray-500 dark:text-gray-400">
-                                                    {{ $attachment->file_size ? number_format($attachment->file_size / 1024, 1) . ' KB' : 'Unknown size' }}
-                                                </p>
-                                            </div>
-                                            <div class="ml-3">
-                                                <a href="{{ route('admin.messages.attachments.download', ['message' => $message->id, 'attachmentId' => $attachment->id]) }}" 
-                                                    class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                                    </svg>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
+                        @endforeach
                     </div>
                 </x-admin.card>
 
@@ -169,9 +207,9 @@
                     <x-admin.card>
                         <x-slot name="title">Quick Reply</x-slot>
                         
-                        <form action="{{ route('admin.messages.reply', $message) }}" method="POST" enctype="multipart/form-data">
+                        <form action="{{ route('admin.messages.reply', $rootMessage) }}" method="POST" enctype="multipart/form-data">
                             @csrf
-                            <div class="space-y-4">
+                            <div class="space-y-2">
                                 <div>
                                     <label for="reply_message" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                         Your Reply
@@ -185,14 +223,48 @@
                                 </div>
 
                                 <div>
-                                    <label for="attachments" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Attachments (optional)
-                                    </label>
-                                    <input type="file" name="attachments[]" id="attachments" multiple
-                                        class="mt-1 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                        You can upload multiple files. Max size: 10MB per file.
-                                    </p>
+                                    <!-- Attachments -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                    Attachments (Optional)
+                                </label>
+                                
+                                <x-universal-file-uploader 
+                                    name="files"
+                                    :multiple="true"
+                                    :maxFiles="5"
+                                    maxFileSize="10MB"
+                                    :acceptedFileTypes="[
+                                        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+                                        'application/pdf',
+                                        'application/msword',
+                                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                        'application/vnd.ms-excel',
+                                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                        'text/plain', 'text/csv',
+                                        'application/zip',
+                                        'application/x-rar-compressed'
+                                    ]"
+                                    dropDescription="Drop files here or click to browse"
+                                    uploadEndpoint="{{ route('admin.messages.temp-upload') }}"
+                                    deleteEndpoint="{{ route('admin.messages.temp-delete') }}"
+                                    :enableCategories="false"
+                                    :enableDescription="false"
+                                    :enablePublicToggle="false"
+                                    :autoUpload="true"
+                                    :uploadOnDrop="true"
+                                    :compact="false"
+                                    theme="default"
+                                    id="message-attachments"
+                                />
+                                
+                                @error('attachments.*')
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <!-- Hidden field to store uploaded file paths -->
+                            <input type="hidden" name="temp_files" id="temp_files" value="">
                                 </div>
 
                                 <div class="flex items-center justify-between pt-4">
@@ -222,88 +294,10 @@
                         </form>
                     </x-admin.card>
                 @endif
-
-                <!-- Conversation History -->
-                @if(isset($conversationHistory) && $conversationHistory->count() > 0)
-                    <x-admin.card>
-                        <x-slot name="title">Conversation History</x-slot>
-                        
-                        <div class="space-y-6">
-                            @foreach($conversationHistory as $historyMessage)
-                                <div class="flex space-x-4 {{ $historyMessage->type === 'admin_to_client' ? 'flex-row-reverse' : '' }}">
-                                    <!-- Avatar -->
-                                    <div class="flex-shrink-0">
-                                        <div class="w-10 h-10 rounded-full flex items-center justify-center
-                                            {{ $historyMessage->type === 'admin_to_client' 
-                                                ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' 
-                                                : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' }}">
-                                            @if($historyMessage->type === 'admin_to_client')
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                </svg>
-                                            @else
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                                </svg>
-                                            @endif
-                                        </div>
-                                    </div>
-
-                                    <!-- Message Content -->
-                                    <div class="flex-1 min-w-0">
-                                        <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 {{ $historyMessage->type === 'admin_to_client' ? 'border-l-4 border-green-400' : 'border-l-4 border-blue-400' }}">
-                                            
-                                            <!-- Message Header -->
-                                            <div class="flex items-center justify-between mb-2">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="font-medium text-sm {{ $historyMessage->type === 'admin_to_client' ? 'text-green-700 dark:text-green-400' : 'text-gray-900 dark:text-white' }}">
-                                                        {{ $historyMessage->type === 'admin_to_client' ? 'Admin Reply' : $historyMessage->name }}
-                                                    </span>
-                                                </div>
-                                                <span class="text-xs text-gray-500 dark:text-gray-400">
-                                                    {{ $historyMessage->created_at->format('M j, Y H:i') }}
-                                                </span>
-                                            </div>
-                                            
-                                            @if($historyMessage->subject !== $message->subject)
-                                                <p class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                                                    {{ $historyMessage->subject }}
-                                                </p>
-                                            @endif
-                                            
-                                            <div class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                                {{ $historyMessage->message }}
-                                            </div>
-                                            
-                                            @if($historyMessage->attachments && $historyMessage->attachments->count() > 0)
-                                                <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                                                        Attachments ({{ $historyMessage->attachments->count() }}):
-                                                    </p>
-                                                    <div class="flex flex-wrap gap-2">
-                                                        @foreach($historyMessage->attachments as $attachment)
-                                                            <a href="{{ route('admin.messages.attachments.download', ['message' => $historyMessage->id, 'attachmentId' => $attachment->id]) }}" 
-                                                               class="inline-flex items-center px-3 py-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-                                                                </svg>
-                                                                {{ Str::limit($attachment->file_name, 20) }}
-                                                            </a>
-                                                        @endforeach
-                                                    </div>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </x-admin.card>
-                @endif
-            </div>
+            </div>  
             
             <!-- Sidebar -->
-            <div class="xl:col-span-1 space-y-6">
+            <div class="xl:col-span-2 space-y-6">
                 <!-- Message Actions -->
                 <x-admin.card>
                     <x-slot name="title">Actions</x-slot>
@@ -677,6 +671,112 @@
                 }
             }, 5000);
         }
+        // PRIMARY EVENT LISTENER - files-uploaded (this is what your uploader uses!)
+            window.addEventListener('files-uploaded', function(e) {
+                console.log('🎯 files-uploaded event captured:', e.detail);
+                
+                // Check if this event is for our reply uploader
+                const isReplyUploader = e.detail.component === 'reply-attachments' || 
+                                       e.detail.uploaderId === 'reply-attachments' ||
+                                       e.detail.id === 'reply-attachments';
+                
+                if (isReplyUploader && e.detail.files && Array.isArray(e.detail.files)) {
+                    console.log('✅ Event is for reply-attachments uploader');
+                    
+                    // Extract file paths from the uploaded files
+                    const newFilePaths = e.detail.files.map(file => {
+                        console.log('Processing file:', file);
+                        
+                        // The API response shows files have these properties: path, file_path, etc.
+                        let filePath = file.path || file.file_path || file.filePath;
+                        
+                        // If no direct path, construct it from available data
+                        if (!filePath && file.temp_id && file.original_name) {
+                            filePath = `temp/message-attachments/${sessionId}/${file.temp_id}_${file.original_name}`;
+                        } else if (!filePath && file.id && file.original_name) {
+                            filePath = `temp/message-attachments/${sessionId}/${file.id}_${file.original_name}`;
+                        } else if (!filePath && file.filename) {
+                            filePath = `temp/message-attachments/${sessionId}/${file.filename}`;
+                        }
+                        
+                        console.log('Resolved file path:', filePath);
+                        return filePath;
+                    }).filter(path => path); // Remove any undefined/null paths
+                    
+                    // Add new files to our array (avoid duplicates)
+                    newFilePaths.forEach(filePath => {
+                        if (!replyUploadedFiles.includes(filePath)) {
+                            replyUploadedFiles.push(filePath);
+                        }
+                    });
+                    
+                    updateTempFilesInput();
+                    console.log('✅ Files added via files-uploaded:', newFilePaths);
+                    console.log('📋 Current file list:', replyUploadedFiles);
+                } else {
+                    console.log('❌ Event not for reply-attachments uploader', {
+                        component: e.detail.component,
+                        uploaderId: e.detail.uploaderId,
+                        id: e.detail.id
+                    });
+                }
+            });
+
+            // SECONDARY EVENT LISTENERS (backup methods)
+            window.addEventListener('file-uploaded', function(e) {
+                console.log('📁 file-uploaded event:', e.detail);
+                handleSingleFileUpload(e.detail);
+            });
+
+            window.addEventListener('fileUploaded', function(e) {
+                console.log('📁 fileUploaded event:', e.detail);
+                handleSingleFileUpload(e.detail);
+            });
+
+            // FILE DELETION EVENTS
+            window.addEventListener('file-deleted', function(e) {
+                console.log('🗑️ file-deleted event:', e.detail);
+                handleFileDelete(e.detail);
+            });
+
+            window.addEventListener('fileDeleted', function(e) {
+                console.log('🗑️ fileDeleted event:', e.detail);
+                handleFileDelete(e.detail);
+            });
+
+            // Helper functions
+            function handleSingleFileUpload(detail) {
+                if (detail && detail.uploaderId === 'reply-attachments') {
+                    const file = detail.file || detail;
+                    const filePath = file.path || file.file_path || file.filePath;
+                    if (filePath && !replyUploadedFiles.includes(filePath)) {
+                        replyUploadedFiles.push(filePath);
+                        updateTempFilesInput();
+                        console.log('✅ Single file added:', filePath);
+                    }
+                }
+            }
+
+            function handleFileDelete(detail) {
+                if (detail && detail.uploaderId === 'reply-attachments') {
+                    const file = detail.file || detail;
+                    const filePath = file.path || file.file_path || file.filePath;
+                    if (filePath) {
+                        replyUploadedFiles = replyUploadedFiles.filter(path => path !== filePath);
+                        updateTempFilesInput();
+                        console.log('🗑️ File removed:', filePath);
+                    }
+                }
+            }
+
+            function updateTempFilesInput() {
+                const tempFilesInput = document.getElementById('reply_temp_files');
+                if (tempFilesInput) {
+                    tempFilesInput.value = JSON.stringify(replyUploadedFiles);
+                    console.log('📝 Updated temp_files input:', tempFilesInput.value);
+                }
+            }
+
 
         // Handle form submissions with success notifications
         document.addEventListener('DOMContentLoaded', function() {
