@@ -134,9 +134,9 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
             ->name('project')
             ->where('project', '[0-9]+');
         
-        Route::get('/{message}/attachments/{attachment}/download', [MessageController::class, 'downloadAttachment'])
+        Route::get('/{message}/attachments/{attachmentId}/download', [MessageController::class, 'downloadAttachment'])
             ->name('attachment.download')
-            ->where(['message' => '[0-9]+', 'attachment' => '[0-9]+']);
+            ->where(['message' => '[0-9]+', 'attachmentId' => '[0-9]+']);
         Route::post('/temp-upload', [MessageController::class, 'uploadTempAttachment'])
             ->middleware('throttle:30,1')
             ->name('temp-upload');

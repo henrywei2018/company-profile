@@ -243,12 +243,6 @@
                             </path>
                         </svg>
                         Messages
-                        @if ($unreadMessagesCount > 0)
-                            <span
-                                class="inline-flex items-center py-0.5 px-1.5 rounded-full text-xs font-medium bg-red-500 text-white ml-auto mr-2">
-                                {{ $unreadMessagesCount }}
-                            </span>
-                        @endif
                         <svg class="hs-accordion-active:block ms-auto hidden w-4 h-4"
                             xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
