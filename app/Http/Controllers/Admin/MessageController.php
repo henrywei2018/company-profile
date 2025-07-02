@@ -22,7 +22,7 @@ class MessageController extends Controller
 {
 
     protected $dashboardService;
-    
+
     public function __construct(DashboardService $dashboardService)
     {
         $this->dashboardService = $dashboardService;
@@ -114,12 +114,12 @@ class MessageController extends Controller
     public function create(Request $request)
     {
         // Get clients for dropdown
-        $clients = User::whereHas('roles', function($query) {
+        $clients = User::whereHas('roles', function ($query) {
             $query->where('name', 'client');
         })
-        ->select('id', 'name', 'email', 'company')
-        ->orderBy('name')
-        ->get();
+            ->select('id', 'name', 'email', 'company')
+            ->orderBy('name')
+            ->get();
 
         // Get projects for dropdown
         $projects = Project::with('client')
@@ -143,9 +143,9 @@ class MessageController extends Controller
         }
 
         return view('admin.messages.create', compact(
-            'clients', 
-            'projects', 
-            'selectedClient', 
+            'clients',
+            'projects',
+            'selectedClient',
             'selectedProject'
         ));
     }
@@ -155,84 +155,147 @@ class MessageController extends Controller
      */
     public function store(Request $request)
     {
-        $user = auth()->user();
-        $request->validate([
-            'recipient_type' => 'required|in:client,email',
-            'client_id' => 'required_if:recipient_type,client|exists:users,id',
-            'recipient_email' => 'required_if:recipient_type,email|email',
-            'recipient_name' => 'required_if:recipient_type,email|string|max:255',
-            'subject' => 'required|string|max:255|min:3',
-            'message' => 'required|string|min:10|max:10000',
-            'priority' => 'required|in:low,normal,high,urgent',
-            'project_id' => 'nullable|exists:projects,id',
-            'temp_files' => 'nullable|string', // JSON string of temp file paths
-        ]);
+        try {
+            // Validation - make temp_files nullable to handle no file submissions
+            $validated = $request->validate([
+                'priority' => 'nullable|in:normal,urgent',
+                'subject' => 'required|string|max:255|min:3',
+                'message' => 'required|string|min:10|max:10000',
+                'temp_files' => 'nullable|string', // Allow null when no files
+                'recipient_email' => 'required|email',
+                'recipient_name' => 'nullable|string|max:255',
+                'type' => 'nullable|string|in:admin_to_client,general',
+            ]);
+
+            Log::info('Admin message validation passed', [
+                'has_temp_files' => !empty($validated['temp_files']),
+                'temp_files_length' => strlen($validated['temp_files'] ?? ''),
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Admin message validation failed', [
+                'errors' => $e->errors(),
+                'request_data' => $request->except(['temp_files', '_token'])
+            ]);
+            throw $e;
+        }
 
         try {
             DB::beginTransaction();
 
+            // Create the message
             $messageData = [
-                'type' => 'admin_to_client',
-                'name' => auth()->user()->name ?? 'Admin',
-                'email' => settings('mail_from_address', config('mail.from.address', 'admin@company.com')),
-                'phone' => auth()->user()->phone,
-                'company' => auth()->user()->company,
-                'subject' => trim($request->subject),
-                'message' => trim($request->message),
-                'priority' => $request->priority,
-                'project_id' => $request->project_id,
-                'is_read' => true, // Admin messages start as read
+                'type' => $validated['type'] ?? 'admin_to_client',
+                'name' => $validated['recipient_name'] ?? 'Client',
+                'email' => $validated['recipient_email'],
+                'subject' => $validated['subject'],
+                'message' => $validated['message'],
+                'priority' => $validated['priority'] ?? 'normal',
+                'user_id' => null, // Admin messages don't need user_id
+                'is_read' => true, // Admin messages are read by default
                 'is_replied' => false,
-                'read_at' => now(),
-                'replied_by' => auth()->id(),
+                'sent_by_admin' => true,
+                'sent_by' => auth()->id(),
             ];
 
-            // Set recipient details
-            if ($request->recipient_type === 'client') {
-                $client = User::findOrFail($request->client_id);
-                $messageData['user_id'] = $client->id;
-            }
+            Log::info('Creating admin message', $messageData);
 
-            // Create message
             $message = Message::create($messageData);
 
-            // Handle temp file attachments
-            $attachmentCount = $this->processAttachments($message, $request->temp_files);
+            Log::info('Admin message created successfully', [
+                'message_id' => $message->id,
+                'message_type' => $message->type
+            ]);
 
-            // Clear dashboard caches
-            $this->dashboardService->clearCache($user);
-            if (isset($client)) {
-                $this->dashboardService->clearCache($client);
+            // Handle temp files - FIXED to properly handle empty submissions
+            $attachmentCount = 0;
+
+            // Only process temp_files if it's not empty
+            if (!empty($validated['temp_files']) && trim($validated['temp_files']) !== '' && $validated['temp_files'] !== 'null') {
+                Log::info('Processing admin temp files', [
+                    'temp_files_raw' => $validated['temp_files']
+                ]);
+
+                $tempFilePaths = json_decode($validated['temp_files'], true);
+
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    Log::error('JSON decode error for admin temp_files', [
+                        'json_error' => json_last_error_msg(),
+                        'temp_files_raw' => $validated['temp_files']
+                    ]);
+                } elseif (is_array($tempFilePaths) && !empty($tempFilePaths)) {
+                    Log::info('Found admin temp files to process', [
+                        'file_count' => count($tempFilePaths),
+                        'file_paths' => $tempFilePaths
+                    ]);
+
+                    foreach ($tempFilePaths as $tempPath) {
+                        try {
+                            if ($this->moveTempFileToMessage($tempPath, $message)) {
+                                $attachmentCount++;
+                                Log::info('Admin attachment processed successfully', [
+                                    'temp_path' => $tempPath,
+                                    'message_id' => $message->id
+                                ]);
+                            } else {
+                                Log::warning('Failed to process admin attachment', [
+                                    'temp_path' => $tempPath,
+                                    'message_id' => $message->id
+                                ]);
+                            }
+                        } catch (\Exception $attachmentError) {
+                            Log::error('Admin attachment processing error', [
+                                'temp_path' => $tempPath,
+                                'message_id' => $message->id,
+                                'error' => $attachmentError->getMessage()
+                            ]);
+                        }
+                    }
+                } else {
+                    Log::info('No valid temp files found in admin submission', [
+                        'temp_files_decoded' => $tempFilePaths
+                    ]);
+                }
+            } else {
+                Log::info('No temp files submitted with admin message - this is OK');
+            }
+
+            // Clean up temp directory after successful processing
+            try {
+                $this->cleanupSessionTempFiles();
+            } catch (\Exception $cleanupError) {
+                Log::warning('Failed to cleanup temp files after admin message: ' . $cleanupError->getMessage());
             }
 
             DB::commit();
-            
-            Log::info('Admin message created', [
-                'message_id' => $message->id,
-                'admin_id' => auth()->id(),
-                'recipient_type' => $request->recipient_type,
-                'priority' => $request->priority,
-                'attachment_count' => $attachmentCount,
-            ]);
 
             $successMessage = 'Message sent successfully!';
             if ($attachmentCount > 0) {
                 $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
             }
 
+            Log::info('Admin message sent successfully', [
+                'message_id' => $message->id,
+                'attachment_count' => $attachmentCount,
+                'sent_by' => auth()->id()
+            ]);
+
             return redirect()->route('admin.messages.index')
                 ->with('success', $successMessage);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            Log::error('Admin message creation failed', [
-                'admin_id' => auth()->id(),
+
+            Log::error('Failed to send admin message', [
+                'sent_by' => auth()->id(),
                 'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString()
             ]);
 
             return redirect()->back()
-                ->withErrors(['error' => 'Failed to send message. Please try again.'])
+                ->with('error', 'Failed to send message. Please try again.')
                 ->withInput();
         }
     }
@@ -249,12 +312,12 @@ class MessageController extends Controller
             'phone' => auth()->user()->phone,
             'company' => auth()->user()->company,
             'parent_id' => $message->id,
-            'subject'   => $message->subject,
-            'message'   => $request->input('message'),
-            'type'      => 'admin_to_client',
-            'user_id'   => auth()->user()->id,
-            'project_id'=> $message->project_id,
-            'priority'  => $request->input('priority', 'normal'),
+            'subject' => $message->subject,
+            'message' => $request->input('message'),
+            'type' => 'admin_to_client',
+            'user_id' => auth()->user()->id,
+            'project_id' => $message->project_id,
+            'priority' => $request->input('priority', 'normal'),
         ]);
 
         // Handle attachments if any
@@ -553,20 +616,31 @@ class MessageController extends Controller
             $messages = $query->orderBy('created_at', 'desc')->get();
 
             $filename = 'messages_export_' . now()->format('Y-m-d_H-i-s') . '.csv';
-            
+
             $headers = [
                 'Content-Type' => 'text/csv',
                 'Content-Disposition' => "attachment; filename=\"{$filename}\"",
             ];
 
-            $callback = function() use ($messages) {
+            $callback = function () use ($messages) {
                 $file = fopen('php://output', 'w');
-                
+
                 // Add CSV headers
                 fputcsv($file, [
-                    'ID', 'Date', 'Name', 'Email', 'Company', 'Phone', 
-                    'Subject', 'Type', 'Priority', 'Status', 'Project', 
-                    'Is Read', 'Is Replied', 'Reply Date'
+                    'ID',
+                    'Date',
+                    'Name',
+                    'Email',
+                    'Company',
+                    'Phone',
+                    'Subject',
+                    'Type',
+                    'Priority',
+                    'Status',
+                    'Project',
+                    'Is Read',
+                    'Is Replied',
+                    'Reply Date'
                 ]);
 
                 // Add data rows
@@ -665,10 +739,10 @@ class MessageController extends Controller
     {
         $query->where(function ($q) use ($search) {
             $q->where('subject', 'like', "%{$search}%")
-              ->orWhere('message', 'like', "%{$search}%")
-              ->orWhere('name', 'like', "%{$search}%")
-              ->orWhere('email', 'like', "%{$search}%")
-              ->orWhere('company', 'like', "%{$search}%");
+                ->orWhere('message', 'like', "%{$search}%")
+                ->orWhere('name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")
+                ->orWhere('company', 'like', "%{$search}%");
         });
     }
     protected function applySorting($query, Request $request): void
@@ -677,7 +751,7 @@ class MessageController extends Controller
         $sortDir = $request->get('sort_dir', 'desc');
 
         $allowedSorts = ['created_at', 'subject', 'name', 'priority', 'is_read', 'is_replied'];
-        
+
         if (in_array($sortBy, $allowedSorts)) {
             $query->orderBy($sortBy, $sortDir);
         } else {
@@ -710,7 +784,7 @@ class MessageController extends Controller
                 'replied' => 'Replied',
                 'urgent' => 'Urgent',
             ],
-            'clients' => User::whereHas('roles', function($query) {
+            'clients' => User::whereHas('roles', function ($query) {
                 $query->where('name', 'client');
             })->select('id', 'name', 'email')->orderBy('name')->get(),
             'projects' => Project::select('id', 'title')->orderBy('title')->get(),
@@ -756,15 +830,15 @@ class MessageController extends Controller
         if ($message->priority === 'urgent') {
             return 'Urgent';
         }
-        
+
         if (!$message->is_read) {
             return 'Unread';
         }
-        
+
         if (!$message->is_replied) {
             return 'Pending Reply';
         }
-        
+
         return 'Replied';
     }
     public function uploadTempAttachment(Request $request)
@@ -1039,24 +1113,24 @@ class MessageController extends Controller
             ], 500);
         }
     }
-    private function cleanupSessionTempFiles(): void
+    protected function cleanupSessionTempFiles(): void
     {
         try {
-            $directory = 'temp/message-attachments/' . session()->getId();
+            $tempDir = 'temp/message-attachments/' . session()->getId();
 
-            if (Storage::disk('public')->exists($directory)) {
-                $files = Storage::disk('public')->files($directory);
+            if (Storage::disk('public')->exists($tempDir)) {
+                $files = Storage::disk('public')->allFiles($tempDir);
 
                 foreach ($files as $file) {
                     Storage::disk('public')->delete($file);
                 }
 
-                // Remove empty directory
-                Storage::disk('public')->deleteDirectory($directory);
+                // Remove the directory if it's empty
+                Storage::disk('public')->deleteDirectory($tempDir);
 
-                Log::info('Session temp files cleaned up', [
-                    'directory' => $directory,
-                    'files_count' => count($files)
+                Log::info('Cleaned up session temp files', [
+                    'session_id' => session()->getId(),
+                    'files_deleted' => count($files)
                 ]);
             }
         } catch (\Exception $e) {
@@ -1064,78 +1138,91 @@ class MessageController extends Controller
         }
     }
 
-    private function moveTempFileToMessage(string $tempPath, Message $message): bool
+    protected function moveTempFileToMessage(string $tempPath, Message $message): bool
     {
         try {
-            // Security check - ensure file is in temp directory
-            if (!str_starts_with($tempPath, 'temp/message-attachments/')) {
-                Log::warning('Invalid temp file path: ' . $tempPath);
-                return false;
-            }
+            // Ensure temp path is relative to storage/app/public
+            $tempPath = ltrim($tempPath, '/');
 
+            // Check if temp file exists
             if (!Storage::disk('public')->exists($tempPath)) {
-                Log::warning('Temp file not found: ' . $tempPath);
+                Log::warning('Temp file not found', [
+                    'temp_path' => $tempPath,
+                    'message_id' => $message->id
+                ]);
                 return false;
             }
 
-            // Get original filename from temp path
-            $tempFilename = basename($tempPath);
+            // Get file info
+            $originalName = basename($tempPath);
+            $fileSize = Storage::disk('public')->size($tempPath);
+            $mimeType = Storage::disk('public')->mimeType($tempPath);
 
-            // Extract original name if it follows our naming pattern: uniqid_originalname.ext
-            if (preg_match('/^[a-f0-9]+_(.+)$/', $tempFilename, $matches)) {
-                $originalFilename = $matches[1];
+            // Extract original name from temp filename if it follows pattern: uniqid_originalname.ext
+            if (preg_match('/^[a-f0-9]+_(.+)$/', $originalName, $matches)) {
+                $displayName = $matches[1];
             } else {
-                $originalFilename = $tempFilename;
+                $displayName = $originalName;
             }
 
-            // Generate permanent file path
-            $permanentPath = 'message-attachments/' . $message->id . '/' . $originalFilename;
+            // Create permanent directory for message attachments
+            $permanentDir = 'message-attachments/' . $message->id;
+            $permanentFilename = uniqid() . '_' . Str::slug(pathinfo($displayName, PATHINFO_FILENAME)) . '.' . pathinfo($displayName, PATHINFO_EXTENSION);
+            $permanentPath = $permanentDir . '/' . $permanentFilename;
 
-            // Ensure directory exists
-            $directory = dirname($permanentPath);
-            if (!Storage::disk('public')->exists($directory)) {
-                Storage::disk('public')->makeDirectory($directory);
+            // Ensure permanent directory exists
+            if (!Storage::disk('public')->exists($permanentDir)) {
+                Storage::disk('public')->makeDirectory($permanentDir);
             }
 
             // Move file from temp to permanent location
             if (Storage::disk('public')->move($tempPath, $permanentPath)) {
-                // Get file info
-                $fileSize = Storage::disk('public')->size($permanentPath);
-                $mimeType = Storage::disk('public')->mimeType($permanentPath);
-
-                // Create attachment record using MessageAttachment model structure
-                $message->attachments()->create([
+                // Create attachment record
+                MessageAttachment::create([
+                    'message_id' => $message->id,
+                    'file_name' => $displayName,
                     'file_path' => $permanentPath,
-                    'file_name' => $originalFilename,
-                    'file_type' => $mimeType,
                     'file_size' => $fileSize,
+                    'file_type' => $mimeType,
+                    'disk' => 'public',
+                ]);
+
+                Log::info('Attachment moved successfully', [
+                    'from' => $tempPath,
+                    'to' => $permanentPath,
+                    'message_id' => $message->id
                 ]);
 
                 return true;
+            } else {
+                Log::error('Failed to move temp file', [
+                    'from' => $tempPath,
+                    'to' => $permanentPath,
+                    'message_id' => $message->id
+                ]);
+                return false;
             }
 
-            return false;
-
         } catch (\Exception $e) {
-            Log::error('Failed to move temp file to message: ' . $e->getMessage(), [
+            Log::error('Error moving temp file to message', [
                 'temp_path' => $tempPath,
-                'message_id' => $message->id
+                'message_id' => $message->id,
+                'error' => $e->getMessage()
             ]);
-
             return false;
         }
     }
     protected function processAttachments(Message $message, ?string $tempFiles): int
     {
         $attachmentCount = 0;
-        
+
         if (!$tempFiles) {
             return $attachmentCount;
         }
 
         try {
             $tempFilePaths = json_decode($tempFiles, true);
-            
+
             if (!is_array($tempFilePaths)) {
                 return $attachmentCount;
             }
@@ -1143,7 +1230,8 @@ class MessageController extends Controller
             foreach ($tempFilePaths as $tempPath) {
                 if ($this->processTempFile($message, $tempPath)) {
                     $attachmentCount++;
-                    if ($attachmentCount >= 5) break; // Limit to 5 attachments
+                    if ($attachmentCount >= 5)
+                        break; // Limit to 5 attachments
                 }
             }
 
@@ -1159,7 +1247,7 @@ class MessageController extends Controller
     protected function prepareForwardedContent(Message $originalMessage, ?string $forwardMessage): string
     {
         $content = '';
-        
+
         if ($forwardMessage) {
             $content .= $forwardMessage . "\n\n";
             $content .= "--- Forwarded Message ---\n\n";
@@ -1238,17 +1326,17 @@ class MessageController extends Controller
         $clientInfo = null;
         if ($user) {
             $clientInfo = [
-                'name'           => $user->name,
-                'email'          => $user->email,
-                'phone'          => $user->phone ?? null,
-                'company'        => $user->company ?? null,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? null,
+                'company' => $user->company ?? null,
                 'total_messages' => $user->messages()->count(),
-                'member_since'   => $user->created_at,
+                'member_since' => $user->created_at,
             ];
         }
         $recentActivity = collect();
         if ($user && method_exists($user, 'activities')) {
-            $recentActivity = $user->activities()->latest()->limit(10)->get()->map(function($act) {
+            $recentActivity = $user->activities()->latest()->limit(10)->get()->map(function ($act) {
                 return [
                     'description' => $act->description,
                     'created_at' => $act->created_at,
@@ -1267,11 +1355,11 @@ class MessageController extends Controller
 
     public function reply(Request $request, Message $message)
     {
+        // FIXED: Change validation from 'attachments' to 'temp_files'
         $request->validate([
             'subject' => 'required|string|max:255|min:3',
             'message' => 'required|string|min:10|max:10000',
-            'attachments.*' => 'nullable|file|max:2048|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif,zip,rar',
-            'attachments' => 'nullable|array|max:5',
+            'temp_files' => 'nullable|string', // This was the missing piece!
         ]);
 
         try {
@@ -1296,6 +1384,7 @@ class MessageController extends Controller
                 $message->markAsReplied(auth()->id());
             }
 
+            // Handle temp files properly - your existing code should work now
             $attachmentCount = 0;
             if ($request->filled('temp_files')) {
                 Log::info('Processing reply temp files', [
@@ -1371,22 +1460,17 @@ class MessageController extends Controller
                 DB::commit();
 
                 return redirect()->route('admin.messages.show', $message)
-                    ->with('warning', 'Reply saved but there was an issue sending the email notification.');
+                    ->with('warning', 'Reply saved but there was an issue sending the email notification. Attachment count: ' . $attachmentCount);
             }
 
             DB::commit();
 
-            $successMessage = 'Reply sent successfully!';
-            if ($attachmentCount > 0) {
-                $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
-            }
-
             return redirect()->route('admin.messages.show', $message)
-                ->with('success', $successMessage);
+                ->with('success', 'Reply sent successfully!' . ($attachmentCount > 0 ? " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)" : ''));
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Failed to send reply: ' . $e->getMessage());
+            Log::error('Failed to send admin reply: ' . $e->getMessage());
 
             return redirect()->back()
                 ->with('error', 'Failed to send reply. Please try again.')

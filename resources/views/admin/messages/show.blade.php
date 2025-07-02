@@ -580,130 +580,64 @@
 
     <!-- Scripts -->
     <script>
-        function showForwardModal() {
-            document.getElementById('forward-modal').classList.remove('hidden');
+    // Universal Uploader Integration for Admin Messages Show View - COMPLETE SCRIPT
+    let replyUploadedFiles = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🚀 Admin messages show view loaded');
+
+        // Initialize any existing functionality first
+        initializeExistingFeatures();
+
+        // Set up Universal Uploader Event Listeners
+        setupUniversalUploaderEvents();
+
+        // Set up form submission handlers
+        setupFormHandlers();
+
+        // Handle Laravel session messages
+        handleSessionMessages();
+    });
+
+    // Initialize existing features (character counters, etc.)
+    function initializeExistingFeatures() {
+        // Character counter for message textarea
+        const messageTextarea = document.getElementById('message');
+        if (messageTextarea) {
+            updateCharCounter(messageTextarea);
+            messageTextarea.addEventListener('input', function() {
+                updateCharCounter(this);
+            });
         }
 
-        function hideForwardModal() {
-            document.getElementById('forward-modal').classList.add('hidden');
-            document.getElementById('forward-form').reset();
+        // Auto-focus message area if needed
+        if (messageTextarea && !messageTextarea.value.trim()) {
+            setTimeout(() => messageTextarea.focus(), 500);
         }
+    }
 
-        function saveDraft() {
-            const message = document.getElementById('reply_message').value;
-            if (!message.trim()) {
-                alert('Please enter a message before saving draft.');
-                return;
-            }
+    // Set up Universal Uploader event listeners
+    function setupUniversalUploaderEvents() {
+        console.log('🔧 Setting up universal uploader events...');
 
-            // Save to localStorage as draft
-            const draftKey = `message_draft_${{{ $message->id }}}`;
-            localStorage.setItem(draftKey, message);
+        // PRIMARY EVENT LISTENER - files-uploaded (bulk files)
+        window.addEventListener('files-uploaded', function(e) {
+            console.log('🎯 Admin files-uploaded event captured:', e.detail);
             
-            // Show success notification
-            showNotification('Draft saved successfully!', 'success');
-        }
-
-        // Load draft on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            const draftKey = `message_draft_${{{ $message->id }}}`;
-            const savedDraft = localStorage.getItem(draftKey);
+            // Check if this event is for our admin reply uploader
+            const isAdminUploader = isEventForAdminUploader(e.detail);
             
-            if (savedDraft && savedDraft.trim()) {
-                const replyTextarea = document.getElementById('reply_message');
-                if (replyTextarea && !replyTextarea.value.trim()) {
-                    replyTextarea.value = savedDraft;
-                    showNotification('Draft restored from previous session.', 'info');
-                }
-            }
-        });
-
-        // Clear draft after successful reply
-        function clearDraft() {
-            const draftKey = `message_draft_${{{ $message->id }}}`;
-            localStorage.removeItem(draftKey);
-        }
-
-        // Auto-save draft every 30 seconds
-        setInterval(function() {
-            const replyTextarea = document.getElementById('reply_message');
-            if (replyTextarea && replyTextarea.value.trim()) {
-                const draftKey = `message_draft_${{{ $message->id }}}`;
-                localStorage.setItem(draftKey, replyTextarea.value);
-            }
-        }, 30000);
-
-        // Notification function (reuse from bulk actions)
-        function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 z-50 max-w-sm p-4 rounded-lg shadow-lg transition-all duration-300 transform ${
-                type === 'success' ? 'bg-green-100 border-green-400 text-green-700' :
-                type === 'error' ? 'bg-red-100 border-red-400 text-red-700' :
-                'bg-blue-100 border-blue-400 text-blue-700'
-            } border`;
-            
-            notification.innerHTML = `
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        ${type === 'success' ? 
-                            '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>' :
-                            '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>'
-                        }
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-sm font-medium">${message}</p>
-                    </div>
-                    <div class="ml-auto pl-3">
-                        <button onclick="this.parentElement.parentElement.parentElement.remove()" class="inline-flex rounded-md p-1.5 hover:bg-gray-100">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.remove();
-                }
-            }, 5000);
-        }
-        // PRIMARY EVENT LISTENER - files-uploaded (this is what your uploader uses!)
-            window.addEventListener('files-uploaded', function(e) {
-                console.log('🎯 files-uploaded event captured:', e.detail);
+            if (isAdminUploader && e.detail.files && Array.isArray(e.detail.files)) {
+                console.log('✅ Event is for admin uploader, processing files...');
                 
-                // Check if this event is for our reply uploader
-                const isReplyUploader = e.detail.component === 'reply-attachments' || 
-                                       e.detail.uploaderId === 'reply-attachments' ||
-                                       e.detail.id === 'reply-attachments';
+                // Extract file paths from the uploaded files
+                const newFilePaths = e.detail.files.map(file => {
+                    console.log('📎 Processing admin file:', file);
+                    return extractFilePath(file);
+                }).filter(path => path); // Filter out undefined/null paths
                 
-                if (isReplyUploader && e.detail.files && Array.isArray(e.detail.files)) {
-                    console.log('✅ Event is for reply-attachments uploader');
-                    
-                    // Extract file paths from the uploaded files
-                    const newFilePaths = e.detail.files.map(file => {
-                        console.log('Processing file:', file);
-                        
-                        // The API response shows files have these properties: path, file_path, etc.
-                        let filePath = file.path || file.file_path || file.filePath;
-                        
-                        // If no direct path, construct it from available data
-                        if (!filePath && file.temp_id && file.original_name) {
-                            filePath = `temp/message-attachments/${sessionId}/${file.temp_id}_${file.original_name}`;
-                        } else if (!filePath && file.id && file.original_name) {
-                            filePath = `temp/message-attachments/${sessionId}/${file.id}_${file.original_name}`;
-                        } else if (!filePath && file.filename) {
-                            filePath = `temp/message-attachments/${sessionId}/${file.filename}`;
-                        }
-                        
-                        console.log('Resolved file path:', filePath);
-                        return filePath;
-                    }).filter(path => path); // Remove any undefined/null paths
-                    
-                    // Add new files to our array (avoid duplicates)
+                if (newFilePaths.length > 0) {
+                    // Add new files to our tracking array (avoid duplicates)
                     newFilePaths.forEach(filePath => {
                         if (!replyUploadedFiles.includes(filePath)) {
                             replyUploadedFiles.push(filePath);
@@ -711,85 +645,398 @@
                     });
                     
                     updateTempFilesInput();
-                    console.log('✅ Files added via files-uploaded:', newFilePaths);
-                    console.log('📋 Current file list:', replyUploadedFiles);
-                } else {
-                    console.log('❌ Event not for reply-attachments uploader', {
-                        component: e.detail.component,
-                        uploaderId: e.detail.uploaderId,
-                        id: e.detail.id
-                    });
+                    console.log('✅ Admin files added via files-uploaded:', newFilePaths);
+                    console.log('📋 Current admin file list:', replyUploadedFiles);
                 }
-            });
-
-            // SECONDARY EVENT LISTENERS (backup methods)
-            window.addEventListener('file-uploaded', function(e) {
-                console.log('📁 file-uploaded event:', e.detail);
-                handleSingleFileUpload(e.detail);
-            });
-
-            window.addEventListener('fileUploaded', function(e) {
-                console.log('📁 fileUploaded event:', e.detail);
-                handleSingleFileUpload(e.detail);
-            });
-
-            // FILE DELETION EVENTS
-            window.addEventListener('file-deleted', function(e) {
-                console.log('🗑️ file-deleted event:', e.detail);
-                handleFileDelete(e.detail);
-            });
-
-            window.addEventListener('fileDeleted', function(e) {
-                console.log('🗑️ fileDeleted event:', e.detail);
-                handleFileDelete(e.detail);
-            });
-
-            // Helper functions
-            function handleSingleFileUpload(detail) {
-                if (detail && detail.uploaderId === 'reply-attachments') {
-                    const file = detail.file || detail;
-                    const filePath = file.path || file.file_path || file.filePath;
-                    if (filePath && !replyUploadedFiles.includes(filePath)) {
-                        replyUploadedFiles.push(filePath);
-                        updateTempFilesInput();
-                        console.log('✅ Single file added:', filePath);
-                    }
-                }
+            } else {
+                console.log('❌ Event not for admin uploader or invalid data');
             }
-
-            function handleFileDelete(detail) {
-                if (detail && detail.uploaderId === 'reply-attachments') {
-                    const file = detail.file || detail;
-                    const filePath = file.path || file.file_path || file.filePath;
-                    if (filePath) {
-                        replyUploadedFiles = replyUploadedFiles.filter(path => path !== filePath);
-                        updateTempFilesInput();
-                        console.log('🗑️ File removed:', filePath);
-                    }
-                }
-            }
-
-            function updateTempFilesInput() {
-                const tempFilesInput = document.getElementById('reply_temp_files');
-                if (tempFilesInput) {
-                    tempFilesInput.value = JSON.stringify(replyUploadedFiles);
-                    console.log('📝 Updated temp_files input:', tempFilesInput.value);
-                }
-            }
-
-
-        // Handle form submissions with success notifications
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check for success messages from Laravel session
-            @if(session('success'))
-                showNotification('{{ session('success') }}', 'success');
-                clearDraft(); // Clear draft after successful reply
-            @endif
-
-            @if(session('error'))
-                showNotification('{{ session('error') }}', 'error');
-            @endif
         });
-    </script>
 
+        // SECONDARY EVENT LISTENER - file-uploaded (single file)
+        window.addEventListener('file-uploaded', function(e) {
+            console.log('📎 Admin single file-uploaded event:', e.detail);
+            
+            const isAdminUploader = isEventForAdminUploader(e.detail);
+            
+            if (isAdminUploader && e.detail.file) {
+                const filePath = extractFilePath(e.detail.file);
+                if (filePath && !replyUploadedFiles.includes(filePath)) {
+                    replyUploadedFiles.push(filePath);
+                    updateTempFilesInput();
+                    console.log('✅ Admin single file added:', filePath);
+                }
+            }
+        });
+
+        // FILE DELETE EVENT LISTENERS
+        const deleteEvents = ['file-deleted', 'file-removed', 'files-deleted', 'files-removed'];
+        deleteEvents.forEach(eventName => {
+            window.addEventListener(eventName, function(e) {
+                console.log(`🗑️ Admin ${eventName} event:`, e.detail);
+                handleFileDelete(e.detail);
+            });
+        });
+    }
+
+    // Check if the event is for our admin uploader
+    function isEventForAdminUploader(detail) {
+        const adminUploaderIds = [
+            'message-attachments',
+            'reply-attachments', 
+            'admin-attachments',
+            'temp-attachments'
+        ];
+
+        return adminUploaderIds.some(id => 
+            detail.component === id || 
+            detail.uploaderId === id || 
+            detail.id === id
+        );
+    }
+
+    // Extract file path from upload response
+    function extractFilePath(file) {
+        // Try multiple possible path properties
+        let filePath = file.path || file.file_path || file.filePath;
+        
+        // If no direct path, try to construct it
+        if (!filePath) {
+            const sessionId = getSessionId();
+            if (file.temp_id && file.original_name) {
+                filePath = `temp/message-attachments/${sessionId}/${file.temp_id}_${file.original_name}`;
+            } else if (file.id && file.original_name) {
+                filePath = `temp/message-attachments/${sessionId}/${file.id}_${file.original_name}`;
+            } else if (file.filename) {
+                filePath = `temp/message-attachments/${sessionId}/${file.filename}`;
+            } else if (file.name) {
+                filePath = `temp/message-attachments/${sessionId}/${file.name}`;
+            }
+        }
+        
+        console.log('📍 Resolved admin file path:', filePath, 'from file:', file);
+        return filePath;
+    }
+
+    // Get session ID for temp file paths
+    function getSessionId() {
+        // Try to get session ID from various sources
+        const metaSessionId = document.querySelector('meta[name="session-id"]');
+        if (metaSessionId) {
+            return metaSessionId.getAttribute('content');
+        }
+        
+        // Try from a global variable if set
+        if (window.sessionId) {
+            return window.sessionId;
+        }
+        
+        // Default fallback - this should be set by your backend
+        return 'default-session';
+    }
+
+    // Handle file deletion
+    function handleFileDelete(detail) {
+        const isAdminUploader = isEventForAdminUploader(detail);
+        
+        if (isAdminUploader) {
+            const file = detail.file || detail;
+            const filePath = extractFilePath(file);
+            
+            if (filePath) {
+                replyUploadedFiles = replyUploadedFiles.filter(path => path !== filePath);
+                updateTempFilesInput();
+                console.log('🗑️ Admin file removed:', filePath);
+                console.log('📋 Remaining admin files:', replyUploadedFiles);
+            }
+        }
+    }
+
+    // Update the hidden temp_files input
+    function updateTempFilesInput() {
+        const tempFilesInput = document.getElementById('temp_files');
+        if (tempFilesInput) {
+            tempFilesInput.value = JSON.stringify(replyUploadedFiles);
+            console.log('📝 Updated admin temp_files input:', tempFilesInput.value);
+        } else {
+            console.warn('⚠️ temp_files input not found! Looking for id="temp_files"');
+        }
+    }
+
+    // Manual file extraction fallback
+    function extractFilesFromUploader() {
+        let extractedFiles = [];
+        
+        console.log('🔍 Manually extracting files from uploader instances...');
+        
+        // Check universal uploader instances
+        if (window.universalUploaderInstances) {
+            const uploaderIds = ['message-attachments', 'reply-attachments', 'admin-attachments'];
+            
+            for (const uploaderId of uploaderIds) {
+                if (window.universalUploaderInstances[uploaderId]) {
+                    const instance = window.universalUploaderInstances[uploaderId];
+                    console.log(`📂 Checking uploader instance: ${uploaderId}`, instance);
+                    
+                    if (instance.uploadedFiles && Array.isArray(instance.uploadedFiles)) {
+                        const filePaths = instance.uploadedFiles.map(file => extractFilePath(file)).filter(path => path);
+                        extractedFiles = [...extractedFiles, ...filePaths];
+                        console.log(`📎 Found ${filePaths.length} files in ${uploaderId}:`, filePaths);
+                    }
+                }
+            }
+        }
+        
+        // Check DOM elements with Vue instances
+        const uploaderElements = [
+            document.getElementById('message-attachments'),
+            document.getElementById('reply-attachments'),
+            document.getElementById('admin-attachments')
+        ].filter(el => el);
+        
+        uploaderElements.forEach(element => {
+            if (element && element.__vue__) {
+                const vueInstance = element.__vue__;
+                console.log(`📂 Checking Vue instance on ${element.id}:`, vueInstance);
+                
+                if (vueInstance.uploadedFiles && Array.isArray(vueInstance.uploadedFiles)) {
+                    const filePaths = vueInstance.uploadedFiles.map(file => extractFilePath(file)).filter(path => path);
+                    extractedFiles = [...extractedFiles, ...filePaths];
+                    console.log(`📎 Found ${filePaths.length} files in Vue instance:`, filePaths);
+                }
+            }
+        });
+        
+        // Remove duplicates
+        const uniqueFiles = [...new Set(extractedFiles)];
+        console.log('📋 Total extracted files:', uniqueFiles);
+        return uniqueFiles;
+    }
+
+    // Set up form submission handlers
+    function setupFormHandlers() {
+        const replyForm = document.querySelector('form[action*="reply"]');
+        if (replyForm) {
+            console.log('📝 Found admin reply form, setting up submission handler');
+            
+            replyForm.addEventListener('submit', function(e) {
+                console.log('🚀 Admin form submitting...');
+                
+                // Last chance file extraction if event listeners failed
+                if (replyUploadedFiles.length === 0) {
+                    console.log('⚠️ No files in array, attempting manual extraction...');
+                    const extractedFiles = extractFilesFromUploader();
+                    if (extractedFiles.length > 0) {
+                        replyUploadedFiles = extractedFiles;
+                        updateTempFilesInput();
+                        console.log('✅ Manually extracted admin files:', extractedFiles);
+                    }
+                }
+                
+                // Final logging
+                console.log('📤 Final admin file list for submission:', replyUploadedFiles);
+                console.log('📤 Final temp_files value:', document.getElementById('temp_files')?.value);
+                
+                // Show loading state
+                const submitBtn = replyForm.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '⏳ Sending...';
+                    
+                    // Re-enable after timeout to prevent permanent disable
+                    setTimeout(() => {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }, 15000);
+                }
+            });
+        } else {
+            console.log('❌ Admin reply form not found');
+        }
+    }
+
+    // Character counter functionality
+    function updateCharCounter(textarea) {
+        const charCount = textarea.value.length;
+        const maxLength = 10000;
+        
+        let counterElement = document.getElementById('char-count');
+        if (!counterElement) {
+            // Create character counter if it doesn't exist
+            counterElement = document.createElement('div');
+            counterElement.id = 'char-count';
+            counterElement.className = 'text-sm text-gray-500 mt-1';
+            textarea.parentNode.appendChild(counterElement);
+        }
+        
+        counterElement.textContent = `${charCount}/${maxLength} characters`;
+        
+        if (charCount > maxLength * 0.9) {
+            counterElement.className = 'text-sm text-red-500 mt-1';
+        } else {
+            counterElement.className = 'text-sm text-gray-500 mt-1';
+        }
+    }
+
+    // Handle Laravel session messages
+    function handleSessionMessages() {
+        @if(session('success'))
+            showNotification('{{ session("success") }}', 'success');
+            clearFormAfterSuccess();
+        @endif
+
+        @if(session('error'))
+            showNotification('{{ session("error") }}', 'error');
+        @endif
+
+        @if(session('warning'))
+            showNotification('{{ session("warning") }}', 'warning');
+        @endif
+    }
+
+    // Clear form after successful submission
+    function clearFormAfterSuccess() {
+        const messageTextarea = document.getElementById('message');
+        const tempFilesInput = document.getElementById('temp_files');
+        
+        if (messageTextarea) messageTextarea.value = '';
+        if (tempFilesInput) tempFilesInput.value = '';
+        
+        // Clear the JavaScript array
+        replyUploadedFiles = [];
+        
+        // Clear universal uploader files
+        clearUploaderInstances();
+        
+        console.log('✅ Admin form cleared after successful submission');
+    }
+
+    // Clear universal uploader instances
+    function clearUploaderInstances() {
+        if (window.universalUploaderInstances) {
+            const uploaderIds = ['message-attachments', 'reply-attachments', 'admin-attachments'];
+            uploaderIds.forEach(uploaderId => {
+                if (window.universalUploaderInstances[uploaderId]) {
+                    try {
+                        window.universalUploaderInstances[uploaderId].clearAll();
+                        console.log(`🧹 Cleared uploader instance: ${uploaderId}`);
+                    } catch (e) {
+                        console.warn(`⚠️ Failed to clear ${uploaderId}:`, e);
+                    }
+                }
+            });
+        }
+        
+        // Also try Vue instances
+        const uploaderElements = [
+            document.getElementById('message-attachments'),
+            document.getElementById('reply-attachments'),
+            document.getElementById('admin-attachments')
+        ].filter(el => el);
+        
+        uploaderElements.forEach(element => {
+            if (element && element.__vue__ && element.__vue__.clearAll) {
+                try {
+                    element.__vue__.clearAll();
+                    console.log(`🧹 Cleared Vue instance on ${element.id}`);
+                } catch (e) {
+                    console.warn(`⚠️ Failed to clear Vue instance on ${element.id}:`, e);
+                }
+            }
+        });
+    }
+
+    // Notification function (customize based on your notification system)
+    function showNotification(message, type = 'info') {
+        console.log(`📢 ${type.toUpperCase()}: ${message}`);
+        
+        // You can replace this with your existing notification system
+        // For example, if you use Toastr, replace with: toastr[type](message);
+        // Or if you use SweetAlert: Swal.fire({ title: type, text: message, icon: type });
+        
+        // Simple alert fallback - replace with your notification library
+        if (type === 'error') {
+            alert('Error: ' + message);
+        } else {
+            // For success/warning, you might want a less intrusive notification
+            console.log('Success notification:', message);
+        }
+    }
+
+    // Clear reply form function (can be called from button)
+    function clearReplyForm() {
+        const messageTextarea = document.getElementById('message');
+        const subjectInput = document.getElementById('subject');
+        const tempFilesInput = document.getElementById('temp_files');
+        
+        if (messageTextarea) messageTextarea.value = '';
+        if (subjectInput) subjectInput.value = '';
+        if (tempFilesInput) tempFilesInput.value = '';
+        
+        // Clear the JavaScript array
+        replyUploadedFiles = [];
+        
+        // Clear universal uploader files
+        clearUploaderInstances();
+        
+        console.log('🧹 Admin reply form manually cleared');
+    }
+
+    // Copy message text function (if you have this feature)
+    function copyMessageText(messageId) {
+        const messageElement = document.getElementById(`message-text-${messageId}`);
+        if (messageElement) {
+            navigator.clipboard.writeText(messageElement.textContent).then(() => {
+                showNotification('Message text copied to clipboard!', 'success');
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                showNotification('Failed to copy text', 'error');
+            });
+        }
+    }
+
+    // Mark message as read/unread toggle
+    function toggleMessageRead(messageId) {
+        fetch(`/admin/messages/${messageId}/toggle-read`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                showNotification('Failed to update message status', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('An error occurred while updating the message', 'error');
+        });
+    }
+
+    // Export these functions to global scope for use in onclick handlers
+    window.clearReplyForm = clearReplyForm;
+    window.copyMessageText = copyMessageText;
+    window.toggleMessageRead = toggleMessageRead;
+    window.showNotification = showNotification;
+
+    // Debug function to check current state
+    window.debugAdminUploader = function() {
+        console.log('🐛 Admin Uploader Debug Info:');
+        console.log('📁 Current files array:', replyUploadedFiles);
+        console.log('📝 temp_files input value:', document.getElementById('temp_files')?.value);
+        console.log('🔧 Universal uploader instances:', window.universalUploaderInstances);
+        console.log('📂 DOM elements:', {
+            messageAttachments: document.getElementById('message-attachments'),
+            replyAttachments: document.getElementById('reply-attachments'),
+            tempFilesInput: document.getElementById('temp_files')
+        });
+    };
+</script>
 </x-layouts.admin>
