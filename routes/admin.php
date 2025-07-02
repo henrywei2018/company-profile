@@ -303,7 +303,36 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
             Route::get('/api/statistics', [ChatTemplateController::class, 'getStatistics'])->name('api.statistics');
         });
     });
-
+    // Messages
+    Route::prefix('messages')->name('messages.')->group(function () {
+        // CRUD
+        Route::get('/', [MessageController::class, 'index'])->name('index');
+        Route::get('/create', [MessageController::class, 'create'])->name('create');
+        Route::post('/', [MessageController::class, 'store'])->name('store');
+        Route::get('/{message}', [MessageController::class, 'show'])->name('show');
+        Route::delete('/{message}', [MessageController::class, 'destroy'])->name('destroy');
+        
+        // Reply System
+        Route::get('/{message}/reply', [MessageController::class, 'reply'])->name('reply');
+        Route::post('/{message}/reply', [MessageController::class, 'storeReply'])->name('store-reply');
+        
+        // Message Status Actions
+        Route::post('/{message}/toggle-read', [MessageController::class, 'toggleRead'])->name('toggle-read');
+        Route::post('/{message}/update-priority', [MessageController::class, 'updatePriority'])->name('update-priority');
+        Route::post('/{message}/forward', [MessageController::class, 'forwardMessage'])->name('forward');
+        
+        // Bulk Operations
+        Route::post('/bulk-action', [MessageController::class, 'bulkAction'])->name('bulk-action');
+        Route::post('/bulk-priority', [MessageController::class, 'bulkUpdatePriority'])->name('bulk-priority');
+        Route::post('/bulk-forward', [MessageController::class, 'bulkForward'])->name('bulk-forward');
+        
+        // File Downloads
+        Route::get('/{message}/attachments/{attachmentId}/download', [MessageController::class, 'downloadAttachment'])->name('attachments.download');
+        
+        // Export & Statistics
+        Route::get('/export', [MessageController::class, 'export'])->name('export');
+        Route::get('/statistics', [MessageController::class, 'statistics'])->name('statistics');
+    });
     // Quotations
     Route::resource('quotations', QuotationController::class);
     Route::prefix('quotations')->name('quotations.')->group(function () {
@@ -342,15 +371,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     
 
-    // Messages
-    Route::resource('messages', MessageController::class);
-    Route::post('/messages/{message}/reply', [MessageController::class, 'reply'])->middleware('throttle:20,1')->name('messages.reply');
-    Route::post('/messages/{message}/toggle-read', [MessageController::class, 'toggleRead'])->name('messages.toggle-read');
-    Route::post('/messages/{message}/mark-unread', [MessageController::class, 'markAsUnread'])->name('messages.mark-unread');
-    Route::post('/messages/mark-read', [MessageController::class, 'markAsRead'])->name('messages.mark-read');
-    Route::delete('/messages/delete-multiple', [MessageController::class, 'destroyMultiple'])->middleware('throttle:30,1')->name('messages.destroy-multiple');
-    Route::get('/messages/{message}/attachments/{attachmentId}/download', [MessageController::class, 'downloadAttachment'])->name('messages.attachments.download')->where('attachmentId', '[0-9]+');
-    Route::post('/messages/email-reply-webhook', [MessageController::class, 'handleEmailReply'])->middleware('throttle:100,1')->name('messages.email-reply-webhook');
+    
 
     // Team
     Route::prefix('team')->name('team.')->group(function () {

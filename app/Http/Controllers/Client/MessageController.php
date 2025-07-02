@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\MessageAttachment;
-
 use App\Services\ClientAccessService;
 use App\Services\MessageService;
 use App\Services\DashboardService;
