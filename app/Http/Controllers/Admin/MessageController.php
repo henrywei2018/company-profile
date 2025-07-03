@@ -157,151 +157,200 @@ class MessageController extends Controller
      * Store a newly created direct message using centralized notifications.
      */
     public function store(Request $request)
-    {
-        try {
-            // Validation - make temp_files nullable to handle no file submissions
-            $validated = $request->validate([
-                'priority' => 'nullable|in:normal,urgent',
-                'subject' => 'required|string|max:255|min:3',
-                'message' => 'required|string|min:10|max:10000',
-                'temp_files' => 'nullable|string', // Allow null when no files
-                'recipient_email' => 'required|email',
-                'recipient_name' => 'nullable|string|max:255',
-                'type' => 'nullable|string|in:admin_to_client,general',
+{
+    try {
+        // Enhanced validation for new create view
+        $validated = $request->validate([
+            // Recipient type selection
+            'send_type' => 'required|string|in:client,custom',
+            
+            // Client selection (when send_type = client)
+            'client_id' => 'required_if:send_type,client|nullable|exists:users,id',
+            
+            // Custom email fields (when send_type = custom)
+            'recipient_email' => 'required_if:send_type,custom|nullable|email|max:255',
+            'recipient_name' => 'nullable|string|max:255',
+            
+            // Message content
+            'priority' => 'nullable|in:normal,urgent',
+            'subject' => 'required|string|max:255|min:3',
+            'message' => 'required|string|min:10|max:10000',
+            
+            // File uploads
+            'temp_files' => 'nullable|string', // JSON string from universal uploader
+            
+            // Optional fields
+            'type' => 'nullable|string|in:admin_to_client,general',
+        ]);
+
+        Log::info('Admin message validation passed', [
+            'send_type' => $validated['send_type'],
+            'has_temp_files' => !empty($validated['temp_files']),
+            'temp_files_length' => strlen($validated['temp_files'] ?? ''),
+        ]);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        Log::error('Admin message validation failed', [
+            'errors' => $e->errors(),
+            'request_data' => $request->except(['temp_files', '_token'])
+        ]);
+        throw $e;
+    }
+
+    try {
+        DB::beginTransaction();
+
+        // Determine recipient based on send_type
+        $recipientData = $this->resolveRecipient($validated);
+
+        // Create the message
+        $messageData = [
+            'type' => $validated['type'] ?? 'admin_to_client',
+            'name' => $recipientData['name'],
+            'email' => $recipientData['email'],
+            'subject' => $validated['subject'],
+            'message' => $validated['message'],
+            'priority' => $validated['priority'] ?? 'normal',
+            'user_id' => $recipientData['user_id'] ?? null, // Link to client if exists
+            'project_id' => null, // Could be enhanced later
+            'is_read' => true, // Admin messages start as read
+            'is_replied' => false,
+            'read_at' => now(),
+            'replied_by' => auth()->id(),
+        ];
+
+        $message = Message::create($messageData);
+
+        Log::info('Admin message created successfully', [
+            'message_id' => $message->id,
+            'recipient_email' => $recipientData['email'],
+            'send_type' => $validated['send_type'],
+            'sent_by' => auth()->id()
+        ]);
+
+        // Process attachments from universal file uploader
+        $attachmentCount = 0;
+        if ($request->filled('temp_files') && trim($request->temp_files) !== '' && $request->temp_files !== 'null') {
+            Log::info('Processing admin message temp files', [
+                'temp_files_raw' => $request->input('temp_files'),
+                'message_id' => $message->id
             ]);
 
-            Log::info('Admin message validation passed', [
-                'has_temp_files' => !empty($validated['temp_files']),
-                'temp_files_length' => strlen($validated['temp_files'] ?? ''),
-            ]);
+            $tempFilePaths = json_decode($request->input('temp_files'), true);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('Admin message validation failed', [
-                'errors' => $e->errors(),
-                'request_data' => $request->except(['temp_files', '_token'])
-            ]);
-            throw $e;
-        }
-
-        try {
-            DB::beginTransaction();
-
-            // Create the message
-            $messageData = [
-                'type' => $validated['type'] ?? 'admin_to_client',
-                'name' => $validated['recipient_name'] ?? 'Client',
-                'email' => $validated['recipient_email'],
-                'subject' => $validated['subject'],
-                'message' => $validated['message'],
-                'priority' => $validated['priority'] ?? 'normal',
-                'user_id' => null, // Admin messages don't need user_id
-                'is_read' => true, // Admin messages are read by default
-                'is_replied' => false,
-                'sent_by_admin' => true,
-                'sent_by' => auth()->id(),
-            ];
-
-            Log::info('Creating admin message', $messageData);
-
-            $message = Message::create($messageData);
-
-            Log::info('Admin message created successfully', [
-                'message_id' => $message->id,
-                'message_type' => $message->type
-            ]);
-
-            // Handle temp files - FIXED to properly handle empty submissions
-            $attachmentCount = 0;
-
-            // Only process temp_files if it's not empty
-            if (!empty($validated['temp_files']) && trim($validated['temp_files']) !== '' && $validated['temp_files'] !== 'null') {
-                Log::info('Processing admin temp files', [
-                    'temp_files_raw' => $validated['temp_files']
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('JSON decode error for admin message temp_files', [
+                    'json_error' => json_last_error_msg(),
+                    'temp_files_raw' => $request->input('temp_files')
+                ]);
+            } elseif (is_array($tempFilePaths)) {
+                Log::info('Found admin message temp files to process', [
+                    'file_count' => count($tempFilePaths),
+                    'file_paths' => $tempFilePaths
                 ]);
 
-                $tempFilePaths = json_decode($validated['temp_files'], true);
-
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    Log::error('JSON decode error for admin temp_files', [
-                        'json_error' => json_last_error_msg(),
-                        'temp_files_raw' => $validated['temp_files']
-                    ]);
-                } elseif (is_array($tempFilePaths) && !empty($tempFilePaths)) {
-                    Log::info('Found admin temp files to process', [
-                        'file_count' => count($tempFilePaths),
-                        'file_paths' => $tempFilePaths
-                    ]);
-
-                    foreach ($tempFilePaths as $tempPath) {
-                        try {
-                            if ($this->moveTempFileToMessage($tempPath, $message)) {
-                                $attachmentCount++;
-                                Log::info('Admin attachment processed successfully', [
-                                    'temp_path' => $tempPath,
-                                    'message_id' => $message->id
-                                ]);
-                            } else {
-                                Log::warning('Failed to process admin attachment', [
-                                    'temp_path' => $tempPath,
-                                    'message_id' => $message->id
-                                ]);
-                            }
-                        } catch (\Exception $attachmentError) {
-                            Log::error('Admin attachment processing error', [
+                foreach ($tempFilePaths as $tempPath) {
+                    try {
+                        if ($this->moveTempFileToMessage($tempPath, $message)) {
+                            $attachmentCount++;
+                            Log::info('Admin message attachment processed successfully', [
                                 'temp_path' => $tempPath,
-                                'message_id' => $message->id,
-                                'error' => $attachmentError->getMessage()
+                                'message_id' => $message->id
+                            ]);
+                        } else {
+                            Log::warning('Failed to process admin message attachment', [
+                                'temp_path' => $tempPath,
+                                'message_id' => $message->id
                             ]);
                         }
+                    } catch (\Exception $attachmentError) {
+                        Log::error('Admin message attachment processing error', [
+                            'temp_path' => $tempPath,
+                            'message_id' => $message->id,
+                            'error' => $attachmentError->getMessage()
+                        ]);
                     }
-                } else {
-                    Log::info('No valid temp files found in admin submission', [
-                        'temp_files_decoded' => $tempFilePaths
-                    ]);
                 }
             } else {
-                Log::info('No temp files submitted with admin message - this is OK');
+                Log::info('No valid temp files found in admin message submission', [
+                    'temp_files_decoded' => $tempFilePaths
+                ]);
             }
-
-            // Clean up temp directory after successful processing
-            try {
-                $this->cleanupSessionTempFiles();
-            } catch (\Exception $cleanupError) {
-                Log::warning('Failed to cleanup temp files after admin message: ' . $cleanupError->getMessage());
-            }
-
-            DB::commit();
-
-            $successMessage = 'Message sent successfully!';
-            if ($attachmentCount > 0) {
-                $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
-            }
-
-            Log::info('Admin message sent successfully', [
-                'message_id' => $message->id,
-                'attachment_count' => $attachmentCount,
-                'sent_by' => auth()->id()
-            ]);
-
-            return redirect()->route('admin.messages.index')
-                ->with('success', $successMessage);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            Log::error('Failed to send admin message', [
-                'sent_by' => auth()->id(),
-                'error_message' => $e->getMessage(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
-                'stack_trace' => $e->getTraceAsString()
-            ]);
-
-            return redirect()->back()
-                ->with('error', 'Failed to send message. Please try again.')
-                ->withInput();
+        } else {
+            Log::info('No temp files submitted with admin message - this is OK');
         }
+
+        // Clean up temp directory after successful processing
+        try {
+            $this->cleanupSessionTempFiles();
+        } catch (\Exception $cleanupError) {
+            Log::warning('Failed to cleanup temp files after admin message: ' . $cleanupError->getMessage());
+        }
+
+        // Send email notification to recipient (optional enhancement)
+        try {
+            $this->sendMessageNotification($message, $recipientData);
+        } catch (\Exception $notificationError) {
+            Log::warning('Failed to send email notification for admin message', [
+                'message_id' => $message->id,
+                'error' => $notificationError->getMessage()
+            ]);
+            // Don't fail the whole process if notification fails
+        }
+
+        DB::commit();
+
+        $successMessage = 'Message sent successfully!';
+        if ($attachmentCount > 0) {
+            $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
+        }
+
+        Log::info('Admin message sent successfully', [
+            'message_id' => $message->id,
+            'attachment_count' => $attachmentCount,
+            'sent_by' => auth()->id(),
+            'recipient_type' => $validated['send_type']
+        ]);
+
+        return redirect()->route('admin.messages.index')
+            ->with('success', $successMessage);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        Log::error('Failed to send admin message', [
+            'sent_by' => auth()->id(),
+            'error_message' => $e->getMessage(),
+            'error_file' => $e->getFile(),
+            'error_line' => $e->getLine(),
+            'stack_trace' => $e->getTraceAsString()
+        ]);
+
+        return redirect()->back()
+            ->with('error', 'Failed to send message. Please try again.')
+            ->withInput();
     }
+}
+private function resolveRecipient(array $validated): array
+{
+    if ($validated['send_type'] === 'client') {
+        // Get client data
+        $client = User::findOrFail($validated['client_id']);
+        
+        return [
+            'user_id' => $client->id,
+            'email' => $client->email,
+            'name' => $client->name,
+        ];
+    } else {
+        // Custom email
+        return [
+            'user_id' => null,
+            'email' => $validated['recipient_email'],
+            'name' => $validated['recipient_name'] ?? 'Client',
+        ];
+    }
+}
     public function storeReply(Request $request, Message $message)
 {
     // Enhanced validation
