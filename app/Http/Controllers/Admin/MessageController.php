@@ -16,15 +16,18 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use App\Services\DashboardService;
+use App\Services\MessageService;
 use App\Services\TempNotifiable;
 
 class MessageController extends Controller
 {
 
-    protected $dashboardService;
+    protected MessageService $messageService;
+    protected DashboardService $dashboardService;
 
-    public function __construct(DashboardService $dashboardService)
+    public function __construct(MessageService $messageService, DashboardService $dashboardService)
     {
+        $this->messageService = $messageService;
         $this->dashboardService = $dashboardService;
     }
     public function index(Request $request)
@@ -101,11 +104,11 @@ class MessageController extends Controller
             'unreplied' => Message::excludeAdminMessages()->unreplied()->count(),
             'unread_unreplied' => Message::excludeAdminMessages()->unread()->unreplied()->count(),
         ];
-
+        $statistics = $this->getStats();
         $unreadMessages = Message::excludeAdminMessages()->unread()->count();
         $pendingQuotations = \App\Models\Quotation::where('status', 'pending')->count();
 
-        return view('admin.messages.index', compact('messages', 'statusCounts', 'unreadMessages', 'pendingQuotations'));
+        return view('admin.messages.index', compact('messages', 'statistics', 'statusCounts', 'unreadMessages', 'pendingQuotations'));
     }
 
     /**
@@ -300,43 +303,184 @@ class MessageController extends Controller
         }
     }
     public function storeReply(Request $request, Message $message)
-    {
-        $request->validate([
-            'message' => 'required|string',
-            'attachments.*' => 'file|max:10240', // 10MB per file
-        ]);
+{
+    // Enhanced validation
+    $request->validate([
+        'subject' => 'required|string|max:255|min:3',
+        'message' => 'required|string|min:10|max:10000',
+        'temp_files' => 'nullable|string', // Critical: This accepts the JSON string of file paths
+    ], [
+        'subject.required' => 'Please enter a subject for your reply.',
+        'subject.min' => 'Subject must be at least 3 characters long.',
+        'message.required' => 'Please enter your reply message.',
+        'message.min' => 'Reply message must be at least 10 characters long.',
+        'message.max' => 'Reply message cannot exceed 10,000 characters.',
+    ]);
 
+    try {
+        DB::beginTransaction();
+
+        // Create the reply message
         $reply = Message::create([
-            'name' => auth()->user()->name,
-            'email' => auth()->user()->email,
-            'phone' => auth()->user()->phone,
-            'company' => auth()->user()->company,
-            'parent_id' => $message->id,
-            'subject' => $message->subject,
-            'message' => $request->input('message'),
             'type' => 'admin_to_client',
-            'user_id' => auth()->user()->id,
-            'project_id' => $message->project_id,
-            'priority' => $request->input('priority', 'normal'),
+            'name' => auth()->user()->name ?? 'Admin',
+            'email' => settings('mail_from_address', config('mail.from.address', 'admin@company.com')),
+            'subject' => trim($request->subject),
+            'message' => trim($request->message),
+            'parent_id' => $message->id,
+            'user_id' => $message->user_id,
+            'is_read' => true,
+            'is_replied' => false,
+            'read_at' => now(),
+            'replied_by' => auth()->id(),
         ]);
 
-        // Handle attachments if any
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                $filename = $file->store('attachments');
-                $reply->attachments()->create([
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_path' => $filename,
+        Log::info('Admin reply created', [
+            'reply_id' => $reply->id,
+            'parent_id' => $message->id,
+            'admin_id' => auth()->id()
+        ]);
+
+        // Mark the original message as replied
+        if (!$message->is_replied) {
+            $message->markAsReplied(auth()->id());
+        }
+
+        // ========================================
+        // FIXED: Complete temp files processing
+        // ========================================
+        $attachmentCount = 0;
+        
+        // Check if temp_files is provided and not empty
+        if ($request->filled('temp_files') && trim($request->temp_files) !== '' && $request->temp_files !== 'null') {
+            Log::info('Processing admin reply temp files', [
+                'temp_files_raw' => $request->input('temp_files'),
+                'reply_id' => $reply->id
+            ]);
+
+            // Decode JSON
+            $tempFilePaths = json_decode($request->input('temp_files'), true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('JSON decode error for admin reply temp_files', [
+                    'json_error' => json_last_error_msg(),
+                    'temp_files_raw' => $request->input('temp_files'),
+                    'reply_id' => $reply->id
+                ]);
+            } elseif (is_array($tempFilePaths) && !empty($tempFilePaths)) {
+                Log::info('Found admin reply temp files to process', [
+                    'file_count' => count($tempFilePaths),
+                    'file_paths' => $tempFilePaths,
+                    'reply_id' => $reply->id
+                ]);
+
+                // Process each temp file
+                foreach ($tempFilePaths as $tempPath) {
+                    try {
+                        if ($this->moveTempFileToMessage($tempPath, $reply)) {
+                            $attachmentCount++;
+                            Log::info('Admin reply attachment processed successfully', [
+                                'temp_path' => $tempPath,
+                                'reply_id' => $reply->id,
+                                'attachment_number' => $attachmentCount
+                            ]);
+                        } else {
+                            Log::warning('Failed to process admin reply attachment', [
+                                'temp_path' => $tempPath,
+                                'reply_id' => $reply->id
+                            ]);
+                        }
+                    } catch (\Exception $attachmentError) {
+                        Log::error('Admin reply attachment processing error', [
+                            'temp_path' => $tempPath,
+                            'reply_id' => $reply->id,
+                            'error' => $attachmentError->getMessage(),
+                            'trace' => $attachmentError->getTraceAsString()
+                        ]);
+                    }
+                }
+            } else {
+                Log::info('No valid temp files found in admin reply submission', [
+                    'temp_files_decoded' => $tempFilePaths,
+                    'reply_id' => $reply->id
                 ]);
             }
-        }
-        if ($request->has('send_email_notification')) {
+        } else {
+            Log::info('No temp files submitted with admin reply', [
+                'reply_id' => $reply->id,
+                'temp_files_filled' => $request->filled('temp_files'),
+                'temp_files_value' => $request->input('temp_files')
+            ]);
         }
 
-        return redirect()
-            ->route('admin.messages.show', $message->id)
-            ->with('success', 'Reply sent successfully!');
+        // Clean up temp directory after successful processing
+        try {
+            $this->cleanupSessionTempFiles();
+        } catch (\Exception $cleanupError) {
+            Log::warning('Failed to cleanup temp files after admin reply: ' . $cleanupError->getMessage());
+        }
+
+        // Send notification to client
+        try {
+            if ($message->user) {
+                // Send to registered client - use your existing notification system
+                Notifications::send('message.reply', $reply, $message->user);
+            } else {
+                // Send to email address - use your existing notification system
+                $tempNotifiable = new TempNotifiable($message->email, $message->name);
+                Notifications::send('message.reply', $reply, $tempNotifiable);
+            }
+
+            Log::info('Admin reply notification sent', [
+                'reply_id' => $reply->id,
+                'recipient_email' => $message->email,
+                'attachment_count' => $attachmentCount
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send admin reply notification: ' . $e->getMessage());
+
+            // Still commit but show warning
+            DB::commit();
+
+            return redirect()->route('admin.messages.show', $message)
+                ->with('warning', 'Reply saved but there was an issue sending the email notification. Attachment count: ' . $attachmentCount);
+        }
+
+        DB::commit();
+
+        // Success message with attachment count
+        $successMessage = 'Reply sent successfully!';
+        if ($attachmentCount > 0) {
+            $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
+        }
+
+        Log::info('Admin reply sent successfully', [
+            'reply_id' => $reply->id,
+            'attachment_count' => $attachmentCount,
+            'admin_id' => auth()->id()
+        ]);
+
+        return redirect()->route('admin.messages.show', $message)
+            ->with('success', $successMessage);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        
+        Log::error('Failed to send admin reply', [
+            'message_id' => $message->id,
+            'admin_id' => auth()->id(),
+            'error_message' => $e->getMessage(),
+            'error_file' => $e->getFile(),
+            'error_line' => $e->getLine(),
+            'stack_trace' => $e->getTraceAsString()
+        ]);
+
+        return redirect()->back()
+            ->with('error', 'Failed to send reply. Please try again.')
+            ->withInput();
     }
+}
     public function forward(Request $request, Message $message)
     {
         $request->validate([
@@ -550,6 +694,375 @@ class MessageController extends Controller
                 'message' => 'Failed to mark messages as unread'
             ], 500);
         }
+    }
+    public function bulkAction(Request $request)
+    {
+        $admin = auth()->user();
+
+        // Validate request with admin-specific actions
+        $validated = $request->validate([
+            'action' => 'required|string|in:mark_read,mark_unread,delete,delete_thread,archive,change_priority,assign_to_admin',
+            'message_ids' => 'required|array|min:1',
+            'message_ids.*' => 'integer|exists:messages,id',
+            'force' => 'sometimes|boolean',
+            'priority' => 'sometimes|string|in:low,normal,high,urgent', // For priority change
+            'assigned_admin_id' => 'sometimes|integer|exists:users,id', // For assignment
+        ]);
+
+        // Admin can access all messages (no client restriction like in client controller)
+        $messageIds = $validated['message_ids'];
+
+        // Validate that messages exist and are not admin-to-admin messages
+        $validMessageIds = Message::excludeAdminMessages()
+            ->whereIn('id', $messageIds)
+            ->pluck('id')
+            ->toArray();
+
+        if (empty($validMessageIds)) {
+            return $this->bulkActionResponse('error', 'No valid messages selected.', 0);
+        }
+
+        // Validate bulk operation permissions for admin
+        $validation = $this->messageService->validateBulkOperation(
+            $validated['action'],
+            $validMessageIds,
+            $admin
+        );
+
+        if (!$validation['valid']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Operation not allowed',
+                'errors' => $validation['errors']
+            ], 400);
+        }
+
+        $count = 0;
+        $actionName = str_replace('_', ' ', $validated['action']);
+
+        try {
+            DB::beginTransaction();
+
+            switch ($validated['action']) {
+                case 'mark_read':
+                    $count = $this->messageService->bulkMarkAsRead($validMessageIds, $admin);
+                    break;
+
+                case 'mark_unread':
+                    $count = $this->messageService->bulkMarkAsUnread($validMessageIds, $admin);
+                    break;
+
+                case 'delete':
+                    // Admin can force delete
+                    $count = $this->messageService->bulkDeleteMessages($validMessageIds, $admin, [
+                        'delete_threads' => false,
+                        'force' => $validated['force'] ?? false
+                    ]);
+                    break;
+
+                case 'delete_thread':
+                    // Delete entire conversations
+                    $count = $this->messageService->bulkDeleteMessages($validMessageIds, $admin, [
+                        'delete_threads' => true,
+                        'force' => $validated['force'] ?? false
+                    ]);
+                    $actionName = 'conversations deleted';
+                    break;
+
+                case 'change_priority':
+                    // Change priority of messages
+                    if (!isset($validated['priority'])) {
+                        throw new \Exception('Priority is required for priority change action');
+                    }
+                    $count = $this->messageService->bulkChangePriority($validMessageIds, $validated['priority'], $admin);
+                    $actionName = "priority changed to {$validated['priority']}";
+                    break;
+
+                case 'assign_to_admin':
+                    // Assign messages to another admin (if you have this feature)
+                    if (!isset($validated['assigned_admin_id'])) {
+                        throw new \Exception('Admin ID is required for assignment action');
+                    }
+                    $count = $this->messageService->bulkAssignToAdmin($validMessageIds, $validated['assigned_admin_id'], $admin);
+                    $actionName = 'messages assigned';
+                    break;
+
+                default:
+                    throw new \Exception('Invalid action specified');
+            }
+
+            // Clear dashboard cache after successful operation
+            $this->dashboardService->clearCache($admin);
+
+            DB::commit();
+
+            Log::info('Admin bulk action performed', [
+                'admin_id' => $admin->id,
+                'admin_name' => $admin->name,
+                'action' => $validated['action'],
+                'message_count' => $count,
+                'message_ids' => $validMessageIds,
+                'additional_data' => [
+                    'priority' => $validated['priority'] ?? null,
+                    'assigned_admin_id' => $validated['assigned_admin_id'] ?? null,
+                    'force' => $validated['force'] ?? false
+                ]
+            ]);
+
+            $responseData = ['warnings' => $validation['warnings'] ?? []];
+
+            // Add warnings if any
+            if (!empty($validation['warnings'])) {
+                $message = "{$count} {$actionName} completed with warnings";
+                return $this->bulkActionResponse('success', $message, $count, $responseData);
+            }
+
+            $message = "{$count} {$actionName} completed successfully";
+            return $this->bulkActionResponse('success', $message, $count, $responseData);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Admin bulk action failed', [
+                'admin_id' => $admin->id,
+                'action' => $validated['action'],
+                'message_ids' => $validMessageIds,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->bulkActionResponse('error', 'Failed to perform bulk action: ' . $e->getMessage(), 0);
+        }
+    }
+
+    /**
+     * Get available bulk actions for admin
+     */
+    public function getBulkActions()
+    {
+        $admin = auth()->user();
+        $options = $this->messageService->getBulkOperationOptions($admin);
+
+        return response()->json([
+            'success' => true,
+            'actions' => $options['available_operations'],
+            'default_delete_mode' => $options['default_delete_mode'],
+            'can_force_delete' => $options['can_force_delete'],
+            'can_delete_admin_messages' => $options['can_delete_admin_messages'],
+        ]);
+    }
+
+    /**
+     * Bulk update priority
+     */
+    public function bulkUpdatePriority(Request $request)
+    {
+        $admin = auth()->user();
+
+        $validated = $request->validate([
+            'priority' => 'required|string|in:low,normal,high,urgent',
+            'message_ids' => 'required|array|min:1',
+            'message_ids.*' => 'integer|exists:messages,id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $validMessageIds = Message::excludeAdminMessages()
+                ->whereIn('id', $validated['message_ids'])
+                ->pluck('id')
+                ->toArray();
+
+            if (empty($validMessageIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No valid messages selected'
+                ], 400);
+            }
+
+            $count = $this->messageService->bulkChangePriority(
+                $validMessageIds,
+                $validated['priority'],
+                $admin
+            );
+
+            // Clear dashboard cache
+            $this->dashboardService->clearCache($admin);
+
+            DB::commit();
+
+            Log::info('Admin bulk priority update', [
+                'admin_id' => $admin->id,
+                'priority' => $validated['priority'],
+                'message_count' => $count,
+                'message_ids' => $validMessageIds
+            ]);
+
+            return $this->bulkActionResponse(
+                'success',
+                "Successfully updated priority to {$validated['priority']} for {$count} message(s)",
+                $count
+            );
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Admin bulk priority update failed', [
+                'admin_id' => $admin->id,
+                'priority' => $validated['priority'],
+                'message_ids' => $validated['message_ids'],
+                'error' => $e->getMessage()
+            ]);
+
+            return $this->bulkActionResponse(
+                'error',
+                'Failed to update priority: ' . $e->getMessage(),
+                0
+            );
+        }
+    }
+
+    /**
+     * Preview bulk action impact (admin version)
+     */
+    public function previewBulkAction(Request $request)
+    {
+        $admin = auth()->user();
+
+        $validated = $request->validate([
+            'action' => 'required|string|in:mark_read,mark_unread,delete,delete_thread,archive,change_priority',
+            'message_ids' => 'required|array|min:1',
+            'message_ids.*' => 'integer|exists:messages,id',
+        ]);
+
+        try {
+            $validMessageIds = Message::excludeAdminMessages()
+                ->whereIn('id', $validated['message_ids'])
+                ->pluck('id')
+                ->toArray();
+
+            if (empty($validMessageIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No valid messages selected'
+                ], 400);
+            }
+
+            $impactInfo = $this->getAdminActionImpactInfo($validated['action'], $validMessageIds);
+
+            return response()->json([
+                'success' => true,
+                'impact_info' => $impactInfo,
+                'requires_confirmation' => $impactInfo['high_impact'] || $impactInfo['has_urgent'],
+                'message' => $this->getImpactMessage($impactInfo)
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to preview bulk action impact', [
+                'admin_id' => $admin->id,
+                'action' => $validated['action'],
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to preview action impact'
+            ], 500);
+        }
+    }
+
+    /**
+     * Helper method for bulk action responses with admin statistics
+     */
+    private function bulkActionResponse(string $type, string $message, int $count, array $extra = []): JsonResponse
+    {
+        $response = [
+            'success' => $type === 'success',
+            'message' => $message,
+            'count' => $count,
+        ];
+
+        if ($type === 'success') {
+            // Get updated statistics after successful operation
+            try {
+                $response['statistics'] = $this->getStats(); // Use existing method
+            } catch (\Exception $e) {
+                // Don't fail the response if stats fail
+                Log::warning('Failed to get updated statistics after admin bulk action', [
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        return response()->json(array_merge($response, $extra));
+    }
+
+    /**
+     * Get impact information for admin actions
+     */
+    private function getAdminActionImpactInfo(string $action, array $messageIds): array
+    {
+        $messages = Message::whereIn('id', $messageIds)->get();
+
+        $impactInfo = [
+            'total_messages' => $messages->count(),
+            'urgent_messages' => $messages->where('priority', 'urgent')->count(),
+            'unread_messages' => $messages->where('is_read', false)->count(),
+            'replied_messages' => $messages->where('is_replied', true)->count(),
+            'project_linked' => $messages->whereNotNull('project_id')->count(),
+            'with_attachments' => $messages->filter(fn($m) => $m->attachments()->count() > 0)->count(),
+            'unique_clients' => $messages->whereNotNull('user_id')->unique('user_id')->count(),
+            'threads_affected' => $this->getAffectedThreadsCount($messages),
+            'has_urgent' => $messages->where('priority', 'urgent')->count() > 0,
+            'high_impact' => false,
+        ];
+
+        // Determine if this is high impact for admin
+        $impactInfo['high_impact'] = 
+            $impactInfo['urgent_messages'] > 2 ||
+            $impactInfo['project_linked'] > 5 ||
+            $impactInfo['unique_clients'] > 3 ||
+            ($action === 'delete' && $impactInfo['replied_messages'] > 10);
+
+        return $impactInfo;
+    }
+
+    /**
+     * Get count of affected conversation threads
+     */
+    private function getAffectedThreadsCount($messages): int
+    {
+        $rootIds = $messages->map(function ($message) {
+            return $message->parent_id ?? $message->id;
+        })->unique();
+
+        return $rootIds->count();
+    }
+
+    /**
+     * Generate impact message for preview
+     */
+    private function getImpactMessage(array $impactInfo): string
+    {
+        $parts = [];
+
+        if ($impactInfo['urgent_messages'] > 0) {
+            $parts[] = "{$impactInfo['urgent_messages']} urgent message(s)";
+        }
+
+        if ($impactInfo['project_linked'] > 0) {
+            $parts[] = "{$impactInfo['project_linked']} project-related message(s)";
+        }
+
+        if ($impactInfo['unique_clients'] > 1) {
+            $parts[] = "messages from {$impactInfo['unique_clients']} different client(s)";
+        }
+
+        if (empty($parts)) {
+            return "This action will affect {$impactInfo['total_messages']} message(s).";
+        }
+
+        return "This action will affect " . implode(', ', $parts) . ".";
     }
     public function assignToProject(Request $request, Message $message): JsonResponse
     {
@@ -1139,92 +1652,92 @@ class MessageController extends Controller
     }
 
     protected function moveTempFileToMessage(string $tempPath, Message $message): bool
-    {
-        try {
-            // Clean up the temp path - remove leading slashes and ensure proper format
-            $tempPath = ltrim($tempPath, '/');
-
-            // Security check - ensure file is in temp directory
-            if (!str_starts_with($tempPath, 'temp/message-attachments/')) {
-                Log::warning('Invalid temp file path detected', [
-                    'temp_path' => $tempPath,
-                    'message_id' => $message->id
-                ]);
-                return false;
-            }
-
-            // Check if temp file exists
-            if (!Storage::disk('public')->exists($tempPath)) {
-                Log::warning('Temp file not found', [
-                    'temp_path' => $tempPath,
-                    'message_id' => $message->id,
-                    'full_path' => storage_path('app/public/' . $tempPath)
-                ]);
-                return false;
-            }
-
-            // Get file info
-            $tempFilename = basename($tempPath);
-            $fileSize = Storage::disk('public')->size($tempPath);
-            $mimeType = Storage::disk('public')->mimeType($tempPath);
-
-            // Extract original name from temp filename if it follows pattern: uniqid_originalname.ext
-            if (preg_match('/^[a-f0-9]+_(.+)$/', $tempFilename, $matches)) {
-                $displayName = $matches[1];
-            } else {
-                $displayName = $tempFilename;
-            }
-
-            // Create permanent directory for message attachments
-            $permanentDir = 'message-attachments/' . $message->id;
-            $permanentFilename = uniqid() . '_' . Str::slug(pathinfo($displayName, PATHINFO_FILENAME)) . '.' . pathinfo($displayName, PATHINFO_EXTENSION);
-            $permanentPath = $permanentDir . '/' . $permanentFilename;
-
-            // Ensure permanent directory exists
-            if (!Storage::disk('public')->exists($permanentDir)) {
-                Storage::disk('public')->makeDirectory($permanentDir);
-            }
-
-            // Move file from temp to permanent location
-            if (Storage::disk('public')->move($tempPath, $permanentPath)) {
-                // Create attachment record using your MessageAttachment model
-                \App\Models\MessageAttachment::create([
-                    'message_id' => $message->id,
-                    'file_name' => $displayName,
-                    'file_path' => $permanentPath,
-                    'file_size' => $fileSize,
-                    'file_type' => $mimeType,
-                    'disk' => 'public',
-                ]);
-
-                Log::info('Admin reply attachment moved successfully', [
-                    'from' => $tempPath,
-                    'to' => $permanentPath,
-                    'message_id' => $message->id,
-                    'file_name' => $displayName,
-                    'file_size' => $fileSize
-                ]);
-
-                return true;
-            } else {
-                Log::error('Failed to move admin reply temp file', [
-                    'from' => $tempPath,
-                    'to' => $permanentPath,
-                    'message_id' => $message->id
-                ]);
-                return false;
-            }
-
-        } catch (\Exception $e) {
-            Log::error('Error moving admin reply temp file to message', [
+{
+    try {
+        // Clean up the temp path - remove leading slashes and ensure proper format
+        $tempPath = ltrim($tempPath, '/');
+        
+        // Security check - ensure file is in temp directory
+        if (!str_starts_with($tempPath, 'temp/message-attachments/')) {
+            Log::warning('Invalid temp file path detected', [
                 'temp_path' => $tempPath,
-                'message_id' => $message->id,
-                'error' => $e->getMessage(),
-                'stack_trace' => $e->getTraceAsString()
+                'message_id' => $message->id
             ]);
             return false;
         }
+
+        // Check if temp file exists
+        if (!Storage::disk('public')->exists($tempPath)) {
+            Log::warning('Temp file not found', [
+                'temp_path' => $tempPath,
+                'message_id' => $message->id,
+                'full_path' => storage_path('app/public/' . $tempPath),
+                'storage_files' => Storage::disk('public')->files(dirname($tempPath))
+            ]);
+            return false;
+        }
+
+        // Get file info
+        $tempFilename = basename($tempPath);
+        $fileSize = Storage::disk('public')->size($tempPath);
+        $mimeType = Storage::disk('public')->mimeType($tempPath);
+
+        // Extract original name from temp filename if it follows pattern: uniqid_originalname.ext
+        if (preg_match('/^[a-f0-9]+_(.+)$/', $tempFilename, $matches)) {
+            $displayName = $matches[1];
+        } else {
+            $displayName = $tempFilename;
+        }
+
+        // Create permanent directory for message attachments
+        $permanentDir = 'message-attachments/' . $message->id;
+        $permanentFilename = uniqid() . '_' . Str::slug(pathinfo($displayName, PATHINFO_FILENAME)) . '.' . pathinfo($displayName, PATHINFO_EXTENSION);
+        $permanentPath = $permanentDir . '/' . $permanentFilename;
+
+        // Ensure permanent directory exists
+        if (!Storage::disk('public')->exists($permanentDir)) {
+            Storage::disk('public')->makeDirectory($permanentDir);
+        }
+
+        // Move file from temp to permanent location
+        if (Storage::disk('public')->move($tempPath, $permanentPath)) {
+            // Create attachment record using MessageAttachment model
+            MessageAttachment::create([
+                'message_id' => $message->id,
+                'file_name' => $displayName,
+                'file_path' => $permanentPath,
+                'file_size' => $fileSize,
+                'file_type' => $mimeType,
+            ]);
+
+            Log::info('Admin reply attachment moved successfully', [
+                'from' => $tempPath,
+                'to' => $permanentPath,
+                'message_id' => $message->id,
+                'file_name' => $displayName,
+                'file_size' => $fileSize
+            ]);
+
+            return true;
+        } else {
+            Log::error('Failed to move admin reply temp file', [
+                'from' => $tempPath,
+                'to' => $permanentPath,
+                'message_id' => $message->id
+            ]);
+            return false;
+        }
+
+    } catch (\Exception $e) {
+        Log::error('Error moving admin reply temp file to message', [
+            'temp_path' => $tempPath,
+            'message_id' => $message->id,
+            'error' => $e->getMessage(),
+            'stack_trace' => $e->getTraceAsString()
+        ]);
+        return false;
     }
+}
     protected function processAttachments(Message $message, ?string $tempFiles): int
     {
         $attachmentCount = 0;
@@ -1364,176 +1877,6 @@ class MessageController extends Controller
             'clientInfo',
             'recentActivity'
         ));
-    }
-
-    public function reply(Request $request, Message $message)
-    {
-        // Enhanced validation
-        $request->validate([
-            'subject' => 'required|string|max:255|min:3',
-            'message' => 'required|string|min:10|max:10000',
-            'temp_files' => 'nullable|string', // Critical: This accepts the JSON string of file paths
-        ], [
-            'subject.required' => 'Please enter a subject for your reply.',
-            'subject.min' => 'Subject must be at least 3 characters long.',
-            'message.required' => 'Please enter your reply message.',
-            'message.min' => 'Reply message must be at least 10 characters long.',
-            'message.max' => 'Reply message cannot exceed 10,000 characters.',
-        ]);
-
-        try {
-            DB::beginTransaction();
-
-            // Create the reply message
-            $reply = Message::create([
-                'type' => 'admin_to_client',
-                'name' => auth()->user()->name ?? 'Admin',
-                'email' => settings('mail_from_address', config('mail.from.address', 'admin@company.com')),
-                'subject' => trim($request->subject),
-                'message' => trim($request->message),
-                'parent_id' => $message->id,
-                'user_id' => $message->user_id,
-                'is_read' => true,
-                'is_replied' => false,
-                'read_at' => now(),
-                'replied_by' => auth()->id(),
-            ]);
-
-            Log::info('Admin reply created', [
-                'reply_id' => $reply->id,
-                'parent_id' => $message->id,
-                'admin_id' => auth()->id()
-            ]);
-
-            // Mark the original message as replied
-            if (!$message->is_replied) {
-                $message->markAsReplied(auth()->id());
-            }
-
-            // Handle temp files processing - ENHANCED VERSION
-            $attachmentCount = 0;
-            if ($request->filled('temp_files') && trim($request->temp_files) !== '' && $request->temp_files !== 'null') {
-                Log::info('Processing admin reply temp files', [
-                    'temp_files_raw' => $request->input('temp_files'),
-                    'reply_id' => $reply->id
-                ]);
-
-                $tempFilePaths = json_decode($request->input('temp_files'), true);
-
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    Log::error('JSON decode error for admin reply temp_files', [
-                        'json_error' => json_last_error_msg(),
-                        'temp_files_raw' => $request->input('temp_files'),
-                        'reply_id' => $reply->id
-                    ]);
-                } elseif (is_array($tempFilePaths) && !empty($tempFilePaths)) {
-                    Log::info('Found admin reply temp files to process', [
-                        'file_count' => count($tempFilePaths),
-                        'file_paths' => $tempFilePaths,
-                        'reply_id' => $reply->id
-                    ]);
-
-                    foreach ($tempFilePaths as $tempPath) {
-                        try {
-                            if ($this->moveTempFileToMessage($tempPath, $reply)) {
-                                $attachmentCount++;
-                                Log::info('Admin reply attachment processed successfully', [
-                                    'temp_path' => $tempPath,
-                                    'reply_id' => $reply->id,
-                                    'attachment_number' => $attachmentCount
-                                ]);
-                            } else {
-                                Log::warning('Failed to process admin reply attachment', [
-                                    'temp_path' => $tempPath,
-                                    'reply_id' => $reply->id
-                                ]);
-                            }
-                        } catch (\Exception $attachmentError) {
-                            Log::error('Admin reply attachment processing error', [
-                                'temp_path' => $tempPath,
-                                'reply_id' => $reply->id,
-                                'error' => $attachmentError->getMessage()
-                            ]);
-                        }
-                    }
-                } else {
-                    Log::info('No valid temp files found in admin reply submission', [
-                        'temp_files_decoded' => $tempFilePaths,
-                        'reply_id' => $reply->id
-                    ]);
-                }
-            } else {
-                Log::info('No temp files submitted with admin reply - this is normal', [
-                    'reply_id' => $reply->id
-                ]);
-            }
-
-            // Clean up temp directory after successful processing
-            try {
-                $this->cleanupSessionTempFiles();
-            } catch (\Exception $cleanupError) {
-                Log::warning('Failed to cleanup temp files after admin reply: ' . $cleanupError->getMessage());
-            }
-
-            // Send notification to client
-            try {
-                if ($message->user) {
-                    // Send to registered client
-                    $message->user->notify(new \App\Notifications\MessageReplyNotification($reply));
-                } else {
-                    // Send to email address
-                    $tempNotifiable = new \App\Services\TempNotifiable($message->email, $message->name);
-                    $tempNotifiable->notify(new \App\Notifications\MessageReplyNotification($reply));
-                }
-
-                Log::info('Admin reply notification sent', [
-                    'reply_id' => $reply->id,
-                    'recipient_email' => $message->email,
-                    'attachment_count' => $attachmentCount
-                ]);
-
-            } catch (\Exception $e) {
-                Log::error('Failed to send admin reply notification: ' . $e->getMessage());
-
-                // Still commit but show warning
-                DB::commit();
-
-                return redirect()->route('admin.messages.show', $message)
-                    ->with('warning', 'Reply saved but there was an issue sending the email notification. Attachment count: ' . $attachmentCount);
-            }
-
-            DB::commit();
-
-            $successMessage = 'Reply sent successfully!';
-            if ($attachmentCount > 0) {
-                $successMessage .= " ({$attachmentCount} attachment" . ($attachmentCount > 1 ? 's' : '') . " included)";
-            }
-
-            Log::info('Admin reply sent successfully', [
-                'reply_id' => $reply->id,
-                'attachment_count' => $attachmentCount,
-                'admin_id' => auth()->id()
-            ]);
-
-            return redirect()->route('admin.messages.show', $message)
-                ->with('success', $successMessage);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            Log::error('Failed to send admin reply', [
-                'message_id' => $message->id,
-                'admin_id' => auth()->id(),
-                'error_message' => $e->getMessage(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
-                'stack_trace' => $e->getTraceAsString()
-            ]);
-
-            return redirect()->back()
-                ->with('error', 'Failed to send reply. Please try again.')
-                ->withInput();
-        }
     }
 
     public function toggleRead(Message $message)

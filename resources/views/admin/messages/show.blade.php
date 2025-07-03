@@ -237,94 +237,98 @@
                 </x-admin.card>
 
                 <!-- Quick Reply Form -->
-                @if ($canReply)
-                    <x-admin.card>
-                        <x-slot name="title">Quick Reply</x-slot>
+                @if($canReply)
+    <x-admin.card>
+        <x-slot name="title">Quick Reply</x-slot>
+        
+        <form id="admin-reply-form" action="{{ route('admin.messages.reply', $rootMessage) }}" method="POST" enctype="multipart/form-data">
+            @csrf
+            <div class="space-y-4">
+                <!-- Subject Field -->
+                <div>
+                    <label for="subject" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Subject <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" name="subject" id="subject" required
+                           value="{{ old('subject', 'Re: ' . $rootMessage->subject) }}"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                           placeholder="Reply subject">
+                    @error('subject')
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
 
-                        <form action="{{ route('admin.messages.reply', $rootMessage) }}" method="POST"
-                            enctype="multipart/form-data" id="admin-reply-form">
-                            @csrf
-                            <div class="space-y-4">
-                                <!-- Subject Field -->
-                                <div>
-                                    <label for="subject"
-                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Subject <span class="text-red-500">*</span>
-                                    </label>
-                                    <input type="text" name="subject" id="subject" required
-                                        value="{{ old('subject', 'Re: ' . $rootMessage->subject) }}"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-                                        placeholder="Reply subject">
-                                    @error('subject')
-                                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                    @enderror
-                                </div>
+                <!-- Message Content - ID FIXED ke 'message' -->
+                <div>
+                    <label for="message" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Your Reply <span class="text-red-500">*</span>
+                    </label>
+                    <textarea name="message" id="message" rows="6" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                        placeholder="Type your reply here...">{{ old('message') }}</textarea>
+                    @error('message')
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
 
-                                <!-- Message Content -->
-                                <div>
-                                    <label for="message"
-                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Your Reply <span class="text-red-500">*</span>
-                                    </label>
-                                    <textarea name="message" id="message" rows="6" required
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-                                        placeholder="Type your reply here...">{{ old('message') }}</textarea>
-                                    @error('message')
-                                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                    @enderror
-                                </div>
+                <!-- Universal File Uploader -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                        Attachments (Optional)
+                    </label>
+                    
+                    <x-universal-file-uploader 
+                        name="files"
+                        :multiple="true"
+                        :maxFiles="5"
+                        maxFileSize="10MB"
+                        :acceptedFileTypes="[
+                            'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+                            'application/pdf',
+                            'application/msword',
+                            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                            'application/vnd.ms-excel',
+                            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            'text/plain', 'text/csv',
+                            'application/zip',
+                            'application/x-rar-compressed'
+                        ]"
+                        dropDescription="Drop files here or click to browse"
+                        uploadEndpoint="{{ route('admin.messages.temp-upload') }}"
+                        deleteEndpoint="{{ route('admin.messages.temp-delete') }}"
+                        :enableCategories="false"
+                        :enableDescription="false"
+                        :enablePublicToggle="false"
+                        :autoUpload="true"
+                        :uploadOnDrop="true"
+                        :compact="false"
+                        theme="default"
+                        id="admin-reply-attachments"
+                    />
+                    
+                    @error('attachments.*')
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
 
-                                <!-- Universal File Uploader -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                        Attachments (Optional)
-                                    </label>
+                <!-- CRITICAL: Hidden input for temp files -->
+                <input type="hidden" name="temp_files" id="temp_files" value="">
 
-                                    <x-universal-file-uploader name="files" :multiple="true" :maxFiles="5"
-                                        maxFileSize="10MB" :acceptedFileTypes="[
-                                            'image/jpeg',
-                                            'image/png',
-                                            'image/gif',
-                                            'image/webp',
-                                            'application/pdf',
-                                            'application/msword',
-                                            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                            'application/vnd.ms-excel',
-                                            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                            'text/plain',
-                                            'text/csv',
-                                            'application/zip',
-                                            'application/x-rar-compressed',
-                                        ]"
-                                        dropDescription="Drop files here or click to browse"
-                                        uploadEndpoint="{{ route('admin.messages.temp-upload') }}"
-                                        deleteEndpoint="{{ route('admin.messages.temp-delete') }}" :enableCategories="false"
-                                        :enableDescription="false" :enablePublicToggle="false" :autoUpload="true" :uploadOnDrop="true"
-                                        :compact="false" theme="default" id="admin-reply-attachments" />
-
-                                    @error('attachments.*')
-                                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                    @enderror
-                                </div>
-
-                                <!-- Hidden input for temp files - CRITICAL -->
-                                <input type="hidden" name="temp_files" id="temp_files" value="">
-
-                                <!-- Submit Button -->
-                                <div class="flex justify-end space-x-3">
-                                    <button type="button" onclick="clearReplyForm()"
-                                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
-                                        Clear
-                                    </button>
-                                    <button type="submit" id="admin-reply-submit"
-                                        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50">
-                                        Send Reply
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </x-admin.card>
-                @endif
+                <!-- Submit Button -->
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="clearReplyForm()" 
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                        Clear
+                    </button>
+                    <button type="submit" id="admin-reply-submit"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50">
+                        Send Reply
+                    </button>
+                </div>
+            </div>
+        </form>
+    </x-admin.card>
+@endif
             </div>
 
             <!-- Sidebar -->
@@ -403,7 +407,7 @@
                             </form>
                         </div>
 
-                        <!-- Forward Message -->
+                        {{-- <!-- Forward Message -->
                         <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
                             <button onclick="showForwardModal()"
                                 class="w-full inline-flex items-center justify-center px-4 py-2 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-600 rounded-md text-sm font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50">
@@ -414,7 +418,7 @@
                                 </svg>
                                 Forward Message
                             </button>
-                        </div>
+                        </div> --}}
 
                         <!-- Delete Message -->
                         <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
@@ -635,313 +639,302 @@
 
     <!-- Scripts -->
     <script>
-        let adminReplyUploadedFiles = [];
+// FIXED: Admin Reply Universal Uploader Integration
+let adminReplyUploadedFiles = []; // FIXED: variable name yang benar
 
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Admin messages show view loaded with enhanced uploader support');
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Admin messages show view loaded with FIXED JavaScript');
 
-            // Initialize all functionality
-            initializeExistingFeatures();
-            setupUniversalUploaderEvents();
-            setupFormHandlers();
-            handleSessionMessages();
+    // Initialize all functionality
+    initializeExistingFeatures();
+    setupUniversalUploaderEvents();
+    setupFormHandlers();
+    handleSessionMessages();
+});
+
+// Initialize existing features
+function initializeExistingFeatures() {
+    // Character counter for message textarea - FIXED ID
+    const messageTextarea = document.getElementById('message'); // FIXED: menggunakan ID yang benar
+    if (messageTextarea) {
+        updateCharCounter(messageTextarea);
+        messageTextarea.addEventListener('input', function() {
+            updateCharCounter(this);
         });
+        console.log('✅ Message textarea found and initialized');
+    } else {
+        console.error('❌ Message textarea NOT found - check ID!');
+    }
 
-        // Initialize existing features (character counters, etc.)
-        function initializeExistingFeatures() {
-            // Character counter for message textarea
-            const messageTextarea = document.getElementById('message');
-            if (messageTextarea) {
-                updateCharCounter(messageTextarea);
-                messageTextarea.addEventListener('input', function() {
-                    updateCharCounter(this);
-                });
-            }
+    // Auto-focus message area if needed
+    if (messageTextarea && !messageTextarea.value.trim()) {
+        setTimeout(() => messageTextarea.focus(), 500);
+    }
+}
 
-            // Auto-focus message area if needed
-            if (messageTextarea && !messageTextarea.value.trim()) {
-                setTimeout(() => messageTextarea.focus(), 500);
-            }
-        }
+// FIXED: Universal Uploader event listeners
+function setupUniversalUploaderEvents() {
+    console.log('🔧 Setting up FIXED universal uploader events...');
 
-        // Set up Universal Uploader event listeners - ENHANCED VERSION
-        function setupUniversalUploaderEvents() {
-            console.log('🔧 Setting up enhanced universal uploader events...');
-
-            // PRIMARY EVENT LISTENER - files-uploaded (bulk files)
-            window.addEventListener('files-uploaded', function(e) {
-                console.log('🎯 Admin files-uploaded event captured:', e.detail);
-
-                // Check if this event is for our admin reply uploader
-                if (isEventForAdminReplyUploader(e.detail)) {
-                    console.log('✅ Event is for admin reply uploader, processing files...');
-
-                    if (e.detail.files && Array.isArray(e.detail.files)) {
-                        // Extract file paths from the uploaded files
-                        const newFilePaths = e.detail.files.map(file => {
-                            console.log('📎 Processing admin reply file:', file);
-                            return extractFilePath(file);
-                        }).filter(path => path); // Filter out undefined/null paths
-
-                        if (newFilePaths.length > 0) {
-                            // Add to our tracking array
-                            adminReplyUploadedFiles = [...adminReplyUploadedFiles, ...newFilePaths];
-
-                            // Update the hidden input
-                            updateTempFilesInput();
-
-                            console.log('✅ Admin reply files added:', newFilePaths);
-                            console.log('📁 Total admin reply files:', adminReplyUploadedFiles);
-                        }
-                    }
-                }
-            });
-
-            // SECONDARY EVENT LISTENER - file-uploaded (single file)
-            window.addEventListener('file-uploaded', function(e) {
-                console.log('📎 Single file upload event:', e.detail);
-
-                if (isEventForAdminReplyUploader(e.detail)) {
-                    const filePath = extractFilePath(e.detail);
-                    if (filePath) {
-                        adminReplyUploadedFiles.push(filePath);
+    // Listen for file uploads - FIXED event handler
+    window.addEventListener('files-uploaded', function(e) {
+        console.log('🎯 Files uploaded event captured:', e.detail);
+        
+        // Check if this is for our admin uploader
+        if (isEventForAdminReplyUploader(e.detail)) {
+            console.log('✅ Event is for admin reply uploader');
+            
+            if (e.detail.files && Array.isArray(e.detail.files)) {
+                const newFilePaths = e.detail.files.map(file => extractFilePath(file)).filter(path => path);
+                
+                if (newFilePaths.length > 0) {
+                    // FIXED: Prevent duplicates from the start
+                    const uniqueNewFiles = newFilePaths.filter(path => !adminReplyUploadedFiles.includes(path));
+                    
+                    if (uniqueNewFiles.length > 0) {
+                        adminReplyUploadedFiles = [...adminReplyUploadedFiles, ...uniqueNewFiles];
                         updateTempFilesInput();
-                        console.log('✅ Single admin reply file added:', filePath);
+                        console.log('✅ New unique files added:', uniqueNewFiles);
+                        console.log('📁 Total files now:', adminReplyUploadedFiles.length);
+                    } else {
+                        console.log('ℹ️ No new files to add (all were duplicates)');
                     }
                 }
-            });
+            }
+        }
+    });
 
-            // FILE DELETION EVENT LISTENER
-            window.addEventListener('file-deleted', function(e) {
-                console.log('🗑️ File deletion event:', e.detail);
+    // Listen for single file uploads
+    window.addEventListener('file-uploaded', function(e) {
+        console.log('📎 Single file uploaded:', e.detail);
+        
+        if (isEventForAdminReplyUploader(e.detail)) {
+            const filePath = extractFilePath(e.detail);
+            if (filePath && !adminReplyUploadedFiles.includes(filePath)) {
+                adminReplyUploadedFiles.push(filePath);
+                updateTempFilesInput();
+                console.log('✅ Single file added:', filePath);
+            }
+        }
+    });
 
-                if (isEventForAdminReplyUploader(e.detail)) {
-                    const filePathToRemove = extractFilePath(e.detail);
-                    if (filePathToRemove) {
-                        adminReplyUploadedFiles = adminReplyUploadedFiles.filter(path => path !== filePathToRemove);
-                        updateTempFilesInput();
-                        console.log('🗑️ Admin reply file removed:', filePathToRemove);
-                        console.log('📁 Remaining admin reply files:', adminReplyUploadedFiles);
-                    }
+    // Listen for file deletions
+    window.addEventListener('file-deleted', function(e) {
+        console.log('🗑️ File deleted:', e.detail);
+        
+        if (isEventForAdminReplyUploader(e.detail)) {
+            const filePathToRemove = extractFilePath(e.detail);
+            if (filePathToRemove) {
+                adminReplyUploadedFiles = adminReplyUploadedFiles.filter(path => path !== filePathToRemove);
+                updateTempFilesInput();
+                console.log('🗑️ File removed:', filePathToRemove);
+                console.log('📁 Remaining files:', adminReplyUploadedFiles.length);
+            }
+        }
+    });
+}
+
+// Check if event is for our admin reply uploader - FIXED
+function isEventForAdminReplyUploader(eventDetail) {
+    const uploaderIds = ['admin-reply-attachments', 'message-attachments', 'reply-attachments'];
+    
+    // Check by uploader ID
+    if (eventDetail.uploaderId && uploaderIds.includes(eventDetail.uploaderId)) {
+        return true;
+    }
+    
+    // Check by element ID
+    if (eventDetail.elementId && uploaderIds.includes(eventDetail.elementId)) {
+        return true;
+    }
+    
+    // Check by target element
+    if (eventDetail.target && eventDetail.target.id && uploaderIds.includes(eventDetail.target.id)) {
+        return true;
+    }
+    
+    // Fallback: admin messages page
+    return window.location.pathname.includes('/admin/messages/');
+}
+
+// Extract file path from event data
+function extractFilePath(eventData) {
+    if (typeof eventData === 'string') {
+        return eventData;
+    }
+    
+    if (eventData && typeof eventData === 'object') {
+        return eventData.path || 
+               eventData.file_path || 
+               eventData.filePath || 
+               eventData.url || 
+               eventData.file?.path ||
+               eventData.file?.file_path ||
+               null;
+    }
+    
+    return null;
+}
+
+// FIXED: Update temp_files input with duplicate prevention
+function updateTempFilesInput() {
+    // Remove duplicates
+    adminReplyUploadedFiles = [...new Set(adminReplyUploadedFiles)];
+    
+    const tempFilesInput = document.getElementById('temp_files');
+    if (tempFilesInput) {
+        const filesJson = JSON.stringify(adminReplyUploadedFiles);
+        tempFilesInput.value = filesJson;
+        console.log('📝 Updated temp_files input (duplicates removed):', filesJson);
+        console.log('📊 Total unique files:', adminReplyUploadedFiles.length);
+    } else {
+        console.error('❌ temp_files input not found!');
+    }
+}
+
+// FIXED: Form submission handler
+function setupFormHandlers() {
+    const replyForm = document.getElementById('admin-reply-form'); // FIXED: menggunakan ID yang tepat
+    if (replyForm) {
+        console.log('✅ Admin reply form found and initialized');
+        
+        replyForm.addEventListener('submit', function(e) {
+            console.log('📤 Admin reply form submitting...');
+            console.log('📁 Files being submitted:', adminReplyUploadedFiles);
+            console.log('📝 temp_files input value:', document.getElementById('temp_files')?.value);
+            
+            // Optional: Add form validation
+            const messageText = document.getElementById('message')?.value?.trim();
+            if (!messageText) {
+                e.preventDefault();
+                showNotification('Please enter a reply message', 'error');
+                return false;
+            }
+            
+            // Disable submit button to prevent double submission
+            const submitBtn = document.getElementById('admin-reply-submit');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '⏳ Sending...';
+                
+                // Re-enable after timeout
+                setTimeout(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }, 15000);
+            }
+        });
+    } else {
+        console.error('❌ Admin reply form NOT found - check form ID!');
+    }
+}
+
+// Character counter functionality
+function updateCharCounter(textarea) {
+    const charCount = textarea.value.length;
+    const maxLength = 10000;
+    
+    let counterElement = document.getElementById('char-count');
+    if (!counterElement) {
+        counterElement = document.createElement('div');
+        counterElement.id = 'char-count';
+        counterElement.className = 'text-sm text-gray-500 mt-1';
+        textarea.parentNode.appendChild(counterElement);
+    }
+    
+    counterElement.textContent = `${charCount}/${maxLength} characters`;
+    
+    if (charCount > maxLength * 0.9) {
+        counterElement.className = 'text-sm text-red-500 mt-1';
+    } else {
+        counterElement.className = 'text-sm text-gray-500 mt-1';
+    }
+}
+
+// Handle Laravel session messages
+function handleSessionMessages() {
+    @if(session('success'))
+        showNotification('{{ session("success") }}', 'success');
+        clearFormAfterSuccess();
+    @endif
+
+    @if(session('error'))
+        showNotification('{{ session("error") }}', 'error');
+    @endif
+
+    @if(session('warning'))
+        showNotification('{{ session("warning") }}', 'warning');
+    @endif
+}
+
+// Clear form after successful submission
+function clearFormAfterSuccess() {
+    const messageTextarea = document.getElementById('message');
+    const subjectInput = document.getElementById('subject');
+    const tempFilesInput = document.getElementById('temp_files');
+    
+    if (messageTextarea) messageTextarea.value = '';
+    if (subjectInput) subjectInput.value = 'Re: {{ $rootMessage->subject ?? "" }}';
+    if (tempFilesInput) tempFilesInput.value = '';
+    
+    adminReplyUploadedFiles = [];
+    clearUploaderInstances();
+    
+    console.log('✅ Admin reply form cleared after successful submission');
+}
+
+// Clear uploader instances
+function clearUploaderInstances() {
+    const uploaderIds = ['admin-reply-attachments', 'message-attachments', 'reply-attachments'];
+    
+    if (window.universalUploaderInstances) {
+        uploaderIds.forEach(uploaderId => {
+            if (window.universalUploaderInstances[uploaderId]) {
+                try {
+                    window.universalUploaderInstances[uploaderId].clearAll();
+                    console.log(`🧹 Cleared uploader instance: ${uploaderId}`);
+                } catch (e) {
+                    console.warn(`⚠️ Failed to clear ${uploaderId}:`, e);
                 }
-            });
-        }
-
-        // Check if the event is for our admin reply uploader
-        function isEventForAdminReplyUploader(eventDetail) {
-            // Check multiple possible identifiers
-            const uploaderIds = ['admin-reply-attachments', 'message-attachments', 'reply-attachments'];
-
-            // Check by uploader ID
-            if (eventDetail.uploaderId && uploaderIds.includes(eventDetail.uploaderId)) {
-                return true;
             }
-
-            // Check by element ID if present
-            if (eventDetail.elementId && uploaderIds.includes(eventDetail.elementId)) {
-                return true;
-            }
-
-            // Check by target element
-            if (eventDetail.target && eventDetail.target.id && uploaderIds.includes(eventDetail.target.id)) {
-                return true;
-            }
-
-            // Fallback: if we're on the admin messages show page and no specific ID, assume it's ours
-            const isAdminMessagesPage = window.location.pathname.includes('/admin/messages/');
-            return isAdminMessagesPage;
-        }
-
-        // Extract file path from various event formats
-        function extractFilePath(eventData) {
-            // Handle different data structures
-            if (typeof eventData === 'string') {
-                return eventData;
-            }
-
-            if (eventData && typeof eventData === 'object') {
-                // Try different possible properties
-                return eventData.path ||
-                    eventData.file_path ||
-                    eventData.filePath ||
-                    eventData.url ||
-                    eventData.file?.path ||
-                    eventData.file?.file_path ||
-                    null;
-            }
-
-            return null;
-        }
-
-        // Update the hidden temp_files input
-        function updateTempFilesInput() {
-            const tempFilesInput = document.getElementById('temp_files');
-            if (tempFilesInput) {
-                const filesJson = JSON.stringify(adminReplyUploadedFiles);
-                tempFilesInput.value = filesJson;
-                console.log('📝 Updated temp_files input:', filesJson);
-            } else {
-                console.error('❌ temp_files input not found!');
+        });
+    }
+    
+    // Also try Vue instances
+    const uploaderElements = uploaderIds.map(id => document.getElementById(id)).filter(el => el);
+    
+    uploaderElements.forEach(element => {
+        if (element && element.__vue__ && element.__vue__.clearAll) {
+            try {
+                element.__vue__.clearAll();
+                console.log(`🧹 Cleared Vue instance on ${element.id}`);
+            } catch (e) {
+                console.warn(`⚠️ Failed to clear Vue instance on ${element.id}:`, e);
             }
         }
+    });
+}
 
-        // Set up form submission handlers
-        function setupFormHandlers() {
-            const replyForm = document.getElementById('admin-reply-form');
-            if (replyForm) {
-                replyForm.addEventListener('submit', function(e) {
-                    console.log('📤 Admin reply form submitting...');
-                    console.log('📁 Files being submitted:', adminReplyUploadedFiles);
-                    console.log('📝 temp_files input value:', document.getElementById('temp_files')?.value);
+// Clear reply form manually
+function clearReplyForm() {
+    if (confirm('Are you sure you want to clear this form?')) {
+        clearFormAfterSuccess();
+        showNotification('Form cleared', 'success');
+    }
+}
 
-                    // Optional: Add form validation here
-                    const messageText = document.getElementById('message')?.value?.trim();
-                    if (!messageText) {
-                        e.preventDefault();
-                        showNotification('Please enter a reply message', 'error');
-                        return false;
-                    }
-
-                    // Disable submit button to prevent double submission
-                    const submitBtn = document.getElementById('admin-reply-submit');
-                    if (submitBtn) {
-                        submitBtn.disabled = true;
-                        const originalText = submitBtn.innerHTML;
-                        submitBtn.innerHTML = '⏳ Sending...';
-
-                        // Re-enable after timeout to prevent permanent disable
-                        setTimeout(() => {
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = originalText;
-                        }, 15000);
-                    }
-                });
-            } else {
-                console.log('❌ Admin reply form not found');
-            }
-        }
-
-        // Character counter functionality
-        function updateCharCounter(textarea) {
-            const charCount = textarea.value.length;
-            const maxLength = 10000;
-
-            let counterElement = document.getElementById('char-count');
-            if (!counterElement) {
-                // Create character counter if it doesn't exist
-                counterElement = document.createElement('div');
-                counterElement.id = 'char-count';
-                counterElement.className = 'text-sm text-gray-500 mt-1';
-                textarea.parentNode.appendChild(counterElement);
-            }
-
-            counterElement.textContent = `${charCount}/${maxLength} characters`;
-
-            if (charCount > maxLength * 0.9) {
-                counterElement.className = 'text-sm text-red-500 mt-1';
-            } else {
-                counterElement.className = 'text-sm text-gray-500 mt-1';
-            }
-        }
-
-        // Handle Laravel session messages
-        function handleSessionMessages() {
-            @if (session('success'))
-                showNotification('{{ session('success') }}', 'success');
-                clearFormAfterSuccess();
-            @endif
-
-            @if (session('error'))
-                showNotification('{{ session('error') }}', 'error');
-            @endif
-
-            @if (session('warning'))
-                showNotification('{{ session('warning') }}', 'warning');
-            @endif
-        }
-
-        // Clear form after successful submission
-        function clearFormAfterSuccess() {
-            const messageTextarea = document.getElementById('message');
-            const subjectInput = document.getElementById('subject');
-            const tempFilesInput = document.getElementById('temp_files');
-
-            if (messageTextarea) messageTextarea.value = '';
-            if (subjectInput) subjectInput.value = 'Re: {{ $rootMessage->subject ?? '' }}';
-            if (tempFilesInput) tempFilesInput.value = '';
-
-            // Clear the JavaScript array
-            adminReplyUploadedFiles = [];
-
-            // Clear universal uploader files
-            clearUploaderInstances();
-
-            console.log('✅ Admin reply form cleared after successful submission');
-        }
-
-        // Clear universal uploader instances
-        function clearUploaderInstances() {
-            const uploaderIds = ['admin-reply-attachments', 'message-attachments', 'reply-attachments'];
-
-            // Try to clear instances from global registry
-            if (window.universalUploaderInstances) {
-                uploaderIds.forEach(uploaderId => {
-                    if (window.universalUploaderInstances[uploaderId]) {
-                        try {
-                            window.universalUploaderInstances[uploaderId].clearAll();
-                            console.log(`🧹 Cleared uploader instance: ${uploaderId}`);
-                        } catch (e) {
-                            console.warn(`⚠️ Failed to clear ${uploaderId}:`, e);
-                        }
-                    }
-                });
-            }
-
-            // Also try Vue instances
-            const uploaderElements = uploaderIds.map(id => document.getElementById(id)).filter(el => el);
-
-            uploaderElements.forEach(element => {
-                if (element && element.__vue__ && element.__vue__.clearAll) {
-                    try {
-                        element.__vue__.clearAll();
-                        console.log(`🧹 Cleared Vue instance on ${element.id}`);
-                    } catch (e) {
-                        console.warn(`⚠️ Failed to clear Vue instance on ${element.id}:`, e);
-                    }
-                }
-            });
-        }
-
-        // Clear reply form manually
-        function clearReplyForm() {
-            if (confirm('Are you sure you want to clear this form?')) {
-                const messageTextarea = document.getElementById('message');
-                const subjectInput = document.getElementById('subject');
-                const tempFilesInput = document.getElementById('temp_files');
-
-                if (messageTextarea) messageTextarea.value = '';
-                if (subjectInput) subjectInput.value = 'Re: {{ $rootMessage->subject ?? '' }}';
-                if (tempFilesInput) tempFilesInput.value = '';
-
-                adminReplyUploadedFiles = [];
-                clearUploaderInstances();
-
-                showNotification('Form cleared', 'success');
-            }
-        }
-
-        // Show notification function
-        function showNotification(message, type = 'info') {
-            // Create notification element
-            const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg max-w-sm ${
+// Show notification function
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg max-w-sm ${
         type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
         type === 'error' ? 'bg-red-100 text-red-800 border border-red-200' :
         type === 'warning' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
         'bg-blue-100 text-blue-800 border border-blue-200'
     }`;
-
-            notification.innerHTML = `
+    
+    notification.innerHTML = `
         <div class="flex items-center">
             <div class="flex-1">${message}</div>
             <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-current hover:opacity-70">
@@ -949,34 +942,48 @@
             </button>
         </div>
     `;
-
-            document.body.appendChild(notification);
-
-            // Auto remove after 5 seconds
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.remove();
-                }
-            }, 5000);
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
         }
+    }, 5000);
+}
 
-        // Debug function to check current state
-        window.debugAdminReplyUploader = function() {
-            console.log('🐛 Admin Reply Uploader Debug Info:');
-            console.log('📁 Current files array:', adminReplyUploadedFiles);
-            console.log('📝 temp_files input value:', document.getElementById('temp_files')?.value);
-            console.log('🔧 Universal uploader instances:', window.universalUploaderInstances);
-            console.log('📂 DOM elements:', {
-                adminReplyAttachments: document.getElementById('admin-reply-attachments'),
-                messageAttachments: document.getElementById('message-attachments'),
-                replyAttachments: document.getElementById('reply-attachments'),
-                tempFilesInput: document.getElementById('temp_files'),
-                replyForm: document.getElementById('admin-reply-form')
-            });
-        };
+// FIXED: Debug function
+window.debugAdminReplyUploader = function() {
+    console.log('🐛 FIXED Admin Reply Uploader Debug Info:');
+    console.log('=====================================');
+    console.log('📁 Current files array:', adminReplyUploadedFiles);
+    console.log('📝 temp_files input element:', document.getElementById('temp_files'));
+    console.log('📝 temp_files input value:', document.getElementById('temp_files')?.value);
+    console.log('🔧 Universal uploader instances:', window.universalUploaderInstances);
+    console.log('📂 DOM elements:', {
+        form: document.getElementById('admin-reply-form'),
+        messageTextarea: document.getElementById('message'),
+        subjectInput: document.getElementById('subject'),
+        tempFilesInput: document.getElementById('temp_files'),
+        uploaderElement: document.getElementById('admin-reply-attachments'),
+        submitButton: document.getElementById('admin-reply-submit')
+    });
+    console.log('=====================================');
+};
 
-        // Export functions to global scope
-        window.clearReplyForm = clearReplyForm;
-        window.showNotification = showNotification;
-    </script>
+// Clear duplicates function
+window.clearDuplicateFiles = function() {
+    const originalCount = adminReplyUploadedFiles.length;
+    adminReplyUploadedFiles = [...new Set(adminReplyUploadedFiles)];
+    updateTempFilesInput();
+    console.log(`🧹 Removed ${originalCount - adminReplyUploadedFiles.length} duplicate files`);
+    console.log('📁 Unique files remaining:', adminReplyUploadedFiles);
+};
+
+// Export functions to global scope
+window.clearReplyForm = clearReplyForm;
+window.showNotification = showNotification;
+
+console.log('✅ FIXED JavaScript loaded - try: debugAdminReplyUploader()');
+</script>
 </x-layouts.admin>

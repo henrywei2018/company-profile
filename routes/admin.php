@@ -322,8 +322,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('/{message}/forward', [MessageController::class, 'forwardMessage'])->name('forward');
         
         // Bulk Operations
-        Route::post('/bulk-action', [MessageController::class, 'bulkAction'])->name('bulk-action');
-        Route::post('/bulk-priority', [MessageController::class, 'bulkUpdatePriority'])->name('bulk-priority');
+        Route::post('/bulk-action', [MessageController::class, 'bulkAction'])
+        ->middleware('throttle:30,1')
+        ->name('bulk-action');
+        
+        Route::post('/bulk-priority', [MessageController::class, 'bulkUpdatePriority'])
+            ->middleware('throttle:30,1')
+            ->name('bulk-priority');
+            
+        Route::post('/preview-bulk-action', [MessageController::class, 'previewBulkAction'])
+            ->middleware('throttle:60,1')
+            ->name('preview-bulk-action');
+            
+        Route::get('/bulk-actions', [MessageController::class, 'getBulkActions'])
+            ->middleware('throttle:60,1')
+            ->name('bulk-actions');
         Route::post('/bulk-forward', [MessageController::class, 'bulkForward'])->name('bulk-forward');
         
         // File

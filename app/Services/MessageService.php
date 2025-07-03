@@ -28,7 +28,7 @@ class MessageService
         // Apply sorting
         $sortBy = $filters['sort'] ?? 'created_at';
         $direction = $filters['direction'] ?? 'desc';
-        
+
         $allowedSorts = ['created_at', 'subject', 'name', 'priority', 'is_read', 'is_replied'];
         if (in_array($sortBy, $allowedSorts)) {
             $query->orderBy($sortBy, $direction);
@@ -107,7 +107,7 @@ class MessageService
                 'replied' => 'Replied',
                 'urgent' => 'Urgent',
             ],
-            'clients' => User::whereHas('roles', function($query) {
+            'clients' => User::whereHas('roles', function ($query) {
                 $query->where('name', 'client');
             })->select('id', 'name', 'email')->orderBy('name')->get(),
             'projects' => Project::select('id', 'title')->orderBy('title')->get(),
@@ -416,15 +416,49 @@ class MessageService
             throw $e;
         }
     }
+    private function deleteIndividualMessage(Message $message, User $admin, bool $forceDelete = false): bool
+{
+    try {
+        // Delete attachments first
+        foreach ($message->attachments as $attachment) {
+            $attachment->delete();
+        }
+
+        // Log the deletion
+        Log::info('Message deleted by admin', [
+            'message_id' => $message->id,
+            'message_subject' => $message->subject,
+            'client_id' => $message->user_id,
+            'admin_id' => $admin->id,
+            'force_delete' => $forceDelete
+        ]);
+
+        if ($forceDelete) {
+            $message->forceDelete();
+        } else {
+            $message->delete();
+        }
+
+        return true;
+
+    } catch (\Exception $e) {
+        Log::error('Failed to delete message', [
+            'message_id' => $message->id,
+            'admin_id' => $admin->id,
+            'error' => $e->getMessage()
+        ]);
+        return false;
+    }
+}
     public function deleteMessageThread(Message $message, User $admin): bool
     {
         // Get root message
         $rootMessage = $message->parent_id ? $message->parent : $message;
-        
+
         // Get all messages in thread
         $threadMessages = Message::where(function ($query) use ($rootMessage) {
             $query->where('id', $rootMessage->id)
-                  ->orWhere('parent_id', $rootMessage->id);
+                ->orWhere('parent_id', $rootMessage->id);
         })->get();
 
         $deletedCount = 0;
@@ -434,7 +468,7 @@ class MessageService
             try {
                 // Delete attachments first
                 $this->deleteMessageAttachments($threadMessage);
-                
+
                 $messageIds[] = $threadMessage->id;
                 $threadMessage->delete();
                 $deletedCount++;
@@ -667,7 +701,7 @@ class MessageService
     public function getAdminMessageStatistics(): array
     {
         $baseQuery = Message::excludeAdminMessages();
-        
+
         return [
             'total' => $baseQuery->count(),
             'unread' => $baseQuery->where('is_read', false)->count(),
@@ -1089,9 +1123,9 @@ class MessageService
         // Check message permissions
         if (!$isAdmin) {
             $invalidMessages = Message::whereIn('id', $messageIds)
-                ->where(function($query) use ($user) {
+                ->where(function ($query) use ($user) {
                     $query->where('user_id', '!=', $user->id)
-                          ->orWhereIn('type', ['admin_to_client', 'admin_reply']);
+                        ->orWhereIn('type', ['admin_to_client', 'admin_reply']);
                 })
                 ->count();
 
@@ -1112,7 +1146,7 @@ class MessageService
                 $repliedMessages = Message::whereIn('id', $messageIds)
                     ->where('is_replied', true)
                     ->count();
-                
+
                 if ($repliedMessages > 0) {
                     $warnings[] = "Some messages have been replied to and may not be deletable";
                 }
@@ -1133,9 +1167,11 @@ class MessageService
     {
         // Allow deletion if reply is older than X hours (business rule)
         $replyGracePeriod = 24; // hours
-        
-        if ($message->replied_at && 
-            now()->diffInHours($message->replied_at) < $replyGracePeriod) {
+
+        if (
+            $message->replied_at &&
+            now()->diffInHours($message->replied_at) < $replyGracePeriod
+        ) {
             return false;
         }
 
@@ -1177,15 +1213,15 @@ class MessageService
     public function deleteClientThreadParticipation(Message $message, User $client): bool
     {
         $rootMessage = $message->parent_id ? $message->parent : $message;
-        
+
         // Get only client's messages in this thread
         $clientMessages = Message::where(function ($query) use ($rootMessage) {
             $query->where('id', $rootMessage->id)
-                  ->orWhere('parent_id', $rootMessage->id);
+                ->orWhere('parent_id', $rootMessage->id);
         })
-        ->where('user_id', $client->id)
-        ->whereNotIn('type', ['admin_to_client', 'admin_reply']) // Never delete admin messages
-        ->get();
+            ->where('user_id', $client->id)
+            ->whereNotIn('type', ['admin_to_client', 'admin_reply']) // Never delete admin messages
+            ->get();
 
         $deletedCount = 0;
         $messageIds = [];
@@ -1194,7 +1230,7 @@ class MessageService
             try {
                 // Only delete attachments from client's own messages
                 $this->deleteMessageAttachments($clientMessage);
-                
+
                 $messageIds[] = $clientMessage->id;
                 $clientMessage->delete();
                 $deletedCount++;
@@ -1311,6 +1347,84 @@ class MessageService
         return $deletedCount;
     }
 
+    public function bulkChangePriority(array $messageIds, string $priority, User $admin): int
+{
+    if (empty($messageIds)) {
+        return 0;
+    }
+
+    // Validate priority
+    if (!in_array($priority, ['low', 'normal', 'high', 'urgent'])) {
+        throw new \InvalidArgumentException("Invalid priority: {$priority}");
+    }
+
+    $count = Message::excludeAdminMessages()
+        ->whereIn('id', $messageIds)
+        ->update([
+            'priority' => $priority,
+            'priority_updated_by' => $admin->id,
+            'priority_updated_at' => now(),
+            'updated_at' => now()
+        ]);
+
+    if ($count > 0) {
+        Log::info("Admin bulk changed priority to {$priority} for {$count} messages", [
+            'admin_id' => $admin->id,
+            'admin_name' => $admin->name,
+            'priority' => $priority,
+            'message_ids' => $messageIds,
+            'updated_at' => now()->toISOString()
+        ]);
+
+        // If urgent priority is set, create notifications
+        if ($priority === 'urgent') {
+            $this->notifyUrgentMessages($messageIds, $admin);
+        }
+    }
+
+    return $count;
+}
+
+/**
+ * Bulk assign messages to admin - for message management workflows
+ */
+public function bulkAssignToAdmin(array $messageIds, int $assignedAdminId, User $admin): int
+{
+    if (empty($messageIds)) {
+        return 0;
+    }
+
+    // Verify the assigned admin exists and has admin role
+    $assignedAdmin = User::find($assignedAdminId);
+    if (!$assignedAdmin || !$assignedAdmin->hasAnyRole(['super-admin', 'admin', 'manager'])) {
+        throw new \InvalidArgumentException("Invalid admin for assignment");
+    }
+
+    $count = Message::excludeAdminMessages()
+        ->whereIn('id', $messageIds)
+        ->update([
+            'assigned_to' => $assignedAdminId,
+            'assigned_by' => $admin->id,
+            'assigned_at' => now(),
+            'updated_at' => now()
+        ]);
+
+    if ($count > 0) {
+        Log::info("Admin bulk assigned {$count} messages to admin {$assignedAdminId}", [
+            'assigning_admin_id' => $admin->id,
+            'assigned_admin_id' => $assignedAdminId,
+            'assigned_admin_name' => $assignedAdmin->name,
+            'message_ids' => $messageIds,
+            'assigned_at' => now()->toISOString()
+        ]);
+
+        // Notify the assigned admin
+        $this->notifyAssignedAdmin($assignedAdmin, $messageIds, $admin);
+    }
+
+    return $count;
+}
+
     /**
      * Archive message for client (recommended approach)
      */
@@ -1396,10 +1510,10 @@ class MessageService
         if (!empty($filters['search'])) {
             $query->where(function ($q) use ($filters) {
                 $q->where('subject', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('message', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('name', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('email', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('company', 'like', '%' . $filters['search'] . '%');
+                    ->orWhere('message', 'like', '%' . $filters['search'] . '%')
+                    ->orWhere('name', 'like', '%' . $filters['search'] . '%')
+                    ->orWhere('email', 'like', '%' . $filters['search'] . '%')
+                    ->orWhere('company', 'like', '%' . $filters['search'] . '%');
             });
         }
 
@@ -1453,7 +1567,7 @@ class MessageService
     protected function prepareForwardedContent(Message $originalMessage, ?string $forwardMessage): string
     {
         $content = '';
-        
+
         if ($forwardMessage) {
             $content .= $forwardMessage . "\n\n";
             $content .= "--- Forwarded Message ---\n\n";
@@ -1513,7 +1627,7 @@ class MessageService
     {
         try {
             Notifications::send('message.urgent', $message);
-            
+
             Log::info('Urgent priority notification sent', [
                 'message_id' => $message->id,
             ]);
@@ -1635,10 +1749,10 @@ class MessageService
     protected function getThreadSize(Message $message): int
     {
         $rootMessage = $message->parent_id ? $message->parent : $message;
-        
+
         return Message::where(function ($query) use ($rootMessage) {
             $query->where('id', $rootMessage->id)
-                  ->orWhere('parent_id', $rootMessage->id);
+                ->orWhere('parent_id', $rootMessage->id);
         })->count();
     }
 
@@ -1658,15 +1772,15 @@ class MessageService
         if ($message->priority === 'urgent') {
             return 'Urgent';
         }
-        
+
         if (!$message->is_read) {
             return 'Unread';
         }
-        
+
         if (!$message->is_replied) {
             return 'Pending Reply';
         }
-        
+
         return 'Replied';
     }
 
@@ -1681,11 +1795,11 @@ class MessageService
         if ($hasReplies) {
             return 'delete_thread'; // Has replies, delete whole thread
         }
-        
+
         if ($isReply) {
             return 'delete_thread'; // Is a reply, delete whole thread
         }
-        
+
         return 'delete_single'; // Standalone message, can delete individually
     }
 
@@ -1718,8 +1832,8 @@ class MessageService
     protected function canClientArchiveMessage(Message $message, User $client): bool
     {
         // More permissive than deletion - can archive even admin messages
-        return $message->user_id === $client->id || 
-               ($message->email === $client->email && !$message->user_id);
+        return $message->user_id === $client->id ||
+            ($message->email === $client->email && !$message->user_id);
     }
 
 
@@ -1729,14 +1843,14 @@ class MessageService
     protected function getClientThreadSize(Message $message, User $client): int
     {
         $rootMessage = $message->parent_id ? $message->parent : $message;
-        
+
         return Message::where(function ($query) use ($rootMessage) {
             $query->where('id', $rootMessage->id)
-                  ->orWhere('parent_id', $rootMessage->id);
+                ->orWhere('parent_id', $rootMessage->id);
         })
-        ->where('user_id', $client->id)
-        ->whereNotIn('type', ['admin_to_client', 'admin_reply'])
-        ->count();
+            ->where('user_id', $client->id)
+            ->whereNotIn('type', ['admin_to_client', 'admin_reply'])
+            ->count();
     }
 
     /**
@@ -1764,7 +1878,7 @@ class MessageService
     protected function getClientDeletionWarning(Message $message, User $client): ?string
     {
         $hasAdminReplies = $message->replies()->where('type', 'admin_to_client')->count() > 0;
-        
+
         if ($hasAdminReplies) {
             return 'This conversation has admin replies. Consider archiving instead of deleting.';
         }
@@ -1779,4 +1893,18 @@ class MessageService
 
         return null;
     }
+    private function notifyUrgentMessages(array $messageIds, User $admin): void
+{
+    // Implementation depends on your notification system
+    // This is a placeholder for urgent message notifications
+}
+
+/**
+ * Notify assigned admin about new message assignments
+ */
+private function notifyAssignedAdmin(User $assignedAdmin, array $messageIds, User $assigningAdmin): void
+{
+    // Implementation depends on your notification system
+    // This is a placeholder for assignment notifications
+}
 }
