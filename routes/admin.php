@@ -240,7 +240,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::get('/reports/detailed', [ChatController::class, 'detailedReports'])->name('reports.detailed');
         Route::post('/reports/generate', [ChatController::class, 'generateReport'])->name('reports.generate');
         
-        // Individual chat session management
+        // Individual chat session management 
         Route::get('/{chatSession}', [ChatController::class, 'show'])->name('show');
         Route::post('/{chatSession}/reply', [ChatController::class, 'reply'])->middleware('throttle:30,1')->name('reply');
         Route::post('/{chatSession}/close-session', [ChatController::class, 'closeSession'])->name('close');

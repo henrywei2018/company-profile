@@ -512,6 +512,30 @@ Route::middleware('auth')->group(function () {
         
     });
 });
+Route::get('/admin/chat/debug/{chatSession}', function(\App\Models\ChatSession $chatSession) {
+    if (!auth()->user()->hasAdminAccess()) {
+        abort(403);
+    }
+    
+    return response()->json([
+        'session' => [
+            'id' => $chatSession->id,
+            'session_id' => $chatSession->session_id,
+            'status' => $chatSession->status,
+            'assigned_operator_id' => $chatSession->assigned_operator_id,
+            'operator_name' => $chatSession->operator?->name ?? 'Unassigned',
+            'visitor_name' => $chatSession->getVisitorName(),
+            'started_at' => $chatSession->started_at,
+            'last_activity_at' => $chatSession->last_activity_at,
+            'messages_count' => $chatSession->messages()->count(),
+        ],
+        'current_user' => [
+            'id' => auth()->id(),
+            'name' => auth()->user()->name,
+            'is_admin' => auth()->user()->hasAdminAccess(),
+        ]
+    ]);
+})->name('admin.chat.debug');
 
 Route::get('/robots.txt', [RobotsController::class, 'robots'])->name('robots');
 

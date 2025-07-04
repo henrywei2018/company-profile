@@ -1,0 +1,1603 @@
+{{-- resources/views/admin/chat/index.blade.php - MODERN ENHANCED VERSION --}}
+<x-layouts.admin :title="'Live Chat Management'" :enableCharts="true">
+    <x-slot name="header">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="chat-config" content="{{ json_encode([
+            'auto_refresh' => true,
+            'refresh_interval' => 5000,
+            'sound_enabled' => true,
+            'notifications_enabled' => true
+        ]) }}">
+        <style>
+            @keyframes pulse-ring {
+                0% { transform: scale(0.33); }
+                80%, 100% { transform: scale(1.33); opacity: 0; }
+            }
+            @keyframes float {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-10px); }
+            }
+            @keyframes gradient-shift {
+                0%, 100% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+            }
+            .animate-pulse-ring {
+                animation: pulse-ring 2s infinite;
+            }
+            .animate-float {
+                animation: float 3s ease-in-out infinite;
+            }
+            .animate-gradient {
+                animation: gradient-shift 3s ease infinite;
+                background-size: 200% 200%;
+            }
+            .glassmorphism {
+                backdrop-filter: blur(16px) saturate(180%);
+                background-color: rgba(255, 255, 255, 0.75);
+                border: 1px solid rgba(255, 255, 255, 0.125);
+            }
+            .glassmorphism-dark {
+                backdrop-filter: blur(16px) saturate(180%);
+                background-color: rgba(17, 24, 39, 0.75);
+                border: 1px solid rgba(255, 255, 255, 0.125);
+            }
+            .mesh-gradient {
+                background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+                background-size: 400% 400%;
+            }
+            .card-hover {
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                transform: translateY(0);
+            }
+            .card-hover:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            }
+            .neon-glow {
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), 0 0 40px rgba(59, 130, 246, 0.3);
+            }
+        </style>
+    </x-slot>
+
+    <!-- Hero Section with Gradient Background -->
+    <div class="relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 rounded-3xl mb-8 animate-gradient">
+        <div class="absolute inset-0 bg-black/20"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20"></div>
+        
+        <!-- Animated background elements -->
+        <div class="absolute top-0 left-0 w-full h-full overflow-hidden">
+            <div class="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-float"></div>
+            <div class="absolute top-3/4 right-1/4 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl animate-float" style="animation-delay: 1s;"></div>
+            <div class="absolute bottom-1/4 left-1/2 w-32 h-32 bg-pink-500/10 rounded-full blur-3xl animate-float" style="animation-delay: 2s;"></div>
+        </div>
+
+        <div class="relative px-8 py-12">
+            <!-- Breadcrumb with modern styling -->
+            <nav class="flex mb-6" aria-label="Breadcrumb">
+                <ol class="inline-flex items-center space-x-2">
+                    <li class="inline-flex items-center">
+                        <a href="{{ route('admin.dashboard') }}" class="text-white/80 hover:text-white transition-colors duration-200 text-sm font-medium">
+                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                            </svg>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <div class="flex items-center">
+                            <svg class="w-4 h-4 text-white/60 mx-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            <span class="text-white font-medium text-sm">Live Chat</span>
+                        </div>
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header Content -->
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div class="flex-1">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="relative">
+                            <div class="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                </svg>
+                            </div>
+                            <div class="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                <div class="w-2 h-2 bg-white rounded-full"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h1 class="text-3xl lg:text-4xl font-bold text-white mb-2">
+                                Live Chat Command Center
+                            </h1>
+                            <p class="text-white/80 text-lg">
+                                Real-time customer support management
+                                <span id="last-update" class="text-white/60 text-sm ml-2 font-mono"></span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons with Glass Effect -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Connection Status -->
+                    <div id="connection-status" class="flex items-center gap-2 px-4 py-2 glassmorphism rounded-full">
+                        <div class="relative">
+                            <div class="w-3 h-3 bg-green-400 rounded-full"></div>
+                            <div class="absolute inset-0 w-3 h-3 bg-green-400 rounded-full animate-pulse-ring"></div>
+                        </div>
+                        <span class="text-sm font-semibold text-white">Connected</span>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="flex items-center gap-2">
+                        <button onclick="refreshChatDashboard()" class="group relative p-3 glassmorphism rounded-xl hover:scale-105 transition-all duration-200">
+                            <svg class="w-5 h-5 text-white group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <div class="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                        </button>
+
+                        <a href="{{ route('admin.chat.templates.index') }}" class="group relative p-3 glassmorphism rounded-xl hover:scale-105 transition-all duration-200">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+                            </svg>
+                            <div class="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                        </a>
+
+                        <a href="{{ route('admin.chat.settings') }}" class="group relative px-6 py-3 bg-white/20 hover:bg-white/30 text-white rounded-xl font-semibold transition-all duration-200 hover:scale-105">
+                            <span class="relative z-10">Settings</span>
+                            <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Operator Status Card with Advanced Styling -->
+    <div class="relative mb-8 group">
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+        <div class="relative bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <!-- Operator Info -->
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-xl font-bold">
+                            {{ strtoupper(substr(auth()->user()->name, 0, 2)) }}
+                        </div>
+                        <div class="absolute -bottom-1 -right-1 w-6 h-6 {{ $isOperatorOnline ? 'bg-green-500' : 'bg-gray-400' }} rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center">
+                            <div class="w-2 h-2 bg-white rounded-full"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                            {{ auth()->user()->name }}
+                        </h3>
+                        <p class="text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                            <span class="w-2 h-2 {{ $isOperatorOnline ? 'bg-green-500' : 'bg-gray-400' }} rounded-full"></span>
+                            <span id="operator-status-text" class="font-medium">
+                                {{ $isOperatorOnline ? 'Online & Ready' : 'Offline' }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Stats & Actions -->
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-4">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-gray-900 dark:text-white" id="operator-chat-count">
+                                {{ $statistics['active_sessions'] ?? 0 }}
+                            </div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">Active Chats</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-gray-900 dark:text-white">
+                                {{ $statistics['messages_today'] ?? 0 }}
+                            </div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">Messages Today</div>
+                        </div>
+                    </div>
+
+                    <!-- Toggle Button -->
+                    <button id="operator-toggle" 
+                            class="group relative px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 {{ $isOperatorOnline ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white' }}"
+                            onclick="toggleOperatorStatus()">
+                        <span class="relative z-10 flex items-center gap-2">
+                            <div class="w-2 h-2 bg-white rounded-full"></div>
+                            <span id="operator-toggle-text">{{ $isOperatorOnline ? 'Go Offline' : 'Go Online' }}</span>
+                        </span>
+                        <div class="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modern Statistics Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Active Sessions -->
+        <div class="group relative">
+            <div class="absolute inset-0 bg-gradient-to-r from-green-400 to-blue-500 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+            <div class="relative bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 card-hover">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-blue-500 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                        </svg>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-green-600 dark:text-green-400 font-medium">+12%</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">vs yesterday</div>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2" id="active-sessions-stat">
+                    {{ $statistics['active_sessions'] ?? 0 }}
+                </div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">Active Sessions</div>
+                <div class="mt-4 flex items-center gap-2">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Live updating</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Waiting Sessions -->
+        <div class="group relative">
+            <div class="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+            <div class="relative bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 card-hover">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-yellow-600 dark:text-yellow-400 font-medium">-5%</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">vs yesterday</div>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2" id="waiting-sessions-stat">
+                    {{ $statistics['waiting_sessions'] ?? 0 }}
+                </div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">Waiting in Queue</div>
+                <div class="mt-4 flex items-center gap-2">
+                    <div class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Needs attention</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Online Operators -->
+        <div class="group relative">
+            <div class="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+            <div class="relative bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 card-hover">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-blue-600 dark:text-blue-400 font-medium">+1</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">operators</div>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2" id="online-operators-stat">
+                    {{ $statistics['online_operators'] ?? 0 }}
+                </div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">Online Operators</div>
+                <div class="mt-4 flex items-center gap-2">
+                    <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Available now</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages Today -->
+        <div class="group relative">
+            <div class="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-500 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+            <div class="relative bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 card-hover">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+                        </svg>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-purple-600 dark:text-purple-400 font-medium">+25%</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">vs yesterday</div>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2" id="messages-today-stat">
+                    {{ $statistics['messages_today'] ?? 0 }}
+                </div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">Messages Today</div>
+                <div class="mt-4 flex items-center gap-2">
+                    <div class="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Real-time</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Sessions Grid with Modern Cards -->
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <!-- Active Sessions -->
+        <div class="group relative">
+            <div class="absolute inset-0 bg-gradient-to-r from-green-400 to-blue-500 rounded-3xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+            <div class="relative bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300">
+                <!-- Header -->
+                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+                                <div class="w-3 h-3 bg-white rounded-full"></div>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Active Sessions</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Currently in progress</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl font-bold text-gray-900 dark:text-white" id="active-count">
+                                {{ $activeSessions->count() }}
+                            </div>
+                            <div class="text-xs text-green-600 dark:text-green-400 font-medium">+12% today</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-6">
+                    <div id="active-sessions-container" class="space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
+                        @forelse($activeSessions as $session)
+                            <div class="group/card relative overflow-hidden bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-2xl p-4 border border-green-200 dark:border-green-800 hover:shadow-lg transition-all duration-300 cursor-pointer"
+                                 data-session-id="{{ $session->session_id }}"
+                                 onclick="openChatSession('{{ $session->id }}')">
+                                
+                                <!-- Animated gradient background -->
+                                <div class="absolute inset-0 bg-gradient-to-r from-green-400/0 via-blue-400/0 to-green-400/0 group-hover/card:from-green-400/10 group-hover/card:via-blue-400/10 group-hover/card:to-green-400/10 transition-all duration-500"></div>
+                                
+                                <div class="relative flex items-start gap-4">
+                                    <!-- Avatar -->
+                                    <div class="relative flex-shrink-0">
+                                        <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-blue-500 rounded-xl flex items-center justify-center text-white font-bold">
+                                            {{ strtoupper(substr($session->getVisitorName(), 0, 2)) }}
+                                        </div>
+                                        <div class="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-900"></div>
+                                    </div>
+
+                                    <!-- Content -->
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <h4 class="font-semibold text-gray-900 dark:text-white truncate">
+                                                {{ $session->getVisitorName() }}
+                                            </h4>
+                                            @if($session->priority === 'urgent')
+                                                <span class="px-2 py-1 text-xs font-bold bg-red-500 text-white rounded-full animate-pulse">
+                                                    🚨 URGENT
+                                                </span>
+                                            @endif
+                                        </div>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                            {{ $session->getVisitorEmail() ?: 'No email provided' }}
+                                        </p>
+                                        <div class="flex items-center gap-4 text-xs">
+                                            <span class="text-green-600 dark:text-green-400 font-medium">
+                                                {{ $session->started_at->diffForHumans() }}
+                                            </span>
+                                            <span class="text-gray-500 dark:text-gray-400">
+                                                {{ $session->messages->count() }} messages
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Status -->
+                                    <div class="flex flex-col items-end gap-2">
+                                        @if($session->assigned_operator_id === auth()->id())
+                                            <span class="px-3 py-1 text-xs font-bold bg-blue-500 text-white rounded-full">
+                                                YOU
+                                            </span>
+                                        @endif
+                                        <div class="flex items-center gap-1">
+                                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                            <span class="text-xs text-green-600 dark:text-green-400 font-medium">Active</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-center py-12">
+                                <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                    </svg>
+                                </div>
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No Active Sessions</h3>
+                                <p class="text-gray-500 dark:text-gray-400">All quiet on the support front! 🎉</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Waiting Sessions -->
+        <div class="group relative">
+            <div class="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-3xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+            <div class="relative bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300">
+                <!-- Header -->
+                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                                <div class="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Waiting Queue</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Customers waiting for help</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl font-bold text-gray-900 dark:text-white" id="waiting-count">
+                                {{ $waitingSessions->count() }}
+                            </div>
+                            <div class="text-xs text-orange-600 dark:text-orange-400 font-medium">Needs attention</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-6">
+                    <div id="waiting-sessions-container" class="space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
+                        @forelse($waitingSessions as $session)
+                            <div class="group/card relative overflow-hidden bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl p-4 border border-yellow-200 dark:border-yellow-800 hover:shadow-lg transition-all duration-300 cursor-pointer"
+                                 data-session-id="{{ $session->session_id }}"
+                                 onclick="openChatSession('{{ $session->id }}')">
+                                
+                                <!-- Animated gradient background -->
+                                <div class="absolute inset-0 bg-gradient-to-r from-yellow-400/0 via-orange-400/0 to-yellow-400/0 group-hover/card:from-yellow-400/10 group-hover/card:via-orange-400/10 group-hover/card:to-yellow-400/10 transition-all duration-500"></div>
+                                
+                                <div class="relative flex items-start gap-4">
+                                    <!-- Avatar -->
+                                    <div class="relative flex-shrink-0">
+                                        <div class="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center text-white font-bold">
+                                            {{ strtoupper(substr($session->getVisitorName(), 0, 2)) }}
+                                        </div>
+                                        <div class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full border-2 border-white dark:border-gray-900 animate-pulse"></div>
+                                    </div>
+
+                                    <!-- Content -->
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <h4 class="font-semibold text-gray-900 dark:text-white truncate">
+                                                {{ $session->getVisitorName() }}
+                                            </h4>
+                                            @if($session->priority === 'urgent')
+                                                <span class="px-2 py-1 text-xs font-bold bg-red-500 text-white rounded-full animate-pulse">
+                                                    🚨 URGENT
+                                                </span>
+                                            @endif
+                                        </div>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                            {{ $session->getVisitorEmail() ?: 'No email provided' }}
+                                        </p>
+                                        <div class="flex items-center gap-4 text-xs">
+                                            <span class="text-orange-600 dark:text-orange-400 font-medium">
+                                                Waiting {{ $session->started_at->diffForHumans() }}
+                                            </span>
+                                            <span class="text-gray-500 dark:text-gray-400">
+                                                {{ $session->messages->count() }} messages
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Actions -->
+                                    <div class="flex flex-col items-end gap-2">
+                                        <button class="group/btn px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-xs font-bold rounded-full transition-all duration-200 hover:scale-105 shadow-lg"
+                                                onclick="event.stopPropagation(); takeOverSession('{{ $session->id }}')">
+                                            <span class="flex items-center gap-1">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                                </svg>
+                                                Take Over
+                                            </span>
+                                        </button>
+                                        <div class="flex items-center gap-1">
+                                            <div class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                                            <span class="text-xs text-yellow-600 dark:text-yellow-400 font-medium">Waiting</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-center py-12">
+                                <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No Waiting Sessions</h3>
+                                <p class="text-gray-500 dark:text-gray-400">Great job! No one's waiting for help 👍</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Closed Sessions -->
+        <div class="group relative">
+            <div class="absolute inset-0 bg-gradient-to-r from-gray-400 to-gray-600 rounded-3xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+            <div class="relative bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300">
+                <!-- Header -->
+                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gradient-to-r from-gray-400 to-gray-600 rounded-full flex items-center justify-center">
+                                <div class="w-3 h-3 bg-white rounded-full"></div>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Recent Closed</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Recently completed sessions</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl font-bold text-gray-900 dark:text-white" id="recent-count">
+                                {{ $recentClosedSessions->count() }}
+                            </div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400 font-medium">Last 24h</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-6">
+                    <div id="recent-sessions-container" class="space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
+                        @forelse($recentClosedSessions as $session)
+                            <div class="group/card relative overflow-hidden bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-700/50 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 cursor-pointer"
+                                 data-session-id="{{ $session->session_id }}"
+                                 onclick="openChatSession('{{ $session->id }}')">
+                                
+                                <div class="relative flex items-start gap-4">
+                                    <!-- Avatar -->
+                                    <div class="relative flex-shrink-0">
+                                        <div class="w-12 h-12 bg-gradient-to-br from-gray-400 to-gray-600 rounded-xl flex items-center justify-center text-white font-bold">
+                                            {{ strtoupper(substr($session->getVisitorName(), 0, 2)) }}
+                                        </div>
+                                        <div class="absolute -top-1 -right-1 w-4 h-4 bg-gray-500 rounded-full border-2 border-white dark:border-gray-900"></div>
+                                    </div>
+
+                                    <!-- Content -->
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <h4 class="font-semibold text-gray-900 dark:text-white truncate">
+                                                {{ $session->getVisitorName() }}
+                                            </h4>
+                                            <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 rounded-full">
+                                                ✓ Resolved
+                                            </span>
+                                        </div>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                            {{ $session->getVisitorEmail() ?: 'No email provided' }}
+                                        </p>
+                                        <div class="flex items-center gap-4 text-xs">
+                                            <span class="text-gray-600 dark:text-gray-400 font-medium">
+                                                Closed {{ $session->ended_at->diffForHumans() }}
+                                            </span>
+                                            <span class="text-gray-500 dark:text-gray-400">
+                                                {{ $session->getDuration() ?? 0 }} min
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Status -->
+                                    <div class="flex flex-col items-end gap-2">
+                                        <div class="flex items-center gap-1">
+                                            <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
+                                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">Closed</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-center py-12">
+                                <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                    </svg>
+                                </div>
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No Recent Activity</h3>
+                                <p class="text-gray-500 dark:text-gray-400">No sessions closed recently</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Quick Actions Panel -->
+    <div class="mt-8 relative group">
+        <div class="absolute inset-0 bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 rounded-3xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+        <div class="relative bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-lg p-8">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">Quick Actions</h3>
+                    <p class="text-gray-600 dark:text-gray-400">Manage your chat operations efficiently</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Live</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Refresh Data -->
+                <button onclick="refreshChatDashboard()" 
+                        class="group/action relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 hover:from-blue-100 hover:to-blue-200 dark:hover:from-blue-800/40 dark:hover:to-blue-700/40 rounded-2xl p-6 border border-blue-200 dark:border-blue-800 transition-all duration-300 hover:scale-105">
+                    <div class="absolute inset-0 bg-gradient-to-r from-blue-400/0 to-blue-600/0 group-hover/action:from-blue-400/10 group-hover/action:to-blue-600/10 transition-all duration-500"></div>
+                    <div class="relative">
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-white group-hover/action:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </div>
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2">Refresh Data</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Update all live metrics</p>
+                    </div>
+                </button>
+
+                <!-- Export Data -->
+                <button onclick="exportChatData()" 
+                        class="group/action relative overflow-hidden bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 hover:from-green-100 hover:to-green-200 dark:hover:from-green-800/40 dark:hover:to-green-700/40 rounded-2xl p-6 border border-green-200 dark:border-green-800 transition-all duration-300 hover:scale-105">
+                    <div class="absolute inset-0 bg-gradient-to-r from-green-400/0 to-green-600/0 group-hover/action:from-green-400/10 group-hover/action:to-green-600/10 transition-all duration-500"></div>
+                    <div class="relative">
+                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-white group-hover/action:translate-y-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2">Export Data</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Download chat reports</p>
+                    </div>
+                </button>
+
+                <!-- Clear Old Sessions -->
+                <button onclick="clearOldSessions()" 
+                        class="group/action relative overflow-hidden bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 hover:from-purple-100 hover:to-purple-200 dark:hover:from-purple-800/40 dark:hover:to-purple-700/40 rounded-2xl p-6 border border-purple-200 dark:border-purple-800 transition-all duration-300 hover:scale-105">
+                    <div class="absolute inset-0 bg-gradient-to-r from-purple-400/0 to-purple-600/0 group-hover/action:from-purple-400/10 group-hover/action:to-purple-600/10 transition-all duration-500"></div>
+                    <div class="relative">
+                        <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-white group-hover/action:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </div>
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2">Clear Old Sessions</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Archive completed chats</p>
+                    </div>
+                </button>
+
+                <!-- Sound Toggle -->
+                <button onclick="toggleSoundNotifications()" 
+                        class="group/action relative overflow-hidden bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 hover:from-orange-100 hover:to-orange-200 dark:hover:from-orange-800/40 dark:hover:to-orange-700/40 rounded-2xl p-6 border border-orange-200 dark:border-orange-800 transition-all duration-300 hover:scale-105">
+                    <div class="absolute inset-0 bg-gradient-to-r from-orange-400/0 to-orange-600/0 group-hover/action:from-orange-400/10 group-hover/action:to-orange-600/10 transition-all duration-500"></div>
+                    <div class="relative">
+                        <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-white group-hover/action:animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M8.586 17.414l-1.172-1.172a2 2 0 00-2.828 0l-1.172 1.172m0 0L2 18.828m1.414-1.414L8.586 12.24"/>
+                            </svg>
+                        </div>
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2">
+                            <span id="sound-toggle-text">Sound: On</span>
+                        </h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Toggle notifications</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5);
+            border-radius: 20px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.7);
+        }
+    </style>
+
+    <script>
+        // Global variables
+        let chatDashboard = {
+            refreshInterval: null,
+            soundEnabled: true,
+            notificationsEnabled: true,
+            isOperatorOnline: {{ $isOperatorOnline ? 'true' : 'false' }},
+            lastRefresh: new Date(),
+            echo: null
+        };
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Modern Chat Dashboard initialized');
+            initializeChatDashboard();
+            setupWebSocketListeners();
+            startAutoRefresh();
+            updateLastRefreshTime();
+        });
+
+        // Initialize chat dashboard
+        function initializeChatDashboard() {
+            const config = JSON.parse(document.querySelector('meta[name="chat-config"]').getAttribute('content'));
+            chatDashboard = { ...chatDashboard, ...config };
+            
+            // Setup visibility change handler
+            if (chatDashboard.auto_refresh) {
+                document.addEventListener('visibilitychange', function() {
+                    if (document.visibilityState === 'visible') {
+                        refreshChatDashboard();
+                    }
+                });
+            }
+        }
+
+        // Setup WebSocket listeners
+        function setupWebSocketListeners() {
+            if (!window.Echo) {
+                console.warn('Echo not available for chat dashboard');
+                return;
+            }
+
+            try {
+                // Listen for new chat sessions
+                window.Echo.channel('admin-chat-notifications')
+                    .listen('.session.started', (e) => {
+                        console.log('New chat session started:', e);
+                        handleNewChatSession(e);
+                        playNotificationSound();
+                        showAdvancedNotification('New chat session started from ' + e.visitor_name, 'success', 'chat');
+                    })
+                    .listen('.message.sent', (e) => {
+                        console.log('New chat message received:', e);
+                        handleNewMessage(e);
+                        if (e.sender_type === 'visitor') {
+                            playNotificationSound();
+                            showAdvancedNotification('New message from ' + e.visitor_name, 'info', 'message');
+                        }
+                    })
+                    .listen('.session.closed', (e) => {
+                        console.log('Chat session closed:', e);
+                        handleSessionClosed(e);
+                    })
+                    .listen('.session.updated', (e) => {
+                        console.log('Chat session updated:', e);
+                        handleSessionUpdated(e);
+                    });
+
+                // Listen for operator status changes
+                window.Echo.channel('public-chat-status')
+                    .listen('.operator.status.changed', (e) => {
+                        console.log('Operator status changed:', e);
+                        updateOperatorStatus(e);
+                    });
+
+                updateConnectionStatus('connected');
+            } catch (error) {
+                console.error('WebSocket setup failed:', error);
+                updateConnectionStatus('disconnected');
+            }
+        }
+
+        // Auto refresh functionality
+        function startAutoRefresh() {
+            if (chatDashboard.refresh_interval && chatDashboard.refresh_interval > 0) {
+                chatDashboard.refreshInterval = setInterval(function() {
+                    refreshChatDashboard();
+                }, chatDashboard.refresh_interval);
+            }
+        }
+
+        function stopAutoRefresh() {
+            if (chatDashboard.refreshInterval) {
+                clearInterval(chatDashboard.refreshInterval);
+                chatDashboard.refreshInterval = null;
+            }
+        }
+
+        // Refresh chat dashboard
+        async function refreshChatDashboard() {
+            try {
+                updateConnectionStatus('connecting');
+                
+                const response = await fetch('{{ route("admin.chat.api.dashboard-metrics") }}', {
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json',
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch dashboard data');
+
+                const data = await response.json();
+                
+                // Update statistics with animations
+        function updateStatisticsWithAnimation(stats) {
+            const elements = {
+                'active-sessions-stat': stats.active_sessions || 0,
+                'waiting-sessions-stat': stats.waiting_sessions || 0,
+                'online-operators-stat': stats.online_operators || 0,
+                'messages-today-stat': stats.messages_today || 0
+            };
+
+            Object.entries(elements).forEach(([id, newValue]) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    const currentValue = parseInt(element.textContent) || 0;
+                    if (currentValue !== newValue) {
+                        animateNumber(element, currentValue, newValue);
+                    }
+                }
+            });
+
+            // Update counts in session headers
+            updateElement('active-count', stats.active_sessions || 0);
+            updateElement('waiting-count', stats.waiting_sessions || 0);
+            updateElement('recent-count', stats.recent_closed || 0);
+            updateElement('operator-chat-count', stats.active_sessions || 0);
+        }
+
+        // Animate number changes
+        function animateNumber(element, from, to) {
+            const duration = 800;
+            const start = Date.now();
+            const diff = to - from;
+
+            function update() {
+                const elapsed = Date.now() - start;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Easing function for smooth animation
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                const current = Math.round(from + diff * easeOut);
+                
+                element.textContent = current;
+                
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                } else {
+                    element.textContent = to;
+                }
+            }
+            
+            update();
+        }
+
+        // Update session lists
+        function updateSessionLists(sessions) {
+            if (sessions.active) {
+                updateSessionContainer('active-sessions-container', sessions.active, 'active');
+            }
+            if (sessions.waiting) {
+                updateSessionContainer('waiting-sessions-container', sessions.waiting, 'waiting');
+            }
+            if (sessions.recent) {
+                updateSessionContainer('recent-sessions-container', sessions.recent, 'recent');
+            }
+        }
+
+        // Update specific session container
+        function updateSessionContainer(containerId, sessions, type) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            if (sessions.length === 0) {
+                container.innerHTML = getModernEmptyStateHTML(type);
+                return;
+            }
+
+            const html = sessions.map(session => createModernSessionHTML(session, type)).join('');
+            container.innerHTML = html;
+        }
+
+        // Create modern session HTML
+        function createModernSessionHTML(session, type) {
+            const typeConfig = {
+                'active': {
+                    containerClass: 'bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-green-200 dark:border-green-800',
+                    avatarClass: 'bg-gradient-to-br from-green-400 to-blue-500',
+                    statusDot: 'bg-green-500 animate-pulse',
+                    statusText: 'text-green-600 dark:text-green-400',
+                    statusLabel: 'Active'
+                },
+                'waiting': {
+                    containerClass: 'bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800',
+                    avatarClass: 'bg-gradient-to-br from-yellow-400 to-orange-500',
+                    statusDot: 'bg-yellow-500 animate-pulse',
+                    statusText: 'text-yellow-600 dark:text-yellow-400',
+                    statusLabel: 'Waiting'
+                },
+                'recent': {
+                    containerClass: 'bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-700/50 border-gray-200 dark:border-gray-700',
+                    avatarClass: 'bg-gradient-to-br from-gray-400 to-gray-600',
+                    statusDot: 'bg-gray-500',
+                    statusText: 'text-gray-600 dark:text-gray-400',
+                    statusLabel: 'Closed'
+                }
+            };
+
+            const config = typeConfig[type] || typeConfig.active;
+            const actionButton = type === 'waiting' ? 
+                `<button class="group/btn px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-xs font-bold rounded-full transition-all duration-200 hover:scale-105 shadow-lg"
+                        onclick="event.stopPropagation(); takeOverSession('${session.id}')">
+                    <span class="flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        Take Over
+                    </span>
+                </button>` : '';
+
+            return `
+                <div class="group/card relative overflow-hidden ${config.containerClass} rounded-2xl p-4 border hover:shadow-lg transition-all duration-300 cursor-pointer"
+                     data-session-id="${session.session_id}"
+                     onclick="openChatSession('${session.id}')">
+                    
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover/card:from-white/5 group-hover/card:via-white/10 group-hover/card:to-white/5 transition-all duration-500"></div>
+                    
+                    <div class="relative flex items-start gap-4">
+                        <div class="relative flex-shrink-0">
+                            <div class="w-12 h-12 ${config.avatarClass} rounded-xl flex items-center justify-center text-white font-bold">
+                                ${session.visitor_name.substring(0, 2).toUpperCase()}
+                            </div>
+                            <div class="absolute -top-1 -right-1 w-4 h-4 ${config.statusDot} rounded-full border-2 border-white dark:border-gray-900"></div>
+                        </div>
+
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                <h4 class="font-semibold text-gray-900 dark:text-white truncate">
+                                    ${session.visitor_name}
+                                </h4>
+                                ${session.priority === 'urgent' ? '<span class="px-2 py-1 text-xs font-bold bg-red-500 text-white rounded-full animate-pulse">🚨 URGENT</span>' : ''}
+                            </div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                ${session.visitor_email || 'No email provided'}
+                            </p>
+                            <div class="flex items-center gap-4 text-xs">
+                                <span class="${config.statusText} font-medium">
+                                    ${session.time_info}
+                                </span>
+                                <span class="text-gray-500 dark:text-gray-400">
+                                    ${session.messages_count} messages
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col items-end gap-2">
+                            ${actionButton}
+                            <div class="flex items-center gap-1">
+                                <div class="w-2 h-2 ${config.statusDot} rounded-full"></div>
+                                <span class="text-xs ${config.statusText} font-medium">${config.statusLabel}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Get modern empty state HTML
+        function getModernEmptyStateHTML(type) {
+            const emptyStates = {
+                'active': {
+                    icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
+                    title: 'No Active Sessions',
+                    subtitle: 'All quiet on the support front! 🎉'
+                },
+                'waiting': {
+                    icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+                    title: 'No Waiting Sessions',
+                    subtitle: 'Great job! No one\'s waiting for help 👍'
+                },
+                'recent': {
+                    icon: 'M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
+                    title: 'No Recent Activity',
+                    subtitle: 'No sessions closed recently'
+                }
+            };
+
+            const state = emptyStates[type];
+            return `
+                <div class="text-center py-12">
+                    <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${state.icon}"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">${state.title}</h3>
+                    <p class="text-gray-500 dark:text-gray-400">${state.subtitle}</p>
+                </div>
+            `;
+        }
+
+        // Event handlers
+        function handleNewChatSession(sessionData) {
+            const waitingContainer = document.getElementById('waiting-sessions-container');
+            if (waitingContainer) {
+                const sessionElement = createModernSessionHTML(sessionData, 'waiting');
+                waitingContainer.insertAdjacentHTML('afterbegin', sessionElement);
+                
+                // Add entrance animation
+                const newElement = waitingContainer.firstElementChild;
+                newElement.style.opacity = '0';
+                newElement.style.transform = 'translateY(-20px)';
+                
+                requestAnimationFrame(() => {
+                    newElement.style.transition = 'all 0.5s ease-out';
+                    newElement.style.opacity = '1';
+                    newElement.style.transform = 'translateY(0)';
+                });
+            }
+            refreshChatDashboard();
+        }
+
+        function handleNewMessage(messageData) {
+            const sessionElement = document.querySelector(`[data-session-id="${messageData.session_id}"]`);
+            if (sessionElement) {
+                // Add visual feedback for new message
+                sessionElement.classList.add('ring-2', 'ring-blue-500', 'ring-opacity-50');
+                setTimeout(() => {
+                    sessionElement.classList.remove('ring-2', 'ring-blue-500', 'ring-opacity-50');
+                }, 2000);
+            }
+        }
+
+        function handleSessionClosed(sessionData) {
+            const sessionElement = document.querySelector(`[data-session-id="${sessionData.session_id}"]`);
+            if (sessionElement) {
+                // Animate out
+                sessionElement.style.transition = 'all 0.3s ease-in';
+                sessionElement.style.opacity = '0';
+                sessionElement.style.transform = 'translateX(100%)';
+                
+                setTimeout(() => {
+                    sessionElement.remove();
+                }, 300);
+            }
+
+            // Add to recent closed sessions
+            const closedContainer = document.getElementById('recent-sessions-container');
+            if (closedContainer) {
+                const closedElement = createModernSessionHTML(sessionData, 'recent');
+                closedContainer.insertAdjacentHTML('afterbegin', closedElement);
+                
+                // Limit to 10 recent sessions
+                const closedSessions = closedContainer.querySelectorAll('.group\\/card');
+                if (closedSessions.length > 10) {
+                    closedSessions[closedSessions.length - 1].remove();
+                }
+            }
+            
+            refreshChatDashboard();
+        }
+
+        function handleSessionUpdated(sessionData) {
+            refreshChatDashboard();
+        }
+
+        // Operator status management
+        async function toggleOperatorStatus() {
+            const button = document.getElementById('operator-toggle');
+            const statusText = document.getElementById('operator-status-text');
+            const toggleText = document.getElementById('operator-toggle-text');
+            
+            if (!button || !statusText || !toggleText) return;
+
+            const isGoingOnline = !chatDashboard.isOperatorOnline;
+            const url = isGoingOnline ? '{{ route("admin.chat.operator.online") }}' : '{{ route("admin.chat.operator.offline") }}';
+
+            try {
+                button.disabled = true;
+                button.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>';
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json',
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to update operator status');
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    chatDashboard.isOperatorOnline = isGoingOnline;
+                    updateOperatorStatusUI(isGoingOnline);
+                    showAdvancedNotification(`You are now ${isGoingOnline ? 'online' : 'offline'}`, 'success', 'user');
+                } else {
+                    throw new Error(data.message || 'Failed to update status');
+                }
+            } catch (error) {
+                console.error('Toggle operator status failed:', error);
+                showAdvancedNotification('Failed to update operator status', 'error', 'alert');
+            } finally {
+                button.disabled = false;
+                updateOperatorStatusUI(chatDashboard.isOperatorOnline);
+            }
+        }
+
+        function updateOperatorStatusUI(isOnline) {
+            const button = document.getElementById('operator-toggle');
+            const statusText = document.getElementById('operator-status-text');
+
+            if (button) {
+                button.className = `group relative px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 ${
+                    isOnline ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'
+                }`;
+                
+                button.innerHTML = `
+                    <span class="relative z-10 flex items-center gap-2">
+                        <div class="w-2 h-2 bg-white rounded-full"></div>
+                        <span>${isOnline ? 'Go Offline' : 'Go Online'}</span>
+                    </span>
+                    <div class="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                `;
+            }
+
+            if (statusText) {
+                statusText.textContent = isOnline ? 'Online & Ready' : 'Offline';
+                statusText.className = `font-medium ${isOnline ? 'text-green-600' : 'text-gray-600'}`;
+            }
+        }
+
+        // Session management
+        function openChatSession(sessionId) {
+            window.location.href = `{{ route('admin.chat.index') }}/${sessionId}`;
+        }
+
+        async function takeOverSession(sessionId) {
+            try {
+                showAdvancedNotification('Taking over session...', 'info', 'loading');
+                
+                const response = await fetch(`{{ route('admin.chat.index') }}/${sessionId}/take-over`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json',
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to take over session');
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAdvancedNotification('Session taken over successfully', 'success', 'check');
+                    refreshChatDashboard();
+                    setTimeout(() => openChatSession(sessionId), 1000);
+                } else {
+                    throw new Error(data.message || 'Failed to take over session');
+                }
+            } catch (error) {
+                console.error('Take over session failed:', error);
+                showAdvancedNotification('Failed to take over session', 'error', 'alert');
+            }
+        }
+
+        // Utility functions
+        function updateElement(id, value) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            }
+        }
+
+        function updateConnectionStatus(status) {
+            const connectionElement = document.getElementById('connection-status');
+            if (!connectionElement) return;
+
+            const statusConfig = {
+                'connected': {
+                    class: 'glassmorphism',
+                    content: `
+                        <div class="relative">
+                            <div class="w-3 h-3 bg-green-400 rounded-full"></div>
+                            <div class="absolute inset-0 w-3 h-3 bg-green-400 rounded-full animate-pulse-ring"></div>
+                        </div>
+                        <span class="text-sm font-semibold text-white">Connected</span>
+                    `
+                },
+                'connecting': {
+                    class: 'glassmorphism',
+                    content: `
+                        <div class="w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></div>
+                        <span class="text-sm font-semibold text-white">Connecting...</span>
+                    `
+                },
+                'disconnected': {
+                    class: 'bg-red-500/20 border border-red-500/30',
+                    content: `
+                        <div class="w-3 h-3 bg-red-400 rounded-full"></div>
+                        <span class="text-sm font-semibold text-white">Disconnected</span>
+                    `
+                },
+                'error': {
+                    class: 'bg-red-500/20 border border-red-500/30',
+                    content: `
+                        <div class="w-3 h-3 bg-red-400 rounded-full"></div>
+                        <span class="text-sm font-semibold text-white">Error</span>
+                    `
+                }
+            };
+
+            const config = statusConfig[status] || statusConfig.disconnected;
+            connectionElement.className = `flex items-center gap-2 px-4 py-2 rounded-full ${config.class}`;
+            connectionElement.innerHTML = config.content;
+        }
+
+        function updateLastRefreshTime() {
+            const lastUpdateElement = document.getElementById('last-update');
+            if (lastUpdateElement) {
+                const now = new Date();
+                lastUpdateElement.textContent = `Last updated: ${now.toLocaleTimeString()}`;
+                chatDashboard.lastRefresh = now;
+            }
+        }
+
+        // Quick actions
+        async function exportChatData() {
+            try {
+                showAdvancedNotification('Preparing export...', 'info', 'download');
+                
+                const response = await fetch('{{ route("admin.chat.reports") }}?export=true', {
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    }
+                });
+
+                if (!response.ok) throw new Error('Export failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `chat_data_${new Date().toISOString().split('T')[0]}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showAdvancedNotification('Export completed successfully', 'success', 'check');
+            } catch (error) {
+                console.error('Export failed:', error);
+                showAdvancedNotification('Export failed', 'error', 'alert');
+            }
+        }
+
+        async function clearOldSessions() {
+            const result = await showConfirmDialog(
+                'Clear Old Sessions',
+                'Are you sure you want to clear old sessions? This action cannot be undone.',
+                'Clear Sessions',
+                'Cancel'
+            );
+
+            if (!result) return;
+
+            try {
+                showAdvancedNotification('Clearing old sessions...', 'info', 'loading');
+                
+                const response = await fetch('{{ route("admin.chat.archive-old") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json',
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to clear old sessions');
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAdvancedNotification(`${data.cleared_count} old sessions cleared`, 'success', 'check');
+                    refreshChatDashboard();
+                } else {
+                    throw new Error(data.message || 'Failed to clear sessions');
+                }
+            } catch (error) {
+                console.error('Clear old sessions failed:', error);
+                showAdvancedNotification('Failed to clear old sessions', 'error', 'alert');
+            }
+        }
+
+        function toggleSoundNotifications() {
+            chatDashboard.soundEnabled = !chatDashboard.soundEnabled;
+            const toggleText = document.getElementById('sound-toggle-text');
+            if (toggleText) {
+                toggleText.textContent = `Sound: ${chatDashboard.soundEnabled ? 'On' : 'Off'}`;
+            }
+            
+            localStorage.setItem('chat_sound_enabled', chatDashboard.soundEnabled);
+            showAdvancedNotification(`Sound notifications ${chatDashboard.soundEnabled ? 'enabled' : 'disabled'}`, 'info', 'volume');
+        }
+
+        // Advanced notification system
+        function showAdvancedNotification(message, type = 'info', icon = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 max-w-sm transition-all duration-500 transform translate-x-full`;
+            
+            const typeColors = {
+                'success': 'bg-green-500 text-white',
+                'error': 'bg-red-500 text-white',
+                'warning': 'bg-yellow-500 text-white',
+                'info': 'bg-blue-500 text-white'
+            };
+
+            const iconSvgs = {
+                'check': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>',
+                'alert': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>',
+                'info': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+                'loading': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>',
+                'download': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>',
+                'volume': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M8.586 17.414l-1.172-1.172a2 2 0 00-2.828 0l-1.172 1.172m0 0L2 18.828m1.414-1.414L8.586 12.24"/>',
+                'chat': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>',
+                'message': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>',
+                'user': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>'
+            };
+
+            notification.innerHTML = `
+                <div class="glassmorphism-dark rounded-2xl p-4 shadow-2xl border border-white/20">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 ${typeColors[type]} rounded-full flex items-center justify-center flex-shrink-0">
+                            <svg class="w-5 h-5 ${icon === 'loading' ? 'animate-spin' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                ${iconSvgs[icon] || iconSvgs.info}
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-white">${message}</p>
+                        </div>
+                        <button onclick="this.closest('[class*=\"fixed\"]').remove()" class="text-white/70 hover:text-white transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.classList.remove('translate-x-full');
+            }, 100);
+            
+            // Auto remove after 5 seconds (unless it's a loading notification)
+            if (icon !== 'loading') {
+                setTimeout(() => {
+                    notification.classList.add('translate-x-full');
+                    setTimeout(() => {
+                        if (notification.parentElement) {
+                            notification.remove();
+                        }
+                    }, 500);
+                }, 5000);
+            }
+        }
+
+        // Modern confirm dialog
+        function showConfirmDialog(title, message, confirmText, cancelText) {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm';
+                
+                modal.innerHTML = `
+                    <div class="bg-white dark:bg-gray-900 rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-200 dark:border-gray-700 transform scale-95 transition-all duration-300">
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg class="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">${title}</h3>
+                            <p class="text-gray-600 dark:text-gray-400 mb-6">${message}</p>
+                            <div class="flex gap-3">
+                                <button onclick="resolveConfirm(false)" class="flex-1 px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                                    ${cancelText}
+                                </button>
+                                <button onclick="resolveConfirm(true)" class="flex-1 px-6 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition-colors">
+                                    ${confirmText}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Add resolve function to window temporarily
+                window.resolveConfirm = (result) => {
+                    modal.remove();
+                    delete window.resolveConfirm;
+                    resolve(result);
+                };
+                
+                // Animate in
+                setTimeout(() => {
+                    modal.querySelector('div').classList.remove('scale-95');
+                    modal.querySelector('div').classList.add('scale-100');
+                }, 100);
+            });
+        }
+
+        // Sound notification
+        function playNotificationSound() {
+            if (!chatDashboard.soundEnabled) return;
+
+            try {
+                // Create audio context for better browser compatibility
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (error) {
+                console.log('Sound notification failed:', error);
+            }
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            stopAutoRefresh();
+            if (chatDashboard.echo) {
+                chatDashboard.echo.disconnect();
+            }
+        });
+
+        // Load sound preference
+        document.addEventListener('DOMContentLoaded', function() {
+            const soundEnabled = localStorage.getItem('chat_sound_enabled');
+            if (soundEnabled !== null) {
+                chatDashboard.soundEnabled = soundEnabled === 'true';
+                const toggleText = document.getElementById('sound-toggle-text');
+                if (toggleText) {
+                    toggleText.textContent = `Sound: ${chatDashboard.soundEnabled ? 'On' : 'Off'}`;
+                }
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + R to refresh
+            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                e.preventDefault();
+                refreshChatDashboard();
+            }
+            
+            // Ctrl/Cmd + S to toggle sound
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                toggleSoundNotifications();
+            }
+            
+            // Ctrl/Cmd + O to toggle operator status
+            if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+                e.preventDefault();
+                toggleOperatorStatus();
+            }
+        });
+
+        // Page visibility API for better performance
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // Page is hidden, reduce update frequency
+                if (chatDashboard.refreshInterval) {
+                    clearInterval(chatDashboard.refreshInterval);
+                    chatDashboard.refreshInterval = setInterval(refreshChatDashboard, 30000); // 30 seconds
+                }
+            } else {
+                // Page is visible, restore normal frequency
+                if (chatDashboard.refreshInterval) {
+                    clearInterval(chatDashboard.refreshInterval);
+                    chatDashboard.refreshInterval = setInterval(refreshChatDashboard, chatDashboard.refresh_interval);
+                }
+                refreshChatDashboard(); // Immediate refresh when page becomes visible
+            }
+        });
+
+        // Touch gestures for mobile
+        let touchStartY = 0;
+        let touchEndY = 0;
+
+        document.addEventListener('touchstart', function(e) {
+            touchStartY = e.changedTouches[0].screenY;
+        });
+
+        document.addEventListener('touchend', function(e) {
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartY - touchEndY;
+            
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    // Swipe up - refresh dashboard
+                    refreshChatDashboard();
+                    showAdvancedNotification('Refreshing dashboard...', 'info', 'loading');
+                }
+            }
+        }
+
+        // Performance monitoring
+        function logPerformance() {
+            if (performance.mark) {
+                performance.mark('chat-dashboard-loaded');
+                
+                // Log performance metrics
+                const navigationEntry = performance.getEntriesByType('navigation')[0];
+                if (navigationEntry) {
+                    console.log('🚀 Dashboard Performance:', {
+                        'Page Load Time': `${navigationEntry.loadEventEnd - navigationEntry.loadEventStart}ms`,
+                        'DOM Content Loaded': `${navigationEntry.domContentLoadedEventEnd - navigationEntry.domContentLoadedEventStart}ms`,
+                        'First Paint': performance.getEntriesByName('first-paint')[0]?.startTime || 'N/A',
+                        'First Contentful Paint': performance.getEntriesByName('first-contentful-paint')[0]?.startTime || 'N/A'
+                    });
+                }
+            }
+        }
+
+        // Initialize performance monitoring
+        window.addEventListener('load', logPerformance);
+
+        // Service Worker for offline capability (optional)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                console.log('Service Worker registered successfully:', registration);
+            }).catch(function(error) {
+                console.log('Service Worker registration failed:', error);
+            });
+        }
+
+        // Error boundary for JavaScript errors
+        window.addEventListener('error', function(e) {
+            console.error('Dashboard Error:', e.error);
+            showAdvancedNotification('An error occurred. Please refresh the page.', 'error', 'alert');
+        });
+
+        // Unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Unhandled Promise Rejection:', e.reason);
+            showAdvancedNotification('Connection issue detected. Retrying...', 'warning', 'alert');
+        });
+
+        console.log('🎨 Modern Chat Dashboard loaded successfully!');
+        console.log('💡 Keyboard shortcuts: Ctrl+R (refresh), Ctrl+S (toggle sound), Ctrl+O (toggle status)');
+        console.log('📱 Mobile: Swipe up to refresh');
+    </script>
+</x-layouts.admin>

@@ -142,73 +142,117 @@ class ChatController extends Controller
         }
     }
     public function takeOverSession(Request $request, ChatSession $chatSession): JsonResponse
-    {
-        if (!auth()->user()->hasAdminAccess()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
+{
+    if (!auth()->user()->hasAdminAccess()) {
+        return response()->json(['error' => 'Unauthorized'], 403);
+    }
 
-        $request->validate([
-            'note' => 'nullable|string|max:255',
-        ]);
+    $request->validate([
+        'note' => 'nullable|string|max:255',
+    ]);
 
-        try {
-            $user = auth()->user();
-            $oldOperator = $chatSession->operator;
-            
-            // Check if operator is online and available
-            $operator = $this->chatService->getOperator($user);
-            if (!$operator || !$operator->is_online || !$operator->is_available) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You must be online and available to take over chat sessions'
-                ], 400);
-            }
-
-            // Update session assignment
-            $chatSession->update([
-                'assigned_operator_id' => $user->id,
-            ]);
-
-            // Update operator chat counts
-            if ($oldOperator && $oldOperator->chatOperator) {
-                $oldOperator->chatOperator->decrementChatCount();
-            }
-            $operator->incrementChatCount();
-
-            // Add system message about transfer
-            $oldOperatorName = $oldOperator ? $oldOperator->name : 'System';
-            $note = $request->note ? " - Note: {$request->note}" : '';
-            
-            $chatSession->messages()->create([
-                'sender_type' => 'system',
-                'message' => "Chat transferred from {$oldOperatorName} to {$user->name}{$note}",
-                'message_type' => 'system',
-            ]);
-
-            // Observer will handle transfer notifications automatically
-            // No need for manual event broadcasting
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Chat session transferred successfully',
-                'session' => [
-                    'id' => $chatSession->id,
-                    'session_id' => $chatSession->session_id,
-                    'status' => $chatSession->status,
-                    'visitor_name' => $chatSession->getVisitorName(),
-                    'url' => route('admin.chat.show', $chatSession),
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Take over session failed: ' . $e->getMessage());
-
+    try {
+        $user = auth()->user();
+        $oldOperator = $chatSession->operator;
+        
+        // Check if operator is online and available
+        $operator = $this->chatService->getOperator($user);
+        if (!$operator || !$operator->is_online || !$operator->is_available) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to take over chat session'
-            ], 500);
+                'message' => 'You must be online and available to take over chat sessions'
+            ], 400);
         }
+
+        // Check if session is already assigned to this operator
+        if ($chatSession->assigned_operator_id === $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Session is already assigned to you'
+            ], 400);
+        }
+
+        // Update session assignment AND status
+        $chatSession->update([
+            'assigned_operator_id' => $user->id,
+            'status' => 'active', // ← THIS WAS MISSING! 
+            'last_activity_at' => now(),
+        ]);
+
+        // Update operator chat counts
+        if ($oldOperator && $oldOperator->chatOperator) {
+            $oldOperator->chatOperator->decrementChatCount();
+        }
+        $operator->incrementChatCount();
+
+        // Add system message about transfer
+        $oldOperatorName = $oldOperator ? $oldOperator->name : 'System';
+        $note = $request->note ? " - Note: {$request->note}" : '';
+        
+        $chatSession->messages()->create([
+            'sender_type' => 'system',
+            'sender_id' => null,
+            'message' => "Chat transferred from {$oldOperatorName} to {$user->name}{$note}",
+            'message_type' => 'system',
+        ]);
+
+        // Refresh the model to get updated data
+        $chatSession->refresh();
+
+        // Send notifications about the transfer
+        try {
+            // Notify the client about the transfer
+            if ($chatSession->user) {
+                Notifications::send('chat.operator_joined', $chatSession, $chatSession->user);
+            }
+
+            // Notify operators about the assignment change
+            Notifications::send('chat.session_transferred', $chatSession);
+            
+            Log::info('Chat session takeover completed', [
+                'session_id' => $chatSession->session_id,
+                'old_operator' => $oldOperator?->name ?? 'None',
+                'new_operator' => $user->name,
+                'old_status' => $chatSession->getOriginal('status'),
+                'new_status' => $chatSession->status
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::warning('Failed to send takeover notifications', [
+                'session_id' => $chatSession->session_id,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Chat session taken over successfully',
+            'session' => [
+                'id' => $chatSession->id,
+                'session_id' => $chatSession->session_id,
+                'status' => $chatSession->status, // Will now be 'active'
+                'assigned_operator_id' => $chatSession->assigned_operator_id,
+                'operator_name' => $user->name,
+                'visitor_name' => $chatSession->getVisitorName(),
+                'url' => route('admin.chat.show', $chatSession),
+                'last_activity_at' => $chatSession->last_activity_at->toISOString(),
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Take over session failed: ' . $e->getMessage(), [
+            'session_id' => $chatSession->session_id ?? 'unknown',
+            'user_id' => auth()->id(),
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to take over session. Please try again.'
+        ], 500);
     }
+}
 public function pollMessages(Request $request, ChatSession $chatSession): JsonResponse
 {
     if (!auth()->user()->hasAdminAccess()) {
@@ -867,36 +911,90 @@ public function getDashboardMetrics(): JsonResponse
      * Transfer chat to another operator
      */
     public function transferSession(Request $request, ChatSession $chatSession)
-    {
-        if (!auth()->user()->hasAdminAccess()) {
-            abort(403, 'Admin access required');
-        }
+{
+    if (!auth()->user()->hasAdminAccess()) {
+        abort(403, 'Admin access required');
+    }
 
-        $request->validate([
-            'operator_id' => 'required|exists:users,id',
-            'note' => 'nullable|string|max:255',
-        ]);
+    $request->validate([
+        'operator_id' => 'required|exists:users,id',
+        'note' => 'nullable|string|max:255',
+    ]);
 
+    try {
         $newOperator = User::find($request->operator_id);
-        $oldOperatorName = $chatSession->operator ? $chatSession->operator->name : 'System';
+        $oldOperator = $chatSession->operator;
+        $oldOperatorName = $oldOperator ? $oldOperator->name : 'System';
 
+        // Update session assignment
         $chatSession->update([
             'assigned_operator_id' => $newOperator->id,
+            'last_activity_at' => now(),
         ]);
 
         // Add system message about transfer
         $chatSession->messages()->create([
             'sender_type' => 'system',
+            'sender_id' => null,
             'message' => "Chat transferred from {$oldOperatorName} to {$newOperator->name}" .
                 ($request->note ? " - Note: {$request->note}" : ''),
             'message_type' => 'system',
         ]);
 
-        // Notify the new operator
-        Notifications::send('chat.session_transferred', $chatSession, $newOperator);
+        // Send notifications
+        try {
+            Notifications::send('chat.session_transferred', $chatSession, $newOperator);
+        } catch (\Exception $e) {
+            Log::warning('Failed to send transfer notification', [
+                'session_id' => $chatSession->session_id,
+                'error' => $e->getMessage()
+            ]);
+        }
 
+        Log::info('Chat session transferred', [
+            'session_id' => $chatSession->session_id,
+            'from_operator' => $oldOperatorName,
+            'to_operator' => $newOperator->name,
+            'transferred_by' => auth()->user()->name
+        ]);
+
+        // Check if this is an AJAX request
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Chat transferred successfully!',
+                'session' => [
+                    'id' => $chatSession->id,
+                    'session_id' => $chatSession->session_id,
+                    'status' => $chatSession->status,
+                    'assigned_operator_id' => $chatSession->assigned_operator_id,
+                    'operator_name' => $newOperator->name,
+                    'visitor_name' => $chatSession->getVisitorName(),
+                ]
+            ]);
+        }
+
+        // Regular form submission - redirect back
         return redirect()->back()->with('success', 'Chat transferred successfully!');
+
+    } catch (\Exception $e) {
+        Log::error('Transfer session failed: ' . $e->getMessage(), [
+            'session_id' => $chatSession->session_id ?? 'unknown',
+            'operator_id' => $request->operator_id,
+            'user_id' => auth()->id(),
+            'error' => $e->getMessage()
+        ]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to transfer session. Please try again.'
+            ], 500);
+        }
+
+        return redirect()->back()->with('error', 'Failed to transfer session. Please try again.');
     }
+}
 
     /**
      * Update chat priority
@@ -1145,7 +1243,7 @@ public function getDashboardMetrics(): JsonResponse
         }
 
         $operators = User::whereHas('roles', function ($q) {
-            $q->whereIn('name', ['super-admin', 'admin', 'manager']);
+            $q->whereIn('name', ['super-admin', 'admin']);
         })->with(['chatOperator'])
             ->get()
             ->map(function ($user) {
