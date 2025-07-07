@@ -11,6 +11,8 @@ use App\Http\Controllers\Admin\{
     ServiceCategoryController,
     BannerCategoryController,
     BannerController,
+    ProductController,
+    ProductCategoryController,
     ProjectController,
     ProjectFileController, 
     ProjectMilestoneController,
@@ -101,7 +103,43 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::patch('service-categories/{category}/toggle-active', [ServiceCategoryController::class, 'toggleActive'])->name('service-categories.toggle-active');
     Route::post('service-categories/update-order', [ServiceCategoryController::class, 'updateOrder'])->name('service-categories.update-order');
     Route::post('service-categories/bulk-action', [ServiceCategoryController::class, 'bulkAction'])->name('service-categories.bulk-action');
+    // Product Management
+    Route::prefix('products')->name('products.')->group(function () {
+        // Temporary file routes (MUST come before resource routes to avoid conflicts)
+        Route::post('/temp-upload', [ProductController::class, 'uploadTempImages'])->name('temp-upload');
+        Route::delete('/temp-delete', [ProductController::class, 'deleteTempImage'])->name('temp-delete');
+        Route::get('/temp-files', [ProductController::class, 'getTempFiles'])->name('temp-files');
+        Route::post('/cleanup-temp', [ProductController::class, 'cleanupTempFiles'])->name('cleanup-temp');
+        
+        // Resource routes (these will bind {product} parameter)
+        Route::resource('/', ProductController::class)->parameters(['' => 'product']);
+        
+        // Product-specific routes (these need {product} parameter)
+        Route::post('{product}/toggle-featured', [ProductController::class, 'toggleFeatured'])->name('toggle-featured');
+        Route::post('{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('toggle-active');
+        Route::post('{product}/duplicate', [ProductController::class, 'duplicate'])->name('duplicate');
+        Route::post('{product}/upload-image', [ProductController::class, 'uploadImages'])->name('upload-image');
+        Route::delete('{product}/delete-image', [ProductController::class, 'deleteImage'])->name('delete-image');
+        
+        // Bulk operations (no specific product needed)
+        Route::post('bulk-action', [ProductController::class, 'bulkAction'])->name('bulk-action');
+        Route::post('update-order', [ProductController::class, 'updateOrder'])->name('update-order');
+        
+        // Data endpoints (no specific product needed)
+        Route::get('statistics', [ProductController::class, 'getStatistics'])->name('statistics');
+        Route::get('export', [ProductController::class, 'export'])->name('export');
+        Route::get('search', [ProductController::class, 'search'])->name('search');
+    });
 
+    // Product Categories
+    Route::resource('product-categories', ProductCategoryController::class)->parameters(['product-categories' => 'productCategory']);
+    Route::prefix('product-categories')->name('product-categories.')->group(function () {
+        Route::patch('{productCategory}/toggle-active', [ProductCategoryController::class, 'toggleActive'])->name('toggle-active');
+        Route::post('update-order', [ProductCategoryController::class, 'updateOrder'])->name('update-order');
+        Route::post('bulk-action', [ProductCategoryController::class, 'bulkAction'])->name('bulk-action');
+        Route::get('statistics', [ProductCategoryController::class, 'statistics'])->name('statistics');
+        Route::get('export', [ProductCategoryController::class, 'export'])->name('export');
+    });
     // Banner Management
     Route::prefix('banner-categories')->name('banner-categories.')->group(function () {
         Route::resource('/', BannerCategoryController::class)->parameters(['' => 'bannerCategory']);
