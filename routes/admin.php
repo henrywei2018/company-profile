@@ -92,10 +92,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     
     // Services
     Route::resource('services', ServiceController::class);
-    Route::post('/services/{service}/toggle-status', [ServiceController::class, 'toggleActive'])->name('services.toggle-status');
-    Route::patch('/services/{service}/toggle-featured', [ServiceController::class, 'toggleFeatured'])->name('services.toggle-featured');
-    Route::post('/services/update-order', [ServiceController::class, 'updateOrder'])->name('services.update-order');
+    Route::patch('services/{service}/toggle-active', [ServiceController::class, 'toggleActive'])->name('services.toggle-active');
+    Route::patch('services/{service}/toggle-featured', [ServiceController::class, 'toggleFeatured'])->name('services.toggle-featured');
+    Route::post('services/update-order', [ServiceController::class, 'updateOrder'])->name('services.update-order');
     
+    // Service Categories
+    Route::resource('service-categories', ServiceCategoryController::class)->parameters(['service-categories' => 'category']);
+    Route::patch('service-categories/{category}/toggle-active', [ServiceCategoryController::class, 'toggleActive'])->name('service-categories.toggle-active');
+    Route::post('service-categories/update-order', [ServiceCategoryController::class, 'updateOrder'])->name('service-categories.update-order');
+    Route::post('service-categories/bulk-action', [ServiceCategoryController::class, 'bulkAction'])->name('service-categories.bulk-action');
+
     // Banner Management
     Route::prefix('banner-categories')->name('banner-categories.')->group(function () {
         Route::resource('/', BannerCategoryController::class)->parameters(['' => 'bannerCategory']);
@@ -135,9 +141,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     
     
-    // Service Categories
-    Route::resource('service-categories', ServiceCategoryController::class);
-    Route::patch('/service-categories/{serviceCategory}/toggle-active', [ServiceCategoryController::class, 'toggleActive'])->name('service-categories.toggle-active');
+    
 
     // Projects
     Route::resource('projects', ProjectController::class);
@@ -395,10 +399,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::get('/statistics', [QuotationController::class, 'statistics'])->name('statistics');
         Route::get('/counts', [QuotationController::class, 'getCounts'])->name('counts');
     });
-
-    
-
-    
 
     // Team
     Route::prefix('team')->name('team.')->group(function () {

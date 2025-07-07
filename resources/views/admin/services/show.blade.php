@@ -43,155 +43,258 @@
                 
                 @if($service->image)
                     <div class="mb-6">
-                        <img src="{{ asset('storage/' . $service->image) }}" alt="{{ $service->title }}" class="w-full h-auto rounded-lg object-cover">
+                        <img src="{{ asset('storage/' . $service->image) }}" 
+                             alt="{{ $service->title }}" 
+                             class="w-full h-64 object-cover rounded-lg border">
                     </div>
                 @endif
                 
                 @if($service->short_description)
-                    <div class="mb-6">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Summary</h3>
+                    <div class="mb-4">
+                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Short Description</h4>
                         <p class="text-gray-600 dark:text-gray-400">{{ $service->short_description }}</p>
                     </div>
                 @endif
                 
-                <div class="prose max-w-none dark:prose-invert prose-img:rounded-lg prose-headings:text-gray-900 dark:prose-headings:text-white prose-p:text-gray-600 dark:prose-p:text-gray-400">
-                    {!! $service->description !!}
-                </div>
+                @if($service->description)
+                    <div class="mb-6">
+                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Full Description</h4>
+                        <div class="prose prose-sm dark:prose-invert max-w-none">
+                            {!! nl2br(e($service->description)) !!}
+                        </div>
+                    </div>
+                @endif
+                
+                <!-- Service Statistics -->
+                @if($service->quotations_count > 0 || $service->projects_count > 0)
+                    <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-4">Service Statistics</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                                <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                    {{ $service->quotations->count() }}
+                                </div>
+                                <div class="text-sm text-blue-600 dark:text-blue-400">Total Quotations</div>
+                            </div>
+                            <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                                <div class="text-2xl font-bold text-green-600 dark:text-green-400">
+                                    {{ $service->projects->count() ?? 0 }}
+                                </div>
+                                <div class="text-sm text-green-600 dark:text-green-400">Completed Projects</div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
             </x-admin.card>
             
-            <!-- Related Projects -->
+            <!-- Recent Quotations -->
             @if($service->quotations->count() > 0)
-                <x-admin.card class="mt-6">
-                    <x-slot name="title">Related Quotations</x-slot>
-                    <x-slot name="subtitle">Quotations that requested this service</x-slot>
+                <x-admin.card>
+                    <x-slot name="title">Recent Quotations</x-slot>
                     
-                    <div class="divide-y divide-gray-200 dark:divide-neutral-700">
-                        @foreach($service->quotations->take(5) as $quotation)
-                            <div class="py-4 first:pt-0 last:pb-0">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <h4 class="font-medium text-gray-900 dark:text-white">
-                                            <a href="{{ route('admin.quotations.show', $quotation) }}" class="hover:underline">
-                                                {{ $quotation->name }} - {{ $quotation->company }}
-                                            </a>
-                                        </h4>
-                                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-800">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Client
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Status
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Date
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                                @foreach($service->quotations->take(5) as $quotation)
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                {{ $quotation->client_name }}
+                                            </div>
+                                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                                {{ $quotation->client_email }}
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
+                                                {{ $quotation->status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' : '' }}
+                                                {{ $quotation->status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : '' }}
+                                                {{ $quotation->status === 'rejected' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' : '' }}">
+                                                {{ ucfirst($quotation->status) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                             {{ $quotation->created_at->format('M d, Y') }}
-                                        </p>
-                                    </div>
-                                    <x-admin.badge type="{{ $quotation->status === 'pending' ? 'warning' : ($quotation->status === 'approved' ? 'success' : 'danger') }}">
-                                        {{ ucfirst($quotation->status) }}
-                                    </x-admin.badge>
-                                </div>
-                            </div>
-                        @endforeach
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <a href="{{ route('admin.quotations.show', $quotation) }}" 
+                                               class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                                View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
                     
                     @if($service->quotations->count() > 5)
                         <div class="mt-4 text-center">
-                            <a href="{{ route('admin.quotations.index', ['service_id' => $service->id]) }}" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">
-                                View all {{ $service->quotations->count() }} quotations
+                            <a href="{{ route('admin.quotations.index', ['service_id' => $service->id]) }}" 
+                               class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium">
+                                View all {{ $service->quotations->count() }} quotations →
                             </a>
                         </div>
                     @endif
                 </x-admin.card>
             @endif
         </div>
-        
+
         <!-- Sidebar -->
         <div class="space-y-6">
-            <!-- Service Status Card -->
+            <!-- Service Info -->
             <x-admin.card>
-                <x-slot name="title">Status Information</x-slot>
+                <x-slot name="title">Service Information</x-slot>
                 
-                <ul class="divide-y divide-gray-200 dark:divide-neutral-700">
-                    <li class="py-3 first:pt-0 flex justify-between">
-                        <span class="text-gray-600 dark:text-gray-400">Status</span>
-                        <span>
-                            @if($service->is_active)
-                                <x-admin.badge type="success" dot="true">Active</x-admin.badge>
-                            @else
-                                <x-admin.badge type="danger" dot="true">Inactive</x-admin.badge>
-                            @endif
-                        </span>
-                    </li>
-                    <li class="py-3 flex justify-between">
-                        <span class="text-gray-600 dark:text-gray-400">Featured</span>
-                        <span>
-                            @if($service->featured)
-                                <x-admin.badge type="primary" dot="true">Featured</x-admin.badge>
-                            @else
-                                <x-admin.badge type="default">No</x-admin.badge>
-                            @endif
-                        </span>
-                    </li>
-                    <li class="py-3 flex justify-between">
-                        <span class="text-gray-600 dark:text-gray-400">Category</span>
-                        <span class="text-gray-900 dark:text-white">
-                            @if($service->category)
-                                {{ $service->category->name }}
-                            @else
-                                <span class="text-gray-400 dark:text-gray-500">None</span>
-                            @endif
-                        </span>
-                    </li>
-                    <li class="py-3 flex justify-between">
-                        <span class="text-gray-600 dark:text-gray-400">Sort Order</span>
-                        <span class="text-gray-900 dark:text-white">{{ $service->sort_order ?: 'Default' }}</span>
-                    </li>
-                    <li class="py-3 flex justify-between">
-                        <span class="text-gray-600 dark:text-gray-400">Created</span>
-                        <span class="text-gray-900 dark:text-white">{{ $service->created_at->format('M d, Y') }}</span>
-                    </li>
-                    <li class="py-3 last:pb-0 flex justify-between">
-                        <span class="text-gray-600 dark:text-gray-400">Last Updated</span>
-                        <span class="text-gray-900 dark:text-white">{{ $service->updated_at->format('M d, Y') }}</span>
-                    </li>
-                </ul>
-            </x-admin.card>
-            
-            <!-- Meta Information -->
-            <x-admin.card>
-                <x-slot name="title">SEO Information</x-slot>
-                
-                <ul class="divide-y divide-gray-200 dark:divide-neutral-700">
-                    <li class="py-3 first:pt-0">
-                        <span class="block text-gray-600 dark:text-gray-400 mb-1">Meta Title</span>
-                        <span class="block text-gray-900 dark:text-white">
-                            {{ $service->seo->title ?? $service->title }}
-                        </span>
-                    </li>
-                    <li class="py-3">
-                        <span class="block text-gray-600 dark:text-gray-400 mb-1">Meta Description</span>
-                        <span class="block text-gray-900 dark:text-white">
-                            {{ $service->seo->description ?? ($service->short_description ?? 'Not set') }}
-                        </span>
-                    </li>
-                    <li class="py-3 last:pb-0">
-                        <span class="block text-gray-600 dark:text-gray-400 mb-1">Meta Keywords</span>
-                        <span class="block text-gray-900 dark:text-white">
-                            @if($service->seo && $service->seo->keywords)
-                                @foreach(explode(',', $service->seo->keywords) as $keyword)
-                                    <x-admin.badge class="mr-1 mb-1">{{ trim($keyword) }}</x-admin.badge>
-                                @endforeach
-                            @else
-                                <span class="text-gray-400 dark:text-gray-500">Not set</span>
-                            @endif
-                        </span>
-                    </li>
-                </ul>
-            </x-admin.card>
-            
-            <!-- Service Icon -->
-            @if($service->icon)
-                <x-admin.card>
-                    <x-slot name="title">Service Icon</x-slot>
+                <div class="space-y-4">
+                    @if($service->icon)
+                        <div class="flex items-center justify-center">
+                            <img src="{{ asset('storage/' . $service->icon) }}" 
+                                 alt="{{ $service->title }} Icon" 
+                                 class="w-16 h-16 object-cover rounded">
+                        </div>
+                    @endif
                     
-                    <div class="flex justify-center p-4">
-                        <img src="{{ asset('storage/' . $service->icon) }}" alt="{{ $service->title }} Icon" class="max-h-32">
+                    <div class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Category:</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">
+                                {{ $service->category->name ?? 'Uncategorized' }}
+                            </span>
+                        </div>
+                        
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Slug:</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400 font-mono">
+                                {{ $service->slug }}
+                            </span>
+                        </div>
+                        
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Status:</span>
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $service->is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' }}">
+                                {{ $service->is_active ? 'Active' : 'Inactive' }}
+                            </span>
+                        </div>
+                        
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Featured:</span>
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $service->featured ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' }}">
+                                {{ $service->featured ? 'Yes' : 'No' }}
+                            </span>
+                        </div>
+                        
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Sort Order:</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">
+                                {{ $service->sort_order ?? 0 }}
+                            </span>
+                        </div>
+                        
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Created:</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">
+                                {{ $service->created_at->format('M d, Y') }}
+                            </span>
+                        </div>
+                        
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Updated:</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">
+                                {{ $service->updated_at->format('M d, Y') }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </x-admin.card>
+
+            <!-- SEO Information -->
+            @if($service->seo)
+                <x-admin.card>
+                    <x-slot name="title">SEO Information</x-slot>
+                    
+                    <div class="space-y-3">
+                        @if($service->seo->title)
+                            <div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Meta Title:</span>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ $service->seo->title }}</p>
+                            </div>
+                        @endif
+                        
+                        @if($service->seo->description)
+                            <div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Meta Description:</span>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ $service->seo->description }}</p>
+                            </div>
+                        @endif
+                        
+                        @if($service->seo->keywords)
+                            <div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Keywords:</span>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ $service->seo->keywords }}</p>
+                            </div>
+                        @endif
                     </div>
                 </x-admin.card>
             @endif
+
+            <!-- Quick Actions -->
+            <x-admin.card>
+                <x-slot name="title">Quick Actions</x-slot>
+                
+                <div class="space-y-3">
+                    <!-- Toggle Active Status -->
+                    <form action="{{ route('admin.services.toggle-active', $service) }}" method="POST" class="w-full">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" 
+                                class="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/>
+                            </svg>
+                            {{ $service->is_active ? 'Deactivate' : 'Activate' }} Service
+                        </button>
+                    </form>
+                    
+                    <!-- Toggle Featured Status -->
+                    <form action="{{ route('admin.services.toggle-featured', $service) }}" method="POST" class="w-full">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" 
+                                class="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                            </svg>
+                            {{ $service->featured ? 'Remove from Featured' : 'Mark as Featured' }}
+                        </button>
+                    </form>
+                    
+                    <!-- View Quotations -->
+                    <a href="{{ route('admin.quotations.index', ['service_id' => $service->id]) }}" 
+                       class="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        View All Quotations
+                    </a>
+                </div>
+            </x-admin.card>
         </div>
     </div>
 </x-layouts.admin>

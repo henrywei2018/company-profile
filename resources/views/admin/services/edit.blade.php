@@ -1,15 +1,32 @@
-<!-- resources/views/admin/services/create.blade.php -->
-<x-layouts.admin title="Add New Service" :unreadMessages="$unreadMessages" :pendingQuotations="$pendingQuotations">
+<!-- resources/views/admin/services/edit.blade.php -->
+<x-layouts.admin title="Edit Service" :unreadMessages="$unreadMessages" :pendingQuotations="$pendingQuotations">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <x-admin.breadcrumb :items="[
             'Services Management' => route('admin.services.index'),
-            'Add New Service' => route('admin.services.create'),
+            'Edit Service' => route('admin.services.edit', $service),
         ]" />
+        
+        <div class="mt-4 md:mt-0 flex flex-wrap gap-2">
+            <form action="{{ route('admin.services.destroy', $service) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this service?')" class="inline">
+                @csrf
+                @method('DELETE')
+                <x-admin.button
+                    type="submit"
+                    color="danger"
+                >
+                    <svg class="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete Service
+                </x-admin.button>
+            </form>
+        </div>
     </div>
 
-    <form action="{{ route('admin.services.store') }}" method="POST" enctype="multipart/form-data">
+    <form action="{{ route('admin.services.update', $service) }}" method="POST" enctype="multipart/form-data">
         @csrf
+        @method('PUT')
 
         <div class="flex flex-col lg:flex-row gap-6">
             <!-- Main Content -->
@@ -17,7 +34,7 @@
                 <!-- Basic Information -->
                 <x-admin.card>
                     <x-slot name="title">Basic Information</x-slot>
-                    <x-slot name="subtitle">Enter the basic details of the service</x-slot>
+                    <x-slot name="subtitle">Update the basic details of the service</x-slot>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="md:col-span-2">
@@ -27,7 +44,7 @@
                             <input type="text" 
                                    name="title" 
                                    id="title"
-                                   value="{{ old('title') }}"
+                                   value="{{ old('title', $service->title) }}"
                                    placeholder="Enter service title..."
                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('title') border-red-500 @enderror"
                                    required>
@@ -45,7 +62,7 @@
                                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('category_id') border-red-500 @enderror">
                                 <option value="">Select a category</option>
                                 @foreach($categories as $category)
-                                    <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
+                                    <option value="{{ $category->id }}" {{ old('category_id', $service->category_id) == $category->id ? 'selected' : '' }}>
                                         {{ $category->name }}
                                     </option>
                                 @endforeach
@@ -62,7 +79,7 @@
                             <input type="text" 
                                    name="slug" 
                                    id="slug"
-                                   value="{{ old('slug') }}"
+                                   value="{{ old('slug', $service->slug) }}"
                                    placeholder="Auto-generated from title"
                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('slug') border-red-500 @enderror">
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave blank to auto-generate from title</p>
@@ -80,7 +97,7 @@
                                       rows="3"
                                       placeholder="Brief description of the service (max 255 characters)..."
                                       maxlength="255"
-                                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('short_description') border-red-500 @enderror">{{ old('short_description') }}</textarea>
+                                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('short_description') border-red-500 @enderror">{{ old('short_description', $service->short_description) }}</textarea>
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Optional short summary that appears in service listings</p>
                             @error('short_description')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -103,7 +120,7 @@
                                   rows="15"
                                   placeholder="Start writing your service description..."
                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('description') border-red-500 @enderror"
-                                  required>{{ old('description') }}</textarea>
+                                  required>{{ old('description', $service->description) }}</textarea>
                         @error('description')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -123,7 +140,7 @@
                             <input type="text" 
                                    name="meta_title" 
                                    id="meta_title"
-                                   value="{{ old('meta_title') }}"
+                                   value="{{ old('meta_title', $service->seo->title ?? '') }}"
                                    placeholder="SEO optimized title"
                                    maxlength="60"
                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('meta_title') border-red-500 @enderror">
@@ -142,8 +159,8 @@
                                       rows="3"
                                       placeholder="Brief description for search engines..."
                                       maxlength="160"
-                                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('meta_description') border-red-500 @enderror">{{ old('meta_description') }}</textarea>
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Recommended length: 150-160 characters</p>
+                                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('meta_description') border-red-500 @enderror">{{ old('meta_description', $service->seo->description ?? '') }}</textarea>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Recommended length: 120-160 characters</p>
                             @error('meta_description')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -156,10 +173,10 @@
                             <input type="text" 
                                    name="meta_keywords" 
                                    id="meta_keywords"
-                                   value="{{ old('meta_keywords') }}"
-                                   placeholder="keyword1, keyword2, keyword3"
+                                   value="{{ old('meta_keywords', $service->seo->keywords ?? '') }}"
+                                   placeholder="service, keyword, another keyword"
                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('meta_keywords') border-red-500 @enderror">
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Comma-separated keywords</p>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Separate keywords with commas</p>
                             @error('meta_keywords')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -169,35 +186,34 @@
             </div>
 
             <!-- Sidebar -->
-            <div class="w-full lg:w-80 space-y-6">
-                <!-- Publishing Options -->
+            <div class="lg:w-80 space-y-6">
+                <!-- Status & Settings -->
                 <x-admin.card>
-                    <x-slot name="title">Publishing</x-slot>
-                    <x-slot name="subtitle">Service status and visibility</x-slot>
-
+                    <x-slot name="title">Status & Settings</x-slot>
+                    
                     <div class="space-y-4">
-                        <div>
-                            <label class="flex items-center">
-                                <input type="checkbox" 
-                                       name="is_active" 
-                                       value="1"
-                                       {{ old('is_active', true) ? 'checked' : '' }}
-                                       class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Active Service</span>
+                        <div class="flex items-center justify-between">
+                            <label for="is_active" class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                Active Status
                             </label>
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Service will be visible on the website</p>
+                            <input type="checkbox" 
+                                   name="is_active" 
+                                   id="is_active"
+                                   value="1" 
+                                   {{ old('is_active', $service->is_active) ? 'checked' : '' }}
+                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                         </div>
                         
-                        <div>
-                            <label class="flex items-center">
-                                <input type="checkbox" 
-                                       name="featured" 
-                                       value="1"
-                                       {{ old('featured') ? 'checked' : '' }}
-                                       class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Featured Service</span>
+                        <div class="flex items-center justify-between">
+                            <label for="featured" class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                Featured Service
                             </label>
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Featured services appear prominently on the website</p>
+                            <input type="checkbox" 
+                                   name="featured" 
+                                   id="featured"
+                                   value="1" 
+                                   {{ old('featured', $service->featured) ? 'checked' : '' }}
+                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                         </div>
                         
                         <div>
@@ -207,68 +223,65 @@
                             <input type="number" 
                                    name="sort_order" 
                                    id="sort_order"
-                                   value="{{ old('sort_order', 0) }}"
-                                   placeholder="0"
+                                   value="{{ old('sort_order', $service->sort_order ?? 0) }}"
                                    min="0"
-                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('sort_order') border-red-500 @enderror">
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300">
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Lower numbers appear first</p>
-                            @error('sort_order')
+                        </div>
+                    </div>
+                </x-admin.card>
+
+                <!-- Media Upload -->
+                <x-admin.card>
+                    <x-slot name="title">Media</x-slot>
+                    
+                    <div class="space-y-6">
+                        <!-- Service Icon -->
+                        <div>
+                            <label for="icon" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                                Service Icon
+                            </label>
+                            @if($service->icon)
+                                <div class="mb-3">
+                                    <img src="{{ asset('storage/' . $service->icon) }}" 
+                                         alt="Current Icon" 
+                                         class="w-16 h-16 object-cover rounded border">
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Current icon</p>
+                                </div>
+                            @endif
+                            <input type="file" 
+                                   name="icon" 
+                                   id="icon"
+                                   accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300">
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">PNG, JPG, SVG up to 1MB. Recommended: 200x200px</p>
+                            @error('icon')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
-                    </div>
-                </x-admin.card>
-
-                <!-- Service Icon -->
-                <x-admin.card>
-                    <x-slot name="title">Service Icon</x-slot>
-                    <x-slot name="subtitle">Small icon for service</x-slot>
-
-                    <div>
-                        <label for="icon" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                            Upload Icon
-                        </label>
-                        <input type="file" 
-                               name="icon" 
-                               id="icon"
-                               accept="image/jpeg,image/png,image/jpg,image/svg"
-                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('icon') border-red-500 @enderror">
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Square icon. Recommended size: 128x128px (max 1MB)</p>
-                        @error('icon')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
                         
-                        <!-- Icon Preview -->
-                        <div id="icon-preview" class="mt-3 hidden">
-                            <img id="preview-icon" src="" alt="Preview" class="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-700">
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Icon preview</p>
-                        </div>
-                    </div>
-                </x-admin.card>
-
-                <!-- Service Image -->
-                <x-admin.card>
-                    <x-slot name="title">Service Image</x-slot>
-                    <x-slot name="subtitle">Main service image</x-slot>
-
-                    <div>
-                        <label for="image" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                            Upload Image
-                        </label>
-                        <input type="file" 
-                               name="image" 
-                               id="image"
-                               accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
-                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('image') border-red-500 @enderror">
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Recommended size: 1200x800px (max 2MB)</p>
-                        @error('image')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                        
-                        <!-- Image Preview -->
-                        <div id="image-preview" class="mt-3 hidden">
-                            <img id="preview-img" src="" alt="Preview" class="w-full h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-700">
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Image preview</p>
+                        <!-- Service Image -->
+                        <div>
+                            <label for="image" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                                Service Image
+                            </label>
+                            @if($service->image)
+                                <div class="mb-3">
+                                    <img src="{{ asset('storage/' . $service->image) }}" 
+                                         alt="Current Image" 
+                                         class="w-full h-32 object-cover rounded border">
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Current image</p>
+                                </div>
+                            @endif
+                            <input type="file" 
+                                   name="image" 
+                                   id="image"
+                                   accept="image/jpeg,image/png,image/jpg,image/webp"
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300">
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">PNG, JPG, WebP up to 2MB. Recommended: 800x600px</p>
+                            @error('image')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
                 </x-admin.card>
@@ -289,13 +302,11 @@
             
             <div class="flex gap-3">
                 <button type="submit" 
-                        name="action" 
-                        value="save"
                         class="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
                     </svg>
-                    Create Service
+                    Update Service
                 </button>
             </div>
         </div>
@@ -307,110 +318,24 @@
             // Auto-generate slug from title
             const titleInput = document.getElementById('title');
             const slugInput = document.getElementById('slug');
-            let slugModified = false;
-
+            
             titleInput.addEventListener('input', function() {
-                if (!slugModified) {
-                    const title = this.value;
-                    const slug = title.toLowerCase()
-                        .replace(/[^a-z0-9 -]/g, '')
-                        .replace(/\s+/g, '-')
-                        .replace(/-+/g, '-')
-                        .replace(/^-|-$/g, '');
-                    
-                    slugInput.value = slug;
+                if (!slugInput.value || slugInput.value === titleInput.getAttribute('data-original-slug')) {
+                    slugInput.value = generateSlug(this.value);
                 }
             });
             
-            // Mark slug as manually modified
-            slugInput.addEventListener('input', function() {
-                slugModified = true;
-            });
-
-            // Icon preview
-            const iconInput = document.getElementById('icon');
-            const iconPreview = document.getElementById('icon-preview');
-            const previewIcon = document.getElementById('preview-icon');
-
-            iconInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        previewIcon.src = e.target.result;
-                        iconPreview.classList.remove('hidden');
-                    };
-                    reader.readAsDataURL(file);
-                } else {
-                    iconPreview.classList.add('hidden');
-                }
-            });
-
-            // Image preview
-            const imageInput = document.getElementById('image');
-            const imagePreview = document.getElementById('image-preview');
-            const previewImg = document.getElementById('preview-img');
-
-            imageInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        previewImg.src = e.target.result;
-                        imagePreview.classList.remove('hidden');
-                    };
-                    reader.readAsDataURL(file);
-                } else {
-                    imagePreview.classList.add('hidden');
-                }
-            });
-
-            // Character counters
-            const metaTitleInput = document.getElementById('meta_title');
-            const metaDescInput = document.getElementById('meta_description');
-            const shortDescInput = document.getElementById('short_description');
-
-            function updateCharCount(input, max) {
-                const current = input.value.length;
-                let counter = input.parentNode.querySelector('.char-counter');
-                
-                if (!counter) {
-                    counter = document.createElement('span');
-                    counter.className = 'char-counter text-xs text-gray-500 dark:text-gray-400 block mt-1';
-                    input.parentNode.appendChild(counter);
-                }
-                
-                counter.textContent = `${current}/${max} characters`;
-                
-                if (current > max) {
-                    counter.classList.add('text-red-500');
-                    counter.classList.remove('text-gray-500', 'dark:text-gray-400');
-                } else {
-                    counter.classList.remove('text-red-500');
-                    counter.classList.add('text-gray-500', 'dark:text-gray-400');
-                }
+            function generateSlug(text) {
+                return text
+                    .toLowerCase()
+                    .replace(/[^a-z0-9 -]/g, '')
+                    .replace(/\s+/g, '-')
+                    .replace(/-+/g, '-')
+                    .trim('-');
             }
-
-            if (metaTitleInput) {
-                metaTitleInput.addEventListener('input', function() {
-                    updateCharCount(this, 60);
-                });
-                updateCharCount(metaTitleInput, 60);
-            }
-
-            if (metaDescInput) {
-                metaDescInput.addEventListener('input', function() {
-                    updateCharCount(this, 160);
-                });
-                updateCharCount(metaDescInput, 160);
-            }
-
-            if (shortDescInput) {
-                shortDescInput.addEventListener('input', function() {
-                    updateCharCount(this, 255);
-                });
-                updateCharCount(shortDescInput, 255);
-            }
+            
+            // Store original slug for comparison
+            titleInput.setAttribute('data-original-slug', slugInput.value);
         });
     </script>
     @endpush

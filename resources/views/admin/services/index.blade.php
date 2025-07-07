@@ -153,7 +153,7 @@
                                         </x-admin.icon-button>
                                     </form>
                                     
-                                    <form action="{{ route('admin.services.toggle-status', $service) }}" method="POST" class="inline">
+                                    <form action="{{ route('admin.services.toggle-active', $service) }}" method="POST" class="inline">
                                         @csrf
                                         @method('PATCH')
                                         <x-admin.icon-button 
