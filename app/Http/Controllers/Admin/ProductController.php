@@ -22,42 +22,73 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $filters = $request->only(['search', 'category', 'service', 'status', 'brand', 'stock_status']);
-        
-        $query = Product::with(['category', 'service'])
-            ->when($filters['search'] ?? null, function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('sku', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%")
-                      ->orWhere('brand', 'like', "%{$search}%");
-                });
-            })
-            ->when($filters['category'] ?? null, function ($query, $category) {
-                $query->where('product_category_id', $category);
-            })
-            ->when($filters['service'] ?? null, function ($query, $service) {
-                $query->where('service_id', $service);
-            })
-            ->when($filters['status'] ?? null, function ($query, $status) {
-                $query->where('status', $status);
-            })
-            ->when($filters['brand'] ?? null, function ($query, $brand) {
-                $query->where('brand', $brand);
-            })
-            ->when($filters['stock_status'] ?? null, function ($query, $stockStatus) {
-                $query->where('stock_status', $stockStatus);
-            });
+        // Get filter parameters
+        $filters = $request->only([
+            'search', 'category', 'service', 'status', 
+            'brand', 'stock_status'
+        ]);
 
+        // Build query with filters
+        $query = Product::with(['category', 'service']);
+
+        // Apply filters
+        if (!empty($filters['search'])) {
+            $query->where(function($q) use ($filters) {
+                $q->where('name', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('sku', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('brand', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('short_description', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('description', 'like', '%' . $filters['search'] . '%');
+            });
+        }
+
+        if (!empty($filters['category'])) {
+            $query->where('product_category_id', $filters['category']);
+        }
+
+        if (!empty($filters['service'])) {
+            $query->where('service_id', $filters['service']);
+        }
+
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (!empty($filters['brand'])) {
+            $query->where('brand', $filters['brand']);
+        }
+
+        if (!empty($filters['stock_status'])) {
+            $query->where('stock_status', $filters['stock_status']);
+        }
+
+        // Get paginated results
         $products = $query->orderBy('sort_order')
                          ->orderBy('created_at', 'desc')
-                         ->paginate(20);
+                         ->paginate(15);
 
-        $categories = ProductCategory::active()->ordered()->get();
-        $services = Service::active()->ordered()->get();
-        $brands = Product::getAvailableBrands();
+        // Get data for filters
+        $categories = ProductCategory::active()
+                                   ->orderBy('name')
+                                   ->get();
 
-        return view('admin.products.index', compact('products', 'categories', 'services', 'brands', 'filters'));
+        $services = Service::active()
+                          ->orderBy('title')
+                          ->get();
+
+        // Get unique brands from products
+        $brands = Product::whereNotNull('brand')
+                        ->where('brand', '!=', '')
+                        ->distinct()
+                        ->orderBy('brand')
+                        ->pluck('brand');
+
+        return view('admin.products.index', compact(
+            'products', 
+            'categories', 
+            'services', 
+            'brands'
+        ));
     }
 
     /**
@@ -65,8 +96,15 @@ class ProductController extends Controller
      */
     public function create()
     {
-        $categories = ProductCategory::active()->ordered()->get();
-        $services = Service::active()->ordered()->get();
+        // Get active categories for dropdown
+        $categories = ProductCategory::active()
+                                   ->orderBy('name')
+                                   ->get();
+
+        // Get active services for dropdown
+        $services = Service::active()
+                          ->orderBy('title')
+                          ->get();
 
         return view('admin.products.create', compact('categories', 'services'));
     }
@@ -74,9 +112,34 @@ class ProductController extends Controller
     /**
      * Store a newly created product in storage.
      */
-    public function store(StoreProductRequest $request)
+    public function store(Request $request)
     {
-        $validated = $request->validated();
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255|unique:products,slug',
+            'sku' => 'nullable|string|max:100|unique:products,sku',
+            'short_description' => 'nullable|string|max:500',
+            'description' => 'nullable|string',
+            'product_category_id' => 'nullable|exists:product_categories,id',
+            'service_id' => 'nullable|exists:services,id',
+            'brand' => 'nullable|string|max:100',
+            'model' => 'nullable|string|max:100',
+            'price' => 'nullable|numeric|min:0',
+            'sale_price' => 'nullable|numeric|min:0|lt:price',
+            'currency' => 'nullable|string|max:3',
+            'price_type' => 'nullable|in:fixed,quote,contact',
+            'stock_quantity' => 'nullable|integer|min:0',
+            'manage_stock' => 'boolean',
+            'stock_status' => 'nullable|in:in_stock,out_of_stock,on_backorder',
+            'specifications' => 'nullable|array',
+            'technical_specs' => 'nullable|array',
+            'dimensions' => 'nullable|array',
+            'weight' => 'nullable|numeric|min:0',
+            'status' => 'nullable|in:published,draft,archived',
+            'is_featured' => 'boolean',
+            'is_active' => 'boolean',
+            'sort_order' => 'nullable|integer|min:0',
+        ]);
 
         try {
             DB::transaction(function () use ($request, $validated, &$product) {
@@ -84,66 +147,63 @@ class ProductController extends Controller
                 if (empty($validated['slug'])) {
                     $validated['slug'] = Str::slug($validated['name']);
                     
-                    // Ensure unique slug
-                    $baseSlug = $validated['slug'];
+                    // Ensure slug is unique
+                    $originalSlug = $validated['slug'];
                     $counter = 1;
                     while (Product::where('slug', $validated['slug'])->exists()) {
-                        $validated['slug'] = $baseSlug . '-' . $counter;
+                        $validated['slug'] = $originalSlug . '-' . $counter;
                         $counter++;
                     }
                 }
 
-                // Set default sort order
+                // Set default values
+                $validated['currency'] = $validated['currency'] ?? 'IDR';
+                $validated['price_type'] = $validated['price_type'] ?? 'fixed';
+                $validated['stock_status'] = $validated['stock_status'] ?? 'in_stock';
+                $validated['status'] = $validated['status'] ?? 'draft';
+                $validated['is_featured'] = $request->has('is_featured');
+                $validated['is_active'] = $request->has('is_active');
+                $validated['manage_stock'] = $request->has('manage_stock');
+
+                // Set sort order
                 if (empty($validated['sort_order'])) {
                     $validated['sort_order'] = Product::max('sort_order') + 1;
                 }
 
-                // Create product without images first
+                // Create product
                 $product = Product::create($validated);
 
-                // Process temporary images from session
+                // Process temporary images if any
                 $this->processTempImagesFromSession($product);
-
-                // Handle service relations
-                if (!empty($validated['service_relations'])) {
-                    $this->attachServiceRelations($product, $validated['service_relations']);
-                }
-
-                // Handle SEO data
-                if ($request->has('meta_title') || $request->has('meta_description') || $request->has('meta_keywords')) {
-                    $product->updateSeoData([
-                        'meta_title' => $request->input('meta_title'),
-                        'meta_description' => $request->input('meta_description'),
-                        'meta_keywords' => $request->input('meta_keywords'),
-                    ]);
-                }
             });
 
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Product created successfully!',
-                    'product' => $product->fresh()->load(['category', 'service']),
-                    'redirect' => route('admin.products.edit', $product)
+                    'redirect' => route('admin.products.index')
                 ]);
             }
 
-            return redirect()->route('admin.products.index')
+            return redirect()
+                ->route('admin.products.index')
                 ->with('success', 'Product created successfully!');
 
         } catch (\Exception $e) {
             \Log::error('Product creation failed: ' . $e->getMessage(), [
-                'validated_data' => $validated
+                'validated_data' => $validated,
+                'trace' => $e->getTraceAsString()
             ]);
 
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to create product: ' . $e->getMessage()
+                    'message' => 'Failed to create product. Please try again.'
                 ], 422);
             }
 
-            return redirect()->back()
+            return redirect()
+                ->back()
                 ->withInput()
                 ->with('error', 'Failed to create product. Please try again.');
         }

@@ -130,6 +130,33 @@ class NavigationService
                     ],
                 ],
             ],
+            // Products
+            [
+                'title' => 'Products',
+                'icon' => 'products',
+                'active' => request()->routeIs(['admin.products.*', 'admin.product-categories.*']),
+                'permission' => 'view products',
+                'children' => [
+                    [
+                        'title' => 'Products List',
+                        'route' => 'admin.products.index',
+                        'active' => request()->routeIs('admin.products.index'),
+                        'permission' => 'view products',
+                    ],
+                    [
+                        'title' => 'Add New Product',
+                        'route' => 'admin.products.create',
+                        'active' => request()->routeIs('admin.products.create'),
+                        'permission' => 'create products',
+                    ],
+                    [
+                        'title' => 'Product Categories',
+                        'route' => 'admin.product-categories.index',
+                        'active' => request()->routeIs('admin.product-categories.*'),
+                        'permission' => 'view product categories',
+                    ],
+                ],
+            ],
 
             // Projects
             [

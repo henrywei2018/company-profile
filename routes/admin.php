@@ -135,6 +135,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::resource('product-categories', ProductCategoryController::class)->parameters(['product-categories' => 'productCategory']);
     Route::prefix('product-categories')->name('product-categories.')->group(function () {
         Route::patch('{productCategory}/toggle-active', [ProductCategoryController::class, 'toggleActive'])->name('toggle-active');
+        Route::post('{productCategory}/duplicate', [ProductCategoryController::class, 'duplicate'])->name('duplicate');
         Route::post('update-order', [ProductCategoryController::class, 'updateOrder'])->name('update-order');
         Route::post('bulk-action', [ProductCategoryController::class, 'bulkAction'])->name('bulk-action');
         Route::get('statistics', [ProductCategoryController::class, 'statistics'])->name('statistics');

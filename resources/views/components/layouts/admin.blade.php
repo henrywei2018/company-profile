@@ -147,13 +147,6 @@
     
     <script>
         
-        // Hide loading screen when page is ready
-        document.addEventListener('DOMContentLoaded', function() {
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) {
-                loadingScreen.style.display = 'none';
-            }
-        });
 
 
         // Global error handler for admin

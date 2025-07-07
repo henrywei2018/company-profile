@@ -26,7 +26,20 @@ class StoreProductCategoryRequest extends FormRequest
             'slug' => 'nullable|string|max:255|unique:product_categories,slug',
             'description' => 'nullable|string|max:1000',
             'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:1024',
-            'parent_id' => 'nullable|exists:product_categories,id',
+            'parent_id' => [
+                'nullable',
+                'exists:product_categories,id',
+                function ($attribute, $value, $fail) {
+                    // Prevent circular references at creation time
+                    if ($value) {
+                        $parent = \App\Models\ProductCategory::find($value);
+                        if ($parent && $parent->parent_id) {
+                            // For now, only allow 2 levels deep
+                            $fail('Categories can only be nested 2 levels deep.');
+                        }
+                    }
+                },
+            ],
             'service_category_id' => 'nullable|exists:service_categories,id',
             'is_active' => 'nullable|boolean',
             'sort_order' => 'nullable|integer|min:0',
@@ -72,11 +85,6 @@ class StoreProductCategoryRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        // Convert checkbox values to boolean
-        $this->merge([
-            'is_active' => $this->boolean('is_active', true), // Default to true
-        ]);
-
         // Clean up empty values
         if ($this->parent_id === '') {
             $this->merge(['parent_id' => null]);
@@ -86,21 +94,9 @@ class StoreProductCategoryRequest extends FormRequest
             $this->merge(['service_category_id' => null]);
         }
 
-        if ($this->sort_order === '') {
-            $this->merge(['sort_order' => 0]);
+        // Convert sort_order to integer if provided
+        if ($this->sort_order !== null && $this->sort_order !== '') {
+            $this->merge(['sort_order' => (int) $this->sort_order]);
         }
-    }
-
-    /**
-     * Configure the validator instance.
-     */
-    public function withValidator($validator): void
-    {
-        $validator->after(function ($validator) {
-            // Prevent self-referencing parent
-            if ($this->parent_id && $this->parent_id == $this->id) {
-                $validator->errors()->add('parent_id', 'A category cannot be its own parent.');
-            }
-        });
     }
 }
