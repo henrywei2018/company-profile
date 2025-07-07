@@ -1251,56 +1251,51 @@ class ProductController extends Controller
      * Delete product image.
      */
     public function deleteImage(Request $request, Product $product)
-    {
-        try {
-            $fileId = $request->input('file_id') ?? $request->getContent();
-            
-            // Check if it's a ProductImage ID or featured image request
-            if (str_starts_with($fileId, 'featured_')) {
-                return $this->deleteFeaturedImage($product);
-            }
-            
-            // Try to find ProductImage by ID
+{
+    try {
+        $request->validate([
+            'image_id' => 'required',
+        ]);
+
+        $imageId = $request->input('image_id');
+
+        // Handle ProductImage deletion
+        if (is_numeric($imageId)) {
             $image = ProductImage::where('product_id', $product->id)
-                                ->where('id', $fileId)
-                                ->first();
-
-            if (!$image) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Image not found'
-                ], 404);
-            }
-
+                                ->where('id', $imageId)
+                                ->firstOrFail();
+            
             // Delete physical file
             if (Storage::disk('public')->exists($image->image_path)) {
                 Storage::disk('public')->delete($image->image_path);
             }
-
+            
+            // Delete database record
             $image->delete();
-
-            \Log::info("Product image deleted successfully", [
-                'product_id' => $product->id,
-                'image_id' => $image->id
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Image deleted successfully!',
-                'product' => $product->fresh()->load(['category', 'service'])
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Product image deletion failed: ' . $e->getMessage(), [
-                'product_id' => $product->id
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete image: ' . $e->getMessage()
-            ], 500);
+            
+            $message = 'Product image deleted successfully!';
+        } else {
+            throw new \Exception('Invalid image ID');
         }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'product' => $product->fresh()->load(['category', 'service', 'images'])
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Product image deletion failed: ' . $e->getMessage(), [
+            'product_id' => $product->id,
+            'image_id' => $request->input('image_id')
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to delete image. Please try again.'
+        ], 500);
     }
+}
 
     /**
      * Delete featured image.
@@ -1328,57 +1323,38 @@ class ProductController extends Controller
      * Process individual image upload for existing product.
      */
     protected function processImageUpload($file, Product $product, string $imageType)
-    {
-        // Generate unique filename
-        $filename = $this->generateImageFilename($file->getClientOriginalName(), $imageType, $product->id, $file->getClientOriginalExtension());
-        $directory = "products/{$product->id}";
-        $filePath = $directory . '/' . $filename;
+{
+    // Generate unique filename
+    $filename = $this->generateImageFilename($file->getClientOriginalName(), $imageType, $product->id, $file->getClientOriginalExtension());
+    $directory = "products/{$product->id}";
+    $filePath = $directory . '/' . $filename;
 
-        // Process and store image
-        $storedPath = $this->processAndStoreImage($file, $filePath);
+    // Process and store image
+    $storedPath = $this->processAndStoreImage($file, $filePath);
 
-        if ($imageType === 'featured') {
-            // Update product featured image
-            $product->update(['featured_image' => $storedPath]);
-            
-            return [
-                'id' => 'featured_' . $product->id,
-                'name' => 'Featured Image',
-                'file_name' => $filename,
-                'file_path' => $storedPath,
-                'file_type' => $file->getMimeType(),
-                'file_size' => $file->getSize(),
-                'category' => $imageType,
-                'url' => Storage::disk('public')->url($storedPath),
-                'size' => $this->formatFileSize($file->getSize()),
-                'type' => $imageType,
-                'created_at' => now()->format('M j, Y H:i')
-            ];
-        } else {
-            // Create ProductImage record
-            $productImage = ProductImage::create([
-                'product_id' => $product->id,
-                'image_path' => $storedPath,
-                'alt_text' => $file->getClientOriginalName(),
-                'is_featured' => false,
-                'sort_order' => ProductImage::where('product_id', $product->id)->max('sort_order') + 1
-            ]);
+    // SIMPLIFIED: Only create ProductImage records (no more featured_image field)
+    $productImage = ProductImage::create([
+        'product_id' => $product->id,
+        'image_path' => $storedPath,
+        'alt_text' => $file->getClientOriginalName(),
+        'is_featured' => $imageType === 'featured', // Set as featured if specified
+        'sort_order' => ProductImage::where('product_id', $product->id)->max('sort_order') + 1
+    ]);
 
-            return [
-                'id' => $productImage->id,
-                'name' => 'Gallery Image',
-                'file_name' => $filename,
-                'file_path' => $storedPath,
-                'file_type' => $file->getMimeType(),
-                'file_size' => $file->getSize(),
-                'category' => $imageType,
-                'url' => Storage::disk('public')->url($storedPath),
-                'size' => $this->formatFileSize($file->getSize()),
-                'type' => $imageType,
-                'created_at' => now()->format('M j, Y H:i')
-            ];
-        }
-    }
+    return [
+        'id' => $productImage->id,
+        'name' => $imageType === 'featured' ? 'Featured Image' : 'Gallery Image',
+        'file_name' => $filename,
+        'file_path' => $storedPath,
+        'file_type' => $file->getMimeType(),
+        'file_size' => $file->getSize(),
+        'category' => $imageType,
+        'url' => Storage::disk('public')->url($storedPath),
+        'size' => $this->formatFileSize($file->getSize()),
+        'type' => $imageType,
+        'created_at' => now()->format('M j, Y H:i')
+    ];
+}
 
     /**
      * Process and store image with optimization.

@@ -352,7 +352,7 @@ class Project extends Model
         $image = $this->images()->where('is_featured', true)->first() ?:
             $this->images()->orderBy('sort_order')->first();
 
-        if ($image && $image->image_path && Storage::disk('public')->exists($image->image_path)) {
+        if ($image && $image->image_path) {
             return Storage::url($image->image_path);
         }
 

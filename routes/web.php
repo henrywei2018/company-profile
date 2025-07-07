@@ -46,7 +46,13 @@ Route::prefix('services')->name('services.')->group(function () {
     Route::get('/', [ServiceController::class, 'index'])->name('index');
     Route::get('/{services:slug}', [ServiceController::class, 'show'])->name('show'); // ✅ Fix parameter
 });
-
+Route::group(['prefix' => 'products'], function () {
+    Route::get('/', [App\Http\Controllers\ProductController::class, 'index'])->name('products.index');
+    Route::get('/{slug}', [App\Http\Controllers\ProductController::class, 'show'])->name('products.show');
+    
+    // Category-specific routes
+    Route::get('/category/{categorySlug}', [App\Http\Controllers\ProductController::class, 'getByCategory'])->name('products.category');
+});
 Route::prefix('portfolio')->name('portfolio.')->group(function () {
     Route::get('/', [PortfolioController::class, 'index'])->name('index');
     Route::get('/{project:slug}', [PortfolioController::class, 'show'])->name('show');

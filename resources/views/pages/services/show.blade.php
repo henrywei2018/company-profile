@@ -135,8 +135,8 @@
             {{-- Service Image --}}
             <div class="relative">
                 <div class="relative rounded-2xl overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-500">
-                    @if($service->featured_image)
-                        <img src="{{ asset('storage/' . $service->featured_image) }}" 
+                    @if($service->image)
+                        <img src="{{ asset('storage/' . $service->image) }}" 
                              alt="{{ $service->title }}" 
                              class="w-full h-96 object-cover">
                     @else
@@ -358,8 +358,8 @@
             <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-2">
                 {{-- Project Image --}}
                 <div class="relative h-48 overflow-hidden">
-                    @if($project->featured_image)
-                        <img src="{{ asset('storage/' . $project->featured_image) }}" 
+                    @if($project->image)
+                        <img src="{{ asset('storage/' . $project->image) }}" 
                              alt="{{ $project->title }}" 
                              class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                     @else
@@ -446,8 +446,8 @@
             <div class="group bg-white rounded-2xl border border-gray-200 hover:border-orange-300 shadow-md hover:shadow-xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1">
                 {{-- Service Image --}}
                 <div class="relative h-48 overflow-hidden">
-                    @if($relatedService->featured_image)
-                        <img src="{{ asset('storage/' . $relatedService->featured_image) }}" 
+                    @if($relatedService->image)
+                        <img src="{{ asset('storage/' . $relatedService->image) }}" 
                              alt="{{ $relatedService->title }}" 
                              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                     @else

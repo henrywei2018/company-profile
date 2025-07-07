@@ -4,8 +4,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Service;
 use App\Models\Project;
+use App\Models\Product;
 use App\Models\Testimonial;
 use App\Services\BannerService;
 
@@ -38,6 +40,15 @@ class HomeController extends BaseController
             ->limit(6)
             ->get();
         
+            $featuredProducts = Cache::remember('featured_products_home', 1800, function () {
+                return Product::where('status', 'published')
+                    ->where('is_active', true)
+                    ->where('is_featured', true)
+                    ->with(['category', 'service'])
+                    ->limit(6)
+                    ->get();
+            });
+        
         $featuredProjects = Project::where('featured', true)
             ->where('is_active', true)
             ->where('status', 'completed')
@@ -63,6 +74,7 @@ class HomeController extends BaseController
             'heroBanners',
             'featuredServices', 
             'featuredProjects',
+            'featuredProducts',
             'testimonials',
             'stats'
         ));

@@ -71,8 +71,8 @@
             {{-- Hero Visual --}}
             <div class="relative animate-fade-in-left animation-delay-800">
                 <div class="relative rounded-2xl overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-500">
-                    @if($featuredServices->first() && $featuredServices->first()->featured_image)
-                        <img src="{{ asset('storage/' . $featuredServices->first()->featured_image) }}" 
+                    @if($featuredServices->first() && $featuredServices->first()->image)
+                        <img src="{{ asset('storage/' . $featuredServices->first()->image) }}" 
                              alt="Featured Service" 
                              class="w-full h-96 object-cover">
                     @else
@@ -176,8 +176,8 @@
             <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-2">
                 {{-- Service Image --}}
                 <div class="relative h-64 overflow-hidden">
-                    @if($service->featured_image)
-                        <img src="{{ asset('storage/' . $service->featured_image) }}" 
+                    @if($service->image)
+                        <img src="{{ asset('storage/' . $service->image) }}" 
                              alt="{{ $service->title }}" 
                              class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                     @else
@@ -349,8 +349,8 @@
             <div class="group bg-white rounded-2xl border border-gray-200 hover:border-orange-300 shadow-md hover:shadow-xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1">
                 {{-- Service Image --}}
                 <div class="relative h-48 overflow-hidden">
-                    @if($service->featured_image)
-                        <img src="{{ asset('storage/' . $service->featured_image) }}" 
+                    @if($service->image)
+                        <img src="{{ asset('storage/' . $service->image) }}" 
                              alt="{{ $service->title }}" 
                              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                     @else
@@ -482,8 +482,8 @@
             <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-2">
                 {{-- Project Image --}}
                 <div class="relative h-56 overflow-hidden">
-                    @if($project->featured_image)
-                        <img src="{{ asset('storage/' . $project->featured_image) }}" 
+                    @if($project->image)
+                        <img src="{{ asset('storage/' . $project->image) }}" 
                              alt="{{ $project->title }}" 
                              class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                     @else

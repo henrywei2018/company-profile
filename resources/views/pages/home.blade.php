@@ -285,26 +285,27 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             @foreach($featuredProjects as $index => $project)
                 <div class="project-card group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 animate-in" style="animation-delay: {{ $index * 200 }}ms;">
-                    {{-- Project Image --}}
+                    
+                    {{-- Project Image - CORRECTED STRUCTURE --}}
                     <div class="relative overflow-hidden h-64">
                         @if($project->featured_image_url)
-                            <img src="{{ $project->featured_image_url }}"
-                                alt="{{ $image->alt_text ?? $project->title }}"
-                                class="w-full h-full object-cover ..."
-                                loading="lazy"
-                            >
-                        @else
-                            <div class="w-full h-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center">
-                                <svg class="w-16 h-16 text-orange-300" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
-                                </svg>
-                            </div>
-                        @endif
+        <img src="{{ $project->featured_image_url }}"
+            alt="{{ $project->title }}"
+            class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+            loading="lazy"
+        >
+    @else
+        <div class="w-full h-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center">
+            <svg class="w-16 h-16 text-orange-300" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+            </svg>
+        </div>
+    @endif
                         
-                        {{-- Overlay --}}
+                        {{-- Hover Overlay --}}
                         <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center">
                             <a href="{{ route('portfolio.show', $project->slug) }}" 
-                               class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white text-orange-600 px-6 py-3 rounded-lg font-semibold transform translate-y-4 group-hover:translate-y-0">
+                               class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white text-orange-600 px-6 py-3 rounded-lg font-semibold hover:bg-orange-50 transform translate-y-4 group-hover:translate-y-0">
                                 View Project
                             </a>
                         </div>
@@ -312,19 +313,54 @@
                     
                     {{-- Project Content --}}
                     <div class="p-6">
+                        {{-- Category Badge --}}
                         @if($project->category)
                             <span class="inline-block px-3 py-1 bg-orange-100 text-orange-600 text-sm font-medium rounded-full mb-3">
                                 {{ $project->category->name }}
                             </span>
                         @endif
                         
+                        {{-- Project Title --}}
                         <h3 class="text-xl font-semibold text-gray-900 mb-3 group-hover:text-orange-600 transition-colors duration-300">
-                            {{ $project->title }}
+                            <a href="{{ route('portfolio.show', $project->slug) }}">
+                                {{ $project->title }}
+                            </a>
                         </h3>
                         
-                        <p class="text-gray-600 leading-relaxed">
-                            {{ Str::limit($project->description, 100) }}
-                        </p>
+                        {{-- Project Description --}}
+                        @if($project->excerpt)
+                            <p class="text-gray-600 leading-relaxed mb-4 line-clamp-3">
+                                {{ $project->excerpt }}
+                            </p>
+                        @elseif($project->description)
+                            <p class="text-gray-600 leading-relaxed mb-4 line-clamp-3">
+                                {{ Str::limit(strip_tags($project->description), 120) }}
+                            </p>
+                        @endif
+                        
+                        {{-- Project Meta Information --}}
+                        <div class="flex items-center justify-between text-sm text-gray-500">
+                            {{-- Client Info --}}
+                            @if($project->client)
+                                <div class="flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {{ $project->client->name }}
+                                </div>
+                            @endif
+                            
+                            {{-- Project Status or Date --}}
+                            @if($project->completed_at)
+                                <div>
+                                    {{ $project->completed_at->format('M Y') }}
+                                </div>
+                            @elseif($project->status)
+                                <div class="px-2 py-1 rounded text-xs {{ $project->status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800' }}">
+                                    {{ ucfirst(str_replace('_', ' ', $project->status)) }}
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 </div> 
             @endforeach
@@ -333,7 +369,7 @@
         {{-- View All Projects Button --}}
         <div class="text-center mt-12">
             <a href="{{ route('portfolio.index') }}" 
-               class="inline-flex items-center px-8 py-4 border-2 border-orange-600 text-orange-600 font-semibold rounded-xl hover:bg-orange-600 hover:text-white transition-all duration-300">
+               class="inline-flex items-center px-8 py-4 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
                 View All Projects
                 <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
@@ -343,7 +379,131 @@
     </div>
 </section>
 @endif
+{{-- Featured Products Section --}}
+@if(isset($featuredProducts) && $featuredProducts && $featuredProducts->count() > 0)
+<section class="py-20 bg-gradient-to-br from-orange-50 via-white to-amber-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl font-bold text-gray-900 mb-4 animate-in">Featured Products</h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto animate-in animation-delay-200">
+                Discover our top-quality construction and engineering products designed to meet your project requirements.
+            </p>
+        </div>
+        
+        {{-- Products Grid --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            @foreach($featuredProducts->take(6) as $index => $product)
+                <div class="product-card group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 animate-in" style="animation-delay: {{ $index * 200 }}ms;">
+                    {{-- Product Image --}}
+                    <div class="relative overflow-hidden h-64">
+                        @php
+                                            // Get the main image (featured or first image)
+                                            $mainImage =
+                                                $product->images->where('is_featured', true)->first() ?:
+                                                $product->images->first();
+                                        @endphp
 
+                                        @if ($mainImage)
+                                            <img src="{{ $mainImage->image_url }}"
+                                                alt="{{ $mainImage->alt_text ?: $product->name }}"
+                                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                                        @else
+                                            <div
+                                                class="w-full h-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center">
+                                                <svg class="w-16 h-16 text-orange-400" fill="none"
+                                                    stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="1"
+                                                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                                </svg>
+                                            </div>
+                                        @endif
+                        
+                        {{-- Product Badges --}}
+                        <div class="absolute top-3 left-3 flex flex-col space-y-2">
+                            <span class="bg-amber-500 text-white px-2 py-1 rounded-lg text-xs font-medium">
+                                Featured
+                            </span>
+                            
+                            @if($product->stock_status === 'in_stock')
+                            <span class="bg-green-500 text-white px-2 py-1 rounded-lg text-xs font-medium">
+                                In Stock
+                            </span>
+                            @elseif($product->stock_status === 'out_of_stock')
+                            <span class="bg-red-500 text-white px-2 py-1 rounded-lg text-xs font-medium">
+                                Out of Stock
+                            </span>
+                            @endif
+                        </div>
+
+                        {{-- Category Badge --}}
+                        @if($product->category)
+                        <div class="absolute top-3 right-3">
+                            <span class="bg-white/90 text-gray-800 px-2 py-1 rounded-lg text-xs font-medium">
+                                {{ $product->category->name }}
+                            </span>
+                        </div>
+                        @endif
+                        
+                        {{-- Hover Overlay --}}
+                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center">
+                            <a href="{{ route('products.show', $product->slug) }}" 
+                               class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white text-amber-600 px-6 py-3 rounded-lg font-semibold hover:bg-amber-50 transform translate-y-4 group-hover:translate-y-0">
+                                View Product
+                            </a>
+                        </div>
+                    </div>
+                    
+                    {{-- Product Content --}}
+                    <div class="p-6">
+                        {{-- Brand --}}
+                        @if($product->brand)
+                            <div class="text-sm text-amber-600 font-medium mb-2">{{ $product->brand }}</div>
+                        @endif
+                        
+                        {{-- Product Title --}}
+                        <h3 class="text-xl font-semibold text-gray-900 mb-3 group-hover:text-amber-600 transition-colors duration-300 line-clamp-2">
+                            <a href="{{ route('products.show', $product->slug) }}">
+                                {{ $product->name }}
+                            </a>
+                        </h3>
+                        
+                        {{-- Product Description --}}
+                        @if($product->short_description)
+                            <p class="text-gray-600 leading-relaxed mb-4 line-clamp-3">
+                                {{ $product->short_description }}
+                            </p>
+                        @endif
+                        
+                        {{-- Price and Action --}}
+                        <div class="flex items-center justify-between">
+                            <div class="text-lg font-bold text-amber-600">
+                                {!! $product->formatted_price !!}
+                            </div>
+                            
+                            <a href="{{ route('products.show', $product->slug) }}" 
+                               class="text-amber-600 hover:text-amber-700 font-medium text-sm">
+                                View Details →
+                            </a>
+                        </div>
+                    </div>
+                </div> 
+            @endforeach
+        </div>
+        
+        {{-- View All Products Button --}}
+        <div class="text-center mt-12">
+            <a href="{{ route('products.index') }}" 
+               class="inline-flex items-center px-8 py-4 bg-amber-600 text-white font-semibold rounded-xl hover:bg-amber-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                View All Products
+                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+</section>
+@endif
 {{-- Testimonials Section --}}
 @if($testimonials && $testimonials->count() > 0)
 <section class="py-20 bg-gray-50">

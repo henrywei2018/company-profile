@@ -81,6 +81,31 @@ class Service extends Model
     {
         return $this->hasMany(Quotation::class);
     }
+    public function products()
+    {
+        return $this->hasMany(Product::class, 'service_id');
+    }
+
+    /**
+     * Get active published products for this service.
+     */
+    public function activeProducts()
+    {
+        return $this->hasMany(Product::class, 'service_id')
+            ->where('status', 'published')
+            ->where('is_active', true);
+    }
+
+    /**
+     * Get featured products for this service.
+     */
+    public function featuredProducts()
+    {
+        return $this->hasMany(Product::class, 'service_id')
+            ->where('status', 'published')
+            ->where('is_active', true)
+            ->where('is_featured', true);
+    }
     
     
     /**

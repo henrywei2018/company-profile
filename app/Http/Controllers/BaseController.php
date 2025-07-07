@@ -9,6 +9,7 @@ use App\Models\CompanyProfile;
 use App\Models\Service;
 use App\Models\ServiceCategory;
 use App\Models\ProjectCategory;
+use App\Models\ProductCategory; // NEW: Add ProductCategory
 use App\Models\Setting;
 use App\Models\Banner;
 use App\Models\BannerCategory;
@@ -21,6 +22,7 @@ class BaseController extends Controller
     protected $globalServices;
     protected $serviceCategories;
     protected $projectCategories;
+    protected $productCategories; // NEW: Add product categories
     protected $socialMedia;
     protected $contactInfo;
     protected $siteConfig;
@@ -71,6 +73,17 @@ class BaseController extends Controller
         $this->projectCategories = Cache::remember('project_categories', 3600, function () {
             return ProjectCategory::where('is_active', true)
                 ->withCount(['activeProjects'])
+                ->orderBy('sort_order', 'asc')
+                ->orderBy('name', 'asc')
+                ->get(['id', 'name', 'slug', 'description']);
+        });
+        
+        // NEW: Product Categories untuk filter/menu
+        $this->productCategories = Cache::remember('product_categories', 3600, function () {
+            return ProductCategory::where('is_active', true)
+                ->withCount(['products' => function($query) {
+                    $query->where('status', 'published')->where('is_active', true);
+                }])
                 ->orderBy('sort_order', 'asc')
                 ->orderBy('name', 'asc')
                 ->get(['id', 'name', 'slug', 'description']);
@@ -132,6 +145,14 @@ class BaseController extends Controller
                 'active_routes' => ['services.*'],
                 'dropdown' => $this->buildServicesDropdown()
             ],
+            // NEW: Products navigation
+            [
+                'label' => 'Products',
+                'route' => 'products.index',
+                'icon' => 'cube',
+                'active_routes' => ['products.*'],
+                'dropdown' => $this->buildProductsDropdown()
+            ],
             [
                 'label' => 'Portfolio',
                 'route' => 'portfolio.index',
@@ -155,11 +176,6 @@ class BaseController extends Controller
                         'label' => 'Contact Us', 
                         'route' => 'contact.index',
                         'description' => 'Get in touch'
-                    ],
-                    [
-                        'label' => 'Request Quotation', 
-                        'route' => 'quotation.create',
-                        'description' => 'Get project quote'
                     ],
                 ]
             ]
@@ -185,6 +201,34 @@ class BaseController extends Controller
                 $dropdown[] = [
                     'label' => $category->name,
                     'route' => 'services.index',
+                    'params' => ['category' => $category->slug],
+                    'description' => $category->description
+                ];
+            }
+        }
+
+        return $dropdown;
+    }
+
+    /**
+     * NEW: Build products dropdown menu
+     */
+    protected function buildProductsDropdown()
+    {
+        $dropdown = [
+            [
+                'label' => 'All Products',
+                'route' => 'products.index',
+                'description' => 'View all our products'
+            ]
+        ];
+
+        // Add product categories
+        foreach ($this->productCategories as $category) {
+            if ($category->products_count > 0) {
+                $dropdown[] = [
+                    'label' => $category->name,
+                    'route' => 'products.index',
                     'params' => ['category' => $category->slug],
                     'description' => $category->description
                 ];
@@ -343,6 +387,7 @@ class BaseController extends Controller
             'globalServices' => $this->globalServices,
             'serviceCategories' => $this->serviceCategories,
             'projectCategories' => $this->projectCategories,
+            'productCategories' => $this->productCategories, // NEW: Share product categories
             'socialMedia' => $this->socialMedia,
             'contactInfo' => $this->contactInfo,
             'siteConfig' => $this->siteConfig,
@@ -433,6 +478,7 @@ class BaseController extends Controller
         Cache::forget('global_services');
         Cache::forget('service_categories');
         Cache::forget('project_categories');
+        Cache::forget('product_categories'); // NEW: Clear product categories cache
     }
 
     /**
@@ -446,6 +492,13 @@ class BaseController extends Controller
                 'projects' => \App\Models\Project::where('is_active', true)
                     ->where('featured', true)
                     ->with(['category', 'images'])
+                    ->latest()
+                    ->take(3)
+                    ->get(),
+                'products' => \App\Models\Product::where('status', 'published') // NEW: Featured products
+                    ->where('is_active', true)
+                    ->where('is_featured', true)
+                    ->with(['category'])
                     ->latest()
                     ->take(3)
                     ->get(),
