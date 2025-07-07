@@ -363,17 +363,11 @@
                 </x-admin.card>
             </div>
         </div>
-
+        <input type="hidden" name="price_type" value="fixed">
+        <input type="hidden" name="stock_status" value="in_stock">
+        <input type="hidden" name="status" value="draft">
         <!-- Action Buttons -->
-        <div class="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-700">
-            <a href="{{ route('admin.products.index') }}"
-                class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-                Create Product
-            </button>
-        </div>
+        <button type="submit">Create Product</button>
     </form>
 
     @push('scripts')

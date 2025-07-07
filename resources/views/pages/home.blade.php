@@ -229,7 +229,7 @@
                     {{-- Service Icon --}}
                     <div class="w-16 h-16 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                         @if($service->icon)
-                            <i class="{{ $service->icon }} text-2xl"></i>
+                            <img src="{{ asset('storage/' . $service->icon) }}" alt="{{ $service->name }} Icon" class="w-16 h-16 object-contain" />
                         @else
                             <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clip-rule="evenodd"/>
@@ -287,11 +287,10 @@
                 <div class="project-card group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 animate-in" style="animation-delay: {{ $index * 200 }}ms;">
                     {{-- Project Image --}}
                     <div class="relative overflow-hidden h-64">
-                        @if($project->featured_image)
-                            <img 
-                                src="{{ Storage::url($project->featured_image) }}" 
-                                alt="{{ $project->title }}"
-                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        @if($project->featured_image_url)
+                            <img src="{{ $project->featured_image_url }}"
+                                alt="{{ $image->alt_text ?? $project->title }}"
+                                class="w-full h-full object-cover ..."
                                 loading="lazy"
                             >
                         @else
@@ -327,7 +326,7 @@
                             {{ Str::limit($project->description, 100) }}
                         </p>
                     </div>
-                </div>
+                </div> 
             @endforeach
         </div>
         

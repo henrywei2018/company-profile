@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\ImageManager;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
@@ -112,8 +113,12 @@ class ProductController extends Controller
     /**
      * Store a newly created product in storage.
      */
-    public function store(Request $request)
+    public function store(StoreProductRequest $request)
     {
+        \Log::info('Product creation attempt', [
+            'validated_data' => $request->validated(),
+            'all_input' => $request->all()
+        ]);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255|unique:products,slug',
@@ -151,7 +156,7 @@ class ProductController extends Controller
                     $originalSlug = $validated['slug'];
                     $counter = 1;
                     while (Product::where('slug', $validated['slug'])->exists()) {
-                        $validated['slug'] = $originalSlug . '-' . $counter;
+                $validated['slug'] = $originalSlug . '-' . $counter;
                         $counter++;
                     }
                 }
