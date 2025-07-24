@@ -178,22 +178,68 @@
                             </div>
                             
                             <div>
-                                <label for="budget_range" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Budget Range
-                                </label>
-                                <select name="budget_range" id="budget_range"
-                                        class="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white 
-                                               shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm transition-colors">
-                                    <option value="">Select budget range...</option>
-                                    <option value="$1,000 - $5,000" {{ old('budget_range', $quotation->budget_range) == '$1,000 - $5,000' ? 'selected' : '' }}>$1,000 - $5,000</option>
-                                    <option value="$5,000 - $10,000" {{ old('budget_range', $quotation->budget_range) == '$5,000 - $10,000' ? 'selected' : '' }}>$5,000 - $10,000</option>
-                                    <option value="$10,000 - $25,000" {{ old('budget_range', $quotation->budget_range) == '$10,000 - $25,000' ? 'selected' : '' }}>$10,000 - $25,000</option>
-                                    <option value="$25,000+" {{ old('budget_range', $quotation->budget_range) == '$25,000+' ? 'selected' : '' }}>$25,000+</option>
-                                </select>
-                                @error('budget_range')
-                                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
+    <label for="budget" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        Project Budget
+        <span class="text-red-500">*</span>
+    </label>
+    <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <span class="text-gray-500 text-sm">Rp.</span>
+        </div>
+        <input type="text" 
+               name="budget" 
+               id="budget"
+               value="{{ old('budget', $quotation->budget ?? '') }}"
+               required
+               placeholder="Enter your project budget"
+               class="block w-full pl-12 pr-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white 
+                      shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm transition-colors budget-input"
+               onInput="formatBudgetInput(this)"
+               onBlur="validateBudget(this)">
+        <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+            </svg>
+        </div>
+    </div>
+    
+    {{-- Budget Range Indicators --}}
+    <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        <div class="flex flex-wrap gap-2">
+            <span class="budget-range px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600" 
+                  onclick="setBudgetValue(1000000)">1</span>
+            <span class="budget-range px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600" 
+                  onclick="setBudgetValue(5000000)">5</span>
+            <span class="budget-range px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600" 
+                  onclick="setBudgetValue(10000000)">10</span>
+            <span class="budget-range px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600" 
+                  onclick="setBudgetValue(25000000)">25</span>
+            <span class="budget-range px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600" 
+                  onclick="setBudgetValue(50000000)">50</span>
+        </div>
+        <p class="mt-1">Click on amounts above for quick selection, or enter your custom budget</p>
+    </div>
+    
+    {{-- Budget Validation Messages --}}
+    <div id="budget-feedback" class="mt-1 text-xs hidden">
+        <div class="budget-warning text-yellow-600 dark:text-yellow-400 hidden">
+            <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            Budget seems quite low for typical construction projects
+        </div>
+        <div class="budget-success text-green-600 dark:text-green-400 hidden">
+            <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            Budget looks good for your project scope
+        </div>
+    </div>
+    
+    @error('budget')
+        <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+    @enderror
+</div>
                             
                             <div class="md:col-span-2">
                                 <label for="start_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -528,6 +574,96 @@
             // Smooth scrolling for better UX
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
+
+        // Format budget input with thousand separators
+function formatBudgetInput(element) {
+    let value = element.value || element.target.value;
+    
+    // Remove all non-numeric characters except decimal point
+    value = value.replace(/[^0-9]/g, '');
+    
+    // Don't format if empty
+    if (!value) {
+        if (element.target) {
+            element.target.value = '';
+        } else {
+            element.value = '';
+        }
+        return;
+    }
+    
+    // Convert to number and back to string to remove leading zeros
+    value = parseInt(value).toString();
+    
+    // Add thousand separators
+    const formatted = value.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    
+    // Update the input
+    if (element.target) {
+        element.target.value = formatted;
+    } else {
+        element.value = formatted;
+    }
+    
+    // Update Alpine.js model if available
+    if (typeof Alpine !== 'undefined' && element.target && element.target._x_model) {
+        Alpine.store('quotationForm').formData.budget = value;
+    }
+}
+
+// Set budget value from quick selection buttons
+function setBudgetValue(amount) {
+    const budgetInput = document.getElementById('budget');
+    if (budgetInput) {
+        budgetInput.value = amount.toLocaleString('id-ID');
+        budgetInput.focus();
+        
+        // Trigger input event for Alpine.js
+        const event = new Event('input', { bubbles: true });
+        budgetInput.dispatchEvent(event);
+        
+        // Validate the budget
+        validateBudget(budgetInput);
+    }
+}
+
+// Validate budget and show feedback
+function validateBudget(element) {
+    const input = element.target || element;
+    const value = parseInt(input.value.replace(/[^0-9]/g, ''));
+    const feedbackContainer = document.getElementById('budget-feedback');
+    const warningDiv = feedbackContainer?.querySelector('.budget-warning');
+    const successDiv = feedbackContainer?.querySelector('.budget-success');
+    
+    if (!feedbackContainer || !value) {
+        feedbackContainer?.classList.add('hidden');
+        return;
+    }
+    
+    // Hide all feedback first
+    warningDiv?.classList.add('hidden');
+    successDiv?.classList.add('hidden');
+    
+    // Show feedback based on budget amount
+    if (value < 5000000) { // Less than 5M IDR
+        warningDiv?.classList.remove('hidden');
+        feedbackContainer.classList.remove('hidden');
+    } else if (value >= 5000000) { // 5M IDR or more
+        successDiv?.classList.remove('hidden');
+        feedbackContainer.classList.remove('hidden');
+    } else {
+        feedbackContainer.classList.add('hidden');
+    }
+}
+
+// Initialize budget formatting on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const budgetInput = document.getElementById('budget');
+    if (budgetInput && budgetInput.value) {
+        formatBudgetInput(budgetInput);
+        validateBudget(budgetInput);
+    }
+});
     </script>
     @endpush
 

@@ -105,28 +105,33 @@ class UpdateProductRequest extends FormRequest
      * Get the ID of the route model for validation exclusion.
      */
     protected function getRouteModelId(): ?int
-    {
-        // Try different possible parameter names for route model binding
-        $possibleNames = ['product', 'id'];
-        
-        foreach ($possibleNames as $name) {
-            if ($this->route($name)) {
-                return $this->route($name)->id ?? $this->route($name);
+{
+    // Try different possible parameter names for route model binding
+    $possibleNames = ['product', 'id'];
+    
+    foreach ($possibleNames as $name) {
+        if ($this->route($name)) {
+            // If it's a model instance, get the ID
+            if (is_object($this->route($name)) && method_exists($this->route($name), 'getKey')) {
+                return $this->route($name)->getKey();
             }
+            // If it's already an ID
+            return $this->route($name)->id ?? $this->route($name);
         }
-        
-        // Fallback: extract ID from route parameters
-        $routeParams = $this->route()->parameters();
-        
-        // Look for any parameter that looks like a Product model
-        foreach ($routeParams as $param) {
-            if (is_object($param) && method_exists($param, 'getTable') && $param->getTable() === 'products') {
-                return $param->id;
-            }
-        }
-        
-        return null;
     }
+    
+    // Fallback: extract ID from route parameters
+    $routeParams = $this->route()->parameters();
+    
+    // Look for any parameter that looks like a Product model
+    foreach ($routeParams as $param) {
+        if (is_object($param) && method_exists($param, 'getTable') && $param->getTable() === 'products') {
+            return $param->id;
+        }
+    }
+    
+    return null;
+}
 
     /**
      * Get the error messages for the defined validation rules.

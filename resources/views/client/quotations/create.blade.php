@@ -5,31 +5,41 @@
 
     <!-- Progress Header -->
     <div class="mb-8">
-        <div class="max-w-3xl mx-auto">
-            <div class="text-center mb-6">
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Request a Quotation</h1>
-                <p class="mt-2 text-lg text-gray-600 dark:text-gray-400">Get a detailed quote for your project in 3 easy steps</p>
+    <div class="max-w-3xl mx-auto">
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Request a Quotation</h1>
+            <p class="mt-2 text-lg text-gray-600 dark:text-gray-400">Get a detailed quote for your project in 3 easy steps</p>
+        </div>
+        
+        <!-- Progress Steps - Connect to main form's Alpine.js data -->
+        <div class="flex items-center justify-center space-x-8" id="progress-steps">
+            <div class="flex items-center step-indicator" data-step="1">
+                <div class="step-circle flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300">
+                    1
+                </div>
+                <span class="step-text ml-2 text-sm font-medium transition-all duration-300">Contact Info</span>
             </div>
             
-            <!-- Progress Steps -->
-            <div class="flex items-center justify-center space-x-8" x-data="{ currentStep: 1 }">
-                <div class="flex items-center">
-                    <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white font-semibold">1</div>
-                    <span class="ml-2 text-sm font-medium text-blue-600 dark:text-blue-400">Contact Info</span>
+            <div class="step-connector w-16 h-0.5 bg-gray-300 dark:bg-gray-600 transition-all duration-300"></div>
+            
+            <div class="flex items-center step-indicator" data-step="2">
+                <div class="step-circle flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300">
+                    2
                 </div>
-                <div class="w-16 h-0.5 bg-gray-300 dark:bg-gray-600"></div>
-                <div class="flex items-center">
-                    <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 font-semibold">2</div>
-                    <span class="ml-2 text-sm font-medium text-gray-500 dark:text-gray-400">Project Details</span>
+                <span class="step-text ml-2 text-sm font-medium transition-all duration-300">Project Details</span>
+            </div>
+            
+            <div class="step-connector w-16 h-0.5 bg-gray-300 dark:bg-gray-600 transition-all duration-300"></div>
+            
+            <div class="flex items-center step-indicator" data-step="3">
+                <div class="step-circle flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300">
+                    3
                 </div>
-                <div class="w-16 h-0.5 bg-gray-300 dark:bg-gray-600"></div>
-                <div class="flex items-center">
-                    <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 font-semibold">3</div>
-                    <span class="ml-2 text-sm font-medium text-gray-500 dark:text-gray-400">Requirements</span>
-                </div>
+                <span class="step-text ml-2 text-sm font-medium transition-all duration-300">Requirements</span>
             </div>
         </div>
     </div>
+</div>
 
     <!-- Main Form Container -->
     <div class="max-w-4xl mx-auto">
@@ -219,26 +229,69 @@
                         </div>
 
                         <div>
-                            <label for="budget_range" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Budget Range
-                            </label>
-                            <select name="budget_range" 
-                                    id="budget_range"
-                                    x-model="formData.budget_range"
-                                    class="block w-full px-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white 
-                                           shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200">
-                                <option value="">Select your budget range...</option>
-                                <option value="Under $1,000" {{ old('budget_range') == 'Under $1,000' ? 'selected' : '' }}>Under $1,000</option>
-                                <option value="$1,000 - $5,000" {{ old('budget_range') == '$1,000 - $5,000' ? 'selected' : '' }}>$1,000 - $5,000</option>
-                                <option value="$5,000 - $10,000" {{ old('budget_range') == '$5,000 - $10,000' ? 'selected' : '' }}>$5,000 - $10,000</option>
-                                <option value="$10,000 - $25,000" {{ old('budget_range') == '$10,000 - $25,000' ? 'selected' : '' }}>$10,000 - $25,000</option>
-                                <option value="$25,000 - $50,000" {{ old('budget_range') == '$25,000 - $50,000' ? 'selected' : '' }}>$25,000 - $50,000</option>
-                                <option value="$50,000+" {{ old('budget_range') == '$50,000+' ? 'selected' : '' }}>$50,000+</option>
-                            </select>
-                            @error('budget_range')
-                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                            @enderror
-                        </div>
+    <label for="budget" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        Project Budget
+        <span class="text-red-500">*</span>
+    </label>
+    <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <span class="text-gray-500 text-sm">Rp.</span>
+        </div>
+        <input type="text" 
+               name="budget" 
+               id="budget"
+               value="{{ old('budget') }}"
+               x-model="formData.budget"
+               required
+               placeholder="Enter your project budget"
+               class="block w-full pl-12 pr-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white 
+                      shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200 budget-input"
+               x-on:input="formatBudgetInput($event)"
+               x-on:blur="validateBudget($event)">
+        <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+            </svg>
+        </div>
+    </div>
+    
+    {{-- Budget Range Indicators --}}
+    <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        <div class="flex flex-wrap gap-2">
+            <span class="budget-range px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600" 
+                  onclick="setBudgetValue(1000000)">1</span>
+            <span class="budget-range px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600" 
+                  onclick="setBudgetValue(5000000)">5</span>
+            <span class="budget-range px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600" 
+                  onclick="setBudgetValue(10000000)">10</span>
+            <span class="budget-range px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600" 
+                  onclick="setBudgetValue(25000000)">25</span>
+            <span class="budget-range px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600" 
+                  onclick="setBudgetValue(50000000)">50</span>
+        </div>
+        <p class="mt-1">Click on amounts above for quick selection, or enter your custom budget</p>
+    </div>
+    
+    {{-- Budget Validation Messages --}}
+    <div id="budget-feedback" class="mt-1 text-xs hidden">
+        <div class="budget-warning text-yellow-600 dark:text-yellow-400 hidden">
+            <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            Budget seems quite low for typical construction projects
+        </div>
+        <div class="budget-success text-green-600 dark:text-green-400 hidden">
+            <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            Budget looks good for your project scope
+        </div>
+    </div>
+    
+    @error('budget')
+        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+    @enderror
+</div>
 
                         <div class="md:col-span-2">
                             <label for="start_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -449,244 +502,169 @@
     @push('scripts')
     <script>
         function quotationFormHandler() {
-            return {
-                currentStep: 1,
-                submitting: false,
-                uploadedFiles: [],
-                tempSession: @json(session()->getId()),
-                formData: {
-                    name: @json(old('name', auth()->user()->name)),
-                    email: @json(old('email', auth()->user()->email)),
-                    phone: @json(old('phone', auth()->user()->phone ?? '')),
-                    company: @json(old('company', auth()->user()->company ?? '')),
-                    service_id: @json(old('service_id', '')),
-                    project_type: @json(old('project_type', '')),
-                    location: @json(old('location', '')),
-                    budget_range: @json(old('budget_range', '')),
-                    start_date: @json(old('start_date', '')),
-                    requirements: @json(old('requirements', ''))
-                },
+    return {
+        currentStep: 1,
+        submitting: false,
+        uploadedFiles: [],
+        tempSession: @json(session()->getId()),
+        formData: {
+            name: @json(old('name', auth()->user()->name)),
+            email: @json(old('email', auth()->user()->email)),
+            phone: @json(old('phone', auth()->user()->phone ?? '')),
+            company: @json(old('company', auth()->user()->company ?? '')),
+            service_id: @json(old('service_id', '')),
+            project_type: @json(old('project_type', '')),
+            location: @json(old('location', '')),
+            budget: @json(old('budget', '')), // Updated from budget_range
+            start_date: @json(old('start_date', '')),
+            requirements: @json(old('requirements', ''))
+        },
 
-                init() {
-                    console.log('=== QUOTATION FORM DEBUG ===');
-                    console.log('Session ID:', this.tempSession);
-                    console.log('Upload endpoint:', @json(route('client.quotations.upload-attachment')));
-                    console.log('Quotation form handler initialized');
-                    
-                    // Update progress indicator based on current step
-                    this.updateProgressIndicator();
-                    
-                    // Auto-save to localStorage
-                    this.$watch('formData', () => {
-                        localStorage.setItem('quotationFormData', JSON.stringify(this.formData));
-                    }, { deep: true });
+        init() {
+            console.log('Quotation form handler initialized');
+            
+            // Update progress indicator based on current step
+            this.updateProgressIndicator();
+            
+            // Watch for currentStep changes and update indicator
+            this.$watch('currentStep', () => {
+                this.updateProgressIndicator();
+            });
+            
+            // Auto-save to localStorage
+            this.$watch('formData', () => {
+                localStorage.setItem('quotationFormData', JSON.stringify(this.formData));
+            }, { deep: true });
 
-                    // Load saved data from localStorage
-                    const savedData = localStorage.getItem('quotationFormData');
-                    if (savedData) {
-                        try {
-                            const parsed = JSON.parse(savedData);
-                            Object.assign(this.formData, parsed);
-                        } catch (e) {
-                            console.log('Failed to load saved form data');
-                        }
-                    }
-
-                    // Load existing temp files on page load
-                    this.loadExistingTempFiles();
-                    
-                    // Listen for file upload events from universal uploader
-                    document.addEventListener('files-uploaded', (event) => {
-                        console.log('Files uploaded event received:', event.detail);
-                        if (event.detail.component === 'quotation-attachments-uploader') {
-                            this.handleFilesUploaded(event.detail);
-                        }
-                    });
-                    
-                    // Listen for file removal events
-                    document.addEventListener('file-removed', (event) => {
-                        console.log('File removed event received:', event.detail);
-                        if (event.detail.component === 'quotation-attachments-uploader') {
-                            this.handleFileRemoved(event.detail);
-                        }
-                    });
-
-                    // Listen for upload errors
-                    document.addEventListener('upload-error', (event) => {
-                        console.log('Upload error event received:', event.detail);
-                        this.showNotification('Upload failed: ' + event.detail.error, 'error');
-                    });
-                },
-
-                async loadExistingTempFiles() {
-                    console.log('Loading existing temp files...');
-                    try {
-                        const response = await fetch(@json(route('client.quotations.get-temp-files')), {
-                            method: 'GET',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                            }
-                        });
-
-                        const result = await response.json();
-                        console.log('Get temp files response:', result);
-                        
-                        if (result.success && result.files.length > 0) {
-                            this.uploadedFiles = result.files;
-                            console.log('Loaded temp files:', this.uploadedFiles);
-                            
-                            // Dispatch event to update uploader component
-                            this.$dispatch('load-existing-files', {
-                                files: result.files,
-                                component: 'quotation-attachments-uploader'
-                            });
-                        }
-                    } catch (error) {
-                        console.warn('Could not load existing temp files:', error);
-                    }
-                },
-                
-                handleFilesUploaded(detail) {
-                    console.log('Handling files uploaded:', detail);
-                    
-                    if (detail.files && Array.isArray(detail.files)) {
-                        this.uploadedFiles = [...this.uploadedFiles, ...detail.files];
-                        console.log('Updated uploaded files array:', this.uploadedFiles);
-                        
-                        this.showNotification(detail.result?.message || 'Files uploaded successfully!', 'success');
-                    }
-                },
-
-                handleFileRemoved(detail) {
-                    console.log('Handling file removed:', detail);
-                    
-                    // Remove from our local array
-                    if (detail.fileId) {
-                        this.uploadedFiles = this.uploadedFiles.filter(file => 
-                            file.temp_id !== detail.fileId && file.id !== detail.fileId
-                        );
-                        console.log('Updated uploaded files after removal:', this.uploadedFiles);
-                    }
-                },
-
-                nextStep() {
-                    if (this.currentStep < 3) {
-                        this.currentStep++;
-                        this.updateProgressIndicator();
-                        this.scrollToTop();
-                    }
-                },
-
-                prevStep() {
-                    if (this.currentStep > 1) {
-                        this.currentStep--;
-                        this.updateProgressIndicator();
-                        this.scrollToTop();
-                    }
-                },
-
-                updateProgressIndicator() {
-                    // Update progress steps visual state
-                    const steps = document.querySelectorAll('.flex.items-center');
-                    steps.forEach((step, index) => {
-                        const circle = step.querySelector('div');
-                        const text = step.querySelector('span');
-                        
-                        if (index + 1 <= this.currentStep) {
-                            circle.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white font-semibold';
-                            text.className = 'ml-2 text-sm font-medium text-blue-600 dark:text-blue-400';
-                        } else {
-                            circle.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 font-semibold';
-                            text.className = 'ml-2 text-sm font-medium text-gray-500 dark:text-gray-400';
-                        }
-                    });
-                },
-
-                scrollToTop() {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                },
-
-                isStep1Valid() {
-                    return this.formData.name && this.formData.email;
-                },
-
-                isStep2Valid() {
-                    return this.formData.project_type;
-                },
-
-                isStep3Valid() {
-                    return this.formData.requirements && this.formData.requirements.length >= 50;
-                },
-
-                handleSubmit(event) {
-                    if (!this.isStep3Valid()) {
-                        event.preventDefault();
-                        this.showNotification('Please provide detailed requirements (minimum 50 characters)', 'error');
-                        return;
-                    }
-                    
-                    this.submitting = true;
-                    
-                    // Clear saved data on successful submission
-                    localStorage.removeItem('quotationFormData');
-                },
-
-                showNotification(message, type) {
-                    // Create toast notification
-                    const notification = document.createElement('div');
-                    notification.className = `fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm w-full transform transition-all duration-300 ease-in-out ${
-                        type === 'success' ? 'bg-green-500 text-white' : 
-                        type === 'error' ? 'bg-red-500 text-white' : 
-                        'bg-blue-500 text-white'
-                    }`;
-                    
-                    notification.innerHTML = `
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                ${type === 'success' 
-                                    ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
-                                    : type === 'error'
-                                    ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>'
-                                    : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
-                                }
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium">${message}</p>
-                            </div>
-                            <div class="ml-auto pl-3">
-                                <button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-white hover:text-gray-200">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    
-                    // Add entrance animation
-                    notification.style.transform = 'translateX(100%)';
-                    document.body.appendChild(notification);
-                    
-                    setTimeout(() => {
-                        notification.style.transform = 'translateX(0)';
-                    }, 10);
-                    
-                    // Auto remove after 4 seconds
-                    setTimeout(() => {
-                        if (notification.parentElement) {
-                            notification.style.transform = 'translateX(100%)';
-                            setTimeout(() => {
-                                if (notification.parentElement) {
-                                    notification.remove();
-                                }
-                            }, 300);
-                        }
-                    }, 4000);
+            // Load saved data from localStorage
+            const savedData = localStorage.getItem('quotationFormData');
+            if (savedData) {
+                try {
+                    const parsed = JSON.parse(savedData);
+                    Object.assign(this.formData, parsed);
+                } catch (e) {
+                    console.log('Failed to load saved form data');
                 }
             }
+        },
+
+        nextStep() {
+            if (this.currentStep === 1 && this.isStep1Valid()) {
+                this.currentStep = 2;
+                this.scrollToTop();
+            } else if (this.currentStep === 2 && this.isStep2Valid()) {
+                this.currentStep = 3;
+                this.scrollToTop();
+            }
+        },
+
+        prevStep() {
+            if (this.currentStep > 1) {
+                this.currentStep--;
+                this.scrollToTop();
+            }
+        },
+
+        // Fixed updateProgressIndicator method
+        updateProgressIndicator() {
+            const stepIndicators = document.querySelectorAll('.step-indicator');
+            const stepConnectors = document.querySelectorAll('.step-connector');
+            
+            stepIndicators.forEach((indicator, index) => {
+                const stepNumber = index + 1;
+                const circle = indicator.querySelector('.step-circle');
+                const text = indicator.querySelector('.step-text');
+                
+                if (stepNumber <= this.currentStep) {
+                    // Active/completed step
+                    circle.className = 'step-circle flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white font-semibold transition-all duration-300 shadow-lg';
+                    text.className = 'step-text ml-2 text-sm font-medium text-blue-600 dark:text-blue-400 transition-all duration-300';
+                } else {
+                    // Inactive step
+                    circle.className = 'step-circle flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 font-semibold transition-all duration-300';
+                    text.className = 'step-text ml-2 text-sm font-medium text-gray-500 dark:text-gray-400 transition-all duration-300';
+                }
+            });
+            
+            // Update connectors
+            stepConnectors.forEach((connector, index) => {
+                const connectorStep = index + 1;
+                if (connectorStep < this.currentStep) {
+                    connector.className = 'step-connector w-16 h-0.5 bg-blue-500 transition-all duration-300';
+                } else {
+                    connector.className = 'step-connector w-16 h-0.5 bg-gray-300 dark:bg-gray-600 transition-all duration-300';
+                }
+            });
+        },
+
+        scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+
+        isStep1Valid() {
+            return this.formData.name && this.formData.email;
+        },
+
+        isStep2Valid() {
+            return this.formData.project_type && this.formData.budget;
+        },
+
+        isStep3Valid() {
+            return this.formData.requirements && this.formData.requirements.length >= 50;
+        },
+
+        handleSubmit(event) {
+            if (!this.isStep3Valid()) {
+                event.preventDefault();
+                this.showNotification('Please provide detailed requirements (minimum 50 characters)', 'error');
+                return;
+            }
+            
+            this.submitting = true;
+            
+            // Clear saved data on successful submission
+            localStorage.removeItem('quotationFormData');
+        },
+
+        showNotification(message, type) {
+            // Create toast notification
+            const notification = document.createElement('div');
+            notification.className = `fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm w-full transform transition-all duration-300 ease-in-out ${
+                type === 'success' ? 'bg-green-500 text-white' : 
+                type === 'error' ? 'bg-red-500 text-white' : 
+                'bg-blue-500 text-white'
+            }`;
+            
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        ${type === 'success' 
+                            ? '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>'
+                            : type === 'error'
+                            ? '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>'
+                            : '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 011-1 1 1 0 010 2v3a1 1 0 001 1h1a1 1 0 110 2v.01a1 1 0 01-1 1H9a1 1 0 01-1-1V10a1 1 0 011-1V6z" clip-rule="evenodd"></path></svg>'
+                        }
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium">${message}</p>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-auto flex-shrink-0 rounded-lg p-1 hover:bg-black/10">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
         }
+    }
+}
 
         // Enhanced form validation and UX improvements
         document.addEventListener('DOMContentLoaded', function() {
@@ -762,6 +740,95 @@
                 }
             });
         });
+        // Format budget input with thousand separators
+function formatBudgetInput(element) {
+    let value = element.value || element.target.value;
+    
+    // Remove all non-numeric characters except decimal point
+    value = value.replace(/[^0-9]/g, '');
+    
+    // Don't format if empty
+    if (!value) {
+        if (element.target) {
+            element.target.value = '';
+        } else {
+            element.value = '';
+        }
+        return;
+    }
+    
+    // Convert to number and back to string to remove leading zeros
+    value = parseInt(value).toString();
+    
+    // Add thousand separators
+    const formatted = value.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    
+    // Update the input
+    if (element.target) {
+        element.target.value = formatted;
+    } else {
+        element.value = formatted;
+    }
+    
+    // Update Alpine.js model if available
+    if (typeof Alpine !== 'undefined' && element.target && element.target._x_model) {
+        Alpine.store('quotationForm').formData.budget = value;
+    }
+}
+
+// Set budget value from quick selection buttons
+function setBudgetValue(amount) {
+    const budgetInput = document.getElementById('budget');
+    if (budgetInput) {
+        budgetInput.value = amount.toLocaleString('id-ID');
+        budgetInput.focus();
+        
+        // Trigger input event for Alpine.js
+        const event = new Event('input', { bubbles: true });
+        budgetInput.dispatchEvent(event);
+        
+        // Validate the budget
+        validateBudget(budgetInput);
+    }
+}
+
+// Validate budget and show feedback
+function validateBudget(element) {
+    const input = element.target || element;
+    const value = parseInt(input.value.replace(/[^0-9]/g, ''));
+    const feedbackContainer = document.getElementById('budget-feedback');
+    const warningDiv = feedbackContainer?.querySelector('.budget-warning');
+    const successDiv = feedbackContainer?.querySelector('.budget-success');
+    
+    if (!feedbackContainer || !value) {
+        feedbackContainer?.classList.add('hidden');
+        return;
+    }
+    
+    // Hide all feedback first
+    warningDiv?.classList.add('hidden');
+    successDiv?.classList.add('hidden');
+    
+    // Show feedback based on budget amount
+    if (value < 5000000) { // Less than 5M IDR
+        warningDiv?.classList.remove('hidden');
+        feedbackContainer.classList.remove('hidden');
+    } else if (value >= 5000000) { // 5M IDR or more
+        successDiv?.classList.remove('hidden');
+        feedbackContainer.classList.remove('hidden');
+    } else {
+        feedbackContainer.classList.add('hidden');
+    }
+}
+
+// Initialize budget formatting on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const budgetInput = document.getElementById('budget');
+    if (budgetInput && budgetInput.value) {
+        formatBudgetInput(budgetInput);
+        validateBudget(budgetInput);
+    }
+});
     </script>
     @endpush
 

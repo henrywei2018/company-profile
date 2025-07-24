@@ -93,50 +93,77 @@ class ClientAccessService
     {
         return $quotation->client_id === $client->id;
     }
+    public function getClientProjectsWithStats(User $user, array $filters = []): array
+{
+    $projectsQuery = $this->getClientProjects($user, $filters);
+    
+    // Clone query for statistics to avoid affecting main query
+    $statsQuery = clone $projectsQuery;
+    
+    $statistics = [
+        'total' => $statsQuery->count(),
+        'planning' => (clone $statsQuery)->where('status', 'planning')->count(),
+        'in_progress' => (clone $statsQuery)->where('status', 'in_progress')->count(),
+        'completed' => (clone $statsQuery)->where('status', 'completed')->count(),
+        'on_hold' => (clone $statsQuery)->where('status', 'on_hold')->count(),
+        'cancelled' => (clone $statsQuery)->where('status', 'cancelled')->count(),
+    ];
+    
+    return [
+        'query' => $projectsQuery,
+        'statistics' => $statistics
+    ];
+}
 
     /**
      * Get client statistics
      */
-    public function getClientStatistics(User $client): array
-    {
-        $cacheKey = "client_stats_{$client->id}";
+    public function getClientStatistics(User $client, array $filters = []): array
+{
+    $cacheKey = "client_stats_{$client->id}_" . md5(serialize($filters));
 
-        return Cache::remember($cacheKey, 300, function () use ($client) { // 5 minutes cache
-            return [
-                'projects' => [
-                    'total' => $this->getClientProjects($client)->count(),
-                    'active' => $this->getClientProjects($client)->whereIn('status', ['in_progress', 'on_hold'])->count(),
-                    'completed' => $this->getClientProjects($client)->where('status', 'completed')->count(),
-                    'overdue' => $this->getClientProjects($client)
-                        ->where('status', 'in_progress')
-                        ->where('end_date', '<', now())
-                        ->whereNotNull('end_date')
-                        ->count(),
-                ],
-                'quotations' => [
-                    'total' => $this->getClientQuotations($client)->count(),
-                    'pending' => $this->getClientQuotations($client)->where('status', 'pending')->count(),
-                    'approved' => $this->getClientQuotations($client)->where('status', 'approved')->count(),
-                    'rejected' => $this->getClientQuotations($client)->where('status', 'rejected')->count(),
-                ],
-                'messages' => [
-                    'total' => $this->getClientMessages($client)->count(),
-                    'unread' => $this->getClientMessages($client)->where('is_read', false)->count(),
-                    'this_week' => $this->getClientMessages($client)
-                        ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
-                        ->count(),
-                ],
-                'testimonials' => [
-                    'total' => Testimonial::whereHas('project', function ($query) use ($client) {
-                        $query->where('client_id', $client->id);
-                    })->count(),
-                    'published' => Testimonial::whereHas('project', function ($query) use ($client) {
-                        $query->where('client_id', $client->id);
-                    })->where('is_active', true)->count(),
-                ],
-            ];
-        });
-    }
+    return Cache::remember($cacheKey, 300, function () use ($client, $filters) { // 5 minutes cache
+        $projectsQuery = $this->getClientProjects($client, $filters);
+        
+        return [
+            'projects' => [
+                'total' => (clone $projectsQuery)->count(),
+                'planning' => (clone $projectsQuery)->where('status', 'planning')->count(),
+                'in_progress' => (clone $projectsQuery)->where('status', 'in_progress')->count(),
+                'completed' => (clone $projectsQuery)->where('status', 'completed')->count(),
+                'on_hold' => (clone $projectsQuery)->where('status', 'on_hold')->count(),
+                'cancelled' => (clone $projectsQuery)->where('status', 'cancelled')->count(),
+                'active' => (clone $projectsQuery)->whereIn('status', ['in_progress', 'on_hold'])->count(),
+                'overdue' => (clone $projectsQuery)
+                    ->where('status', 'in_progress')
+                    ->where('end_date', '<', now())
+                    ->whereNotNull('end_date')
+                    ->count(),
+            ],
+            'quotations' => [
+                'total' => $this->getClientQuotations($client)->count(),
+                'pending' => $this->getClientQuotations($client)->where('status', 'pending')->count(),
+                'approved' => $this->getClientQuotations($client)->where('status', 'approved')->count(),
+                'rejected' => $this->getClientQuotations($client)->where('status', 'rejected')->count(),
+            ],
+            'messages' => [
+                'total' => $this->getClientMessages($client)->count(),
+                'unread' => $this->getClientMessages($client)->where('is_read', false)->count(),
+                'this_week' => $this->getClientMessages($client)
+                    ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
+                    ->count(),
+            ],
+            'testimonials' => [
+                'total' => Testimonial::whereHas('project', function ($query) use ($client) {
+                    $query->where('client_id', $client->id);
+                })->count(),
+                'published' => Testimonial::whereHas('project', function ($query) use ($client) {
+                    $query->where('client_id', $client->id);
+                })->where('is_active', true)->count(),
+            ],
+        ];
+    });
+}
 
     /**
      * Clear client cache
@@ -392,12 +419,67 @@ public function canEscalateMessage(User $user, Message $message): bool
 /**
  * Get client's projects for message context
  */
-public function getClientProjects(User $user): Builder
+public function getClientProjects(User $user, array $filters = []): Builder
 {
-    return Project::query()
+    $query = Project::query()
         ->where(function ($query) use ($user) {
             $query->where('client_id', $user->id);
         });
+
+    // Apply search filter
+    if (!empty($filters['search'])) {
+        $search = $filters['search'];
+        $query->where(function($q) use ($search) {
+            $q->where('title', 'like', "%{$search}%")
+              ->orWhere('description', 'like', "%{$search}%")
+              ->orWhere('location', 'like', "%{$search}%");
+        });
+    }
+
+    // Apply status filter
+    if (!empty($filters['status'])) {
+        $query->where('status', $filters['status']);
+    }
+
+    // Apply category filter
+    if (!empty($filters['category'])) {
+        $query->where('category_id', $filters['category']);
+    }
+
+    // Apply year filter
+    if (!empty($filters['year'])) {
+        $query->whereYear('created_at', $filters['year']);
+    }
+
+    // Apply service filter (if your projects have service_id)
+    if (!empty($filters['service'])) {
+        $query->where('service_id', $filters['service']);
+    }
+
+    // Apply date range filters
+    if (!empty($filters['date_from'])) {
+        $query->whereDate('created_at', '>=', $filters['date_from']);
+    }
+
+    if (!empty($filters['date_to'])) {
+        $query->whereDate('created_at', '<=', $filters['date_to']);
+    }
+
+    // Apply budget range filters (if needed)
+    if (!empty($filters['budget_min'])) {
+        $query->where('budget', '>=', $filters['budget_min']);
+    }
+
+    if (!empty($filters['budget_max'])) {
+        $query->where('budget', '<=', $filters['budget_max']);
+    }
+
+    // Apply priority filter (if your projects have priority)
+    if (!empty($filters['priority'])) {
+        $query->where('priority', $filters['priority']);
+    }
+
+    return $query;
 }
 
 /**

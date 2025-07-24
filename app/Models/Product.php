@@ -299,6 +299,10 @@ class Product extends Model
             default => 'Unknown'
         };
     }
+    public function getRouteKeyName()
+    {
+        return 'slug';
+    }
 
     /**
      * Get the stock status color class.

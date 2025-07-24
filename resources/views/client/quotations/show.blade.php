@@ -209,12 +209,42 @@
                             </div>
                         @endif
 
-                        @if($quotation->budget_range)
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Budget Range</label>
-                                <p class="text-sm text-gray-900 dark:text-white font-medium">{{ $quotation->budget_range }}</p>
-                            </div>
-                        @endif
+                        @if($quotation->budget)
+    <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Project Budget</label>
+        <div class="flex items-center">
+            <span class="text-lg font-semibold text-gray-900 dark:text-white">
+                Rp.{{ number_format($quotation->budget, 0, ',', '.') }}
+            </span>
+            @if($quotation->budget >= 50000000)
+                <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    Premium Project
+                </span>
+            @elseif($quotation->budget >= 10000000)
+                <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    Large Project
+                </span>
+            @elseif($quotation->budget >= 5000000)
+                <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                    Medium Project
+                </span>
+            @else
+                <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                    Small Project
+                </span>
+            @endif
+        </div>
+        
+        {{-- Budget breakdown or additional info can go here --}}
+        <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            @if($quotation->budget >= 10000000)
+                Includes premium consultation and dedicated project manager
+            @else
+                Standard project package with regular updates
+            @endif
+        </div>
+    </div>
+@endif
 
                         @if($quotation->start_date)
                             <div>
