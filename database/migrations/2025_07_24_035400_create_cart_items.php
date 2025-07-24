@@ -10,21 +10,19 @@ return new class extends Migration
     {
         Schema::create('cart_items', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
             
-            // Support both logged in and guest users
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('session_id')->nullable(); // For guest users
-            
-            $table->foreignId('product_id')->constrained();
             $table->integer('quantity');
             $table->text('specifications')->nullable();
             
             $table->timestamps();
-            
-            // Cleanup old carts automatically
-            $table->index(['user_id']);
-            $table->index(['session_id']);
-            $table->index(['created_at']); // For cleanup
+        });
+
+        Schema::table('cart_items', function (Blueprint $table) {
+            $table->unique(['user_id', 'product_id'], 'idx_cart_user_product_unique');
+            $table->index(['user_id'], 'idx_cart_user');
+            $table->index(['product_id'], 'idx_cart_product');
         });
     }
 

@@ -10,23 +10,22 @@ return new class extends Migration
     {
         Schema::create('product_order_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('product_order_id')->constrained()->onDelete('cascade');
-            $table->foreignId('product_id')->constrained();
+            $table->foreignId('product_order_id')->constrained('product_orders')->onDelete('cascade');
+            $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
             
-            // Essential item info
             $table->integer('quantity');
-            $table->decimal('price', 15, 2); // Price at time of order
-            $table->decimal('total', 15, 2); // quantity * price
-            
-            // Optional specifications
+            $table->decimal('price', 15, 2);
+            $table->decimal('total', 15, 2);
             $table->text('specifications')->nullable();
             $table->text('notes')->nullable();
             
             $table->timestamps();
-            
-            // Simple indexes
-            $table->index(['product_order_id']);
-            $table->index(['product_id']);
+        });
+
+        Schema::table('product_order_items', function (Blueprint $table) {
+            $table->index(['product_order_id'], 'idx_poi_order');
+            $table->index(['product_id'], 'idx_poi_product');
+            $table->index(['product_order_id', 'product_id'], 'idx_poi_order_product');
         });
     }
 

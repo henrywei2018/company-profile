@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Client\{
     DashboardController as ClientDashboardController,
     NotificationPreferencesController,
+    ProductOrderController,
     ProjectController,
     QuotationController,
     MessageController,
@@ -72,6 +73,20 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::post('/{project}/testimonial', [ProjectController::class, 'storeTestimonial'])->middleware('throttle:3,1')->name('testimonial.store');
     });
 
+    Route::prefix('orders')->name('orders.')->group(function () {
+        Route::get('/', [ProductOrderController::class, 'index'])->name('index');
+        Route::get('/{order}', [ProductOrderController::class, 'show'])->name('show');
+        Route::get('/checkout/form', [ProductOrderController::class, 'checkout'])->name('checkout');
+        Route::post('/', [ProductOrderController::class, 'store'])->name('store');
+    });
+    Route::prefix('cart')->name('cart.')->group(function () {
+        Route::get('/', [ProductOrderController::class, 'cart'])->name('index');
+        Route::post('/add', [ProductOrderController::class, 'addToCart'])->name('add');
+        Route::delete('/remove', [ProductOrderController::class, 'removeFromCart'])->name('remove');
+        Route::put('/update', [ProductOrderController::class, 'updateCartQuantity'])->name('update');
+        Route::delete('/clear', [ProductOrderController::class, 'clearCart'])->name('clear');
+        Route::get('/count', [ProductOrderController::class, 'getCartCount'])->name('count');
+    });
     // Main quotation routes
     
     Route::prefix('quotations')->name('quotations.')->group(function () {

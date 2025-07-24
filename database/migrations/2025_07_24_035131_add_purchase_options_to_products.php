@@ -9,26 +9,30 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            // Simple purchase behavior - just 2 options
             if (!Schema::hasColumn('products', 'purchase_type')) {
                 $table->enum('purchase_type', ['direct', 'quote'])->default('direct')->after('price_type');
             }
             
-            // Minimum order only (most important)
             if (!Schema::hasColumn('products', 'min_quantity')) {
                 $table->integer('min_quantity')->default(1)->after('stock_quantity');
             }
             
-            // Simple lead time
             if (!Schema::hasColumn('products', 'lead_days')) {
                 $table->integer('lead_days')->nullable()->after('min_quantity');
             }
+        });
+
+        Schema::table('products', function (Blueprint $table) {
+            $table->index(['purchase_type'], 'idx_products_purchase_type');
+            $table->index(['purchase_type', 'status'], 'idx_products_purchase_status');
         });
     }
 
     public function down(): void
     {
         Schema::table('products', function (Blueprint $table) {
+            $table->dropIndex('idx_products_purchase_type');
+            $table->dropIndex('idx_products_purchase_status');
             $table->dropColumn(['purchase_type', 'min_quantity', 'lead_days']);
         });
     }

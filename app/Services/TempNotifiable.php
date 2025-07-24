@@ -191,6 +191,10 @@ class TempNotifiable
         
         return new self($email, $name, $data);
     }
+    public static function forProductOrder(string $email, string $name): self
+    {
+        return new self($email, $name);
+    }
 
     /**
      * Create a temp notifiable for a quotation recipient

@@ -46,6 +46,9 @@ class Product extends Model
         'is_featured',
         'is_active',
         'sort_order',
+        'purchase_type',
+        'min_quantity', 
+        'lead_days',
     ];
 
     /**
@@ -126,6 +129,51 @@ class Product extends Model
     public function featuredImageModel()
     {
         return $this->hasOne(ProductImage::class)->where('is_featured', true);
+    }
+    public function canAddToCart()
+    {
+        return $this->purchase_type === 'direct' && 
+               $this->getCurrentPriceAttribute() > 0 &&
+               $this->status === 'published' &&
+               $this->is_active;
+    }
+    public function cartItems()
+    {
+        return $this->hasMany(CartItem::class);
+    }
+
+    public function orderItems()
+    {
+        return $this->hasMany(ProductOrderItem::class);
+    }
+
+    public function requiresQuote()
+    {
+        return $this->purchase_type === 'quote' || 
+               $this->getCurrentPriceAttribute() === null;
+    }
+    public function scopeCanAddToCart($query)
+    {
+        return $query->where('purchase_type', 'direct')
+                    ->where('price_type', 'fixed')
+                    ->where('status', 'published')
+                    ->where('is_active', true)
+                    ->where(function($q) {
+                        $q->whereNotNull('price')->where('price', '>', 0)
+                          ->orWhere(function($sq) {
+                              $sq->whereNotNull('sale_price')->where('sale_price', '>', 0);
+                          });
+                    });
+    }
+
+    public function scopeRequiresQuote($query)
+    {
+        return $query->where(function($q) {
+            $q->where('purchase_type', 'quote')
+              ->orWhereIn('price_type', ['quote', 'contact'])
+              ->orWhere('price', '<=', 0)
+              ->orWhereNull('price');
+        });
     }
 
     /**
@@ -299,6 +347,16 @@ class Product extends Model
             default => 'Unknown'
         };
     }
+    public function getStockBadgeClass()
+    {
+        $status = $this->getStockStatus();
+        return match($status) {
+            'In Stock' => 'badge-success',
+            'Low Stock' => 'badge-warning',
+            'Out of Stock' => 'badge-danger',
+            default => 'badge-secondary'
+        };
+    }
     public function getRouteKeyName()
     {
         return 'slug';
@@ -327,6 +385,22 @@ class Product extends Model
         }
         
         return $this->stock_quantity > 0 && $this->stock_status === 'in_stock';
+    }
+    public function getStockStatus()
+    {
+        if (!$this->manage_stock) {
+            return 'In Stock';
+        }
+        
+        if ($this->stock_quantity <= 0) {
+            return 'Out of Stock';
+        }
+        
+        if ($this->stock_quantity <= 5) {
+            return 'Low Stock';
+        }
+        
+        return 'In Stock';
     }
 
     /**

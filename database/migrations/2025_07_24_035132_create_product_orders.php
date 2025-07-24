@@ -11,36 +11,29 @@ return new class extends Migration
         Schema::create('product_orders', function (Blueprint $table) {
             $table->id();
             $table->string('order_number')->unique();
+            $table->foreignId('client_id')->constrained('users')->onDelete('cascade');
             
-            // Client info - support both registered and guest
-            $table->foreignId('client_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->string('client_name');
-            $table->string('client_email');
-            $table->string('client_phone')->nullable();
+            $table->enum('status', [
+                'pending', 'confirmed', 'processing', 'ready', 'delivered', 'completed'
+            ])->default('pending');
             
-            // Simple status flow
-            $table->enum('status', ['pending', 'confirmed', 'processing', 'ready', 'delivered', 'completed'])->default('pending');
-            
-            // Financial - keep it simple
             $table->decimal('total_amount', 15, 2)->default(0);
             $table->text('delivery_address');
             $table->date('needed_date')->nullable();
-            
-            // Notes
             $table->text('notes')->nullable();
             $table->text('admin_notes')->nullable();
             
-            // Link to existing systems
             $table->foreignId('quotation_id')->nullable()->constrained('quotations')->nullOnDelete();
             $table->boolean('needs_quotation')->default(false);
             
             $table->timestamps();
-            
-            // Essential indexes only
-            $table->index(['status', 'created_at']);
-            $table->index(['client_id']);
-            $table->index(['client_email']);
-            $table->index(['quotation_id']);
+        });
+
+        Schema::table('product_orders', function (Blueprint $table) {
+            $table->index(['client_id', 'status', 'created_at'], 'idx_po_client_status_date');
+            $table->index(['status'], 'idx_po_status');
+            $table->index(['quotation_id'], 'idx_po_quotation');
+            $table->index(['needs_quotation'], 'idx_po_needs_quotation');
         });
     }
 
