@@ -314,7 +314,7 @@ class DashboardController extends Controller
                 'pending_approvals' => $user->quotations()->where('status', 'pending')->count(),
                 'overdue_projects' => $user->projects()
                     ->where('status', 'in_progress')
-                    ->where('deadline', '<', now())
+                    ->where('end_date', '<', now())
                     ->count(),
             ];
         } catch (\Exception $e) {

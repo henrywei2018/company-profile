@@ -38,10 +38,6 @@ return new class extends Migration
             $table->boolean('manage_stock')->default(false);
             $table->enum('stock_status', ['in_stock', 'out_of_stock', 'on_backorder'])->default('in_stock');
             
-            // Media
-            $table->string('featured_image')->nullable();
-            $table->json('gallery')->nullable(); // Store multiple image paths
-            
             // Product Specifications
             $table->json('specifications')->nullable(); // General specs (color, material, etc.)
             $table->json('technical_specs')->nullable(); // Technical specifications

@@ -1,4 +1,8 @@
 {{-- resources/views/admin/products/edit.blade.php --}}
+@push('meta')
+    <meta name="update-route" content="{{ route('admin.products.update', $product) }}">
+    <meta name="temp-files-route" content="{{ route('admin.products.temp-files') }}">
+@endpush
 <x-layouts.admin title="Edit Product - {{ $product->name }}">
     <!-- Breadcrumb -->
     <x-admin.breadcrumb :items="[
@@ -300,63 +304,211 @@
                 <x-admin.card>
                     <x-slot name="header">
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Product Images</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Manage product images</p>
                     </x-slot>
 
                     <div class="space-y-6">
-                        <!-- Current Images Display -->
-                        @if ($product->featured_image || ($product->gallery && count($product->gallery) > 0))
+                        {{-- Current Images Display --}}
+                        @if ($product->images->count() > 0 || $product->featured_image || ($product->gallery && count($product->gallery) > 0))
                             <div class="space-y-4">
-                                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200">Current Images</h4>
+                                <div class="flex items-center justify-between">
+                                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200">Current Images
+                                    </h4>
+                                    <span class="text-xs text-gray-500">
+                                        {{ $product->images->count() }} relationship +
+                                        {{ $product->featured_image ? 1 : 0 }} featured +
+                                        {{ $product->gallery ? count($product->gallery) : 0 }} gallery
+                                    </span>
+                                </div>
 
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+                                    id="current-images-grid">
+
+                                    {{-- ProductImage Relationship (New Approach) --}}
+                                    @foreach ($product->images as $image)
+                                        <div class="relative group image-item" data-image-id="{{ $image->id }}"
+                                            data-image-type="relationship"
+                                            data-featured="{{ $image->is_featured ? 'true' : 'false' }}">
+
+                                            <div
+                                                class="aspect-square rounded-lg overflow-hidden {{ $image->is_featured ? 'ring-2 ring-blue-500' : 'border border-gray-300' }} bg-gray-100">
+                                                <img src="{{ $image->image_url }}" alt="{{ $image->alt_text }}"
+                                                    class="w-full h-full object-cover">
+                                            </div>
+
+                                            {{-- Featured Badge --}}
+                                            @if ($image->is_featured)
+                                                <div class="absolute top-2 left-2">
+                                                    <span
+                                                        class="bg-blue-500 text-white text-xs px-2 py-1 rounded font-medium">
+                                                        Featured
+                                                    </span>
+                                                </div>
+                                            @endif
+
+                                            {{-- Image Controls --}}
+                                            <div
+                                                class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                                <div class="flex space-x-2">
+                                                    {{-- Featured Toggle --}}
+                                                    <button type="button"
+                                                        onclick="toggleFeaturedImage({{ $image->id }})"
+                                                        class="p-2 rounded-full transition-colors {{ $image->is_featured ? 'bg-yellow-500 text-white' : 'bg-white text-gray-700 hover:bg-yellow-100' }}"
+                                                        title="{{ $image->is_featured ? 'Remove from featured' : 'Set as featured' }}">
+                                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path
+                                                                d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                        </svg>
+                                                    </button>
+
+                                                    {{-- Delete Button --}}
+                                                    <button type="button"
+                                                        onclick="deleteProductImage({{ $image->id }})"
+                                                        class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                                        title="Delete image">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {{-- Drag Handle --}}
+                                            @if (!$image->is_featured)
+                                                <div
+                                                    class="drag-handle absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity cursor-move">
+                                                    <div class="p-1 bg-white rounded shadow">
+                                                        <svg class="w-3 h-3 text-gray-600" fill="currentColor"
+                                                            viewBox="0 0 20 20">
+                                                            <path
+                                                                d="M7 2a2 2 0 00-2 2v12a2 2 0 002 2h6a2 2 0 002-2V4a2 2 0 00-2-2H7zM8 4h4v2H8V4zm0 4h4v2H8V8zm0 4h4v2H8v-2z" />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            @endif
+
+                                            {{-- Alt Text Input --}}
+                                            <div class="mt-2">
+                                                <input type="text"
+                                                    onchange="updateImageAltText({{ $image->id }}, this.value)"
+                                                    value="{{ $image->alt_text }}" placeholder="Alt text for SEO"
+                                                    class="w-full text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 dark:bg-gray-700 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                        </div>
+                                    @endforeach
+
+                                    {{-- Legacy Images (if any) --}}
                                     @if ($product->featured_image)
-                                        <div class="relative group">
-                                            <img src="{{ Storage::url($product->featured_image) }}"
-                                                alt="Featured Image"
-                                                class="w-full h-32 object-cover rounded-lg border-2 border-blue-500">
+                                        <div class="relative group image-item"
+                                            data-image-path="{{ $product->featured_image }}"
+                                            data-image-type="legacy-featured">
+                                            <div
+                                                class="aspect-square rounded-lg overflow-hidden ring-2 ring-orange-500 bg-gray-100">
+                                                <img src="{{ Storage::url($product->featured_image) }}"
+                                                    alt="Legacy Featured Image" class="w-full h-full object-cover">
+                                            </div>
                                             <div class="absolute top-2 left-2">
                                                 <span
-                                                    class="bg-blue-500 text-white text-xs px-2 py-1 rounded">Featured</span>
+                                                    class="bg-orange-500 text-white text-xs px-2 py-1 rounded font-medium">
+                                                    Legacy Featured
+                                                </span>
                                             </div>
-                                            <button type="button"
-                                                onclick="deleteExistingImage('{{ $product->featured_image }}', 'featured')"
-                                                class="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                                </svg>
-                                            </button>
+                                            <div
+                                                class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                                <button type="button"
+                                                    onclick="deleteExistingImage('{{ $product->featured_image }}', 'featured')"
+                                                    class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                                    title="Delete legacy image">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </div>
                                         </div>
                                     @endif
 
                                     @if ($product->gallery && is_array($product->gallery))
-                                        @foreach ($product->gallery as $image)
-                                            <div class="relative group">
-                                                <img src="{{ Storage::url($image) }}" alt="Gallery Image"
-                                                    class="w-full h-32 object-cover rounded-lg border border-gray-300">
-                                                <button type="button"
-                                                    onclick="deleteExistingImage('{{ $image }}', 'gallery')"
-                                                    class="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                                    </svg>
-                                                </button>
+                                        @foreach ($product->gallery as $index => $image)
+                                            <div class="relative group image-item"
+                                                data-image-path="{{ $image }}"
+                                                data-image-type="legacy-gallery">
+                                                <div
+                                                    class="aspect-square rounded-lg overflow-hidden border border-orange-300 bg-gray-100">
+                                                    <img src="{{ Storage::url($image) }}"
+                                                        alt="Legacy Gallery Image {{ $index + 1 }}"
+                                                        class="w-full h-full object-cover">
+                                                </div>
+                                                <div class="absolute top-2 left-2">
+                                                    <span
+                                                        class="bg-orange-400 text-white text-xs px-2 py-1 rounded font-medium">
+                                                        Legacy Gallery
+                                                    </span>
+                                                </div>
+                                                <div
+                                                    class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                                    <button type="button"
+                                                        onclick="deleteExistingImage('{{ $image }}', 'gallery', {{ $index }})"
+                                                        class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                                        title="Delete legacy image">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
                                             </div>
                                         @endforeach
                                     @endif
                                 </div>
+
+                                {{-- Instructions --}}
+                                <div
+                                    class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20"
+                                                fill="currentColor">
+                                                <path fill-rule="evenodd"
+                                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                                    clip-rule="evenodd" />
+                                            </svg>
+                                        </div>
+                                        <div class="ml-3">
+                                            <h5 class="text-sm font-medium text-blue-800 dark:text-blue-200">Image
+                                                Management</h5>
+                                            <div class="mt-1 text-sm text-blue-700 dark:text-blue-300">
+                                                <ul class="list-disc list-inside space-y-1">
+                                                    <li><strong>Blue border</strong>: Current system (ProductImage
+                                                        relationship)</li>
+                                                    <li><strong>Orange border</strong>: Legacy system (database fields)
+                                                    </li>
+                                                    <li>Drag to reorder • Click star to set featured • New uploads use
+                                                        current system</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         @endif
 
-                        <!-- Image Upload Component -->
+                        {{-- Upload New Images --}}
                         <div>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Upload New Images</h4>
+
                             <x-universal-file-uploader :uploadUrl="route('admin.products.temp-upload')" :deleteUrl="route('admin.products.temp-delete')" :maxFiles="10"
                                 :maxFileSize="2048" :acceptedTypes="['image/jpeg', 'image/png', 'image/jpg', 'image/gif']" component="product-images-uploader"
-                                :showFeaturedToggle="true" :allowReorder="true" title="Upload Product Images"
-                                description="Upload high-quality images of your product. The first image or marked featured image will be used as the main product image." />
+                                :showFeaturedToggle="false" :allowReorder="false" title="Upload Product Images"
+                                description="Upload high-quality images. New images will be stored using the current ProductImage system."
+                                :enableCategories="false" :autoUpload="true" :galleryMode="true" theme="modern" />
                         </div>
                     </div>
                 </x-admin.card>
@@ -627,260 +779,407 @@
             </div>
         </div>
     </form>
+@push('scripts')
+<script>
+// Clean Product Edit Script
+document.addEventListener('DOMContentLoaded', function() {
+    initializeProductEdit();
+});
 
-    @push('scripts')
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                // Global variables to track uploaded images
-                window.uploadedImages = {
-                    featured: null,
-                    gallery: []
-                };
+function initializeProductEdit() {
+    // Initialize image management
+    initializeImageHandlers();
+    
+    // Initialize universal uploader events
+    initializeUploaderEvents();
+    
+    // Load existing temp files
+    loadExistingTempFiles();
+    
+    // Initialize other form handlers
+    initializeFormHandlers();
+}
 
-                // Initialize form handlers
-                initializePriceTypeToggle();
-                initializeStockManagement();
-                initializeSlugGeneration();
-                loadExistingTempFiles();
-
-                // Listen for universal uploader events
-                document.addEventListener('files-uploaded', function(event) {
-                    if (event.detail.component === 'product-images-uploader') {
-                        handleTempUploadSuccess(event.detail);
-                    }
-                });
-
-                document.addEventListener('file-deleted', function(event) {
-                    if (event.detail.component === 'product-images-uploader') {
-                        handleTempFileDelete(event.detail);
-                    }
-                });
-
-                // Form submission handling
-                document.getElementById('product-form').addEventListener('submit', function(e) {
-                    console.log('Product form submitting...');
-
-                    // Basic validation
-                    const name = document.getElementById('name').value.trim();
-                    const priceType = document.getElementById('price_type').value;
-                    const price = document.getElementById('price').value;
-
-                    if (!name) {
-                        e.preventDefault();
-                        showNotification('Please enter a product name.', 'error');
-                        return;
-                    }
-
-                    if (priceType === 'fixed' && (!price || parseFloat(price) <= 0)) {
-                        e.preventDefault();
-                        showNotification('Please enter a valid price for fixed price products.', 'error');
-                        return;
-                    }
-
-                    // Show loading state
-                    const submitButton = e.target.querySelector('button[type="submit"]');
-                    if (submitButton) {
-                        submitButton.disabled = true;
-                        submitButton.innerHTML = `
-                            <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Updating Product...
-                        `;
-                    }
-                });
-            });
-
-            // Price type toggle functionality
-            function initializePriceTypeToggle() {
-                const priceTypeSelect = document.getElementById('price_type');
-                const pricingFields = document.getElementById('pricing-fields');
-
-                function togglePricingFields() {
-                    if (priceTypeSelect.value === 'fixed') {
-                        pricingFields.style.display = 'grid';
-                    } else {
-                        pricingFields.style.display = 'none';
-                    }
-                }
-
-                priceTypeSelect.addEventListener('change', togglePricingFields);
-                togglePricingFields(); // Initialize on page load
+// Image Management Functions
+function initializeImageHandlers() {
+    // Initialize sortable if library is available
+    const currentImagesGrid = document.getElementById('current-images-grid');
+    if (currentImagesGrid && typeof Sortable !== 'undefined') {
+        new Sortable(currentImagesGrid, {
+            animation: 150,
+            ghostClass: 'opacity-50',
+            chosenClass: 'ring-2 ring-blue-500',
+            dragClass: 'transform rotate-2 scale-105',
+            handle: '.drag-handle',
+            filter: '[data-featured="true"]', // Don't sort featured images
+            onEnd: function(evt) {
+                updateImageOrder();
             }
-
-            // Stock management toggle
-            function initializeStockManagement() {
-                const manageStockCheckbox = document.getElementById('manage_stock');
-                const stockFields = document.getElementById('stock-fields');
-
-                function toggleStockFields() {
-                    if (manageStockCheckbox.checked) {
-                        stockFields.style.display = 'grid';
-                    } else {
-                        stockFields.style.display = 'none';
-                    }
-                }
-
-                manageStockCheckbox.addEventListener('change', toggleStockFields);
-                toggleStockFields(); // Initialize on page load
-            }
-
-            // Auto-generate slug from name
-            function initializeSlugGeneration() {
-                const nameInput = document.getElementById('name');
-                const slugInput = document.getElementById('slug');
-
-                nameInput.addEventListener('input', function() {
-                    if (!slugInput.value || slugInput.dataset.autoGenerated !== 'false') {
-                        const slug = this.value
-                            .toLowerCase()
-                            .replace(/[^a-z0-9\s-]/g, '')
-                            .replace(/\s+/g, '-')
-                            .replace(/-+/g, '-')
-                            .trim('-');
-
-                        slugInput.value = slug;
-                        slugInput.dataset.autoGenerated = 'true';
-                    }
-                });
-
-                slugInput.addEventListener('input', function() {
-                    this.dataset.autoGenerated = 'false';
-                });
-            }
-
-            // Specification management
-            let specificationIndex =
-                {{ old('specifications', $product->specifications) ? count(old('specifications', $product->specifications)) : 0 }};
-
-            function addSpecification() {
-                const container = document.getElementById('specifications-container');
-                const newRow = document.createElement('div');
-                newRow.className = 'flex gap-3 specification-row';
-                newRow.innerHTML = `
-                    <input type="text" name="specifications[${specificationIndex}][key]" 
-                           placeholder="Specification name"
-                           class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300">
-                    <input type="text" name="specifications[${specificationIndex}][value]" 
-                           placeholder="Specification value"
-                           class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300">
-                    <button type="button" onclick="removeSpecification(this)" 
-                            class="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                `;
-                container.appendChild(newRow);
-                specificationIndex++;
-            }
-
-            function removeSpecification(button) {
-                button.closest('.specification-row').remove();
-            }
-
-            // Temporary image handling
-            function handleTempUploadSuccess(detail) {
-                console.log('Temp upload success:', detail);
-                // The universal uploader component handles display
-            }
-
-            function handleTempFileDelete(detail) {
-                console.log('Temp file deleted:', detail);
-                // The universal uploader component handles removal
-            }
-
-            function loadExistingTempFiles() {
-                fetch('{{ route('admin.products.temp-files') }}')
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.length > 0) {
-                            // Populate the uploader with existing temp files
-                            const event = new CustomEvent('load-temp-files', {
-                                detail: {
-                                    files: data,
-                                    component: 'product-images-uploader'
-                                }
-                            });
-                            document.dispatchEvent(event);
-                        }
-                    })
-                    .catch(error => console.error('Error loading temp files:', error));
-            }
-
-            // Existing image management
-            function deleteExistingImage(imagePath, type) {
-                if (!confirm('Are you sure you want to delete this image?')) {
-                    return;
-                }
-
-                fetch('{{ route('admin.products.delete-image', $product) }}', {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
-                        body: JSON.stringify({
-                            image_path: imagePath,
-                            type: type
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Remove the image element from the DOM
-                            event.target.closest('.relative').remove();
-                            showNotification('Image deleted successfully!', 'success');
-                        } else {
-                            showNotification('Failed to delete image.', 'error');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        showNotification('Failed to delete image.', 'error');
-                    });
-            }
-
-            // Quick actions
-            function saveAsDraft() {
-                document.getElementById('status').value = 'draft';
-                document.getElementById('product-form').submit();
-            }
-
-            function deleteProduct(productSlug) {
-    if (confirm('Are you sure you want to delete this product?')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/admin/products/${productSlug}`;
-        
-        const csrfToken = document.createElement('input');
-        csrfToken.type = 'hidden';
-        csrfToken.name = '_token';
-        csrfToken.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        
-        const methodInput = document.createElement('input');
-        methodInput.type = 'hidden';
-        methodInput.name = '_method';
-        methodInput.value = 'DELETE';
-        
-        form.appendChild(csrfToken);
-        form.appendChild(methodInput);
-        document.body.appendChild(form);
-        form.submit();
+        });
     }
 }
 
-            // Utility function for notifications
-            function showNotification(message, type = 'info') {
-                // This should integrate with your notification system
-                // For now, using a simple alert
-                if (type === 'error') {
-                    alert('Error: ' + message);
-                } else {
-                    alert(message);
-                }
+// Toggle featured image (ProductImage relationship)
+function toggleFeaturedImage(imageId) {
+    showLoading();
+    
+    makeRequest('toggle_featured_product_image', {
+        image_id: imageId
+    })
+    .then(data => {
+        if (data.success) {
+            location.reload(); // Refresh to show updated status
+        } else {
+            showNotification(data.message || 'Error updating featured image', 'error');
+        }
+    })
+    .finally(() => {
+        hideLoading();
+    });
+}
+
+// Delete ProductImage (new approach)
+function deleteProductImage(imageId) {
+    if (!confirm('Are you sure you want to delete this image?')) {
+        return;
+    }
+
+    showLoading();
+    
+    makeRequest('delete_product_image', {
+        image_id: imageId
+    })
+    .then(data => {
+        if (data.success) {
+            removeImageFromUI(`[data-image-id="${imageId}"]`);
+            showNotification('Image deleted successfully', 'success');
+        } else {
+            showNotification(data.message || 'Error deleting image', 'error');
+        }
+    })
+    .finally(() => {
+        hideLoading();
+    });
+}
+
+// Update alt text for ProductImage
+function updateImageAltText(imageId, altText) {
+    makeRequest('update_image_alt_text', {
+        image_id: imageId,
+        alt_text: altText
+    })
+    .then(data => {
+        if (data.success) {
+            showNotification('Alt text updated', 'success');
+        } else {
+            showNotification('Error updating alt text', 'error');
+        }
+    });
+}
+
+// Delete legacy image (featured_image or gallery)
+function deleteExistingImage(imagePath, imageType, galleryIndex = null) {
+    if (!confirm('Are you sure you want to delete this image?')) {
+        return;
+    }
+
+    showLoading();
+    
+    makeRequest('delete_legacy_image', {
+        image_path: imagePath,
+        image_type: imageType,
+        gallery_index: galleryIndex
+    })
+    .then(data => {
+        if (data.success) {
+            removeImageFromUI(`[data-image-path="${imagePath}"]`);
+            showNotification('Image deleted successfully', 'success');
+        } else {
+            showNotification(data.message || 'Error deleting image', 'error');
+        }
+    })
+    .finally(() => {
+        hideLoading();
+    });
+}
+
+// Update image order after drag & drop
+function updateImageOrder() {
+    const imageItems = document.querySelectorAll('#current-images-grid [data-image-id]');
+    const imageOrder = Array.from(imageItems).map((item, index) => ({
+        id: item.dataset.imageId,
+        sort_order: index + 1
+    }));
+
+    if (imageOrder.length === 0) return;
+
+    makeRequest('update_image_order', {
+        image_order: imageOrder
+    })
+    .then(data => {
+        if (data.success) {
+            showNotification('Image order updated', 'success');
+        }
+    });
+}
+
+// Universal Uploader Event Handlers
+function initializeUploaderEvents() {
+    // Listen for upload success
+    document.addEventListener('files-uploaded', function(event) {
+        if (event.detail.component === 'product-images-uploader') {
+            handleTempUploadSuccess(event.detail);
+        }
+    });
+
+    // Listen for file deletion
+    document.addEventListener('file-deleted', function(event) {
+        if (event.detail.component === 'product-images-uploader') {
+            handleTempFileDelete(event.detail);
+        }
+    });
+}
+
+function handleTempUploadSuccess(detail) {
+    console.log('Temp upload success:', detail);
+    showNotification('Images uploaded successfully! Save the product to make them permanent.', 'success');
+}
+
+function handleTempFileDelete(detail) {
+    console.log('Temp file deleted:', detail);
+    showNotification('Temporary image removed', 'info');
+}
+
+// Load existing temporary files
+function loadExistingTempFiles() {
+    fetch('{{ route('admin.products.temp-files') }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                const event = new CustomEvent('load-temp-files', {
+                    detail: {
+                        files: data,
+                        component: 'product-images-uploader'
+                    }
+                });
+                document.dispatchEvent(event);
             }
-        </script>
-    @endpush
+        })
+        .catch(error => console.error('Error loading temp files:', error));
+}
+
+// Initialize other form handlers
+function initializeFormHandlers() {
+    // Price type toggle
+    const priceTypeSelect = document.getElementById('price_type');
+    if (priceTypeSelect) {
+        priceTypeSelect.addEventListener('change', togglePriceFields);
+        togglePriceFields(); // Initialize on load
+    }
+
+    // Stock management toggle
+    const manageStockCheckbox = document.getElementById('manage_stock');
+    if (manageStockCheckbox) {
+        manageStockCheckbox.addEventListener('change', toggleStockFields);
+        toggleStockFields(); // Initialize on load
+    }
+
+    // Slug generation
+    const nameInput = document.getElementById('name');
+    const slugInput = document.getElementById('slug');
+    if (nameInput && slugInput) {
+        nameInput.addEventListener('input', function() {
+            if (!slugInput.dataset.manual) {
+                slugInput.value = generateSlug(this.value);
+            }
+        });
+        
+        slugInput.addEventListener('input', function() {
+            this.dataset.manual = 'true';
+        });
+    }
+}
+
+// Helper Functions
+function togglePriceFields() {
+    const priceType = document.getElementById('price_type')?.value;
+    const priceField = document.getElementById('price-field');
+    const salePriceField = document.getElementById('sale-price-field');
+    
+    if (priceField && salePriceField && priceType) {
+        if (priceType === 'fixed') {
+            priceField.style.display = 'block';
+            salePriceField.style.display = 'block';
+        } else {
+            priceField.style.display = 'none';
+            salePriceField.style.display = 'none';
+        }
+    }
+}
+
+function toggleStockFields() {
+    const manageStock = document.getElementById('manage_stock')?.checked;
+    const stockQuantityField = document.getElementById('stock-quantity-field');
+    
+    if (stockQuantityField) {
+        stockQuantityField.style.display = manageStock ? 'block' : 'none';
+    }
+}
+
+function generateSlug(text) {
+    return text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '') // Remove special characters
+        .replace(/\s+/g, '-') // Replace spaces with hyphens
+        .replace(/-+/g, '-') // Replace multiple hyphens with single
+        .trim('-'); // Remove leading/trailing hyphens
+}
+
+function removeImageFromUI(selector) {
+    const imageElement = document.querySelector(selector);
+    if (imageElement) {
+        imageElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        imageElement.style.opacity = '0';
+        imageElement.style.transform = 'scale(0.8)';
+        
+        setTimeout(() => {
+            imageElement.remove();
+            updateEmptyState();
+        }, 300);
+    }
+}
+
+function updateEmptyState() {
+    const currentImagesSection = document.querySelector('#current-images-grid')?.parentElement;
+    const remainingImages = document.querySelectorAll('#current-images-grid .image-item').length;
+    
+    if (currentImagesSection && remainingImages === 0) {
+        currentImagesSection.style.display = 'none';
+    }
+}
+
+// Utility Functions
+function makeRequest(action, data) {
+    return fetch('{{ route('admin.products.update', $product) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'X-HTTP-Method-Override': 'PATCH'
+        },
+        body: JSON.stringify({
+            action: action,
+            ...data
+        })
+    })
+    .then(response => response.json())
+    .catch(error => {
+        console.error('Request error:', error);
+        showNotification('Network error occurred', 'error');
+        throw error;
+    });
+}
+
+function getCsrfToken() {
+    const token = document.querySelector('meta[name="csrf-token"]');
+    return token ? token.getAttribute('content') : '';
+}
+
+function showLoading() {
+    let loader = document.getElementById('page-loader');
+    if (!loader) {
+        loader = document.createElement('div');
+        loader.id = 'page-loader';
+        loader.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        loader.innerHTML = `
+            <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                <span class="text-gray-700">Processing...</span>
+            </div>
+        `;
+        document.body.appendChild(loader);
+    } else {
+        loader.style.display = 'flex';
+    }
+}
+
+function hideLoading() {
+    const loader = document.getElementById('page-loader');
+    if (loader) {
+        loader.style.display = 'none';
+    }
+}
+
+function showNotification(message, type = 'info') {
+    // Remove existing notifications
+    document.querySelectorAll('.notification-toast').forEach(n => n.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = `notification-toast fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 transform translate-x-full max-w-sm`;
+    
+    // Set colors based on type
+    const colors = {
+        success: 'bg-green-500 text-white',
+        error: 'bg-red-500 text-white',
+        warning: 'bg-yellow-500 text-white',
+        info: 'bg-blue-500 text-white'
+    };
+    
+    notification.className += ` ${colors[type] || colors.info}`;
+    
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <div class="flex-1">
+                <div class="flex items-center">
+                    ${getNotificationIcon(type)}
+                    <span class="ml-2">${message}</span>
+                </div>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200 focus:outline-none">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Auto remove
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.classList.add('translate-x-full');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, 5000);
+}
+
+function getNotificationIcon(type) {
+    const icons = {
+        success: `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>`,
+        error: `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+        </svg>`,
+        warning: `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+        </svg>`,
+        info: `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+        </svg>`
+    };
+    return icons[type] || icons.info;
+}
+</script>
+@endpush
 </x-layouts.admin>

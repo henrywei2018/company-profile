@@ -25,8 +25,12 @@ class ProductController extends Controller
     {
         // Get filter parameters
         $filters = $request->only([
-            'search', 'category', 'service', 'status', 
-            'brand', 'stock_status'
+            'search',
+            'category',
+            'service',
+            'status',
+            'brand',
+            'stock_status'
         ]);
 
         // Build query with filters
@@ -34,12 +38,12 @@ class ProductController extends Controller
 
         // Apply filters
         if (!empty($filters['search'])) {
-            $query->where(function($q) use ($filters) {
+            $query->where(function ($q) use ($filters) {
                 $q->where('name', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('sku', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('brand', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('short_description', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('description', 'like', '%' . $filters['search'] . '%');
+                    ->orWhere('sku', 'like', '%' . $filters['search'] . '%')
+                    ->orWhere('brand', 'like', '%' . $filters['search'] . '%')
+                    ->orWhere('short_description', 'like', '%' . $filters['search'] . '%')
+                    ->orWhere('description', 'like', '%' . $filters['search'] . '%');
             });
         }
 
@@ -65,29 +69,29 @@ class ProductController extends Controller
 
         // Get paginated results
         $products = $query->orderBy('sort_order')
-                         ->orderBy('created_at', 'desc')
-                         ->paginate(15);
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
 
         // Get data for filters
         $categories = ProductCategory::active()
-                                   ->orderBy('name')
-                                   ->get();
+            ->orderBy('name')
+            ->get();
 
         $services = Service::active()
-                          ->orderBy('title')
-                          ->get();
+            ->orderBy('title')
+            ->get();
 
         // Get unique brands from products
         $brands = Product::whereNotNull('brand')
-                        ->where('brand', '!=', '')
-                        ->distinct()
-                        ->orderBy('brand')
-                        ->pluck('brand');
+            ->where('brand', '!=', '')
+            ->distinct()
+            ->orderBy('brand')
+            ->pluck('brand');
 
         return view('admin.products.index', compact(
-            'products', 
-            'categories', 
-            'services', 
+            'products',
+            'categories',
+            'services',
             'brands'
         ));
     }
@@ -99,13 +103,13 @@ class ProductController extends Controller
     {
         // Get active categories for dropdown
         $categories = ProductCategory::active()
-                                   ->orderBy('name')
-                                   ->get();
+            ->orderBy('name')
+            ->get();
 
         // Get active services for dropdown
         $services = Service::active()
-                          ->orderBy('title')
-                          ->get();
+            ->orderBy('title')
+            ->get();
 
         return view('admin.products.create', compact('categories', 'services'));
     }
@@ -151,12 +155,12 @@ class ProductController extends Controller
                 // Generate slug if not provided
                 if (empty($validated['slug'])) {
                     $validated['slug'] = Str::slug($validated['name']);
-                    
+
                     // Ensure slug is unique
                     $originalSlug = $validated['slug'];
                     $counter = 1;
                     while (Product::where('slug', $validated['slug'])->exists()) {
-                $validated['slug'] = $originalSlug . '-' . $counter;
+                        $validated['slug'] = $originalSlug . '-' . $counter;
                         $counter++;
                     }
                 }
@@ -220,8 +224,8 @@ class ProductController extends Controller
     public function show(Product $product)
     {
         $product->load([
-            'category', 
-            'service', 
+            'category',
+            'service',
             'images' => function ($query) {
                 $query->ordered();
             },
@@ -237,8 +241,8 @@ class ProductController extends Controller
     public function edit(Product $product)
     {
         $product->load([
-            'category', 
-            'service', 
+            'category',
+            'service',
             'images' => function ($query) {
                 $query->ordered();
             },
@@ -254,78 +258,55 @@ class ProductController extends Controller
     /**
      * Update the specified product in storage.
      */
-    public function update(UpdateProductRequest $request, Product $product)
+    public function update(Request $request, Product $product)
     {
-        $validated = $request->validated();
+        // Handle AJAX image management actions
+        if ($request->has('action')) {
+            return $this->handleImageAction($request, $product);
+        }
+
+        // Regular update validation
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'sku' => 'nullable|string|max:100|unique:products,sku,' . $product->id,
+            'short_description' => 'nullable|string|max:500',
+            'description' => 'nullable|string',
+            'status' => 'required|in:draft,published,archived',
+            'is_featured' => 'boolean',
+            'is_active' => 'boolean',
+            // Add other validation rules as needed
+        ]);
 
         try {
-            DB::transaction(function () use ($request, $validated, $product) {
-                // Handle slug generation
-                if (empty($validated['slug'])) {
-                    $validated['slug'] = Str::slug($validated['name']);
-                }
+            DB::beginTransaction();
 
-                // Ensure unique slug (excluding current product)
-                if ($validated['slug'] !== $product->slug) {
-                    $baseSlug = $validated['slug'];
-                    $counter = 1;
-                    while (Product::where('slug', $validated['slug'])->where('id', '!=', $product->id)->exists()) {
-                        $validated['slug'] = $baseSlug . '-' . $counter;
-                        $counter++;
-                    }
-                }
+            // Update product basic information
+            $updateData = [
+                'name' => $request->name,
+                'sku' => $request->sku,
+                'short_description' => $request->short_description,
+                'description' => $request->description,
+                'status' => $request->status,
+                'is_featured' => $request->boolean('is_featured'),
+                'is_active' => $request->boolean('is_active'),
+            ];
 
-                // Update product
-                $product->update($validated);
+            // Handle temporary uploaded images
+            $this->processTemporaryImages($product, $updateData);
 
-                // Handle image deletions
-                if (!empty($validated['delete_images'])) {
-                    $this->deleteProductImages($product, $validated['delete_images']);
-                }
+            $product->update($updateData);
 
-                // Process temporary images from session
-                $this->processTempImagesFromSession($product);
+            DB::commit();
 
-                // Update service relations
-                if (array_key_exists('service_relations', $validated)) {
-                    $this->syncServiceRelations($product, $validated['service_relations'] ?? []);
-                }
-
-                // Handle SEO data
-                if ($request->has('meta_title') || $request->has('meta_description') || $request->has('meta_keywords')) {
-                    $product->updateSeoData([
-                        'meta_title' => $request->input('meta_title'),
-                        'meta_description' => $request->input('meta_description'),
-                        'meta_keywords' => $request->input('meta_keywords'),
-                    ]);
-                }
-            });
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Product updated successfully!',
-                    'product' => $product->fresh()->load(['category', 'service'])
-                ]);
-            }
-
-            return redirect()->route('admin.products.index')
+            return redirect()
+                ->route('admin.products.index')
                 ->with('success', 'Product updated successfully.');
 
         } catch (\Exception $e) {
-            \Log::error('Product update failed: ' . $e->getMessage(), [
-                'product_id' => $product->id,
-                'validated_data' => $validated
-            ]);
+            DB::rollback();
+            \Log::error('Product update failed: ' . $e->getMessage());
 
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to update product: ' . $e->getMessage()
-                ], 422);
-            }
-
-            return redirect()->back()
+            return back()
                 ->withInput()
                 ->with('error', 'Failed to update product. Please try again.');
         }
@@ -381,83 +362,46 @@ class ProductController extends Controller
      */
     public function uploadTempImages(Request $request)
     {
+        $request->validate([
+            'file' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+        ]);
+
         try {
-            $request->validate([
-                'product_images' => 'required|array|min:1|max:10',
-                'product_images.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
-                'image_types' => 'nullable|array',
-                'image_types.*' => 'string|in:gallery,featured',
-            ]);
+            $file = $request->file('file');
+            $filename = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
+            $path = 'temp/products/' . $filename;
 
-            $uploadedFiles = [];
-            $files = $request->file('product_images');
-            $imageTypes = $request->input('image_types', []);
-            
-            $sessionKey = 'product_temp_files_' . session()->getId();
-            $sessionData = session()->get($sessionKey, []);
+            // Store in temp directory
+            $file->storeAs('public/' . dirname($path), basename($path));
 
-            foreach ($files as $index => $file) {
-                $imageType = $imageTypes[$index] ?? 'gallery';
-                
-                // Generate unique temp identifier
-                $tempId = 'temp_product_' . $imageType . '_' . uniqid() . '_' . time();
-                $tempFilename = $tempId . '.' . $file->getClientOriginalExtension();
-                $tempPath = $file->storeAs('temp/products', $tempFilename, 'public');
+            $tempFile = [
+                'id' => Str::uuid(),
+                'name' => $file->getClientOriginalName(),
+                'path' => $path,
+                'url' => Storage::url($path),
+                'size' => $file->getSize(),
+                'type' => $file->getMimeType(),
+                'category' => $request->input('category', 'gallery'), // featured or gallery
+                'uploaded_at' => now()->toISOString()
+            ];
 
-                // Enhanced temp file metadata
-                $tempImageData = [
-                    'temp_id' => $tempId,
-                    'temp_path' => $tempPath,
-                    'original_name' => $file->getClientOriginalName(),
-                    'image_type' => $imageType,
-                    'file_size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
-                    'uploaded_at' => now()->toISOString(),
-                    'session_id' => session()->getId()
-                ];
-
-                // Store in session (use array to allow multiple images)
-                if (!isset($sessionData[$imageType])) {
-                    $sessionData[$imageType] = [];
-                }
-                $sessionData[$imageType][] = $tempImageData;
-                
-                session()->put($sessionKey, $sessionData);
-
-                $uploadedFiles[] = [
-                    'id' => $tempId,
-                    'temp_id' => $tempId,
-                    'name' => ($imageType === 'featured' ? 'Featured' : 'Gallery') . ' Image',
-                    'file_name' => $file->getClientOriginalName(),
-                    'category' => $imageType,
-                    'type' => $imageType,
-                    'url' => Storage::disk('public')->url($tempPath),
-                    'size' => $this->formatFileSize($file->getSize()),
-                    'temp_path' => $tempPath,
-                    'is_temp' => true,
-                    'created_at' => now()->format('M j, Y H:i')
-                ];
-            }
-
-            \Log::info('Product temp files uploaded', [
-                'files' => $uploadedFiles,
-                'session_key' => $sessionKey
-            ]);
+            // Store in session
+            $tempFiles = session('temp_product_images', []);
+            $tempFiles[] = $tempFile;
+            session(['temp_product_images' => $tempFiles]);
 
             return response()->json([
                 'success' => true,
-                'message' => count($uploadedFiles) === 1 
-                    ? 'Image uploaded successfully!' 
-                    : count($uploadedFiles) . ' images uploaded successfully!',
-                'files' => $uploadedFiles
+                'file' => $tempFile,
+                'message' => 'Image uploaded successfully'
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Product temporary image upload failed: ' . $e->getMessage());
+            \Log::error('Temp image upload failed: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Upload failed: ' . $e->getMessage()
+                'message' => 'Failed to upload image.'
             ], 500);
         }
     }
@@ -467,104 +411,43 @@ class ProductController extends Controller
      */
     public function deleteTempImage(Request $request)
     {
+        $request->validate([
+            'file_id' => 'required|string'
+        ]);
+
         try {
-            $input = [];
-            
-            if ($request->isJson()) {
-                $input = $request->json()->all();
-            } else {
-                $input = $request->all();
-            }
-            
-            $tempId = $input['temp_id'] ?? 
-                      $input['id'] ?? 
-                      $request->input('temp_id') ?? 
-                      $request->input('id') ?? 
-                      $request->getContent();
-            
-            if (empty($tempId) && $request->getContent()) {
-                $rawContent = $request->getContent();
-                if (is_string($rawContent)) {
-                    $decoded = json_decode($rawContent, true);
-                    if (is_array($decoded)) {
-                        $tempId = $decoded['temp_id'] ?? $decoded['id'] ?? null;
-                    } else {
-                        $tempId = trim($rawContent, '"');
+            $fileId = $request->file_id;
+            $tempFiles = session('temp_product_images', []);
+
+            foreach ($tempFiles as $index => $tempFile) {
+                if ($tempFile['id'] === $fileId) {
+                    // Delete physical file
+                    if (Storage::disk('public')->exists($tempFile['path'])) {
+                        Storage::disk('public')->delete($tempFile['path']);
                     }
+
+                    // Remove from session
+                    unset($tempFiles[$index]);
+                    session(['temp_product_images' => array_values($tempFiles)]);
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Temporary file deleted successfully.'
+                    ]);
                 }
             }
-            
-            \Log::info('Delete product temp image request', ['temp_id' => $tempId]);
-
-            if (empty($tempId)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Missing temp file identifier'
-                ], 400);
-            }
-
-            $sessionKey = 'product_temp_files_' . session()->getId();
-            $sessionData = session()->get($sessionKey, []);
-
-            $tempFileData = null;
-            $imageType = null;
-            $imageIndex = null;
-            
-            // Find the temp file by ID
-            foreach ($sessionData as $type => $images) {
-                if (is_array($images)) {
-                    foreach ($images as $index => $data) {
-                        if (isset($data['temp_id']) && $data['temp_id'] === $tempId) {
-                            $tempFileData = $data;
-                            $imageType = $type;
-                            $imageIndex = $index;
-                            break 2;
-                        }
-                    }
-                }
-            }
-
-            if (!$tempFileData) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Temporary file not found'
-                ], 404);
-            }
-
-            // Delete physical file
-            if (Storage::disk('public')->exists($tempFileData['temp_path'])) {
-                Storage::disk('public')->delete($tempFileData['temp_path']);
-            }
-
-            // Remove from session
-            unset($sessionData[$imageType][$imageIndex]);
-            
-            // Clean up empty arrays
-            if (empty($sessionData[$imageType])) {
-                unset($sessionData[$imageType]);
-            } else {
-                // Re-index array
-                $sessionData[$imageType] = array_values($sessionData[$imageType]);
-            }
-            
-            session()->put($sessionKey, $sessionData);
-
-            \Log::info('Product temporary file deleted successfully', [
-                'temp_id' => $tempId,
-                'image_type' => $imageType
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => ucfirst($imageType) . ' image deleted successfully!'
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Product temporary image deletion failed: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete temporary image: ' . $e->getMessage()
+                'message' => 'Temporary file not found.'
+            ], 404);
+
+        } catch (\Exception $e) {
+            \Log::error('Delete temp image failed: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete temporary file.'
             ], 500);
         }
     }
@@ -572,51 +455,11 @@ class ProductController extends Controller
     /**
      * Get temporary files from session.
      */
-    public function getTempFiles(Request $request)
+    public function getTempFiles()
     {
-        try {
-            $sessionKey = 'product_temp_files_' . session()->getId();
-            $sessionData = session()->get($sessionKey, []);
-            
-            $files = [];
-            foreach ($sessionData as $imageType => $images) {
-                if (is_array($images)) {
-                    foreach ($images as $data) {
-                        // Verify file still exists
-                        if (Storage::disk('public')->exists($data['temp_path'])) {
-                            $files[] = [
-                                'id' => $data['temp_id'],
-                                'name' => ucfirst($imageType) . ' Image',
-                                'file_name' => $data['original_name'],
-                                'category' => $imageType,
-                                'type' => $imageType,
-                                'url' => Storage::disk('public')->url($data['temp_path']),
-                                'size' => $this->formatFileSize($data['file_size']),
-                                'temp_id' => $data['temp_id'],
-                                'is_temp' => true,
-                                'created_at' => \Carbon\Carbon::parse($data['uploaded_at'])->format('M j, Y H:i')
-                            ];
-                        }
-                    }
-                }
-            }
-            
-            // Update session with cleaned data
-            session()->put($sessionKey, $sessionData);
+        $tempFiles = session('temp_product_images', []);
 
-            return response()->json([
-                'success' => true,
-                'files' => $files
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Failed to get product temp files: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get temporary files'
-            ], 500);
-        }
+        return response()->json($tempFiles);
     }
 
     /**
@@ -641,7 +484,7 @@ class ProductController extends Controller
                         }
 
                         $this->moveTempImageToPermanent($tempImageData, $product, $imageType);
-                        
+
                     } catch (\Exception $e) {
                         \Log::error('Failed to process product temp image: ' . $e->getMessage(), [
                             'product_id' => $product->id,
@@ -655,9 +498,56 @@ class ProductController extends Controller
 
         // Clear processed temporary images from session
         session()->forget($sessionKey);
-        
+
         // Cleanup physical temp files for this session
         $this->cleanupSessionTempFiles(session()->getId());
+    }
+    protected function processTemporaryImages(Product $product, &$updateData)
+    {
+        $tempFiles = session('temp_product_images', []);
+
+        if (empty($tempFiles)) {
+            return;
+        }
+
+        $gallery = $product->gallery ?? [];
+
+        foreach ($tempFiles as $tempFile) {
+            // Move from temp to permanent location
+            $tempPath = $tempFile['path'];
+            $filename = basename($tempPath);
+            $permanentPath = 'products/' . $product->id . '/' . $filename;
+
+            // Create directory if it doesn't exist
+            $directory = dirname(storage_path('app/public/' . $permanentPath));
+            if (!is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+
+            // Move file
+            if (Storage::disk('public')->exists($tempPath)) {
+                Storage::disk('public')->move($tempPath, $permanentPath);
+
+                // Determine where to place the image based on category
+                $category = $tempFile['category'] ?? 'gallery';
+
+                if ($category === 'featured' && !isset($updateData['featured_image'])) {
+                    // Set as featured image if none exists yet
+                    $updateData['featured_image'] = $permanentPath;
+                } else {
+                    // Add to gallery
+                    $gallery[] = $permanentPath;
+                }
+            }
+        }
+
+        // Update gallery in the update data
+        if (!empty($gallery)) {
+            $updateData['gallery'] = $gallery;
+        }
+
+        // Clear temporary files from session
+        session()->forget('temp_product_images');
     }
 
     /**
@@ -667,16 +557,16 @@ class ProductController extends Controller
     {
         try {
             $tempPath = $tempImageData['temp_path'];
-            
+
             if (!Storage::disk('public')->exists($tempPath)) {
                 throw new \Exception('Temporary file not found: ' . $tempPath);
             }
 
             $extension = pathinfo($tempImageData['original_name'], PATHINFO_EXTENSION);
             $filename = $this->generateImageFilename(
-                $tempImageData['original_name'], 
-                $imageType, 
-                $product->id, 
+                $tempImageData['original_name'],
+                $imageType,
+                $product->id,
                 $extension
             );
             $directory = "products/{$product->id}";
@@ -700,14 +590,14 @@ class ProductController extends Controller
                         'sort_order' => ProductImage::where('product_id', $product->id)->max('sort_order') + 1
                     ]);
                 }
-                
+
                 \Log::info('Product temporary image moved to permanent location', [
                     'product_id' => $product->id,
                     'image_type' => $imageType,
                     'from' => $tempPath,
                     'to' => $permanentPath
                 ]);
-                
+
                 return $permanentPath;
             } else {
                 throw new \Exception('Failed to move file from temp to permanent location');
@@ -731,10 +621,10 @@ class ProductController extends Controller
         if (!$extension) {
             $extension = pathinfo($originalName, PATHINFO_EXTENSION);
         }
-        
+
         $timestamp = now()->format('YmdHis');
         $random = Str::random(6);
-        
+
         return "product_{$productId}_{$imageType}_{$timestamp}_{$random}.{$extension}";
     }
 
@@ -745,7 +635,7 @@ class ProductController extends Controller
     {
         try {
             $tempDir = 'temp/products';
-            
+
             if (!Storage::disk('public')->exists($tempDir)) {
                 return;
             }
@@ -755,9 +645,11 @@ class ProductController extends Controller
 
             foreach ($files as $file) {
                 $filename = basename($file);
-                if (str_contains($filename, $sessionId) || 
-                    Storage::disk('public')->lastModified($file) < now()->subHours(1)->timestamp) {
-                    
+                if (
+                    str_contains($filename, $sessionId) ||
+                    Storage::disk('public')->lastModified($file) < now()->subHours(1)->timestamp
+                ) {
+
                     Storage::disk('public')->delete($file);
                     $deletedCount++;
                 }
@@ -778,28 +670,87 @@ class ProductController extends Controller
     protected function formatFileSize(int $bytes, int $precision = 2): string
     {
         $units = ['B', 'KB', 'MB', 'GB'];
-        
+
         for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
             $bytes /= 1024;
         }
-        
+
         return round($bytes, $precision) . ' ' . $units[$i];
     }
 
     /**
      * Delete specific product images.
      */
-    protected function deleteProductImages(Product $product, array $imageIds)
+    protected function deleteProductImage(Request $request, Product $product)
     {
-        $images = ProductImage::where('product_id', $product->id)
-                             ->whereIn('id', $imageIds)
-                             ->get();
+        $imagePath = $request->input('image_path');
+        $imageType = $request->input('image_type');
+        $galleryIndex = $request->input('gallery_index');
 
-        foreach ($images as $image) {
-            if (Storage::disk('public')->exists($image->image_path)) {
-                Storage::disk('public')->delete($image->image_path);
+        if ($imageType === 'featured') {
+            // Delete featured image
+            if ($product->featured_image && $product->featured_image === $imagePath) {
+                // Delete physical file
+                if (Storage::disk('public')->exists($imagePath)) {
+                    Storage::disk('public')->delete($imagePath);
+                }
+
+                $product->update(['featured_image' => null]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Featured image deleted successfully.'
+                ]);
             }
-            $image->delete();
+        } elseif ($imageType === 'gallery') {
+            // Delete gallery image
+            $gallery = $product->gallery ?? [];
+
+            if (isset($gallery[$galleryIndex]) && $gallery[$galleryIndex] === $imagePath) {
+                // Delete physical file
+                if (Storage::disk('public')->exists($imagePath)) {
+                    Storage::disk('public')->delete($imagePath);
+                }
+
+                // Remove from gallery array
+                unset($gallery[$galleryIndex]);
+                $gallery = array_values($gallery); // Reindex array
+
+                $product->update(['gallery' => $gallery]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Gallery image deleted successfully.'
+                ]);
+            }
+        }
+
+        return response()->json(['success' => false, 'message' => 'Image not found'], 404);
+    }
+    protected function handleImageAction(Request $request, Product $product)
+    {
+        $action = $request->input('action');
+
+        try {
+            switch ($action) {
+                case 'delete_image':
+                    return $this->deleteProductImage($request, $product);
+
+                case 'set_featured':
+                    return $this->setFeaturedImage($request, $product);
+
+                case 'convert_to_gallery':
+                    return $this->convertToGallery($request, $product);
+
+                case 'reorder_gallery':
+                    return $this->reorderGallery($request, $product);
+
+                default:
+                    return response()->json(['success' => false, 'message' => 'Unknown action'], 400);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Image action failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Action failed'], 500);
         }
     }
 
@@ -823,7 +774,7 @@ class ProductController extends Controller
     protected function syncServiceRelations(Product $product, array $relations)
     {
         $syncData = [];
-        
+
         foreach ($relations as $relation) {
             if (isset($relation['service_id']) && isset($relation['relation_type'])) {
                 $syncData[$relation['service_id']] = [
@@ -841,9 +792,9 @@ class ProductController extends Controller
     public function toggleFeatured(Product $product)
     {
         $product->update(['is_featured' => !$product->is_featured]);
-        
+
         $status = $product->is_featured ? 'featured' : 'unfeatured';
-        
+
         return redirect()->back()
             ->with('success', "Product {$status} successfully.");
     }
@@ -854,9 +805,9 @@ class ProductController extends Controller
     public function toggleActive(Product $product)
     {
         $product->update(['is_active' => !$product->is_active]);
-        
+
         $status = $product->is_active ? 'activated' : 'deactivated';
-        
+
         return redirect()->back()
             ->with('success', "Product {$status} successfully.");
     }
@@ -874,10 +825,10 @@ class ProductController extends Controller
         try {
             DB::transaction(function () use ($request) {
                 $productIds = $request->input('product_ids');
-                
+
                 foreach ($productIds as $index => $productId) {
                     Product::where('id', $productId)
-                           ->update(['sort_order' => $index + 1]);
+                        ->update(['sort_order' => $index + 1]);
                 }
             });
 
@@ -948,7 +899,7 @@ class ProductController extends Controller
 
             $count = count($productIds);
             $actionText = str_replace(['_'], [' '], $action);
-            
+
             return redirect()->back()
                 ->with('success', "{$count} product(s) {$actionText}d successfully.");
 
@@ -1032,13 +983,13 @@ class ProductController extends Controller
     public function export(Request $request)
     {
         $filters = $request->only(['search', 'category', 'service', 'status', 'brand', 'stock_status']);
-        
+
         $query = Product::with(['category', 'service'])
             ->when($filters['search'] ?? null, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('sku', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%");
+                        ->orWhere('sku', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
                 });
             })
             ->when($filters['category'] ?? null, function ($query, $category) {
@@ -1068,10 +1019,24 @@ class ProductController extends Controller
             $file = fopen('php://output', 'w');
 
             fputcsv($file, [
-                'ID', 'Name', 'SKU', 'Category', 'Service', 'Brand', 'Model',
-                'Price', 'Sale Price', 'Currency', 'Price Type',
-                'Stock Quantity', 'Stock Status', 'Weight',
-                'Status', 'Is Featured', 'Is Active', 'Created At'
+                'ID',
+                'Name',
+                'SKU',
+                'Category',
+                'Service',
+                'Brand',
+                'Model',
+                'Price',
+                'Sale Price',
+                'Currency',
+                'Price Type',
+                'Stock Quantity',
+                'Stock Status',
+                'Weight',
+                'Status',
+                'Is Featured',
+                'Is Active',
+                'Created At'
             ]);
 
             foreach ($products as $product) {
@@ -1121,9 +1086,9 @@ class ProductController extends Controller
                 ->where(function ($q) use ($request) {
                     $searchTerm = $request->input('query');
                     $q->where('name', 'like', "%{$searchTerm}%")
-                      ->orWhere('sku', 'like', "%{$searchTerm}%")
-                      ->orWhere('description', 'like', "%{$searchTerm}%")
-                      ->orWhere('brand', 'like', "%{$searchTerm}%");
+                        ->orWhere('sku', 'like', "%{$searchTerm}%")
+                        ->orWhere('description', 'like', "%{$searchTerm}%")
+                        ->orWhere('brand', 'like', "%{$searchTerm}%");
                 });
 
             // Apply filters
@@ -1141,8 +1106,8 @@ class ProductController extends Controller
 
             $limit = $request->input('limit', 10);
             $products = $query->orderBy('created_at', 'desc')
-                           ->limit($limit)
-                           ->get();
+                ->limit($limit)
+                ->get();
 
             return response()->json([
                 'success' => true,
@@ -1196,7 +1161,7 @@ class ProductController extends Controller
 
             foreach ($files as $index => $file) {
                 $imageType = $imageTypes[$index] ?? 'gallery';
-                
+
                 try {
                     $fileData = $this->processImageUpload($file, $product, $imageType);
                     $uploadedFiles[] = $fileData;
@@ -1222,8 +1187,8 @@ class ProductController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => count($uploadedFiles) === 1 
-                    ? 'Image uploaded successfully!' 
+                'message' => count($uploadedFiles) === 1
+                    ? 'Image uploaded successfully!'
                     : count($uploadedFiles) . ' images uploaded successfully!',
                 'files' => $uploadedFiles,
                 'product' => $product->fresh()->load(['category', 'service'])
@@ -1251,51 +1216,81 @@ class ProductController extends Controller
      * Delete product image.
      */
     public function deleteImage(Request $request, Product $product)
-{
-    try {
-        $request->validate([
-            'image_id' => 'required',
-        ]);
+    {
+        try {
+            $request->validate([
+                'image_id' => 'required',
+            ]);
 
-        $imageId = $request->input('image_id');
+            $imageId = $request->input('image_id');
 
-        // Handle ProductImage deletion
-        if (is_numeric($imageId)) {
-            $image = ProductImage::where('product_id', $product->id)
-                                ->where('id', $imageId)
-                                ->firstOrFail();
-            
-            // Delete physical file
-            if (Storage::disk('public')->exists($image->image_path)) {
-                Storage::disk('public')->delete($image->image_path);
+            // Handle ProductImage deletion
+            if (is_numeric($imageId)) {
+                $image = ProductImage::where('product_id', $product->id)
+                    ->where('id', $imageId)
+                    ->firstOrFail();
+
+                // Delete physical file
+                if (Storage::disk('public')->exists($image->image_path)) {
+                    Storage::disk('public')->delete($image->image_path);
+                }
+
+                // Delete database record
+                $image->delete();
+
+                $message = 'Product image deleted successfully!';
+            } else {
+                throw new \Exception('Invalid image ID');
             }
-            
-            // Delete database record
-            $image->delete();
-            
-            $message = 'Product image deleted successfully!';
-        } else {
-            throw new \Exception('Invalid image ID');
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'product' => $product->fresh()->load(['category', 'service', 'images'])
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Product image deletion failed: ' . $e->getMessage(), [
+                'product_id' => $product->id,
+                'image_id' => $request->input('image_id')
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete image. Please try again.'
+            ], 500);
         }
+    }
+    protected function setFeaturedImage(Request $request, Product $product)
+    {
+        $imagePath = $request->input('image_path');
+        $gallery = $product->gallery ?? [];
+
+        // Check if image exists in gallery
+        $imageIndex = array_search($imagePath, $gallery);
+        if ($imageIndex === false) {
+            return response()->json(['success' => false, 'message' => 'Image not found in gallery'], 404);
+        }
+
+        // Move current featured to gallery if exists
+        if ($product->featured_image) {
+            $gallery[] = $product->featured_image;
+        }
+
+        // Remove from gallery and set as featured
+        unset($gallery[$imageIndex]);
+        $gallery = array_values($gallery); // Reindex array
+
+        $product->update([
+            'featured_image' => $imagePath,
+            'gallery' => $gallery
+        ]);
 
         return response()->json([
             'success' => true,
-            'message' => $message,
-            'product' => $product->fresh()->load(['category', 'service', 'images'])
+            'message' => 'Image set as featured successfully.'
         ]);
-
-    } catch (\Exception $e) {
-        \Log::error('Product image deletion failed: ' . $e->getMessage(), [
-            'product_id' => $product->id,
-            'image_id' => $request->input('image_id')
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to delete image. Please try again.'
-        ], 500);
     }
-}
 
     /**
      * Delete featured image.
@@ -1305,7 +1300,7 @@ class ProductController extends Controller
         if ($product->featured_image) {
             Storage::disk('public')->delete($product->featured_image);
             $product->update(['featured_image' => null]);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Featured image deleted successfully!',
@@ -1318,43 +1313,84 @@ class ProductController extends Controller
             'message' => 'No featured image to delete'
         ], 404);
     }
+    protected function convertToGallery(Request $request, Product $product)
+    {
+        $imagePath = $request->input('image_path');
+
+        if ($product->featured_image && $product->featured_image === $imagePath) {
+            $gallery = $product->gallery ?? [];
+            $gallery[] = $imagePath;
+
+            $product->update([
+                'featured_image' => null,
+                'gallery' => $gallery
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Featured image converted to gallery successfully.'
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Featured image not found'], 404);
+    }
+
+    /**
+     * Reorder gallery images
+     */
+    protected function reorderGallery(Request $request, Product $product)
+    {
+        $newOrder = $request->input('gallery_order');
+
+        if (is_array($newOrder)) {
+            $product->update(['gallery' => $newOrder]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Gallery order updated successfully.'
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Invalid gallery order'], 400);
+    }
+
 
     /**
      * Process individual image upload for existing product.
      */
     protected function processImageUpload($file, Product $product, string $imageType)
-{
-    // Generate unique filename
-    $filename = $this->generateImageFilename($file->getClientOriginalName(), $imageType, $product->id, $file->getClientOriginalExtension());
-    $directory = "products/{$product->id}";
-    $filePath = $directory . '/' . $filename;
+    {
+        // Generate unique filename
+        $filename = $this->generateImageFilename($file->getClientOriginalName(), $imageType, $product->id, $file->getClientOriginalExtension());
+        $directory = "products/{$product->id}";
+        $filePath = $directory . '/' . $filename;
 
-    // Process and store image
-    $storedPath = $this->processAndStoreImage($file, $filePath);
+        // Process and store image
+        $storedPath = $this->processAndStoreImage($file, $filePath);
 
-    // SIMPLIFIED: Only create ProductImage records (no more featured_image field)
-    $productImage = ProductImage::create([
-        'product_id' => $product->id,
-        'image_path' => $storedPath,
-        'alt_text' => $file->getClientOriginalName(),
-        'is_featured' => $imageType === 'featured', // Set as featured if specified
-        'sort_order' => ProductImage::where('product_id', $product->id)->max('sort_order') + 1
-    ]);
+        // SIMPLIFIED: Only create ProductImage records (no more featured_image field)
+        $productImage = ProductImage::create([
+            'product_id' => $product->id,
+            'image_path' => $storedPath,
+            'alt_text' => $file->getClientOriginalName(),
+            'is_featured' => $imageType === 'featured', // Set as featured if specified
+            'sort_order' => ProductImage::where('product_id', $product->id)->max('sort_order') + 1
+        ]);
 
-    return [
-        'id' => $productImage->id,
-        'name' => $imageType === 'featured' ? 'Featured Image' : 'Gallery Image',
-        'file_name' => $filename,
-        'file_path' => $storedPath,
-        'file_type' => $file->getMimeType(),
-        'file_size' => $file->getSize(),
-        'category' => $imageType,
-        'url' => Storage::disk('public')->url($storedPath),
-        'size' => $this->formatFileSize($file->getSize()),
-        'type' => $imageType,
-        'created_at' => now()->format('M j, Y H:i')
-    ];
-}
+        return [
+            'id' => $productImage->id,
+            'name' => $imageType === 'featured' ? 'Featured Image' : 'Gallery Image',
+            'file_name' => $filename,
+            'file_path' => $storedPath,
+            'file_type' => $file->getMimeType(),
+            'file_size' => $file->getSize(),
+            'category' => $imageType,
+            'url' => Storage::disk('public')->url($storedPath),
+            'size' => $this->formatFileSize($file->getSize()),
+            'type' => $imageType,
+            'created_at' => now()->format('M j, Y H:i')
+        ];
+    }
 
     /**
      * Process and store image with optimization.
@@ -1370,38 +1406,38 @@ class ProductController extends Controller
             if (class_exists('Intervention\Image\ImageManager')) {
                 $manager = new ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
                 $image = $manager->read($file->getRealPath());
-                
+
                 // Resize to max 1920px width while maintaining aspect ratio
                 $image->scaleDown(width: 1920);
-                
+
                 // Encode as JPEG with 85% quality for better compression
                 $encoded = $image->toJpeg(85);
-                
+
                 // Store the processed image
                 Storage::disk('public')->put($filePath, $encoded);
-                
+
                 \Log::info("Product image processed with Intervention Image", [
                     'file_path' => $filePath,
                     'original_size' => $file->getSize(),
                     'processed_size' => strlen($encoded)
                 ]);
-                
+
                 return $filePath;
             }
 
             // Fallback to basic upload
             $storedPath = $file->storeAs(dirname($filePath), basename($filePath), 'public');
-            
+
             \Log::info("Product image stored with basic upload", [
                 'file_path' => $storedPath,
                 'size' => $file->getSize()
             ]);
-            
+
             return $storedPath;
 
         } catch (\Exception $e) {
             \Log::warning('Product image processing failed, using basic upload: ' . $e->getMessage());
-            
+
             // Final fallback
             return $file->storeAs(dirname($filePath), basename($filePath), 'public');
         }
@@ -1413,37 +1449,27 @@ class ProductController extends Controller
     public function cleanupTempFiles()
     {
         try {
-            $tempDir = 'temp/products';
-            $cutoffTime = now()->subHours(2);
-            $deletedCount = 0;
+            $tempFiles = session('temp_product_images', []);
 
-            if (Storage::disk('public')->exists($tempDir)) {
-                $files = Storage::disk('public')->files($tempDir);
-
-                foreach ($files as $file) {
-                    $lastModified = Storage::disk('public')->lastModified($file);
-                    
-                    if ($lastModified < $cutoffTime->timestamp) {
-                        Storage::disk('public')->delete($file);
-                        $deletedCount++;
-                    }
+            foreach ($tempFiles as $tempFile) {
+                if (Storage::disk('public')->exists($tempFile['path'])) {
+                    Storage::disk('public')->delete($tempFile['path']);
                 }
             }
 
-            \Log::info("Cleaned up {$deletedCount} temporary product files");
+            session()->forget('temp_product_images');
 
             return response()->json([
                 'success' => true,
-                'message' => "Cleaned up {$deletedCount} temporary files",
-                'deleted_count' => $deletedCount
+                'message' => 'Temporary files cleaned up successfully.'
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Product temporary files cleanup failed: ' . $e->getMessage());
+            \Log::error('Cleanup temp files failed: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Cleanup failed: ' . $e->getMessage()
+                'message' => 'Failed to cleanup temporary files.'
             ], 500);
         }
     }
@@ -1460,7 +1486,7 @@ class ProductController extends Controller
                     'featured_image',
                     'gallery'
                 ]);
-                
+
                 $newProduct->name = $product->name . ' (Copy)';
                 $newProduct->slug = null; // Will be auto-generated
                 $newProduct->sku = null; // Will need to be set manually
@@ -1541,6 +1567,62 @@ class ProductController extends Controller
             ]);
 
             return null;
+        }
+    }
+    protected function updateImageOrder(Request $request, Product $product)
+    {
+        $imageOrder = $request->input('image_order');
+
+        if (!is_array($imageOrder)) {
+            return response()->json(['success' => false, 'message' => 'Invalid image order data'], 400);
+        }
+
+        try {
+            foreach ($imageOrder as $orderData) {
+                if (isset($orderData['id']) && isset($orderData['sort_order'])) {
+                    $product->images()
+                        ->where('id', $orderData['id'])
+                        ->update(['sort_order' => $orderData['sort_order']]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Image order updated successfully.'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Update image order failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to update image order'], 500);
+        }
+    }
+    protected function handleImageActions(Request $request, Product $product)
+    {
+        $action = $request->input('action');
+
+        try {
+            switch ($action) {
+                case 'toggle_featured_product_image':
+                    return $this->toggleFeaturedProductImage($request, $product);
+
+                case 'delete_product_image':
+                    return $this->deleteProductImageById($request, $product);
+
+                case 'update_image_alt_text':
+                    return $this->updateImageAltText($request, $product);
+
+                case 'delete_legacy_image':
+                    return $this->deleteLegacyImage($request, $product);
+
+                case 'update_image_order':  // ADD THIS CASE
+                    return $this->updateImageOrder($request, $product);
+
+                default:
+                    return response()->json(['success' => false, 'message' => 'Unknown action'], 400);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Image action failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Action failed'], 500);
         }
     }
 }
