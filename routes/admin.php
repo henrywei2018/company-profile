@@ -141,6 +141,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::get('statistics', [ProductCategoryController::class, 'statistics'])->name('statistics');
         Route::get('export', [ProductCategoryController::class, 'export'])->name('export');
     });
+    // Product Orders
+    Route::prefix('orders')->name('orders.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\ProductOrderController::class, 'index'])->name('index');
+        Route::get('/{order}', [App\Http\Controllers\Admin\ProductOrderController::class, 'show'])->name('show');
+        Route::put('/{order}/status', [App\Http\Controllers\Admin\ProductOrderController::class, 'updateStatus'])->name('update-status');
+        Route::post('/{order}/convert-quotation', [App\Http\Controllers\Admin\ProductOrderController::class, 'convertToQuotation'])->name('convert-quotation');
+        Route::get('/export/csv', [App\Http\Controllers\Admin\ProductOrderController::class, 'exportCsv'])->name('export-csv');
+        Route::get('/api/statistics', [App\Http\Controllers\Admin\ProductOrderController::class, 'statistics'])->name('statistics');
+    });
     // Banner Management
     Route::prefix('banner-categories')->name('banner-categories.')->group(function () {
         Route::resource('/', BannerCategoryController::class)->parameters(['' => 'bannerCategory']);

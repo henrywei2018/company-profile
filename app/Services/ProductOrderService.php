@@ -11,6 +11,7 @@ use App\Facades\Notifications;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Collection;
 
 class ProductOrderService
 {
@@ -20,85 +21,69 @@ class ProductOrderService
 
     public function createOrderFromCart(array $deliveryInfo)
     {
-        $user = Auth::user();
-        if (!$user || !$user->hasRole('client')) {
-            throw new \Exception('Only authenticated clients can create orders.');
-        }
-
-        return DB::transaction(function () use ($user, $deliveryInfo) {
-            try {
-                $cartItems = CartItem::getCartForUser($user->id);
-                
-                if ($cartItems->isEmpty()) {
-                    throw new \Exception('Cart is empty.');
-                }
-
-                // Validate all products are still available
-                foreach ($cartItems as $cartItem) {
-                    if (!$cartItem->product || !$cartItem->product->is_active) {
-                        throw new \Exception("Product '{$cartItem->product->name}' is no longer available.");
-                    }
-                    
-                    if (!$cartItem->product->canAddToCart()) {
-                        throw new \Exception("Product '{$cartItem->product->name}' cannot be ordered directly.");
-                    }
-
-                    // Check if price is available
-                    if ($cartItem->product->current_price <= 0) {
-                        throw new \Exception("Product '{$cartItem->product->name}' has no valid price.");
-                    }
-                }
-
-                // Create the order
-                $order = ProductOrder::create([
-                    'order_number' => $this->generateOrderNumber(),
-                    'client_id' => $user->id,
-                    'delivery_address' => $deliveryInfo['address'],
-                    'needed_date' => $deliveryInfo['needed_date'] ?? null,
-                    'notes' => $deliveryInfo['notes'] ?? null,
-                    'status' => 'pending',
-                ]);
-
-                // Add items to order
-                foreach ($cartItems as $cartItem) {
-                    $order->items()->create([
-                        'product_id' => $cartItem->product_id,
-                        'quantity' => $cartItem->quantity,
-                        'price' => $cartItem->product->current_price, // Use attribute
-                        'specifications' => $cartItem->specifications,
-                    ]);
-                }
-
-                // Calculate total
-                $order->calculateTotal();
-
-                // Check if needs quotation
-                if ($order->shouldCreateQuotation()) {
-                    $this->convertToQuotation($order);
-                } else {
-                    $order->update(['status' => 'confirmed']);
-                }
-
-                // Clear cart after successful order
-                CartItem::where('user_id', $user->id)->delete();
-
-                Log::info('Product order created successfully', [
-                    'order_id' => $order->id,
-                    'order_number' => $order->order_number,
-                    'client_id' => $order->client_id,
-                    'total_amount' => $order->total_amount,
-                    'needs_quotation' => $order->needs_quotation
-                ]);
-
-                return $order;
-
-            } catch (\Exception $e) {
-                Log::error('Failed to create product order', [
-                    'error' => $e->getMessage(),
-                    'client_id' => $user->id
-                ]);
-                throw $e;
+        return DB::transaction(function () use ($deliveryInfo) {
+            $cartItems = $this->getCart();
+            
+            if ($cartItems->isEmpty()) {
+                throw new \Exception('Cart is empty.');
             }
+
+            // Validate all products are still available
+            foreach ($cartItems as $cartItem) {
+                if (!$cartItem->product || !$cartItem->product->is_active) {
+                    throw new \Exception("Product '{$cartItem->product->name}' is no longer available.");
+                }
+            }
+
+            // Create the order
+            $order = ProductOrder::create([
+                'order_number' => $this->generateOrderNumber(),
+                'client_id' => Auth::id(),
+                'delivery_address' => $deliveryInfo['address'],
+                'needed_date' => $deliveryInfo['needed_date'] ?? null,
+                'notes' => $deliveryInfo['notes'] ?? null,
+                'status' => 'pending',
+            ]);
+
+            $totalAmount = 0;
+            $needsQuotation = false;
+
+            // Create order items from cart
+            foreach ($cartItems as $cartItem) {
+                $product = $cartItem->product;
+                $unitPrice = $product->getCurrentPrice() ?? 0;
+                
+                if ($unitPrice <= 0) {
+                    $needsQuotation = true;
+                }
+
+                ProductOrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $product->id,
+                    'quantity' => $cartItem->quantity,
+                    'unit_price' => $unitPrice,
+                    'total_price' => $unitPrice * $cartItem->quantity,
+                    'specifications' => $cartItem->specifications,
+                ]);
+
+                $totalAmount += $unitPrice * $cartItem->quantity;
+            }
+
+            // Update order totals
+            $order->update([
+                'total_amount' => $totalAmount,
+                'needs_quotation' => $needsQuotation,
+            ]);
+
+            // Clear cart after successful order creation
+            $this->clearCart();
+
+            // Generate quotation if needed
+            if ($needsQuotation) {
+                $this->convertOrderToQuotation($order);
+            }
+
+            return $order;
         });
     }
 
@@ -215,36 +200,36 @@ class ProductOrderService
         return $cartItem;
     }
 
-    public function getCart()
+    public function getCart(): Collection
     {
-        $user = Auth::user();
-        if (!$user || !$user->hasRole('client')) {
-            return collect();
-        }
-
-        return CartItem::getCartForUser($user->id);
+        return CartItem::with(['product' => function($query) {
+            $query->where('status', 'published')
+                  ->where('is_active', true);
+        }])
+        ->where('user_id', Auth::id())
+        ->get();
     }
 
-    public function removeFromCart($productId)
+    public function removeFromCart($productId): bool
     {
-        $user = Auth::user();
-        if (!$user || !$user->hasRole('client')) {
-            return false;
-        }
-
-        return CartItem::where('user_id', $user->id)
+        return CartItem::where('user_id', Auth::id())
             ->where('product_id', $productId)
             ->delete() > 0;
     }
 
-    public function clearCart()
+    public function clearCart(): int
     {
-        $user = Auth::user();
-        if (!$user || !$user->hasRole('client')) {
-            return 0;
-        }
-
-        return CartItem::where('user_id', $user->id)->delete();
+        return CartItem::where('user_id', Auth::id())->delete();
+    }
+    public function getCartCount(): int
+    {
+        return CartItem::where('user_id', Auth::id())->sum('quantity');
+    }
+    public function getCartTotal(): float
+    {
+        return $this->getCart()->sum(function($item) {
+            return $item->quantity * ($item->product->getCurrentPrice() ?? 0);
+        });
     }
 
     public function getCartSummary()

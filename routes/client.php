@@ -5,6 +5,7 @@ use App\Http\Controllers\Client\{
     DashboardController as ClientDashboardController,
     NotificationPreferencesController,
     ProductOrderController,
+    CartController,
     ProjectController,
     QuotationController,
     MessageController,
@@ -73,19 +74,35 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::post('/{project}/testimonial', [ProjectController::class, 'storeTestimonial'])->middleware('throttle:3,1')->name('testimonial.store');
     });
 
+    // Product Order Routes for Client Dashboard
     Route::prefix('orders')->name('orders.')->group(function () {
         Route::get('/', [ProductOrderController::class, 'index'])->name('index');
-        Route::get('/{order}', [ProductOrderController::class, 'show'])->name('show');
-        Route::get('/checkout/form', [ProductOrderController::class, 'checkout'])->name('checkout');
+        Route::get('/checkout', [ProductOrderController::class, 'checkout'])->name('checkout');
         Route::post('/', [ProductOrderController::class, 'store'])->name('store');
+        Route::get('/{order}', [ProductOrderController::class, 'show'])->name('show');
+        
+        // Additional cart actions (keep existing naming for compatibility)
+        Route::post('/add-to-cart', [ProductOrderController::class, 'addToCart'])->name('add-to-cart');
+        Route::post('/remove-from-cart', [ProductOrderController::class, 'removeFromCart'])->name('remove-from-cart');
+        Route::post('/update-cart-quantity', [ProductOrderController::class, 'updateCartQuantity'])->name('update-cart-quantity');
+        Route::post('/clear-cart', [ProductOrderController::class, 'clearCart'])->name('clear-cart');
+        Route::get('/cart-count', [ProductOrderController::class, 'getCartCount'])->name('cart-count');
     });
+    
+    Route::prefix('products')->name('products.')->group(function () {
+        Route::get('/', [ProductOrderController::class, 'browse'])->name('index');
+        Route::get('/{product}', [ProductOrderController::class, 'showProduct'])->name('show');
+        Route::get('/category/{category}', [ProductOrderController::class, 'browseCategory'])->name('category');
+    });
+
+    // Cart Routes
     Route::prefix('cart')->name('cart.')->group(function () {
-        Route::get('/', [ProductOrderController::class, 'cart'])->name('index');
+        Route::get('/', [CartController::class, 'index'])->name('index');
         Route::post('/add', [ProductOrderController::class, 'addToCart'])->name('add');
+        Route::patch('/update-quantity', [CartController::class, 'updateQuantity'])->name('update-quantity');
         Route::delete('/remove', [ProductOrderController::class, 'removeFromCart'])->name('remove');
-        Route::put('/update', [ProductOrderController::class, 'updateCartQuantity'])->name('update');
         Route::delete('/clear', [ProductOrderController::class, 'clearCart'])->name('clear');
-        Route::get('/count', [ProductOrderController::class, 'getCartCount'])->name('count');
+        Route::get('/count', [CartController::class, 'getCartCount'])->name('count');
     });
     // Main quotation routes
     
