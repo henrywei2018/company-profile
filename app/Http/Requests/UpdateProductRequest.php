@@ -61,6 +61,8 @@ class UpdateProductRequest extends FormRequest
             'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'gallery' => 'nullable|array',
             'gallery.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048',
+            'product_images' => 'nullable|array',
+            'product_images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120',
             'delete_images' => 'nullable|array',
             'delete_images.*' => 'exists:product_images,id',
             

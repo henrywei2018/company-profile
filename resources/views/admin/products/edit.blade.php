@@ -7,7 +7,7 @@
         'Edit' => ''
     ]" />
 
-    <form action="{{ route('admin.products.update', $product) }}" method="POST" class="space-y-6" id="product-form">
+    <form action="{{ route('admin.products.update', $product) }}" method="POST" enctype="multipart/form-data" class="space-y-6" id="product-form">
         @csrf
         @method('PUT')
 
@@ -144,7 +144,7 @@
                     @if($product->images->count() > 0)
                         <div class="mb-6">
                             <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Current Images</h4>
-                            <div id="current-images-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            <div id="current-images-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sortable-container">
                                 @foreach($product->images as $image)
                                     <div data-image-id="{{ $image->id }}" 
                                          class="relative group bg-white dark:bg-gray-800 rounded-lg border-2 border-blue-200 dark:border-blue-700 overflow-hidden hover:border-blue-400 dark:hover:border-blue-500 transition-colors">
@@ -225,19 +225,22 @@
                         </h4>
 
                         <x-universal-file-uploader 
-                            :uploadEndpoint="route('admin.products.temp-upload')" 
-                            :deleteEndpoint="route('admin.products.temp-delete')" 
                             :maxFiles="10"
                             maxFileSize="5MB" 
                             :acceptedFileTypes="['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']" 
                             :id="'product-images-uploader'"
-                            name="product_images"
+                            name="product_images_display"
                             dropDescription="Drop product images here or click to browse"
                             :multiple="true"
                             :galleryMode="true"
+                            :instantUpload="false"
+                            :autoUpload="false"
                             theme="modern"
                             containerClass="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6"
                         />
+                        
+                        <!-- Hidden file input for form submission -->
+                        <input type="file" id="product_images_hidden" name="product_images[]" multiple accept="image/*" style="display: none;">
 
                         <div class="mt-3 text-sm text-gray-500 dark:text-gray-400">
                             <p><strong>Note:</strong> New images will be processed when you save the product. Maximum 5MB per image.</p>
@@ -301,6 +304,121 @@
                             <input type="text" name="brand" id="brand" value="{{ old('brand', $product->brand) }}" 
                                 placeholder="Product brand"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300">
+                        </div>
+
+                        <div>
+                            <label for="price_type" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                                Price Type <span class="text-red-500">*</span>
+                            </label>
+                            <select name="price_type" id="price_type" required
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('price_type') border-red-500 @enderror"
+                                onchange="togglePriceFields(this)">
+                                <option value="fixed" {{ old('price_type', $product->price_type ?? 'fixed') === 'fixed' ? 'selected' : '' }}>Fixed Price</option>
+                                <option value="quote" {{ old('price_type', $product->price_type ?? 'fixed') === 'quote' ? 'selected' : '' }}>Request Quote</option>
+                                <option value="contact" {{ old('price_type', $product->price_type ?? 'fixed') === 'contact' ? 'selected' : '' }}>Contact for Price</option>
+                            </select>
+                            @error('price_type')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div id="price-fields" class="space-y-4" style="display: {{ old('price_type', $product->price_type ?? 'fixed') === 'fixed' ? 'block' : 'none' }};">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="price" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                                        Regular Price
+                                    </label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 sm:text-sm">{{ old('currency', $product->currency ?? 'IDR') }}</span>
+                                        </div>
+                                        <input type="number" name="price" id="price" 
+                                            value="{{ old('price', $product->price) }}" 
+                                            min="0" step="0.01"
+                                            placeholder="0.00"
+                                            class="w-full pl-12 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('price') border-red-500 @enderror">
+                                    </div>
+                                    @error('price')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                                
+                                <div>
+                                    <label for="sale_price" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                                        Sale Price (Optional)
+                                    </label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 sm:text-sm">{{ old('currency', $product->currency ?? 'IDR') }}</span>
+                                        </div>
+                                        <input type="number" name="sale_price" id="sale_price" 
+                                            value="{{ old('sale_price', $product->sale_price) }}" 
+                                            min="0" step="0.01"
+                                            placeholder="0.00"
+                                            class="w-full pl-12 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('sale_price') border-red-500 @enderror">
+                                    </div>
+                                    @error('sale_price')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label for="currency" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                                    Currency
+                                </label>
+                                <select name="currency" id="currency"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('currency') border-red-500 @enderror">
+                                    <option value="IDR" {{ old('currency', $product->currency ?? 'IDR') === 'IDR' ? 'selected' : '' }}>Indonesian Rupiah (IDR)</option>
+                                    <option value="USD" {{ old('currency', $product->currency ?? 'IDR') === 'USD' ? 'selected' : '' }}>US Dollar (USD)</option>
+                                    <option value="EUR" {{ old('currency', $product->currency ?? 'IDR') === 'EUR' ? 'selected' : '' }}>Euro (EUR)</option>
+                                </select>
+                                @error('currency')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="flex items-center mb-4">
+                                <input type="checkbox" name="manage_stock" value="1" 
+                                    {{ old('manage_stock', $product->manage_stock ?? false) ? 'checked' : '' }}
+                                    class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                    onchange="toggleStockFields(this)">
+                                <span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">Manage Stock</span>
+                            </label>
+                        </div>
+
+                        <div id="stock-fields" class="space-y-4" style="display: {{ old('manage_stock', $product->manage_stock ?? false) ? 'block' : 'none' }};">
+                            <div>
+                                <label for="stock_quantity" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                                    Stock Quantity
+                                </label>
+                                <input type="number" name="stock_quantity" id="stock_quantity" 
+                                    value="{{ old('stock_quantity', $product->stock_quantity ?? 0) }}" 
+                                    min="0" step="1"
+                                    placeholder="Available stock quantity"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('stock_quantity') border-red-500 @enderror">
+                                @error('stock_quantity')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="stock_status" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                                Stock Status <span class="text-red-500">*</span>
+                            </label>
+                            <select name="stock_status" id="stock_status" required
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300 @error('stock_status') border-red-500 @enderror">
+                                <option value="in_stock" {{ old('stock_status', $product->stock_status ?? 'in_stock') === 'in_stock' ? 'selected' : '' }}>In Stock</option>
+                                <option value="out_of_stock" {{ old('stock_status', $product->stock_status ?? 'in_stock') === 'out_of_stock' ? 'selected' : '' }}>Out of Stock</option>
+                                <option value="on_backorder" {{ old('stock_status', $product->stock_status ?? 'in_stock') === 'on_backorder' ? 'selected' : '' }}>On Backorder</option>
+                            </select>
+                            @error('stock_status')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                            <p class="mt-1 text-xs text-gray-500">Overall stock availability status</p>
                         </div>
 
                         <div>
@@ -377,6 +495,53 @@
         </div>
     </form>
 
+    @push('styles')
+        <style>
+            /* Drag and Drop Styles */
+            .sortable-container [data-image-id] {
+                transition: all 0.2s ease;
+            }
+
+            .sortable-container [data-image-id].dragging {
+                transform: scale(1.05);
+                z-index: 1000;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            }
+
+            .sortable-container [data-image-id].drag-over {
+                border-color: #3B82F6 !important;
+                background-color: rgba(59, 130, 246, 0.1);
+                transform: scale(1.02);
+            }
+
+            .sortable-container [data-image-id]:hover .drag-handle {
+                opacity: 1;
+            }
+
+            .drag-handle {
+                cursor: grab;
+            }
+
+            .drag-handle:active {
+                cursor: grabbing;
+            }
+
+            /* Image Action Button Styles */
+            .image-action-btn {
+                padding: 8px;
+                border-radius: 50%;
+                backdrop-filter: blur(4px);
+                background-color: rgba(0,0,0,0.5);
+                transition: all 0.2s ease;
+            }
+
+            .image-action-btn:hover {
+                transform: scale(1.1);
+                background-color: rgba(0,0,0,0.7);
+            }
+        </style>
+    @endpush
+
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function() {
@@ -386,6 +551,7 @@
             function initializeProductEdit() {
                 // Initialize image management
                 initializeImageHandlers();
+                initializeImageSorting();
                 
                 // Initialize universal uploader events
                 initializeUploaderEvents();
@@ -494,33 +660,145 @@
             }
 
             // =========================================================================
+            // DRAG AND DROP FUNCTIONALITY
+            // =========================================================================
+
+            function initializeImageSorting() {
+                const container = document.getElementById('current-images-grid');
+                if (!container) return;
+
+                // Add drag and drop event listeners to all image cards
+                const imageCards = container.querySelectorAll('[data-image-id]');
+                imageCards.forEach(card => {
+                    card.draggable = true;
+                    card.addEventListener('dragstart', handleDragStart);
+                    card.addEventListener('dragend', handleDragEnd);
+                    card.addEventListener('dragover', handleDragOver);
+                    card.addEventListener('drop', handleDrop);
+                    card.addEventListener('dragenter', handleDragEnter);
+                    card.addEventListener('dragleave', handleDragLeave);
+                });
+            }
+
+            let draggedElement = null;
+
+            function handleDragStart(e) {
+                draggedElement = this;
+                this.style.opacity = '0.5';
+                this.classList.add('dragging');
+                
+                // Set drag data
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', this.outerHTML);
+            }
+
+            function handleDragEnd(e) {
+                this.style.opacity = '';
+                this.classList.remove('dragging');
+                
+                // Clean up drag indicators
+                document.querySelectorAll('.drag-over').forEach(el => {
+                    el.classList.remove('drag-over');
+                });
+                
+                draggedElement = null;
+            }
+
+            function handleDragOver(e) {
+                if (e.preventDefault) {
+                    e.preventDefault();
+                }
+                e.dataTransfer.dropEffect = 'move';
+                return false;
+            }
+
+            function handleDragEnter(e) {
+                if (this !== draggedElement) {
+                    this.classList.add('drag-over');
+                }
+            }
+
+            function handleDragLeave(e) {
+                this.classList.remove('drag-over');
+            }
+
+            function handleDrop(e) {
+                if (e.stopPropagation) {
+                    e.stopPropagation();
+                }
+
+                if (draggedElement !== this) {
+                    // Get all image cards
+                    const container = document.getElementById('current-images-grid');
+                    const allCards = Array.from(container.querySelectorAll('[data-image-id]'));
+                    
+                    // Find the indices
+                    const draggedIndex = allCards.indexOf(draggedElement);
+                    const targetIndex = allCards.indexOf(this);
+                    
+                    // Reorder the elements
+                    if (draggedIndex < targetIndex) {
+                        // Insert after target
+                        container.insertBefore(draggedElement, this.nextSibling);
+                    } else {
+                        // Insert before target
+                        container.insertBefore(draggedElement, this);
+                    }
+                    
+                    // Update the order on server
+                    setTimeout(() => {
+                        updateImageOrder();
+                    }, 100);
+                }
+
+                this.classList.remove('drag-over');
+                return false;
+            }
+
+            // =========================================================================
             // UNIVERSAL FILE UPLOADER EVENTS
             // =========================================================================
 
             function initializeUploaderEvents() {
-                // Listen for upload success
-                document.addEventListener('files-uploaded', function(event) {
+                // Listen for files being selected (no upload yet)
+                document.addEventListener('files-selected', function(event) {
                     if (event.detail.component === 'product-images-uploader') {
-                        handleTempUploadSuccess(event.detail);
+                        console.log('Files selected:', event.detail.files);
+                        const fileCount = event.detail.files.length;
+                        if (fileCount > 0) {
+                            // Update hidden file input
+                            updateHiddenFileInput(event.detail.files);
+                            showNotification(`${fileCount} image${fileCount > 1 ? 's' : ''} selected. Click "Update Product" to save them.`, 'info');
+                        }
                     }
                 });
 
-                // Listen for file deletion
-                document.addEventListener('file-deleted', function(event) {
+                // Listen for file removal
+                document.addEventListener('file-removed', function(event) {
                     if (event.detail.component === 'product-images-uploader') {
-                        handleTempFileDelete(event.detail);
+                        console.log('File removed:', event.detail);
+                        // Update hidden file input with remaining files
+                        updateHiddenFileInput(event.detail.files || []);
+                        showNotification('Image removed from selection', 'info');
                     }
                 });
             }
 
-            function handleTempUploadSuccess(detail) {
-                console.log('Temp upload success:', detail);
-                showNotification('Images uploaded successfully! Save the product to make them permanent.', 'success');
-            }
+            // Update the hidden file input with selected files
+            function updateHiddenFileInput(files) {
+                const hiddenInput = document.getElementById('product_images_hidden');
+                if (!hiddenInput) return;
 
-            function handleTempFileDelete(detail) {
-                console.log('Temp file deleted:', detail);
-                showNotification('Temporary file removed', 'info');
+                // Create a new FileList from the files array
+                const dt = new DataTransfer();
+                files.forEach(fileObj => {
+                    if (fileObj.file) {
+                        dt.items.add(fileObj.file);
+                    }
+                });
+                
+                hiddenInput.files = dt.files;
+                console.log('Updated hidden input with', dt.files.length, 'files');
             }
 
             // =========================================================================
@@ -547,28 +825,30 @@
                     });
                 }
 
-                // Form submission handler - FIXED
+                // Form submission handler with file processing
                 const form = document.getElementById('product-form');
                 const submitButton = document.getElementById('submit-button');
                 
                 if (form && submitButton) {
-                    // Remove any existing event listeners that might prevent submission
-                    form.removeEventListener('submit', preventFormSubmission);
-                    
-                    form.addEventListener('submit', function(e) {
-                        console.log('Form submitting...'); // Debug log
+                    submitButton.addEventListener('click', function(e) {
+                        e.preventDefault(); // Prevent default submission
+                        console.log('Submit button clicked'); // Debug log
                         
                         // Show loading state
-                        if (submitButton) {
-                            submitButton.disabled = true;
-                            const buttonText = submitButton.querySelector('.button-text');
-                            if (buttonText) {
-                                buttonText.textContent = 'Updating...';
-                            }
+                        this.disabled = true;
+                        const buttonText = this.querySelector('.button-text');
+                        if (buttonText) {
+                            buttonText.textContent = 'Updating...';
                         }
                         
-                        // Don't prevent the form submission
-                        // Let it proceed normally to the controller
+                        // Files are already in the hidden input, submit normally
+                        const hiddenInput = document.getElementById('product_images_hidden');
+                        console.log('Files in hidden input:', hiddenInput ? hiddenInput.files.length : 'Hidden input not found');
+                        
+                        // Submit the form normally - files will be sent via hidden input
+                        setTimeout(() => {
+                            form.submit();
+                        }, 100);
                     });
                 }
                 
@@ -581,12 +861,6 @@
                 }
             }
 
-            // Remove this function if it exists and might be preventing submission
-            function preventFormSubmission(e) {
-                e.preventDefault();
-                return false;
-            }
-
             function generateSlug(text) {
                 return text.toLowerCase()
                     .replace(/[^\w\s-]/g, '') // Remove special characters
@@ -594,14 +868,50 @@
                     .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
             }
 
+            // Toggle stock management fields
+            function toggleStockFields(checkbox) {
+                const stockFields = document.getElementById('stock-fields');
+                if (stockFields) {
+                    stockFields.style.display = checkbox.checked ? 'block' : 'none';
+                    
+                    // Clear stock quantity if unchecking manage stock
+                    if (!checkbox.checked) {
+                        const stockQuantityField = document.getElementById('stock_quantity');
+                        if (stockQuantityField) {
+                            stockQuantityField.value = '';
+                        }
+                    }
+                }
+            }
+
+            // Toggle price fields based on price type
+            function togglePriceFields(select) {
+                const priceFields = document.getElementById('price-fields');
+                if (priceFields) {
+                    priceFields.style.display = select.value === 'fixed' ? 'block' : 'none';
+                    
+                    // Clear price fields if not using fixed pricing
+                    if (select.value !== 'fixed') {
+                        const priceField = document.getElementById('price');
+                        const salePriceField = document.getElementById('sale_price');
+                        if (priceField) priceField.value = '';
+                        if (salePriceField) salePriceField.value = '';
+                    }
+                }
+            }
+
+
             // =========================================================================
             // UTILITY FUNCTIONS
             // =========================================================================
 
             function makeImageRequest(action, data) {
                 const productId = {{ $product->id }};
+                const url = `{{ route('admin.products.image-action', $product) }}`;
                 
-                return fetch(`/admin/products/${productId}/image-action`, {
+                console.log('Making image request to:', url, 'with data:', { action, ...data });
+                
+                return fetch(url, {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
@@ -696,4 +1006,4 @@
             }
         </script>
     @endpush
-</x-admin.card>
+</x-layouts.admin>

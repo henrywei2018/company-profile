@@ -197,10 +197,12 @@ class ProductController extends Controller
             // Update product
             $product->update($validated);
 
-            // Process temporary images from Universal File Uploader
-            $this->processTemporaryImages($product);
-
             DB::commit();
+
+            // Process images after main transaction completes successfully
+            // This prevents file storage issues if transaction fails
+            $this->processNewImages($request, $product);
+            $this->processTemporaryImages($product);
 
             return redirect()
                 ->route('admin.products.index')
@@ -264,6 +266,12 @@ class ProductController extends Controller
     public function handleImageAction(Request $request, Product $product)
     {
         $action = $request->input('action');
+        
+        Log::info('Image action request received', [
+            'action' => $action,
+            'product_id' => $product->id,
+            'request_data' => $request->all()
+        ]);
 
         switch ($action) {
             case 'toggle_featured_product_image':
@@ -291,52 +299,91 @@ class ProductController extends Controller
      */
     public function uploadTempImages(Request $request)
     {
-        $request->validate([
-            'file' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
-            'category' => 'nullable|string|in:featured,gallery'
-        ]);
+        // Handle both single file and multiple files from universal uploader
+        if ($request->hasFile('product_images')) {
+            $files = $request->file('product_images');
+            if (!is_array($files)) {
+                $files = [$files];
+            }
+        } else {
+            $request->validate([
+                'file' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+                'category' => 'nullable|string|in:featured,gallery'
+            ]);
+            $files = [$request->file('file')];
+        }
 
-        try {
-            $file = $request->file('file');
-            $category = $request->input('category', 'gallery');
-            
-            // Generate unique filename
-            $filename = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
-            $tempPath = 'temp/products/' . $filename;
+        $uploadedFiles = [];
 
-            // Store in temp directory
-            $storedPath = $file->storeAs('public/temp/products', $filename);
+        foreach ($files as $file) {
+            if (!$file || !$file->isValid()) {
+                continue;
+            }
 
-            // Create temp file record for session
-            $tempFile = [
-                'id' => Str::uuid(),
-                'name' => $file->getClientOriginalName(),
-                'path' => $tempPath,
-                'url' => Storage::url($tempPath),
-                'size' => $file->getSize(),
-                'type' => $file->getMimeType(),
-                'category' => $category,
-                'uploaded_at' => now()->toISOString()
-            ];
-
-            // Store in session
-            $tempFiles = session('temp_product_images', []);
-            $tempFiles[] = $tempFile;
-            session(['temp_product_images' => $tempFiles]);
-
-            return response()->json([
-                'success' => true,
-                'file' => $tempFile,
-                'message' => 'Image uploaded successfully'
+            // Validate individual file
+            $validator = validator(['file' => $file], [
+                'file' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120'
             ]);
 
-        } catch (\Exception $e) {
-            Log::error('Temp image upload failed: ' . $e->getMessage());
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid file: ' . $validator->errors()->first()
+                ], 422);
+            }
 
+            try {
+                $category = $request->input('category', 'gallery');
+            
+                // Generate unique filename
+                $filename = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
+                $tempPath = 'temp/products/' . $filename;
+
+                // Store in temp directory
+                $storedPath = $file->storeAs('public/temp/products', $filename);
+
+                // Create temp file record for session
+                $tempFile = [
+                    'id' => Str::uuid(),
+                    'name' => $file->getClientOriginalName(),
+                    'path' => $tempPath,
+                    'url' => Storage::url($tempPath),
+                    'size' => $file->getSize(),
+                    'type' => $file->getMimeType(),
+                    'category' => $category,
+                    'uploaded_at' => now()->toISOString()
+                ];
+
+                // Store in session
+                $tempFiles = session('temp_product_images', []);
+                $tempFiles[] = $tempFile;
+                session(['temp_product_images' => $tempFiles]);
+
+                $uploadedFiles[] = $tempFile;
+
+            } catch (\Exception $e) {
+                Log::error('Temp image upload failed: ' . $e->getMessage());
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to upload image: ' . $e->getMessage()
+                ], 500);
+            }
+        }
+
+        // Return success response for all uploaded files
+        if (count($uploadedFiles) === 1) {
             return response()->json([
-                'success' => false,
-                'message' => 'Failed to upload image: ' . $e->getMessage()
-            ], 500);
+                'success' => true,
+                'file' => $uploadedFiles[0],
+                'message' => 'Image uploaded successfully'
+            ]);
+        } else {
+            return response()->json([
+                'success' => true,
+                'files' => $uploadedFiles,
+                'message' => count($uploadedFiles) . ' images uploaded successfully'
+            ]);
         }
     }
 
@@ -439,31 +486,43 @@ class ProductController extends Controller
      */
     protected function toggleFeaturedProductImage(Request $request, Product $product)
     {
+        Log::info('Toggling featured image', [
+            'product_id' => $product->id,
+            'image_id' => $request->input('image_id')
+        ]);
+
         $request->validate([
             'image_id' => 'required|integer|exists:product_images,id'
         ]);
 
         try {
+            DB::beginTransaction();
+
             $image = ProductImage::where('id', $request->image_id)
                                 ->where('product_id', $product->id)
                                 ->firstOrFail();
 
-            // If setting as featured, unset other featured images
-            if (!$image->is_featured) {
+            $newFeaturedStatus = !$image->is_featured;
+
+            // If setting as featured, unset other featured images first
+            if ($newFeaturedStatus) {
                 ProductImage::where('product_id', $product->id)
-                          ->where('is_featured', true)
+                          ->where('id', '!=', $image->id)
                           ->update(['is_featured' => false]);
             }
 
-            $image->update(['is_featured' => !$image->is_featured]);
+            $image->update(['is_featured' => $newFeaturedStatus]);
+            
+            DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => $image->is_featured ? 'Image set as featured' : 'Featured status removed',
-                'is_featured' => $image->is_featured
+                'message' => $newFeaturedStatus ? 'Image set as featured' : 'Featured status removed',
+                'is_featured' => $newFeaturedStatus
             ]);
 
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Toggle featured image failed: ' . $e->getMessage());
 
             return response()->json([
@@ -478,11 +537,18 @@ class ProductController extends Controller
      */
     protected function deleteProductImageAction(Request $request, Product $product)
     {
+        Log::info('Deleting product image', [
+            'product_id' => $product->id,
+            'image_id' => $request->input('image_id')
+        ]);
+
         $request->validate([
             'image_id' => 'required|integer|exists:product_images,id'
         ]);
 
         try {
+            DB::beginTransaction();
+
             $image = ProductImage::where('id', $request->image_id)
                                 ->where('product_id', $product->id)
                                 ->firstOrFail();
@@ -492,6 +558,8 @@ class ProductController extends Controller
 
             // Delete database record
             $image->delete();
+            
+            DB::commit();
 
             return response()->json([
                 'success' => true,
@@ -499,6 +567,7 @@ class ProductController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Delete product image failed: ' . $e->getMessage());
 
             return response()->json([
@@ -786,6 +855,148 @@ class ProductController extends Controller
             },
             'relatedServices'
         ]);
+    }
+
+    /**
+     * Process new images directly from form submission.
+     */
+    protected function processNewImages(Request $request, Product $product)
+    {
+        if (!$request->hasFile('product_images')) {
+            Log::info('No product_images files found in request', [
+                'product_id' => $product->id,
+                'request_files' => array_keys($request->allFiles())
+            ]);
+            return;
+        }
+
+        $files = $request->file('product_images');
+        if (!is_array($files)) {
+            $files = [$files];
+        }
+
+        Log::info('Processing product images', [
+            'product_id' => $product->id,
+            'file_count' => count($files)
+        ]);
+
+        foreach ($files as $file) {
+            if (!$file || !$file->isValid()) {
+                continue;
+            }
+
+            try {
+                // Validate file
+                $validator = validator(['file' => $file], [
+                    'file' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120'
+                ]);
+
+                if ($validator->fails()) {
+                    Log::warning('Invalid file uploaded: ' . $validator->errors()->first());
+                    continue;
+                }
+
+                // Generate filename and path
+                $extension = $file->getClientOriginalExtension();
+                $filename = 'product_' . $product->id . '_' . time() . '_' . Str::random(6) . '.' . $extension;
+                $relativePath = 'products/' . $product->id . '/' . $filename;
+
+                // Ensure directory exists
+                $productDir = 'products/' . $product->id;
+                Storage::disk('public')->makeDirectory($productDir);
+                
+                Log::info('Attempting to store file', [
+                    'filename' => $filename,
+                    'relative_path' => $relativePath,
+                    'storage_path' => 'public/products/' . $product->id,
+                    'file_size' => $file->getSize()
+                ]);
+
+                // Store file in public disk - try multiple methods
+                $storedPath = null;
+                
+                // Method 1: Using storeAs with public disk
+                try {
+                    $storedPath = $file->storeAs('products/' . $product->id, $filename, 'public');
+                    Log::info('Method 1 storeAs result', ['stored_path' => $storedPath]);
+                } catch (\Exception $e) {
+                    Log::error('Method 1 failed', ['error' => $e->getMessage()]);
+                }
+                
+                // Method 2: Fallback using move
+                if (!$storedPath) {
+                    try {
+                        $destinationPath = Storage::disk('public')->path('products/' . $product->id . '/' . $filename);
+                        $directory = dirname($destinationPath);
+                        if (!file_exists($directory)) {
+                            mkdir($directory, 0755, true);
+                        }
+                        
+                        if ($file->move($directory, $filename)) {
+                            $storedPath = 'products/' . $product->id . '/' . $filename;
+                            Log::info('Method 2 move result', ['stored_path' => $storedPath]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Method 2 failed', ['error' => $e->getMessage()]);
+                    }
+                }
+                
+                Log::info('File storage result', [
+                    'stored_path' => $storedPath,
+                    'success' => !empty($storedPath)
+                ]);
+
+                if ($storedPath) {
+                    // Verify file actually exists using the stored path
+                    $fileExists = Storage::disk('public')->exists($storedPath);
+                    $fullPath = Storage::disk('public')->path($storedPath);
+                    
+                    Log::info('File verification', [
+                        'stored_path' => $storedPath,
+                        'relative_path' => $relativePath,
+                        'full_path' => $fullPath,
+                        'file_exists' => $fileExists,
+                        'file_size_on_disk' => $fileExists ? filesize($fullPath) : null
+                    ]);
+                    
+                    if ($fileExists) {
+                        // Create ProductImage record
+                        $maxSort = ProductImage::where('product_id', $product->id)->max('sort_order') ?? 0;
+                        
+                        ProductImage::create([
+                            'product_id' => $product->id,
+                            'image_path' => $storedPath, // Use the actual stored path
+                            'alt_text' => $product->name,
+                            'sort_order' => $maxSort + 1,
+                            'is_featured' => false, // Can be set later via management interface
+                        ]);
+
+                        Log::info('New product image processed successfully', [
+                            'product_id' => $product->id,
+                            'image_path' => $storedPath,
+                            'full_path' => $fullPath
+                        ]);
+                    } else {
+                        Log::error('File was not stored properly', [
+                            'stored_path' => $storedPath,
+                            'expected_path' => $relativePath,
+                            'full_path' => $fullPath
+                        ]);
+                    }
+                } else {
+                    Log::error('Failed to store file', [
+                        'filename' => $filename,
+                        'storage_path' => 'public/products/' . $product->id
+                    ]);
+                }
+
+            } catch (\Exception $e) {
+                Log::error('Failed to process new product image: ' . $e->getMessage(), [
+                    'product_id' => $product->id,
+                    'file_name' => $file->getClientOriginalName()
+                ]);
+            }
+        }
     }
 
     /**
