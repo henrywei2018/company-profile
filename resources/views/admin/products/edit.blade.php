@@ -151,7 +151,7 @@
                                         
                                         <!-- Image Display -->
                                         <div class="aspect-w-1 aspect-h-1">
-                                            <img src="{{ $image->url }}" 
+                                            <img src="{{ $image->image_url }}" 
                                                  alt="{{ $image->alt_text }}" 
                                                  class="w-full h-32 object-cover">
                                         </div>
@@ -366,12 +366,12 @@
                     Save & Continue Editing
                 </button>
 
-                <button type="submit"
-                    class="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <button type="submit" id="submit-button"
+                    class="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                     </svg>
-                    Update Product
+                    <span class="button-text">Update Product</span>
                 </button>
             </div>
         </div>
@@ -547,13 +547,44 @@
                     });
                 }
 
-                // Form submission handler
+                // Form submission handler - FIXED
                 const form = document.getElementById('product-form');
-                if (form) {
+                const submitButton = document.getElementById('submit-button');
+                
+                if (form && submitButton) {
+                    // Remove any existing event listeners that might prevent submission
+                    form.removeEventListener('submit', preventFormSubmission);
+                    
                     form.addEventListener('submit', function(e) {
-                        showLoading();
+                        console.log('Form submitting...'); // Debug log
+                        
+                        // Show loading state
+                        if (submitButton) {
+                            submitButton.disabled = true;
+                            const buttonText = submitButton.querySelector('.button-text');
+                            if (buttonText) {
+                                buttonText.textContent = 'Updating...';
+                            }
+                        }
+                        
+                        // Don't prevent the form submission
+                        // Let it proceed normally to the controller
                     });
                 }
+                
+                // Debug: Check if form exists
+                if (!form) {
+                    console.error('Form with ID "product-form" not found!');
+                }
+                if (!submitButton) {
+                    console.error('Submit button with ID "submit-button" not found!');
+                }
+            }
+
+            // Remove this function if it exists and might be preventing submission
+            function preventFormSubmission(e) {
+                e.preventDefault();
+                return false;
             }
 
             function generateSlug(text) {
@@ -602,20 +633,32 @@
             }
 
             function showLoading() {
-                // Add loading state to buttons
-                const buttons = document.querySelectorAll('button[type="submit"]');
-                buttons.forEach(button => {
+                // Add loading state to submit buttons only, not all buttons
+                const submitButtons = document.querySelectorAll('button[type="submit"]');
+                submitButtons.forEach(button => {
                     button.disabled = true;
                     button.classList.add('opacity-75');
+                    
+                    // Update button text if it has .button-text span
+                    const buttonText = button.querySelector('.button-text');
+                    if (buttonText) {
+                        buttonText.textContent = 'Updating...';
+                    }
                 });
             }
 
             function hideLoading() {
-                // Remove loading state from buttons
-                const buttons = document.querySelectorAll('button[type="submit"]');
-                buttons.forEach(button => {
+                // Remove loading state from submit buttons
+                const submitButtons = document.querySelectorAll('button[type="submit"]');
+                submitButtons.forEach(button => {
                     button.disabled = false;
                     button.classList.remove('opacity-75');
+                    
+                    // Restore original button text
+                    const buttonText = button.querySelector('.button-text');
+                    if (buttonText) {
+                        buttonText.textContent = 'Update Product';
+                    }
                 });
             }
 
