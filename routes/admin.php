@@ -105,36 +105,27 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('service-categories/bulk-action', [ServiceCategoryController::class, 'bulkAction'])->name('service-categories.bulk-action');
     // Product Management
     Route::prefix('products')->name('products.')->group(function () {
-    // Temporary file routes (MUST come before resource routes to avoid conflicts)
-    Route::post('/temp-upload', [ProductController::class, 'uploadTempImages'])->name('temp-upload');
-    Route::delete('/temp-delete', [ProductController::class, 'deleteTempImage'])->name('temp-delete');
-    Route::get('/temp-files', [ProductController::class, 'getTempFiles'])->name('temp-files');
-    Route::post('/cleanup-temp', [ProductController::class, 'cleanupTempFiles'])->name('cleanup-temp');
-    
-    // Resource routes (these will bind {product} parameter)
-    Route::resource('/', ProductController::class)->parameters(['' => 'product']);
-    
-    // Product-specific routes (these need {product} parameter)
-    Route::post('{product}/toggle-featured', [ProductController::class, 'toggleFeatured'])->name('toggle-featured');
-    Route::post('{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('toggle-active');
-    Route::post('{product}/duplicate', [ProductController::class, 'duplicate'])->name('duplicate');
-    
-    // Image management routes for existing approach
-    Route::patch('{product}/image-action', [ProductController::class, 'handleImageAction'])->name('image-action');
-    
-    // Legacy routes (keep for compatibility)
-    Route::post('{product}/upload-image', [ProductController::class, 'uploadImages'])->name('upload-image');
-    Route::delete('{product}/delete-image', [ProductController::class, 'deleteImage'])->name('delete-image');
-    
-    // Bulk operations (no specific product needed)
-    Route::post('bulk-action', [ProductController::class, 'bulkAction'])->name('bulk-action');
-    Route::post('update-order', [ProductController::class, 'updateOrder'])->name('update-order');
-    
-    // Data endpoints (no specific product needed)
-    Route::get('statistics', [ProductController::class, 'getStatistics'])->name('statistics');
-    Route::get('export', [ProductController::class, 'export'])->name('export');
-    Route::get('search', [ProductController::class, 'search'])->name('search');
-});
+        
+        Route::post('/temp-upload', [ProductController::class, 'uploadTempImages'])->name('temp-upload');
+        Route::delete('/temp-delete', [ProductController::class, 'deleteTempImage'])->name('temp-delete');
+        Route::get('/temp-files', [ProductController::class, 'getTempFiles'])->name('temp-files');
+        Route::post('/cleanup-temp', [ProductController::class, 'cleanupTempFiles'])->name('cleanup-temp');
+        
+        Route::resource('/', ProductController::class)->parameters(['' => 'product']);
+        
+        Route::post('{product}/toggle-featured', [ProductController::class, 'toggleFeatured'])->name('toggle-featured');
+        Route::post('{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('toggle-active');
+        Route::post('{product}/duplicate', [ProductController::class, 'duplicate'])->name('duplicate');
+        
+        Route::patch('{product}/image-action', [ProductController::class, 'handleImageAction'])->name('image-action');
+        
+        Route::post('bulk-action', [ProductController::class, 'bulkAction'])->name('bulk-action');
+        Route::post('update-order', [ProductController::class, 'updateOrder'])->name('update-order');
+        
+        Route::get('statistics', [ProductController::class, 'getStatistics'])->name('statistics');
+        Route::get('export', [ProductController::class, 'export'])->name('export');
+        Route::get('search', [ProductController::class, 'search'])->name('search');
+    });
 
     // Product Categories
     Route::resource('product-categories', ProductCategoryController::class)->parameters(['product-categories' => 'productCategory']);

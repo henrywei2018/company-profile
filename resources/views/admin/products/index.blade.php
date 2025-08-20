@@ -8,29 +8,7 @@
         title="Products Management" 
         description="Manage your product catalog and inventory"
         :createRoute="route('admin.products.create')"
-        createText="Create New Product">
-        
-        <x-slot name="additionalActions">
-            <!-- Statistics Button -->
-            <button type="button" 
-                    onclick="showStatistics()"
-                    class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                </svg>
-                Statistics
-            </button>
-
-            <!-- Export Button -->
-            <button type="button" 
-                    onclick="exportProducts()"
-                    class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                </svg>
-                Export
-            </button>
-        </x-slot>
+        createText="Create New Product">   
     </x-admin.header-section>
 
     <!-- Filter Section -->
@@ -38,7 +16,7 @@
         :action="route('admin.products.index')"
         :searchValue="request('search')"
         searchPlaceholder="Search by name, SKU, brand, or description..."
-        :hasActiveFilters="request()->hasAny(['search', 'category', 'service', 'status', 'brand', 'stock_status'])"
+        :hasActiveFilters="request()->hasAny(['search', 'category', 'brand', 'stock_status'])"
         :clearFiltersRoute="route('admin.products.index')"
         :filters="[
             [
@@ -46,22 +24,6 @@
                 'label' => 'Category',
                 'allLabel' => 'All Categories',
                 'options' => $categories->pluck('name', 'id')->toArray()
-            ],
-            [
-                'name' => 'service',
-                'label' => 'Service',
-                'allLabel' => 'All Services',
-                'options' => $services->pluck('name', 'id')->toArray()
-            ],
-            [
-                'name' => 'status', 
-                'label' => 'Status',
-                'allLabel' => 'All Status',
-                'options' => [
-                    'published' => 'Published',
-                    'draft' => 'Draft', 
-                    'archived' => 'Archived'
-                ]
             ],
             [
                 'name' => 'brand', 
