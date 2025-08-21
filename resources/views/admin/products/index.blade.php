@@ -16,7 +16,7 @@
         :action="route('admin.products.index')"
         :searchValue="request('search')"
         searchPlaceholder="Search by name, SKU, brand, or description..."
-        :hasActiveFilters="request()->hasAny(['search', 'category', 'brand', 'stock_status'])"
+        :hasActiveFilters="request()->hasAny(['search', 'category', 'brand', 'stock_status', 'status'])"
         :clearFiltersRoute="route('admin.products.index')"
         :filters="[
             [
@@ -39,6 +39,16 @@
                     'in_stock' => 'In Stock',
                     'out_of_stock' => 'Out of Stock',
                     'on_backorder' => 'On Backorder'
+                ]
+            ],
+            [
+                'name' => 'status', 
+                'label' => 'Publication Status',
+                'allLabel' => 'All Status',
+                'options' => [
+                    'published' => 'Published',
+                    'draft' => 'Draft',
+                    'archived' => 'Archived'
                 ]
             ]
         ]" />
@@ -64,6 +74,13 @@
                 'hoverColor' => 'bg-yellow-200'
             ],
             [
+                'value' => 'archive',
+                'label' => 'Archive',
+                'bgColor' => 'bg-gray-100',
+                'textColor' => 'text-gray-700',
+                'hoverColor' => 'bg-gray-200'
+            ],
+            [
                 'value' => 'activate',
                 'label' => 'Activate',
                 'bgColor' => 'bg-blue-100',
@@ -73,9 +90,9 @@
             [
                 'value' => 'deactivate',
                 'label' => 'Deactivate',
-                'bgColor' => 'bg-gray-100',
-                'textColor' => 'text-gray-700',
-                'hoverColor' => 'bg-gray-200'
+                'bgColor' => 'bg-slate-100',
+                'textColor' => 'text-slate-700',
+                'hoverColor' => 'bg-slate-200'
             ],
             [
                 'value' => 'feature',
@@ -290,14 +307,6 @@
                             <div x-show="open" @click.away="open = false" 
                                  class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
                                 <div class="py-1">
-                                    <a href="{{ route('admin.products.show', $product) }}" 
-                                       class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                        </svg>
-                                        View
-                                    </a>
                                     <a href="{{ route('admin.products.edit', $product) }}" 
                                        class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

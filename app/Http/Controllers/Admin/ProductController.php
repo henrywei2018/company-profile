@@ -729,7 +729,7 @@ class ProductController extends Controller
     public function bulkAction(Request $request)
     {
         $request->validate([
-            'action' => 'required|in:activate,deactivate,feature,unfeature,delete,publish,draft',
+            'action' => 'required|in:activate,deactivate,feature,unfeature,delete,publish,draft,archive',
             'product_ids' => 'required|array|min:1',
             'product_ids.*' => 'exists:products,id',
         ]);
@@ -770,6 +770,11 @@ class ProductController extends Controller
                 case 'draft':
                     Product::whereIn('id', $productIds)->update(['status' => 'draft']);
                     $message = "{$count} products set as draft successfully.";
+                    break;
+
+                case 'archive':
+                    Product::whereIn('id', $productIds)->update(['status' => 'archived']);
+                    $message = "{$count} products archived successfully.";
                     break;
 
                 case 'delete':
@@ -1162,6 +1167,7 @@ class ProductController extends Controller
                 'total' => Product::count(),
                 'published' => Product::where('status', 'published')->count(),
                 'draft' => Product::where('status', 'draft')->count(),
+                'archived' => Product::where('status', 'archived')->count(),
                 'active' => Product::where('is_active', true)->count(),
                 'featured' => Product::where('is_featured', true)->count(),
                 'with_images' => Product::whereHas('images')->count(),
