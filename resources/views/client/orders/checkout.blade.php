@@ -5,7 +5,7 @@
     <div class="space-y-6">
         <!-- Header -->
         <div class="flex items-center space-x-4">
-            <a href="{{ route('client.cart') }}" 
+            <a href="{{ route('client.cart.index') }}" 
                class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
@@ -175,11 +175,7 @@
                                         </div>
                                         
                                         <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                            @if($item->product->getCurrentPriceAttribute() > 0)
-                                                Rp {{ number_format($item->quantity * $item->product->getCurrentPriceAttribute(), 0, ',', '.') }}
-                                            @else
-                                                <span class="text-yellow-600 dark:text-yellow-400">Quote</span>
-                                            @endif
+                                            Rp {{ number_format($item->quantity * $item->product->current_price, 0, ',', '.') }}
                                         </div>
                                     </div>
                                 @endforeach
@@ -188,35 +184,18 @@
                             <hr class="border-gray-200 dark:border-gray-600">
 
                             <!-- Pricing Details -->
-                            @php
-                                $hasQuoteItems = $cartItems->filter(fn($item) => $item->product->getCurrentPriceAttribute() <= 0)->count() > 0;
-                                $pricedItems = $cartItems->filter(fn($item) => $item->product->getCurrentPriceAttribute() > 0);
-                                $pricedTotal = $pricedItems->sum(fn($item) => $item->quantity * $item->product->getCurrentPriceAttribute());
-                            @endphp
-
                             <div class="space-y-2">
                                 <div class="flex justify-between text-sm">
                                     <span class="text-gray-600 dark:text-gray-400">Items ({{ $cartItems->sum('quantity') }})</span>
                                     <span class="text-gray-900 dark:text-white">{{ $cartItems->count() }} product(s)</span>
                                 </div>
 
-                                @if($pricedItems->count() > 0)
-                                    <div class="flex justify-between text-sm">
-                                        <span class="text-gray-600 dark:text-gray-400">Subtotal</span>
-                                        <span class="text-gray-900 dark:text-white">
-                                            Rp {{ number_format($pricedTotal, 0, ',', '.') }}
-                                        </span>
-                                    </div>
-                                @endif
-
-                                @if($hasQuoteItems)
-                                    <div class="flex justify-between text-sm">
-                                        <span class="text-gray-600 dark:text-gray-400">Quote Required</span>
-                                        <span class="text-yellow-600 dark:text-yellow-400">
-                                            {{ $cartItems->filter(fn($item) => $item->product->getCurrentPriceAttribute() <= 0)->count() }} item(s)
-                                        </span>
-                                    </div>
-                                @endif
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-600 dark:text-gray-400">Subtotal</span>
+                                    <span class="text-gray-900 dark:text-white">
+                                        Rp {{ number_format($cartTotal, 0, ',', '.') }}
+                                    </span>
+                                </div>
 
                                 <div class="flex justify-between text-sm">
                                     <span class="text-gray-600 dark:text-gray-400">Delivery</span>
@@ -230,18 +209,7 @@
                             <div class="flex justify-between">
                                 <span class="text-base font-medium text-gray-900 dark:text-white">Total</span>
                                 <span class="text-lg font-bold text-gray-900 dark:text-white">
-                                    @if($hasQuoteItems)
-                                        <div class="text-right">
-                                            @if($pricedTotal > 0)
-                                                <div>Rp {{ number_format($pricedTotal, 0, ',', '.') }}</div>
-                                                <div class="text-sm text-yellow-600 dark:text-yellow-400">+ Quote Required</div>
-                                            @else
-                                                <div class="text-yellow-600 dark:text-yellow-400">Quote Required</div>
-                                            @endif
-                                        </div>
-                                    @else
-                                        Rp {{ number_format($cartTotal, 0, ',', '.') }}
-                                    @endif
+                                    Rp {{ number_format($cartTotal, 0, ',', '.') }}
                                 </span>
                             </div>
 
@@ -251,14 +219,10 @@
                             <div class="space-y-3">
                                 <button type="submit" 
                                         class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
-                                    @if($hasQuoteItems)
-                                        Submit Order & Request Quote
-                                    @else
-                                        Place Order
-                                    @endif
+                                    Place Order
                                 </button>
 
-                                <a href="{{ route('client.cart') }}" 
+                                <a href="{{ route('client.cart.index') }}" 
                                    class="block w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors text-center">
                                     Back to Cart
                                 </a>
@@ -266,10 +230,8 @@
 
                             <!-- Additional Info -->
                             <div class="mt-6 text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                                @if($hasQuoteItems)
-                                    <p>• Items requiring quotation will be processed separately</p>
-                                    <p>• You will receive a detailed quote within 24 hours</p>
-                                @endif
+                                <p>• All items have confirmed pricing</p>
+                                <p>• Order will be processed immediately after confirmation</p>
                                 <p>• Delivery fees will be calculated based on location</p>
                                 <p>• You will receive order confirmation via email</p>
                             </div>

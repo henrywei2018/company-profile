@@ -36,8 +36,6 @@ class Product extends Model
         'stock_quantity',
         'manage_stock',
         'stock_status',
-        'featured_image',
-        'gallery',
         'specifications',
         'technical_specs',
         'dimensions',
@@ -133,7 +131,7 @@ class Product extends Model
     public function canAddToCart()
     {
         return $this->purchase_type === 'direct' && 
-               $this->getCurrentPriceAttribute() > 0 &&
+               $this->current_price > 0 &&
                $this->status === 'published' &&
                $this->is_active;
     }
@@ -147,11 +145,6 @@ class Product extends Model
         return $this->hasMany(ProductOrderItem::class);
     }
 
-    public function requiresQuote()
-    {
-        return $this->purchase_type === 'quote' || 
-               $this->getCurrentPriceAttribute() === null;
-    }
     public function scopeCanAddToCart($query)
     {
         return $query->where('purchase_type', 'direct')
@@ -166,15 +159,6 @@ class Product extends Model
                     });
     }
 
-    public function scopeRequiresQuote($query)
-    {
-        return $query->where(function($q) {
-            $q->where('purchase_type', 'quote')
-              ->orWhereIn('price_type', ['quote', 'contact'])
-              ->orWhere('price', '<=', 0)
-              ->orWhereNull('price');
-        });
-    }
 
     /**
      * Get related services through pivot table.
@@ -303,14 +287,6 @@ class Product extends Model
      */
     public function getFormattedPriceAttribute()
     {
-        if ($this->price_type === 'quote') {
-            return 'Request Quote';
-        }
-        
-        if ($this->price_type === 'contact') {
-            return 'Contact for Price';
-        }
-        
         if ($this->sale_price && (float)$this->sale_price < (float)$this->price) {
             return 'Rp ' . number_format((float)$this->sale_price, 0, ',', '.') . 
                    ' <del class="text-gray-500">Rp ' . number_format((float)$this->price, 0, ',', '.') . '</del>';

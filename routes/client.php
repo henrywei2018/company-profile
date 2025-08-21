@@ -74,6 +74,9 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::post('/{project}/testimonial', [ProjectController::class, 'storeTestimonial'])->middleware('throttle:3,1')->name('testimonial.store');
     });
 
+    // Cart route alias for backward compatibility (same as cart.index)
+    Route::get('/cart-legacy', [CartController::class, 'index'])->name('cart');
+
     // Product Order Routes for Client Dashboard
     Route::prefix('orders')->name('orders.')->group(function () {
         Route::get('/', [ProductOrderController::class, 'index'])->name('index');

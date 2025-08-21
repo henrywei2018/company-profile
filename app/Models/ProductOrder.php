@@ -13,20 +13,20 @@ class ProductOrder extends Model
     protected $fillable = [
         'order_number',
         'client_id',
+        'client_name',
+        'client_email',
+        'client_phone',
         'status',
         'total_amount',
         'delivery_address',
         'needed_date',
         'notes',
-        'admin_notes',
-        'quotation_id',
-        'needs_quotation'
+        'admin_notes'
     ];
 
     protected $casts = [
         'total_amount' => 'decimal:2',
         'needed_date' => 'date',
-        'needs_quotation' => 'boolean',
     ];
 
     // ================================
@@ -43,10 +43,6 @@ class ProductOrder extends Model
         return $this->hasMany(ProductOrderItem::class);
     }
 
-    public function quotation()
-    {
-        return $this->belongsTo(Quotation::class);
-    }
 
     // ================================
     // HELPER METHODS
@@ -67,15 +63,6 @@ class ProductOrder extends Model
         return $this->total_amount;
     }
 
-    public function shouldCreateQuotation()
-    {
-        // Auto-quote conditions
-        return $this->total_amount > 10000000 || // > 10 juta IDR
-               $this->items()->sum('quantity') > 10 || // Bulk order
-               $this->items()->whereHas('product', function($q) {
-                   $q->where('purchase_type', 'quote');
-               })->exists();
-    }
 
     public function getNotifiableEntity()
     {
@@ -136,10 +123,6 @@ class ProductOrder extends Model
         return $query->where('status', $status);
     }
 
-    public function scopeNeedsQuotation($query)
-    {
-        return $query->where('needs_quotation', true);
-    }
 
     public function scopeRecent($query)
     {

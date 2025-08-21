@@ -39,12 +39,12 @@
 
         <!-- Price -->
         <div class="mb-4">
-            @if($product->getCurrentPrice() > 0)
+            @if($product->current_price > 0)
                 <div class="flex items-baseline space-x-2">
                     <span class="text-xl font-bold text-gray-900 dark:text-white">
-                        Rp {{ number_format($product->getCurrentPrice(), 0, ',', '.') }}
+                        Rp {{ number_format($product->current_price, 0, ',', '.') }}
                     </span>
-                    @if($product->original_price > $product->getCurrentPrice())
+                    @if($product->original_price > $product->current_price)
                         <span class="text-sm text-gray-500 dark:text-gray-400 line-through">
                             Rp {{ number_format($product->original_price, 0, ',', '.') }}
                         </span>

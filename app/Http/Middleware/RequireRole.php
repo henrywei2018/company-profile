@@ -4,13 +4,14 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 /**
  * Middleware to check roles
  */
 class RequireRole
 {
-    public function handle(Request $request, Closure $next, ...$roles): Response
+    public function handle(Request $request, Closure $next, ...$roles): Response|RedirectResponse
     {
         if (!Auth::check()) {
             if ($request->expectsJson()) {

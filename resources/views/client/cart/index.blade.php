@@ -87,18 +87,12 @@
 
                                                     <!-- Price -->
                                                     <div class="mt-2">
-                                                        @if($item->product->getCurrentPriceAttribute() > 0)
-                                                            <span class="text-sm font-medium text-gray-900 dark:text-white">
-                                                                Rp {{ number_format($item->product->getCurrentPriceAttribute(), 0, ',', '.') }}
-                                                            </span>
-                                                            @if($item->product->original_price > $item->product->getCurrentPriceAttribute())
-                                                                <span class="text-xs text-gray-500 dark:text-gray-400 line-through ml-2">
-                                                                    Rp {{ number_format($item->product->original_price, 0, ',', '.') }}
-                                                                </span>
-                                                            @endif
-                                                        @else
-                                                            <span class="text-sm text-yellow-600 dark:text-yellow-400">
-                                                                Quote Required
+                                                        <span class="text-sm font-medium text-gray-900 dark:text-white">
+                                                            Rp {{ number_format($item->product->current_price, 0, ',', '.') }}
+                                                        </span>
+                                                        @if($item->product->original_price > $item->product->current_price)
+                                                            <span class="text-xs text-gray-500 dark:text-gray-400 line-through ml-2">
+                                                                Rp {{ number_format($item->product->original_price, 0, ',', '.') }}
                                                             </span>
                                                         @endif
                                                     </div>
@@ -149,13 +143,11 @@
                                             </div>
 
                                             <!-- Item Total -->
-                                            @if($item->product->getCurrentPriceAttribute() > 0)
-                                                <div class="mt-3 text-right">
-                                                    <span class="text-sm font-medium text-gray-900 dark:text-white">
-                                                        Subtotal: Rp {{ number_format($item->quantity * $item->product->getCurrentPriceAttribute(), 0, ',', '.') }}
-                                                    </span>
-                                                </div>
-                                            @endif
+                                            <div class="mt-3 text-right">
+                                                <span class="text-sm font-medium text-gray-900 dark:text-white">
+                                                    Subtotal: Rp {{ number_format($item->quantity * $item->product->current_price, 0, ',', '.') }}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -182,27 +174,12 @@
                             </div>
 
                             <!-- Price breakdown -->
-                            @php
-                                $hasQuoteItems = $cartItems->filter(fn($item) => $item->product->getCurrentPriceAttribute() <= 0)->count() > 0;
-                                $pricedItems = $cartItems->filter(fn($item) => $item->product->getCurrentPriceAttribute() > 0);
-                                $pricedTotal = $pricedItems->sum(fn($item) => $item->quantity * $item->product->getCurrentPriceAttribute());
-                            @endphp
-
-                            @if($pricedItems->count() > 0)
-                                <div class="flex justify-between text-sm">
-                                    <span class="text-gray-600 dark:text-gray-400">Priced Items</span>
-                                    <span class="text-gray-900 dark:text-white">
-                                        Rp {{ number_format($pricedTotal, 0, ',', '.') }}
-                                    </span>
-                                </div>
-                            @endif
-
-                            @if($hasQuoteItems)
-                                <div class="flex justify-between text-sm">
-                                    <span class="text-gray-600 dark:text-gray-400">Quote Required</span>
-                                    <span class="text-yellow-600 dark:text-yellow-400">{{ $cartItems->filter(fn($item) => $item->product->getCurrentPriceAttribute() <= 0)->count() }} item(s)</span>
-                                </div>
-                            @endif
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600 dark:text-gray-400">Subtotal</span>
+                                <span class="text-gray-900 dark:text-white">
+                                    Rp {{ number_format($cartTotal, 0, ',', '.') }}
+                                </span>
+                            </div>
 
                             <hr class="border-gray-200 dark:border-gray-600">
 
@@ -210,18 +187,7 @@
                             <div class="flex justify-between">
                                 <span class="text-base font-medium text-gray-900 dark:text-white">Total</span>
                                 <span class="text-lg font-bold text-gray-900 dark:text-white">
-                                    @if($hasQuoteItems)
-                                        <div class="text-right">
-                                            @if($pricedTotal > 0)
-                                                <div>Rp {{ number_format($pricedTotal, 0, ',', '.') }}</div>
-                                                <div class="text-sm text-yellow-600 dark:text-yellow-400">+ Quote Required</div>
-                                            @else
-                                                <div class="text-yellow-600 dark:text-yellow-400">Quote Required</div>
-                                            @endif
-                                        </div>
-                                    @else
-                                        Rp {{ number_format($cartTotal, 0, ',', '.') }}
-                                    @endif
+                                    Rp {{ number_format($cartTotal, 0, ',', '.') }}
                                 </span>
                             </div>
 
@@ -229,29 +195,11 @@
 
                             <!-- Action Buttons -->
                             <div class="space-y-3">
-                                @if($hasQuoteItems)
-                                    <!-- Request Quotation -->
-                                    <button type="button" 
-                                            onclick="requestQuotation()" 
-                                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
-                                        Request Quotation
-                                    </button>
-                                    
-                                    @if($pricedItems->count() > 0)
-                                        <!-- Checkout Priced Items Only -->
-                                        <button type="button" 
-                                                onclick="checkoutPricedItems()" 
-                                                class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
-                                            Checkout Priced Items
-                                        </button>
-                                    @endif
-                                @else
-                                    <!-- Regular Checkout -->
-                                    <a href="{{ route('client.orders.checkout') }}" 
-                                       class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors text-center">
-                                        Proceed to Checkout
-                                    </a>
-                                @endif
+                                <!-- Checkout Button -->
+                                <a href="{{ route('client.orders.checkout') }}" 
+                                   class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors text-center">
+                                    Proceed to Checkout
+                                </a>
 
                                 <!-- Continue Shopping -->
                                 <a href="{{ route('client.products.index') }}" 
@@ -262,7 +210,7 @@
 
                             <!-- Additional Info -->
                             <div class="mt-6 text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                                <p>• Items requiring quotation will be processed separately</p>
+                                <p>• All items have confirmed pricing</p>
                                 <p>• Delivery fees will be calculated at checkout</p>
                                 <p>• All prices are in Indonesian Rupiah (IDR)</p>
                             </div>
@@ -383,18 +331,7 @@
             });
         }
 
-        // Request quotation for all items
-        function requestQuotation() {
-            // Redirect to quotation creation with cart items
-            window.location.href = '{{ route("client.quotations.create") }}?from_cart=1';
-        }
 
-        // Checkout only priced items
-        function checkoutPricedItems() {
-            // This would need additional backend logic to handle partial checkout
-            alert('This feature will checkout only items with fixed prices. Quote-required items will remain in cart.');
-            window.location.href = '{{ route("client.orders.checkout") }}?priced_only=1';
-        }
     </script>
     @endpush
 </x-layouts.client>

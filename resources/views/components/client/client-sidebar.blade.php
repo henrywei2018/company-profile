@@ -311,6 +311,33 @@
                                     @endif
                                 </a>
                             </li>
+
+                            {{-- My Orders --}}
+                            <li>
+                                <a class="flex items-center gap-x-3.5 py-2 px-3 text-sm rounded-md {{ request()->routeIs('client.orders.*') ? 'bg-gray-100 dark:bg-gray-900 text-blue-600' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900' }}"
+                                    href="{{ route('client.orders.index') }}">
+                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                    My Orders
+                                    @php
+                                        $totalOrdersCount = isset($clientStats['orders']['total'])
+                                            ? $clientStats['orders']['total']
+                                            : \App\Models\ProductOrder::where('client_id', auth()->id())->count();
+                                        $pendingOrdersCount = \App\Models\ProductOrder::where('client_id', auth()->id())
+                                            ->where('status', 'pending')
+                                            ->count();
+                                    @endphp
+                                    @if ($totalOrdersCount > 0)
+                                        <span
+                                            class="inline-flex items-center py-0.5 px-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 ml-auto">
+                                            {{ $totalOrdersCount }}
+                                        </span>
+                                    @endif
+                                </a>
+                            </li>
                         </ul>
                     </div>
                 </li>

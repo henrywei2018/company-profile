@@ -12,7 +12,6 @@ class CartController extends Controller
 
     public function __construct(ProductOrderService $orderService)
     {
-        $this->middleware(['auth', 'role:client']);
         $this->orderService = $orderService;
     }
 
@@ -25,20 +24,7 @@ class CartController extends Controller
         
         // Calculate totals
         $cartTotal = $cartItems->sum(function($item) {
-            return $item->quantity * ($item->product->getCurrentPriceAttribute() ?? 0);
-        });
-
-        // Separate priced and quote-required items
-        $pricedItems = $cartItems->filter(function($item) {
-            return $item->product->getCurrentPriceAttribute() > 0;
-        });
-
-        $quoteItems = $cartItems->filter(function($item) {
-            return $item->product->getCurrentPriceAttribute() <= 0;
-        });
-
-        $pricedTotal = $pricedItems->sum(function($item) {
-            return $item->quantity * $item->product->getCurrentPriceAttribute();
+            return $item->quantity * ($item->product->current_price ?? 0);
         });
 
         // Validate cart items (check for any issues)
@@ -47,10 +33,7 @@ class CartController extends Controller
 
         return view('client.cart.index', compact(
             'cartItems', 
-            'cartTotal', 
-            'pricedItems', 
-            'quoteItems', 
-            'pricedTotal',
+            'cartTotal',
             'cartErrors'
         ));
     }
@@ -114,9 +97,6 @@ class CartController extends Controller
             'total' => $cartTotal,
             'formatted_total' => 'Rp ' . number_format($cartTotal, 0, ',', '.'),
             'items_count' => $cartItems->count(),
-            'has_quote_items' => $cartItems->filter(function($item) {
-                return $item->product->getCurrentPriceAttribute() <= 0;
-            })->count() > 0
         ];
 
         return response()->json([
@@ -138,14 +118,10 @@ class CartController extends Controller
                 'product_id' => $item->product->id,
                 'name' => $item->product->name,
                 'quantity' => $item->quantity,
-                'price' => $item->product->getCurrentPriceAttribute(),
-                'formatted_price' => $item->product->getCurrentPriceAttribute() > 0 
-                    ? 'Rp ' . number_format($item->product->getCurrentPriceAttribute(), 0, ',', '.') 
-                    : 'Quote Required',
-                'subtotal' => $item->quantity * ($item->product->getCurrentPriceAttribute() ?? 0),
-                'formatted_subtotal' => $item->product->getCurrentPriceAttribute() > 0 
-                    ? 'Rp ' . number_format($item->quantity * $item->product->getCurrentPriceAttribute(), 0, ',', '.') 
-                    : 'Quote Required',
+                'price' => $item->product->current_price,
+                'formatted_price' => 'Rp ' . number_format($item->product->current_price, 0, ',', '.'),
+                'subtotal' => $item->quantity * ($item->product->current_price ?? 0),
+                'formatted_subtotal' => 'Rp ' . number_format($item->quantity * $item->product->current_price, 0, ',', '.'),
                 'image' => $item->product->image 
                     ? asset('storage/' . $item->product->image) 
                     : null,
@@ -344,19 +320,15 @@ class CartController extends Controller
                         'product_name' => $item->product->name,
                         'sku' => $item->product->sku,
                         'quantity' => $item->quantity,
-                        'unit_price' => $item->product->getCurrentPriceAttribute(),
-                        'subtotal' => $item->quantity * ($item->product->getCurrentPriceAttribute() ?? 0),
+                        'unit_price' => $item->product->current_price,
+                        'subtotal' => $item->quantity * ($item->product->current_price ?? 0),
                         'specifications' => $item->specifications,
-                        'requires_quote' => $item->product->getCurrentPriceAttribute() <= 0
                     ];
                 }),
                 'summary' => [
                     'total_items' => $cartItems->count(),
                     'total_quantity' => $cartItems->sum('quantity'),
                     'total_amount' => $this->orderService->getCartTotal(),
-                    'quote_required_items' => $cartItems->filter(function($item) {
-                        return $item->product->getCurrentPriceAttribute() <= 0;
-                    })->count()
                 ]
             ]
         ];
@@ -384,7 +356,6 @@ class CartController extends Controller
                 'Unit Price',
                 'Subtotal',
                 'Specifications',
-                'Quote Required'
             ]);
 
             // CSV data
@@ -393,10 +364,9 @@ class CartController extends Controller
                     $item->product->name,
                     $item->product->sku,
                     $item->quantity,
-                    $item->product->getCurrentPriceAttribute() > 0 ? $item->product->getCurrentPriceAttribute() : 'Quote Required',
-                    $item->product->getCurrentPriceAttribute() > 0 ? $item->quantity * $item->product->getCurrentPriceAttribute() : 'Quote Required',
+                    $item->product->current_price,
+                    $item->quantity * $item->product->current_price,
                     $item->specifications ?? '',
-                    $item->product->getCurrentPriceAttribute() <= 0 ? 'Yes' : 'No'
                 ]);
             }
 

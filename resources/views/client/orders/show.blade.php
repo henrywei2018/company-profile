@@ -22,15 +22,6 @@
             
             <!-- Action Buttons -->
             <div class="flex space-x-3">
-                @if($order->quotation)
-                    <a href="{{ route('client.quotations.show', $order->quotation) }}" 
-                       class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        View Quotation
-                    </a>
-                @endif
                 
                 <a href="{{ route('client.messages.create', ['order_id' => $order->id]) }}" 
                    class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
@@ -64,14 +55,6 @@
                                 {{ ucfirst($order->status) }}
                             </span>
                             
-                            @if($order->needs_quotation)
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                    </svg>
-                                    Requires Quotation
-                                </span>
-                            @endif
                         </div>
 
                         <!-- Status Timeline -->
@@ -169,15 +152,9 @@
 
                                             <!-- Item Total -->
                                             <div class="text-right">
-                                                @if($item->total_price > 0)
-                                                    <div class="text-lg font-medium text-gray-900 dark:text-white">
-                                                        Rp {{ number_format($item->total_price, 0, ',', '.') }}
-                                                    </div>
-                                                @else
-                                                    <div class="text-sm text-yellow-600 dark:text-yellow-400">
-                                                        Quote Required
-                                                    </div>
-                                                @endif
+                                                <div class="text-lg font-medium text-gray-900 dark:text-white">
+                                                    Rp {{ number_format($item->total_price, 0, ',', '.') }}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -280,14 +257,6 @@
                                 </div>
                             @endif
 
-                            @if($order->needs_quotation)
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600 dark:text-gray-400">Quote Status</span>
-                                    <span class="text-yellow-600 dark:text-yellow-400">
-                                        {{ $order->quotation ? 'Generated' : 'Pending' }}
-                                    </span>
-                                </div>
-                            @endif
                         </div>
 
                         <hr class="border-gray-200 dark:border-gray-600">
@@ -296,25 +265,12 @@
                         <div class="flex justify-between">
                             <span class="text-base font-medium text-gray-900 dark:text-white">Total</span>
                             <span class="text-lg font-bold text-gray-900 dark:text-white">
-                                @if($order->total_amount > 0)
-                                    Rp {{ number_format($order->total_amount + ($order->delivery_fee ?? 0), 0, ',', '.') }}
-                                    @if($order->needs_quotation)
-                                        <div class="text-sm text-yellow-600 dark:text-yellow-400">+ Quote Items</div>
-                                    @endif
-                                @else
-                                    <span class="text-yellow-600 dark:text-yellow-400">Pending Quote</span>
-                                @endif
+                                Rp {{ number_format($order->total_amount + ($order->delivery_fee ?? 0), 0, ',', '.') }}
                             </span>
                         </div>
 
                         <!-- Action Buttons -->
                         <div class="space-y-3 pt-4">
-                            @if($order->quotation)
-                                <a href="{{ route('client.quotations.show', $order->quotation) }}" 
-                                   class="block w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-center">
-                                    View Quotation
-                                </a>
-                            @endif
                             
                             <a href="{{ route('client.messages.create', ['order_id' => $order->id]) }}" 
                                class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-center">
@@ -344,13 +300,6 @@
                             Browse Products
                         </a>
                         
-                        <a href="{{ route('client.quotations.create') }}" 
-                           class="flex items-center px-4 py-2 text-sm text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors">
-                            <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            Request New Quote
-                        </a>
                         
                         <a href="{{ route('client.orders.index') }}" 
                            class="flex items-center px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/20 rounded-lg transition-colors">

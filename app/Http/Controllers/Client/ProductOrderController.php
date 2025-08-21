@@ -17,7 +17,6 @@ class ProductOrderController extends Controller
 
     public function __construct(ProductOrderService $orderService)
     {
-        $this->middleware(['auth', 'role:client']);
         $this->orderService = $orderService;
     }
 
@@ -176,17 +175,13 @@ class ProductOrderController extends Controller
     public function index(Request $request)
     {
         $query = ProductOrder::where('client_id', Auth::id())
-            ->with(['items.product', 'quotation']);
+            ->with(['items.product']);
 
         // Status filter
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // Quotation filter
-        if ($request->filled('needs_quotation')) {
-            $query->where('needs_quotation', $request->needs_quotation === '1');
-        }
 
         // Search
         if ($request->filled('search')) {
@@ -214,7 +209,7 @@ class ProductOrderController extends Controller
     {
         $this->authorize('view', $order);
         
-        $order->load(['items.product', 'quotation']);
+        $order->load(['items.product']);
         
         return view('client.orders.show', compact('order'));
     }
@@ -226,7 +221,7 @@ class ProductOrderController extends Controller
     {
         $cartItems = $this->orderService->getCart();
         $cartTotal = $cartItems->sum(function($item) {
-            return $item->quantity * ($item->product->getCurrentPrice() ?? 0);
+            return $item->quantity * ($item->product->current_price ?? 0);
         });
         
         return view('client.cart.index', compact('cartItems', 'cartTotal'));
@@ -246,11 +241,12 @@ class ProductOrderController extends Controller
 
         $user = Auth::user();
         $cartTotal = $cartItems->sum(function($item) {
-            return $item->quantity * ($item->product->getCurrentPrice() ?? 0);
+            return $item->quantity * ($item->product->current_price ?? 0);
         });
         
         return view('client.orders.checkout', compact('cartItems', 'user', 'cartTotal'));
     }
+
 
     /**
      * Create order from cart
@@ -286,6 +282,34 @@ class ProductOrderController extends Controller
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Failed to create order: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Cancel an order
+     */
+    public function cancel(ProductOrder $order)
+    {
+        $this->authorize('cancel', $order);
+        
+        if (!in_array($order->status, ['pending', 'processing'])) {
+            return redirect()->back()
+                ->with('error', 'Order cannot be cancelled. Current status: ' . ucfirst($order->status));
+        }
+
+        try {
+            $order->update([
+                'status' => 'cancelled',
+                'cancelled_at' => now(),
+                'admin_notes' => ($order->admin_notes ?? '') . "\nOrder cancelled by client at " . now()->format('Y-m-d H:i:s')
+            ]);
+
+            return redirect()->route('client.orders.show', $order)
+                ->with('success', 'Order has been cancelled successfully.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to cancel order: ' . $e->getMessage());
         }
     }
 
@@ -426,5 +450,29 @@ class ProductOrderController extends Controller
             'count' => $cartCount,
             'total' => $this->orderService->getCartTotal()
         ]);
+    }
+
+    /**
+     * Get cart summary with negotiation info
+     */
+    public function getCartSummary()
+    {
+        try {
+            $cartItems = $this->orderService->getCart();
+            $cartTotal = $this->orderService->getCartTotal();
+            $cartCount = $this->orderService->getCartCount();
+            
+            return response()->json([
+                'success' => true,
+                'count' => $cartCount,
+                'total' => $cartTotal
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
     }
 }

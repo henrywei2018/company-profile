@@ -6,7 +6,6 @@ use App\Models\ProductOrder;
 use App\Models\ProductOrderItem;
 use App\Models\CartItem;
 use App\Models\Product;
-use App\Models\Quotation;
 use App\Facades\Notifications;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +15,7 @@ use Illuminate\Support\Collection;
 class ProductOrderService
 {
     // ================================
-    // ORDER CREATION
+    // ORDER CREATION & NEGOTIATION
     // ================================
 
     public function createOrderFromCart(array $deliveryInfo)
@@ -35,10 +34,16 @@ class ProductOrderService
                 }
             }
 
+            // Get client information
+            $user = Auth::user();
+            
             // Create the order
             $order = ProductOrder::create([
                 'order_number' => $this->generateOrderNumber(),
-                'client_id' => Auth::id(),
+                'client_id' => $user->id,
+                'client_name' => $user->name,
+                'client_email' => $user->email,
+                'client_phone' => $user->phone ?? null,
                 'delivery_address' => $deliveryInfo['address'],
                 'needed_date' => $deliveryInfo['needed_date'] ?? null,
                 'notes' => $deliveryInfo['notes'] ?? null,
@@ -46,23 +51,23 @@ class ProductOrderService
             ]);
 
             $totalAmount = 0;
-            $needsQuotation = false;
 
             // Create order items from cart
             foreach ($cartItems as $cartItem) {
                 $product = $cartItem->product;
-                $unitPrice = $product->getCurrentPrice() ?? 0;
+                $unitPrice = $product->current_price ?? 0;
                 
+                // Skip items with no price
                 if ($unitPrice <= 0) {
-                    $needsQuotation = true;
+                    continue;
                 }
 
                 ProductOrderItem::create([
-                    'order_id' => $order->id,
+                    'product_order_id' => $order->id,
                     'product_id' => $product->id,
                     'quantity' => $cartItem->quantity,
-                    'unit_price' => $unitPrice,
-                    'total_price' => $unitPrice * $cartItem->quantity,
+                    'price' => $unitPrice,
+                    'total' => $unitPrice * $cartItem->quantity,
                     'specifications' => $cartItem->specifications,
                 ]);
 
@@ -72,59 +77,17 @@ class ProductOrderService
             // Update order totals
             $order->update([
                 'total_amount' => $totalAmount,
-                'needs_quotation' => $needsQuotation,
             ]);
 
             // Clear cart after successful order creation
             $this->clearCart();
 
-            // Generate quotation if needed
-            if ($needsQuotation) {
-                $this->convertOrderToQuotation($order);
-            }
-
             return $order;
         });
     }
 
-    public function convertToQuotation(ProductOrder $order)
-    {
-        try {
-            $quotation = Quotation::create([
-                'quotation_number' => $this->generateQuotationNumber(),
-                'product_order_id' => $order->id,
-                'name' => $order->client->name,
-                'email' => $order->client->email,
-                'phone' => $order->client->phone,
-                'client_id' => $order->client_id,
-                'project_type' => 'Product Order - ' . $order->order_number,
-                'requirements' => $this->generateRequirementsFromOrder($order),
-                'has_products' => true,
-                'status' => 'pending',
-                'source' => 'product_order',
-            ]);
 
-            $order->update([
-                'quotation_id' => $quotation->id,
-                'needs_quotation' => true,
-                'status' => 'pending'
-            ]);
 
-            Log::info('Product order converted to quotation', [
-                'order_id' => $order->id,
-                'quotation_id' => $quotation->id
-            ]);
-
-            return $quotation;
-
-        } catch (\Exception $e) {
-            Log::error('Failed to convert order to quotation', [
-                'order_id' => $order->id,
-                'error' => $e->getMessage()
-            ]);
-            throw $e;
-        }
-    }
 
     // ================================
     // CART MANAGEMENT (UPDATED)
@@ -140,15 +103,6 @@ class ProductOrderService
         $product = Product::findOrFail($productId);
         
         if (!$product->canAddToCart()) {
-            // Give more specific error message based on product type
-            if ($product->requiresQuote()) {
-                throw new \Exception('This product requires a quotation. Please contact us for pricing.');
-            }
-            
-            if ($product->current_price <= 0) {
-                throw new \Exception('This product has no valid price set.');
-            }
-            
             throw new \Exception('This product cannot be added to cart.');
         }
 
@@ -228,7 +182,7 @@ class ProductOrderService
     public function getCartTotal(): float
     {
         return $this->getCart()->sum(function($item) {
-            return $item->quantity * ($item->product->getCurrentPrice() ?? 0);
+            return $item->quantity * ($item->product->current_price ?? 0);
         });
     }
 
@@ -277,14 +231,10 @@ class ProductOrderService
             }
 
             if (!$product->canAddToCart()) {
-                $errors[] = "Product '{$product->name}' cannot be ordered directly.";
+                $errors[] = "Product '{$product->name}' cannot be added to cart.";
                 continue;
             }
 
-            if ($product->current_price <= 0) {
-                $errors[] = "Product '{$product->name}' has invalid pricing.";
-                continue;
-            }
 
             if ($cartItem->quantity < $product->min_quantity) {
                 $errors[] = "Product '{$product->name}' requires minimum {$product->min_quantity} items.";
@@ -339,38 +289,5 @@ class ProductOrderService
         return $prefix . $date . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
 
-    private function generateQuotationNumber()
-    {
-        $prefix = 'QUO';
-        $date = date('Ym');
-        $sequence = Quotation::whereRaw("quotation_number LIKE '{$prefix}{$date}%'")->count() + 1;
-        return $prefix . $date . str_pad($sequence, 4, '0', STR_PAD_LEFT);
-    }
 
-    private function generateRequirementsFromOrder(ProductOrder $order)
-    {
-        $requirements = "Product Order Requirements:\n\n";
-        
-        foreach ($order->items as $item) {
-            $requirements .= "- {$item->product->name} (Qty: {$item->quantity})\n";
-            $requirements .= "  Price: " . number_format($item->price) . " IDR\n";
-            if ($item->specifications) {
-                $requirements .= "  Specifications: {$item->specifications}\n";
-            }
-            $requirements .= "\n";
-        }
-        
-        $requirements .= "Total Amount: " . number_format($order->total_amount) . " IDR\n";
-        $requirements .= "Delivery Address: {$order->delivery_address}\n";
-        
-        if ($order->needed_date) {
-            $requirements .= "Required Date: {$order->needed_date->format('d/m/Y')}\n";
-        }
-        
-        if ($order->notes) {
-            $requirements .= "\nSpecial Notes:\n{$order->notes}";
-        }
-        
-        return $requirements;
-    }
 }
