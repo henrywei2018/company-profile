@@ -159,7 +159,7 @@ class ProductOrderService
         return CartItem::with(['product' => function($query) {
             $query->where('status', 'published')
                   ->where('is_active', true);
-        }])
+        }, 'product.images'])
         ->where('user_id', Auth::id())
         ->get();
     }

@@ -43,17 +43,33 @@
             <!-- Product Images -->
             <div class="space-y-4">
                 <!-- Main Image -->
-                <div class="aspect-w-1 aspect-h-1 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden">
-                    @if($product->image)
+                <div class="aspect-w-1 aspect-h-1 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden relative group cursor-pointer" onclick="openLightbox()">
+                    @php
+                        $featuredImage = $product->images->where('is_featured', true)->first();
+                        $firstImage = $featuredImage ?: $product->images->first();
+                    @endphp
+                    
+                    @if($firstImage)
                         <img id="main-image" 
-                             src="{{ asset('storage/' . $product->image) }}" 
+                             src="{{ asset('storage/' . $firstImage->image_path) }}" 
                              alt="{{ $product->name }}"
-                             class="w-full h-96 object-cover">
+                             class="w-full h-96 object-cover transition-transform duration-300 group-hover:scale-105">
                     @else
                         <div class="w-full h-96 flex items-center justify-center">
                             <svg class="w-24 h-24 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                             </svg>
+                        </div>
+                    @endif
+                    
+                    @if($firstImage)
+                        <!-- Hover Overlay -->
+                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <div class="bg-white dark:bg-gray-800 p-3 rounded-full shadow-lg transform group-hover:scale-110 transition-all duration-200">
+                                <svg class="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </div>
                         </div>
                     @endif
                 </div>
@@ -290,16 +306,34 @@
                         <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow">
                             
                             <!-- Product Image -->
-                            <div class="aspect-w-16 aspect-h-12 bg-gray-200 dark:bg-gray-700">
-                                @if($relatedProduct->image)
-                                    <img src="{{ asset('storage/' . $relatedProduct->image) }}" 
+                            <div class="aspect-w-16 aspect-h-12 bg-gray-200 dark:bg-gray-700 relative group">
+                                @php
+                                    $relatedFeaturedImage = $relatedProduct->images->where('is_featured', true)->first();
+                                    $relatedFirstImage = $relatedFeaturedImage ?: $relatedProduct->images->first();
+                                @endphp
+                                
+                                @if($relatedFirstImage)
+                                    <img src="{{ asset('storage/' . $relatedFirstImage->image_path) }}" 
                                          alt="{{ $relatedProduct->name }}"
-                                         class="w-full h-32 object-cover">
+                                         class="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200">
                                 @else
                                     <div class="w-full h-32 flex items-center justify-center">
                                         <svg class="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                                         </svg>
+                                    </div>
+                                @endif
+                                
+                                @if($relatedFirstImage)
+                                    <!-- Hover Overlay for Related Products -->
+                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                        <a href="{{ route('client.products.show', $relatedProduct) }}" 
+                                           class="bg-white dark:bg-gray-800 p-2 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 transform hover:scale-110">
+                                            <svg class="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                            </svg>
+                                        </a>
                                     </div>
                                 @endif
                             </div>
@@ -352,12 +386,59 @@
         @endif
     </div>
 
+    <!-- Image Lightbox Modal -->
+    <div id="image-lightbox" class="fixed inset-0 z-50 hidden bg-black bg-opacity-75 flex items-center justify-center p-4">
+        <div class="relative max-w-4xl max-h-full">
+            <img id="lightbox-image" src="" alt="" class="max-w-full max-h-full object-contain rounded-lg">
+            <button onclick="closeLightbox()" class="absolute top-4 right-4 bg-white dark:bg-gray-800 p-2 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <svg class="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
     @push('scripts')
     <script>
         // Change main image when thumbnail clicked
         function changeMainImage(imageSrc) {
             document.getElementById('main-image').src = imageSrc;
         }
+
+        // Open lightbox
+        function openLightbox() {
+            const mainImage = document.getElementById('main-image');
+            const lightboxImage = document.getElementById('lightbox-image');
+            const lightbox = document.getElementById('image-lightbox');
+            
+            if (mainImage && mainImage.src) {
+                lightboxImage.src = mainImage.src;
+                lightboxImage.alt = mainImage.alt;
+                lightbox.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        // Close lightbox
+        function closeLightbox() {
+            const lightbox = document.getElementById('image-lightbox');
+            lightbox.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close lightbox when clicking outside the image
+        document.getElementById('image-lightbox').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeLightbox();
+            }
+        });
+
+        // Close lightbox with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeLightbox();
+            }
+        });
 
         // Update quantity input
         function updateQuantity(change) {

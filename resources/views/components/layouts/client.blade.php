@@ -127,6 +127,7 @@
     <x-chat-widget 
         size="compact"
         theme="client"
+        :auto-open="false"
         :show-online-status="true"
         welcome-message="Halo! Ada yang bisa kami bantu?"
         operator-name="Customer Support" />

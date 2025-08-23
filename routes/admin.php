@@ -140,12 +140,35 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // Product Orders
     Route::prefix('orders')->name('orders.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\ProductOrderController::class, 'index'])->name('index');
-        Route::get('/{order}', [App\Http\Controllers\Admin\ProductOrderController::class, 'show'])->name('show');
-        Route::put('/{order}/status', [App\Http\Controllers\Admin\ProductOrderController::class, 'updateStatus'])->name('update-status');
-        Route::post('/{order}/convert-quotation', [App\Http\Controllers\Admin\ProductOrderController::class, 'convertToQuotation'])->name('convert-quotation');
+        Route::get('/payments', [App\Http\Controllers\Admin\ProductOrderController::class, 'paymentsIndex'])->name('payments.index');
         Route::get('/export/csv', [App\Http\Controllers\Admin\ProductOrderController::class, 'exportCsv'])->name('export-csv');
         Route::get('/api/statistics', [App\Http\Controllers\Admin\ProductOrderController::class, 'statistics'])->name('statistics');
+        Route::get('/{order}', [App\Http\Controllers\Admin\ProductOrderController::class, 'show'])->name('show');
+        Route::get('/{order}/negotiation', [App\Http\Controllers\Admin\ProductOrderController::class, 'showNegotiation'])->name('negotiation');
+        Route::post('/{order}/negotiation/respond', [App\Http\Controllers\Admin\ProductOrderController::class, 'respondToNegotiation'])->name('negotiation.respond');
+        Route::get('/{order}/payment', [App\Http\Controllers\Admin\ProductOrderController::class, 'showPayment'])->name('payment');
+        Route::post('/{order}/payment/verify', [App\Http\Controllers\Admin\ProductOrderController::class, 'verifyPayment'])->name('payment.verify');
+        Route::get('/{order}/delivery', [App\Http\Controllers\Admin\ProductOrderController::class, 'showDelivery'])->name('delivery');
+        Route::post('/{order}/resolve-dispute', [App\Http\Controllers\Admin\ProductOrderController::class, 'resolveDispute'])->name('resolve-dispute');
+        Route::post('/{order}/force-confirm', [App\Http\Controllers\Admin\ProductOrderController::class, 'forceConfirm'])->name('force-confirm');
+        Route::get('/api/delivery-stats', [App\Http\Controllers\Admin\ProductOrderController::class, 'deliveryStats'])->name('delivery-stats');
+        Route::put('/{order}/status', [App\Http\Controllers\Admin\ProductOrderController::class, 'updateStatus'])->name('update-status');
+        Route::post('/{order}/convert-quotation', [App\Http\Controllers\Admin\ProductOrderController::class, 'convertToQuotation'])->name('convert-quotation');
     });
+
+    // Payment Methods Management
+    Route::prefix('payment-methods')->name('payment-methods.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\PaymentMethodController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Admin\PaymentMethodController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Admin\PaymentMethodController::class, 'store'])->name('store');
+        Route::get('/{paymentMethod}', [App\Http\Controllers\Admin\PaymentMethodController::class, 'show'])->name('show');
+        Route::get('/{paymentMethod}/edit', [App\Http\Controllers\Admin\PaymentMethodController::class, 'edit'])->name('edit');
+        Route::put('/{paymentMethod}', [App\Http\Controllers\Admin\PaymentMethodController::class, 'update'])->name('update');
+        Route::delete('/{paymentMethod}', [App\Http\Controllers\Admin\PaymentMethodController::class, 'destroy'])->name('destroy');
+        Route::post('/{paymentMethod}/toggle-status', [App\Http\Controllers\Admin\PaymentMethodController::class, 'toggleStatus'])->name('toggle-status');
+        Route::post('/update-order', [App\Http\Controllers\Admin\PaymentMethodController::class, 'updateOrder'])->name('update-order');
+    });
+
     // Banner Management
     Route::prefix('banner-categories')->name('banner-categories.')->group(function () {
         Route::resource('/', BannerCategoryController::class)->parameters(['' => 'bannerCategory']);

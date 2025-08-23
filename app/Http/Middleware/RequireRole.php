@@ -5,13 +5,14 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\RedirectResponse;
+use Symfony\Component\HttpFoundation\Response as BaseResponse;
 use Illuminate\Support\Facades\Auth;
 /**
  * Middleware to check roles
  */
 class RequireRole
 {
-    public function handle(Request $request, Closure $next, ...$roles): Response|RedirectResponse
+    public function handle(Request $request, Closure $next, ...$roles): BaseResponse
     {
         if (!Auth::check()) {
             if ($request->expectsJson()) {

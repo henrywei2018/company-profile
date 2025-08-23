@@ -7,9 +7,11 @@ use App\Models\ProductOrder;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\CartItem;
+use App\Models\PaymentMethod;
 use App\Services\ProductOrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ProductOrderController extends Controller
 {
@@ -29,7 +31,7 @@ class ProductOrderController extends Controller
      */
     public function browse(Request $request)
     {
-        $query = Product::with(['category'])
+        $query = Product::with(['category', 'images'])
             ->where('status', 'published')
             ->where('is_active', true);
 
@@ -131,6 +133,7 @@ class ProductOrderController extends Controller
             ->where('id', '!=', $product->id)
             ->where('status', 'published')
             ->where('is_active', true)
+            ->with(['images'])
             ->limit(4)
             ->get();
 
@@ -147,6 +150,7 @@ class ProductOrderController extends Controller
         }
 
         $query = $category->products()
+            ->with(['images'])
             ->where('status', 'published')
             ->where('is_active', true);
 
@@ -174,32 +178,64 @@ class ProductOrderController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ProductOrder::where('client_id', Auth::id())
-            ->with(['items.product']);
+        $baseQuery = ProductOrder::where('client_id', Auth::id())
+            ->with(['items.product.images']);
 
-        // Status filter
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        // Tab filtering
+        $tab = $request->get('tab', 'active');
+        
+        if ($tab === 'delivered') {
+            // Order History: Only completed (client-confirmed) orders
+            $query = clone $baseQuery;
+            $query->where('status', 'delivered')
+                  ->where('delivery_confirmed_by_client', true);
+        } else {
+            // Active orders: All orders that are not completed
+            $query = clone $baseQuery;
+            $query->where(function($q) {
+                $q->where('status', '!=', 'delivered')
+                  ->orWhere(function($subQuery) {
+                      $subQuery->where('status', 'delivered')
+                               ->where('delivery_confirmed_by_client', false);
+                  });
+            });
         }
 
-
-        // Search
+        // Search functionality
         if ($request->filled('search')) {
             $searchTerm = $request->search;
             $query->where(function($q) use ($searchTerm) {
                 $q->where('order_number', 'like', "%{$searchTerm}%")
-                  ->orWhere('notes', 'like', "%{$searchTerm}%");
+                  ->orWhere('notes', 'like', "%{$searchTerm}%")
+                  ->orWhereHas('items.product', function($productQuery) use ($searchTerm) {
+                      $productQuery->where('name', 'like', "%{$searchTerm}%");
+                  });
             });
         }
 
-        // Sorting
-        $sortBy = $request->get('sort', 'created_at');
-        $sortDirection = $request->get('direction', 'desc');
-        $query->orderBy($sortBy, $sortDirection);
+        // Order by most recent first
+        $query->orderBy('created_at', 'desc');
 
+        // Get paginated results
         $orders = $query->paginate(15)->withQueryString();
 
-        return view('client.orders.index', compact('orders'));
+        // Get counts for tabs
+        $activeCount = ProductOrder::where('client_id', Auth::id())
+            ->where(function($q) {
+                $q->where('status', '!=', 'delivered')
+                  ->orWhere(function($subQuery) {
+                      $subQuery->where('status', 'delivered')
+                               ->where('delivery_confirmed_by_client', false);
+                  });
+            })
+            ->count();
+            
+        $deliveredCount = ProductOrder::where('client_id', Auth::id())
+            ->where('status', 'delivered')
+            ->where('delivery_confirmed_by_client', true)
+            ->count();
+
+        return view('client.orders.index', compact('orders', 'activeCount', 'deliveredCount'));
     }
 
     /**
@@ -209,9 +245,49 @@ class ProductOrderController extends Controller
     {
         $this->authorize('view', $order);
         
-        $order->load(['items.product']);
+        $order->load(['items.product.images']);
         
         return view('client.orders.show', compact('order'));
+    }
+
+    /**
+     * Confirm delivery by client
+     */
+    public function confirmDelivery(ProductOrder $order, Request $request)
+    {
+        $this->authorize('view', $order);
+        
+        if (!$order->canConfirmDelivery()) {
+            return back()->with('error', 'Cannot confirm delivery for this order.');
+        }
+
+        $request->validate([
+            'notes' => 'nullable|string|max:1000'
+        ]);
+
+        $order->confirmDelivery($request->notes);
+
+        return back()->with('success', 'Delivery confirmed successfully! Order moved to history.');
+    }
+
+    /**
+     * Report delivery dispute
+     */
+    public function disputeDelivery(ProductOrder $order, Request $request)
+    {
+        $this->authorize('view', $order);
+        
+        if (!$order->canDisputeDelivery()) {
+            return back()->with('error', 'Cannot dispute delivery for this order.');
+        }
+
+        $request->validate([
+            'reason' => 'required|string|max:1000'
+        ]);
+
+        $order->reportDispute($request->reason);
+
+        return back()->with('success', 'Delivery dispute reported. Our team will contact you shortly.');
     }
 
     /**
@@ -310,6 +386,193 @@ class ProductOrderController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Failed to cancel order: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Show negotiation form
+     */
+    public function negotiationForm(ProductOrder $order)
+    {
+        $this->authorize('view', $order);
+        
+        if (!$order->canNegotiate()) {
+            return redirect()->route('client.orders.show', $order)
+                ->with('error', 'Price negotiation is not available for this order.');
+        }
+
+        $order->load(['items.product']);
+        
+        return view('client.orders.negotiate', compact('order'));
+    }
+
+    /**
+     * Submit negotiation request
+     */
+    public function submitNegotiation(Request $request, ProductOrder $order)
+    {
+        $this->authorize('view', $order);
+        
+        if (!$order->canNegotiate()) {
+            return redirect()->route('client.orders.show', $order)
+                ->with('error', "Price negotiation is not available. Status: {$order->status}, Needs Negotiation: " . ($order->needs_negotiation ? 'Yes' : 'No') . ", Negotiation Status: " . ($order->negotiation_status ?? 'None'));
+        }
+
+        $validated = $request->validate([
+            'negotiation_message' => 'required|string|max:1000',
+            'items' => 'required|array',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.requested_unit_price' => 'required|numeric|min:0',
+            'items.*.price_justification' => 'nullable|string|max:500'
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated, $order) {
+                // Calculate new total
+                $requestedTotal = 0;
+                
+                // Update order items with negotiation details
+                foreach ($validated['items'] as $itemData) {
+                    $orderItem = $order->items()->where('product_id', $itemData['product_id'])->first();
+                    if ($orderItem) {
+                        $requestedTotalPrice = $orderItem->quantity * $itemData['requested_unit_price'];
+                        
+                        $orderItem->update([
+                            'requested_unit_price' => $itemData['requested_unit_price'],
+                            'requested_total_price' => $requestedTotalPrice,
+                            'price_justification' => $itemData['price_justification'] ?? null
+                        ]);
+                        
+                        $requestedTotal += $requestedTotalPrice;
+                    }
+                }
+
+                // Update order with negotiation request
+                $isCounterOffer = $order->negotiation_status === 'in_progress';
+                $order->update([
+                    'needs_negotiation' => true,
+                    'negotiation_message' => $validated['negotiation_message'],
+                    'requested_total' => $requestedTotal,
+                    'negotiation_status' => 'pending',
+                    'negotiation_requested_at' => now(),
+                    'admin_notes' => $isCounterOffer 
+                        ? ($order->admin_notes ?? '') . "\nClient counter-offered: " . $validated['negotiation_message']
+                        : $order->admin_notes
+                ]);
+            });
+
+            $message = $isCounterOffer 
+                ? 'Counter-offer submitted successfully! We will review your response and get back to you soon.'
+                : 'Negotiation request submitted successfully! We will review your request and respond soon.';
+                
+            return redirect()->route('client.orders.show', $order)
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to submit negotiation request: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Accept admin's negotiation offer
+     */
+    public function acceptNegotiation(ProductOrder $order)
+    {
+        $this->authorize('view', $order);
+        
+        if (!$order->canAcceptNegotiation()) {
+            return redirect()->route('client.orders.show', $order)
+                ->with('error', 'Cannot accept this negotiation at this time.');
+        }
+
+        try {
+            DB::transaction(function () use ($order) {
+                // Mark negotiation as accepted and completed
+                $order->update([
+                    'negotiation_status' => 'completed',
+                    'negotiation_responded_at' => now(),
+                    'admin_notes' => ($order->admin_notes ?? '') . "\nClient accepted admin's counter-offer at " . now()->format('Y-m-d H:i:s')
+                ]);
+            });
+
+            return redirect()->route('client.orders.show', $order)
+                ->with('success', 'Admin\'s offer accepted successfully! The negotiation is now complete.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to accept negotiation: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Show payment methods and upload form
+     */
+    public function paymentForm(ProductOrder $order)
+    {
+        $this->authorize('view', $order);
+        
+        if (!$order->canMakePayment()) {
+            return redirect()->route('client.orders.show', $order)
+                ->with('error', 'Payment is not available for this order at this time.');
+        }
+
+        $order->load(['items.product']);
+        
+        // Get active payment methods from admin settings
+        $paymentMethods = PaymentMethod::active()->ordered()->get();
+        
+        if ($paymentMethods->isEmpty()) {
+            return redirect()->route('client.orders.show', $order)
+                ->with('error', 'No payment methods are currently available. Please contact support.');
+        }
+        
+        return view('client.orders.payment', compact('order', 'paymentMethods'));
+    }
+
+    /**
+     * Upload payment proof
+     */
+    public function uploadPaymentProof(Request $request, ProductOrder $order)
+    {
+        $this->authorize('view', $order);
+        
+        if (!$order->canUploadPaymentProof()) {
+            return redirect()->route('client.orders.show', $order)
+                ->with('error', 'Cannot upload payment proof for this order at this time.');
+        }
+
+        $validated = $request->validate([
+            'payment_method' => 'required|string|max:255',
+            'payment_proof' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'payment_notes' => 'nullable|string|max:500'
+        ]);
+
+        try {
+            // Handle file upload
+            $paymentProofPath = null;
+            if ($request->hasFile('payment_proof')) {
+                $paymentProofPath = $request->file('payment_proof')->store('payment_proofs', 'public');
+            }
+
+            DB::transaction(function () use ($validated, $order, $paymentProofPath) {
+                $order->update([
+                    'payment_method' => $validated['payment_method'],
+                    'payment_proof' => $paymentProofPath,
+                    'payment_notes' => $validated['payment_notes'] ?? null,
+                    'payment_status' => 'proof_uploaded',
+                    'payment_uploaded_at' => now(),
+                ]);
+            });
+
+            return redirect()->route('client.orders.show', $order)
+                ->with('success', 'Payment proof uploaded successfully! We will verify your payment and update the order status.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to upload payment proof: ' . $e->getMessage());
         }
     }
 
@@ -473,6 +736,64 @@ class ProductOrderController extends Controller
                 'success' => false,
                 'message' => $e->getMessage()
             ], 400);
+        }
+    }
+
+    /**
+     * Client responds to admin's dispute acknowledgment
+     * Route: POST /client/orders/{order}/respond-to-dispute
+     */
+    public function respondToDispute(Request $request, ProductOrder $order)
+    {
+        $this->authorize('view', $order);
+
+        if (!$order->canRespondToDispute()) {
+            return redirect()->route('client.orders.show', $order)
+                ->with('error', 'You cannot respond to this dispute at this time.');
+        }
+
+        $validated = $request->validate([
+            'client_response' => 'required|string|max:1000',
+        ]);
+
+        try {
+            $order->respondToAcknowledgment($validated['client_response']);
+
+            return redirect()->route('client.orders.show', $order)
+                ->with('success', 'Your response has been submitted. Our team will review and get back to you.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to submit response: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Client accepts admin's dispute resolution
+     * Route: POST /client/orders/{order}/accept-resolution
+     */
+    public function acceptResolution(Request $request, ProductOrder $order)
+    {
+        $this->authorize('view', $order);
+
+        if (!$order->isAwaitingResolutionAcceptance()) {
+            return redirect()->route('client.orders.show', $order)
+                ->with('error', 'This resolution cannot be accepted at this time.');
+        }
+
+        $validated = $request->validate([
+            'client_feedback' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $order->acceptDisputeResolution($validated['client_feedback']);
+
+            return redirect()->route('client.orders.show', $order)
+                ->with('success', 'Resolution accepted! Your order is now completed.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to accept resolution: ' . $e->getMessage());
         }
     }
 }

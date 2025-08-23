@@ -52,17 +52,36 @@
                                         
                                         <!-- Product Image -->
                                         <div class="flex-shrink-0">
-                                            @if($item->product->image)
-                                                <img src="{{ asset('storage/' . $item->product->image) }}" 
-                                                     alt="{{ $item->product->name }}"
-                                                     class="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600">
-                                            @else
-                                                <div class="w-16 h-16 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
-                                                    <svg class="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                                                    </svg>
-                                                </div>
-                                            @endif
+                                            @php
+                                                $featuredImage = $item->product->images->where('is_featured', true)->first();
+                                                $firstImage = $featuredImage ?: $item->product->images->first();
+                                            @endphp
+                                            
+                                            <div class="relative group cursor-pointer" onclick="window.location.href='{{ route('client.products.show', $item->product) }}'">
+                                                @if($firstImage)
+                                                    <img src="{{ asset('storage/' . $firstImage->image_path) }}" 
+                                                         alt="{{ $item->product->name }}"
+                                                         class="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600 transition-transform duration-200 group-hover:scale-105">
+                                                @else
+                                                    <div class="w-16 h-16 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                                                        <svg class="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                                        </svg>
+                                                    </div>
+                                                @endif
+                                                
+                                                @if($firstImage)
+                                                    <!-- Hover Overlay -->
+                                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-lg">
+                                                        <div class="bg-white dark:bg-gray-800 p-1.5 rounded-full shadow-lg transform group-hover:scale-110 transition-all duration-200">
+                                                            <svg class="w-3 h-3 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                            </svg>
+                                                        </div>
+                                                    </div>
+                                                @endif
+                                            </div>
                                         </div>
 
                                         <!-- Product Details -->
@@ -70,7 +89,10 @@
                                             <div class="flex items-start justify-between">
                                                 <div class="flex-1">
                                                     <h4 class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                                        {{ $item->product->name }}
+                                                        <a href="{{ route('client.products.show', $item->product) }}" 
+                                                           class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                                            {{ $item->product->name }}
+                                                        </a>
                                                     </h4>
                                                     
                                                     @if($item->product->sku)

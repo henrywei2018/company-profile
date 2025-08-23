@@ -158,6 +158,31 @@ class NavigationService
                 ],
             ],
 
+            // Orders
+            [
+                'title' => 'Orders',
+                'icon' => 'orders',
+                'active' => request()->routeIs('admin.orders.*'),
+                'permission' => 'view orders',
+                'badge' => $this->getPendingOrdersCount(),
+                'children' => [
+                    [
+                        'title' => 'All Orders',
+                        'route' => 'admin.orders.index',
+                        'active' => request()->routeIs('admin.orders.index'),
+                        'permission' => 'view orders',
+                        'badge' => $this->getPendingOrdersCount(),
+                    ],
+                    [
+                        'title' => 'Payment Management',
+                        'route' => 'admin.orders.payments.index',
+                        'active' => request()->routeIs('admin.orders.payments.*'),
+                        'permission' => 'view orders',
+                        'badge' => $this->getPendingPaymentsCount(),
+                    ],
+                ],
+            ],
+
             // Projects
             [
                 'title' => 'Projects',
@@ -313,13 +338,19 @@ class NavigationService
             [
                 'title' => 'Settings',
                 'icon' => 'settings',
-                'active' => request()->routeIs('admin.settings.*'),
+                'active' => request()->routeIs(['admin.settings.*', 'admin.payment-methods.*']),
                 'permission' => 'view settings',
                 'children' => [
                     [
                         'title' => 'General Settings',
                         'route' => 'admin.settings.index',
                         'active' => request()->routeIs('admin.settings.index'),
+                        'permission' => 'view settings',
+                    ],
+                    [
+                        'title' => 'Payment Methods',
+                        'route' => 'admin.payment-methods.index',
+                        'active' => request()->routeIs('admin.payment-methods.*'),
                         'permission' => 'view settings',
                     ],
                     [
@@ -617,6 +648,32 @@ class NavigationService
                 ['title' => 'Chat Settings']
             ],
             
+            // Orders
+            'admin.orders.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Orders', 'route' => 'admin.orders.index']
+            ],
+            'admin.orders.show' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Orders', 'route' => 'admin.orders.index'],
+                ['title' => 'Order Details']
+            ],
+            'admin.orders.payment' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Orders', 'route' => 'admin.orders.index'],
+                ['title' => 'Payment Review']
+            ],
+            'admin.orders.negotiation' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Orders', 'route' => 'admin.orders.index'],
+                ['title' => 'Price Negotiation']
+            ],
+            'admin.orders.payments.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Orders', 'route' => 'admin.orders.index'],
+                ['title' => 'Payment Management']
+            ],
+
             // Quotations
             'admin.quotations.index' => [
                 ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
@@ -659,6 +716,31 @@ class NavigationService
                 ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
                 ['title' => 'Settings', 'route' => 'admin.settings.index'],
                 ['title' => 'SEO Settings']
+            ],
+            
+            // Payment Methods
+            'admin.payment-methods.index' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Settings', 'route' => 'admin.settings.index'],
+                ['title' => 'Payment Methods']
+            ],
+            'admin.payment-methods.create' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Settings', 'route' => 'admin.settings.index'],
+                ['title' => 'Payment Methods', 'route' => 'admin.payment-methods.index'],
+                ['title' => 'Add Payment Method']
+            ],
+            'admin.payment-methods.edit' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Settings', 'route' => 'admin.settings.index'],
+                ['title' => 'Payment Methods', 'route' => 'admin.payment-methods.index'],
+                ['title' => 'Edit Payment Method']
+            ],
+            'admin.payment-methods.show' => [
+                ['title' => 'Dashboard', 'route' => 'admin.dashboard'],
+                ['title' => 'Settings', 'route' => 'admin.settings.index'],
+                ['title' => 'Payment Methods', 'route' => 'admin.payment-methods.index'],
+                ['title' => 'Payment Method Details']
             ],
             
             // Company Profile
@@ -747,6 +829,26 @@ class NavigationService
                 return $user->projects()->where('status', 'active')->count();
             }
             return \App\Models\Project::where('status', 'active')->count();
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    public function getPendingOrdersCount(): int
+    {
+        try {
+            return \App\Models\ProductOrder::whereIn('status', ['pending', 'confirmed'])
+                ->orWhere('payment_status', 'proof_uploaded')
+                ->count();
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    public function getPendingPaymentsCount(): int
+    {
+        try {
+            return \App\Models\ProductOrder::where('payment_status', 'proof_uploaded')->count();
         } catch (\Exception $e) {
             return 0;
         }

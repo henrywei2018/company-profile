@@ -384,19 +384,26 @@ function chatWidget() {
         // Initialize
         init() {
             this.currentPollingInterval = this.pollingInterval;
-            this.checkOnlineStatus();
             this.setupEventListeners();
             
-            // Auto-open if configured
-            if (this.$el.dataset.autoOpen === 'true') {
-                setTimeout(() => this.openChat(), 1000);
-            }
+            // Check for existing session first (without auto-opening)
+            this.loadExistingSession().then(() => {
+                // Only check online status after loading session
+                this.checkOnlineStatus();
+                
+                // Only auto-open if configured AND there are unread messages
+                if (this.$el.dataset.autoOpen === 'true' && this.unreadCount > 0) {
+                    setTimeout(() => this.openChat(), 2000);
+                }
+                
+                // Start connection monitoring only if we have a session
+                if (this.sessionId) {
+                    this.startConnectionMonitoring();
+                }
+            });
             
-            // Check for existing session
-            this.loadExistingSession();
-            
-            // Start connection monitoring
-            this.startConnectionMonitoring();
+            // Show a subtle welcome animation instead of auto-opening
+            this.showWelcomeAnimation();
         },
 
         // Event Listeners
@@ -428,12 +435,15 @@ function chatWidget() {
 
         // Connection Management
         startConnectionMonitoring() {
+            // Start with less aggressive monitoring
             this.connectionTimer = setInterval(() => {
                 if (this.isOpen && this.sessionId) {
                     this.checkConnectionHealth();
+                } else {
+                    // Only check online status every 30 seconds when chat is closed
+                    this.checkOnlineStatus();
                 }
-                this.checkOnlineStatus();
-            }, 10000); // Check every 10 seconds
+            }, this.isOpen ? 10000 : 30000); // 10s when open, 30s when closed
         },
 
         async checkConnectionHealth() {
@@ -482,6 +492,9 @@ function chatWidget() {
             this.isOpen = true;
             this.unreadCount = 0;
             
+            // Start connection monitoring when chat opens
+            this.startConnectionMonitoring();
+            
             if (!this.sessionId) {
                 await this.startChatSession();
             } else {
@@ -497,6 +510,12 @@ function chatWidget() {
         closeChat() {
             this.isOpen = false;
             this.stopPolling();
+            
+            // Reduce monitoring frequency when closed
+            if (this.connectionTimer) {
+                clearInterval(this.connectionTimer);
+                this.startConnectionMonitoring(); // Restart with reduced frequency
+            }
         },
 
         async startChatSession() {
@@ -546,6 +565,11 @@ function chatWidget() {
                     this.sessionStatus = data.status;
                     this.messages = data.messages || [];
                     this.lastMessageId = this.getLastMessageId();
+                    
+                    // Count unread messages from the session
+                    this.unreadCount = this.messages.filter(m => 
+                        m.sender_type === 'operator' && !m.is_read
+                    ).length;
                     
                     if (data.operator) {
                         this.operatorName = data.operator.name;
@@ -968,6 +992,29 @@ function chatWidget() {
         async loadOlderMessages() {
             // Implement if needed for chat history
             console.log('Load older messages - implement if needed');
+        },
+
+        showWelcomeAnimation() {
+            // Only show welcome animation for first-time visitors or when there are unread messages
+            const hasShownWelcome = localStorage.getItem('chat_widget_welcome_shown');
+            
+            if (!hasShownWelcome || this.unreadCount > 0) {
+                setTimeout(() => {
+                    const chatButton = this.$el.querySelector('button');
+                    if (chatButton && !this.isOpen) {
+                        // Add subtle bounce animation
+                        chatButton.classList.add('animate-bounce');
+                        setTimeout(() => {
+                            chatButton.classList.remove('animate-bounce');
+                        }, 2000);
+                        
+                        // Mark as shown for first-time visitors
+                        if (!hasShownWelcome) {
+                            localStorage.setItem('chat_widget_welcome_shown', 'true');
+                        }
+                    }
+                }, 3000); // Wait 3 seconds after page load
+            }
         },
 
         // Cleanup

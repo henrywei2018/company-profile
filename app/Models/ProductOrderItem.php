@@ -16,12 +16,17 @@ class ProductOrderItem extends Model
         'price',
         'total',
         'specifications',
-        'notes'
+        'notes',
+        'requested_unit_price',
+        'requested_total_price',
+        'price_justification'
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'total' => 'decimal:2',
+        'requested_unit_price' => 'decimal:2',
+        'requested_total_price' => 'decimal:2',
     ];
 
     // ================================

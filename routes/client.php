@@ -83,6 +83,16 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::get('/checkout', [ProductOrderController::class, 'checkout'])->name('checkout');
         Route::post('/', [ProductOrderController::class, 'store'])->name('store');
         Route::get('/{order}', [ProductOrderController::class, 'show'])->name('show');
+        Route::patch('/{order}/cancel', [ProductOrderController::class, 'cancel'])->name('cancel');
+        Route::get('/{order}/negotiate', [ProductOrderController::class, 'negotiationForm'])->name('negotiate');
+        Route::post('/{order}/negotiate', [ProductOrderController::class, 'submitNegotiation'])->name('negotiate.submit');
+        Route::post('/{order}/accept-negotiation', [ProductOrderController::class, 'acceptNegotiation'])->name('negotiate.accept');
+        Route::get('/{order}/payment', [ProductOrderController::class, 'paymentForm'])->name('payment');
+        Route::post('/{order}/payment', [ProductOrderController::class, 'uploadPaymentProof'])->name('payment.upload');
+        Route::post('/{order}/confirm-delivery', [ProductOrderController::class, 'confirmDelivery'])->name('confirm-delivery');
+        Route::post('/{order}/dispute-delivery', [ProductOrderController::class, 'disputeDelivery'])->name('dispute-delivery');
+        Route::post('/{order}/respond-to-dispute', [ProductOrderController::class, 'respondToDispute'])->name('respond-to-dispute');
+        Route::post('/{order}/accept-resolution', [ProductOrderController::class, 'acceptResolution'])->name('accept-resolution');
         
         // Additional cart actions (keep existing naming for compatibility)
         Route::post('/add-to-cart', [ProductOrderController::class, 'addToCart'])->name('add-to-cart');
