@@ -143,17 +143,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::get('/payments', [App\Http\Controllers\Admin\ProductOrderController::class, 'paymentsIndex'])->name('payments.index');
         Route::get('/export/csv', [App\Http\Controllers\Admin\ProductOrderController::class, 'exportCsv'])->name('export-csv');
         Route::get('/api/statistics', [App\Http\Controllers\Admin\ProductOrderController::class, 'statistics'])->name('statistics');
+        Route::post('/bulk-action', [App\Http\Controllers\Admin\ProductOrderController::class, 'bulkAction'])->name('bulk-action');
         Route::get('/{order}', [App\Http\Controllers\Admin\ProductOrderController::class, 'show'])->name('show');
         Route::get('/{order}/negotiation', [App\Http\Controllers\Admin\ProductOrderController::class, 'showNegotiation'])->name('negotiation');
         Route::post('/{order}/negotiation/respond', [App\Http\Controllers\Admin\ProductOrderController::class, 'respondToNegotiation'])->name('negotiation.respond');
         Route::get('/{order}/payment', [App\Http\Controllers\Admin\ProductOrderController::class, 'showPayment'])->name('payment');
         Route::post('/{order}/payment/verify', [App\Http\Controllers\Admin\ProductOrderController::class, 'verifyPayment'])->name('payment.verify');
         Route::get('/{order}/delivery', [App\Http\Controllers\Admin\ProductOrderController::class, 'showDelivery'])->name('delivery');
-        Route::post('/{order}/resolve-dispute', [App\Http\Controllers\Admin\ProductOrderController::class, 'resolveDispute'])->name('resolve-dispute');
-        Route::post('/{order}/force-confirm', [App\Http\Controllers\Admin\ProductOrderController::class, 'forceConfirm'])->name('force-confirm');
+        Route::post('/{order}/complete', [App\Http\Controllers\Admin\ProductOrderController::class, 'completeOrder'])->name('complete');
         Route::get('/api/delivery-stats', [App\Http\Controllers\Admin\ProductOrderController::class, 'deliveryStats'])->name('delivery-stats');
         Route::put('/{order}/status', [App\Http\Controllers\Admin\ProductOrderController::class, 'updateStatus'])->name('update-status');
         Route::post('/{order}/convert-quotation', [App\Http\Controllers\Admin\ProductOrderController::class, 'convertToQuotation'])->name('convert-quotation');
+        Route::delete('/{order}', [App\Http\Controllers\Admin\ProductOrderController::class, 'destroy'])->name('destroy');
     });
 
     // Payment Methods Management

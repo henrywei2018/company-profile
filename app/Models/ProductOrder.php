@@ -187,6 +187,82 @@ class ProductOrder extends Model
         };
     }
 
+    public function getDisplayStatus()
+    {
+        return $this->getStatusLabel();
+    }
+
+    public function getPaymentStatusLabel()
+    {
+        return match($this->payment_status) {
+            'pending' => 'Pending Payment',
+            'proof_uploaded' => 'Payment Proof Uploaded',
+            'verified' => 'Payment Verified',
+            'rejected' => 'Payment Rejected',
+            default => ucfirst(str_replace('_', ' ', $this->payment_status ?? 'pending'))
+        };
+    }
+
+    public function getPaymentStatusBadgeClass()
+    {
+        return match($this->payment_status) {
+            'pending' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+            'proof_uploaded' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+            'verified' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+            'rejected' => 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+            default => 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+        };
+    }
+
+    public function getNegotiationStatusLabel()
+    {
+        return match($this->negotiation_status) {
+            'pending' => 'Pending Review',
+            'in_progress' => 'In Progress',
+            'accepted' => 'Accepted',
+            'rejected' => 'Rejected',
+            'completed' => 'Completed',
+            default => ucfirst($this->negotiation_status ?? 'none')
+        };
+    }
+
+    public function getNegotiationStatusBadgeClass()
+    {
+        return match($this->negotiation_status) {
+            'pending' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+            'in_progress' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+            'accepted' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+            'rejected' => 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+            'completed' => 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+            default => 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+        };
+    }
+
+    public function getFormattedTotal()
+    {
+        return 'Rp ' . number_format($this->total_amount, 0, ',', '.');
+    }
+
+    public function getFormattedRequestedTotal()
+    {
+        return $this->requested_total ? 'Rp ' . number_format($this->requested_total, 0, ',', '.') : null;
+    }
+
+    public function hasActivePayment()
+    {
+        return in_array($this->payment_status, ['proof_uploaded', 'verified']);
+    }
+
+    public function canBeDeleted()
+    {
+        return $this->status === 'pending';
+    }
+
+    public function canBeModifiedByAdmin()
+    {
+        return in_array($this->status, ['pending', 'confirmed', 'processing']);
+    }
+
     // ================================
     // SCOPES
     // ================================

@@ -20,6 +20,25 @@
         
         <!-- Action Buttons -->
         <div class="flex space-x-3">
+            <!-- Messages Button -->
+            <a href="{{ route('admin.messages.index', ['search' => $order->order_number]) }}" 
+               class="inline-flex items-center px-4 py-2 {{ (isset($messageStats['unread_messages']) && $messageStats['unread_messages'] > 0) || (isset($messageStats['urgent_messages']) && $messageStats['urgent_messages'] > 0) ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-600 hover:bg-gray-700' }} text-white text-sm font-medium rounded-lg transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                </svg>
+                Messages
+                @if(isset($messageStats['total_messages']) && $messageStats['total_messages'] > 0)
+                    <span class="ml-1 bg-white {{ (isset($messageStats['unread_messages']) && $messageStats['unread_messages'] > 0) || (isset($messageStats['urgent_messages']) && $messageStats['urgent_messages'] > 0) ? 'text-red-600' : 'text-gray-600' }} text-xs font-bold px-1.5 py-0.5 rounded-full">
+                        {{ $messageStats['total_messages'] }}
+                    </span>
+                @endif
+                @if(isset($messageStats['unread_messages']) && $messageStats['unread_messages'] > 0)
+                    <span class="ml-1 bg-yellow-400 text-yellow-900 text-xs font-bold px-1.5 py-0.5 rounded-full">
+                        {{ $messageStats['unread_messages'] }} new
+                    </span>
+                @endif
+            </a>
+            
             @if($order->needs_negotiation && $order->negotiation_status === 'pending')
                 <a href="{{ route('admin.orders.negotiation', $order) }}" 
                    class="inline-flex items-center px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg transition-colors">

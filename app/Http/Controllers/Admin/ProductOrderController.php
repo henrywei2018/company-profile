@@ -62,12 +62,10 @@ class ProductOrderController extends Controller
             'pending_orders' => ProductOrder::where('status', 'pending')->count(),
             'processing_orders' => ProductOrder::where('status', 'processing')->count(),
             'delivered_orders' => ProductOrder::where('status', 'delivered')->count(),
-            'completed_orders' => ProductOrder::where('delivery_confirmed_by_client', true)->count(),
-            'awaiting_confirmation' => ProductOrder::where('status', 'delivered')->where('delivery_confirmed_by_client', false)->where('delivery_disputed', false)->count(),
-            'disputed_orders' => ProductOrder::where('delivery_disputed', true)->count(),
+            'completed_orders' => ProductOrder::where('status', 'completed')->count(),
             'orders_need_negotiation' => ProductOrder::where('needs_negotiation', true)->count(),
             'pending_negotiations' => ProductOrder::where('negotiation_status', 'pending')->count(),
-            'total_revenue' => ProductOrder::where('delivery_confirmed_by_client', true)->sum('total_amount'),
+            'total_revenue' => ProductOrder::where('status', 'completed')->sum('total_amount'),
             'avg_order_value' => ProductOrder::avg('total_amount'),
             'today_orders' => ProductOrder::whereDate('created_at', today())->count(),
         ];
@@ -86,7 +84,43 @@ class ProductOrderController extends Controller
     {
         $order->load(['client', 'items.product.images']);
         
-        return view('admin.orders.show', compact('order'));
+        // Get message statistics for this order
+        $messageStats = $this->getOrderMessageStats($order);
+        
+        return view('admin.orders.show', compact('order', 'messageStats'));
+    }
+    
+    /**
+     * Get message statistics for an order
+     */
+    private function getOrderMessageStats(ProductOrder $order)
+    {
+        try {
+            // Get messages both by direct relationship AND by text search
+            $baseQuery = \App\Models\Message::where(function($query) use ($order) {
+                // Direct relationship
+                $query->where('order_id', $order->id)
+                      // OR text search in subject and message content
+                      ->orWhere('subject', 'like', '%' . $order->order_number . '%')
+                      ->orWhere('message', 'like', '%' . $order->order_number . '%');
+            });
+            
+            return [
+                'total_messages' => $baseQuery->count() ?? 0,
+                'unread_messages' => (clone $baseQuery)->unread()->count() ?? 0,
+                'urgent_messages' => (clone $baseQuery)->where('priority', 'urgent')->count() ?? 0,
+                'latest_message' => (clone $baseQuery)->latest()->first()
+            ];
+        } catch (\Exception $e) {
+            // Return default values if there's an error
+            \Log::error('Error getting message stats for order ' . $order->id . ': ' . $e->getMessage());
+            return [
+                'total_messages' => 0,
+                'unread_messages' => 0,
+                'urgent_messages' => 0,
+                'latest_message' => null
+            ];
+        }
     }
 
     /**
@@ -422,7 +456,7 @@ class ProductOrderController extends Controller
     }
 
     /**
-     * Show delivery confirmation management
+     * Show delivery management
      * Route: GET /admin/orders/{order}/delivery
      */
     public function showDelivery(ProductOrder $order)
@@ -433,100 +467,39 @@ class ProductOrderController extends Controller
     }
 
     /**
-     * Resolve delivery dispute
-     * Route: POST /admin/orders/{order}/resolve-dispute
+     * Complete order (mark as completed)
+     * Route: POST /admin/orders/{order}/complete
      */
-    public function resolveDispute(Request $request, ProductOrder $order)
+    public function completeOrder(Request $request, ProductOrder $order)
     {
-        if (!$order->delivery_disputed) {
+        if ($order->status === 'completed') {
             return redirect()->route('admin.orders.show', $order)
-                ->with('error', 'This order does not have a delivery dispute.');
+                ->with('error', 'This order is already completed.');
         }
 
         $validated = $request->validate([
-            'action' => 'required|in:acknowledge,resolve',
-            'admin_resolution' => 'required|string|max:1000',
-            'admin_notes' => 'nullable|string|max:1000'
-        ]);
-
-        try {
-            DB::transaction(function () use ($validated, $order) {
-                if ($validated['action'] === 'acknowledge') {
-                    // Acknowledge the dispute - waiting for client response
-                    $order->update([
-                        'dispute_status' => 'acknowledged',
-                        'admin_dispute_response' => $validated['admin_resolution'],
-                        'admin_responded_at' => now(),
-                        'admin_notes' => ($order->admin_notes ?? '') . 
-                            "\nDispute acknowledged by admin at " . now()->format('Y-m-d H:i:s') . 
-                            "\nAdmin response: " . $validated['admin_resolution'] .
-                            ($validated['admin_notes'] ? "\nAdditional notes: " . $validated['admin_notes'] : '')
-                    ]);
-                } else {
-                    // Propose dispute resolution - waiting for client acceptance
-                    $order->update([
-                        'dispute_status' => 'resolved',
-                        'admin_dispute_response' => $validated['admin_resolution'],
-                        'admin_responded_at' => now(),
-                        'admin_notes' => ($order->admin_notes ?? '') . 
-                            "\nDispute resolution proposed by admin at " . now()->format('Y-m-d H:i:s') . 
-                            "\nProposed resolution: " . $validated['admin_resolution'] .
-                            ($validated['admin_notes'] ? "\nAdditional notes: " . $validated['admin_notes'] : '')
-                    ]);
-                }
-            });
-
-            $message = $validated['action'] === 'acknowledge' 
-                ? 'Dispute acknowledged. Customer will be notified and can respond.'
-                : 'Resolution proposed. Waiting for customer to accept the resolution.';
-
-            return redirect()->route('admin.orders.show', $order)
-                ->with('success', $message);
-
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Failed to process dispute: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Force confirm delivery (admin override)
-     * Route: POST /admin/orders/{order}/force-confirm
-     */
-    public function forceConfirm(Request $request, ProductOrder $order)
-    {
-        if ($order->delivery_confirmed_by_client) {
-            return redirect()->route('admin.orders.show', $order)
-                ->with('error', 'This order is already confirmed by the client.');
-        }
-
-        $validated = $request->validate([
-            'admin_reason' => 'required|string|max:1000',
             'admin_notes' => 'nullable|string|max:1000'
         ]);
 
         try {
             $order->update([
-                'delivery_confirmed_by_client' => true,
-                'delivery_confirmed_at' => now(),
-                'delivery_disputed' => false, // Clear any disputes
+                'status' => 'completed',
                 'admin_notes' => ($order->admin_notes ?? '') . 
-                    "\nDelivery force-confirmed by admin at " . now()->format('Y-m-d H:i:s') . 
-                    "\nReason: " . $validated['admin_reason'] .
-                    ($validated['admin_notes'] ? "\nAdditional notes: " . $validated['admin_notes'] : '')
+                    "\nOrder completed by admin at " . now()->format('Y-m-d H:i:s') .
+                    ($validated['admin_notes'] ? "\nNotes: " . $validated['admin_notes'] : '')
             ]);
 
             return redirect()->route('admin.orders.show', $order)
-                ->with('success', 'Order delivery has been force-confirmed successfully.');
+                ->with('success', 'Order marked as completed successfully.');
 
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Failed to force-confirm delivery: ' . $e->getMessage());
+                ->with('error', 'Failed to complete order: ' . $e->getMessage());
         }
     }
 
     /**
-     * Get delivery confirmation statistics (AJAX)
+     * Get order statistics (AJAX)
      * Route: GET /admin/orders/api/delivery-stats
      */
     public function deliveryStats()
@@ -534,15 +507,11 @@ class ProductOrderController extends Controller
         try {
             $stats = [
                 'delivered_total' => ProductOrder::where('status', 'delivered')->count(),
-                'awaiting_confirmation' => ProductOrder::where('status', 'delivered')
-                    ->where('delivery_confirmed_by_client', false)
-                    ->where('delivery_disputed', false)
-                    ->count(),
-                'confirmed_by_client' => ProductOrder::where('delivery_confirmed_by_client', true)->count(),
-                'disputed' => ProductOrder::where('delivery_disputed', true)->count(),
-                'recent_confirmations' => ProductOrder::where('delivery_confirmed_by_client', true)
+                'completed_total' => ProductOrder::where('status', 'completed')->count(),
+                'processing_total' => ProductOrder::where('status', 'processing')->count(),
+                'recent_deliveries' => ProductOrder::where('status', 'delivered')
                     ->with('client')
-                    ->latest('delivery_confirmed_at')
+                    ->latest('updated_at')
                     ->limit(5)
                     ->get()
                     ->map(function($order) {
@@ -550,13 +519,14 @@ class ProductOrderController extends Controller
                             'id' => $order->id,
                             'order_number' => $order->order_number,
                             'client_name' => $order->client->name ?? 'N/A',
-                            'confirmed_at' => $order->delivery_confirmed_at->format('M d, H:i'),
-                            'notes' => $order->client_delivery_notes
+                            'status' => $order->status,
+                            'updated_at' => $order->updated_at->format('M d, H:i'),
+                            'total_amount' => number_format($order->total_amount, 0, ',', '.')
                         ];
                     }),
-                'recent_disputes' => ProductOrder::where('delivery_disputed', true)
+                'recent_completed' => ProductOrder::where('status', 'completed')
                     ->with('client')
-                    ->latest('dispute_reported_at')
+                    ->latest('updated_at')
                     ->limit(5)
                     ->get()
                     ->map(function($order) {
@@ -564,8 +534,8 @@ class ProductOrderController extends Controller
                             'id' => $order->id,
                             'order_number' => $order->order_number,
                             'client_name' => $order->client->name ?? 'N/A',
-                            'dispute_reason' => $order->dispute_reason,
-                            'reported_at' => $order->dispute_reported_at->format('M d, H:i')
+                            'completed_at' => $order->updated_at->format('M d, H:i'),
+                            'total_amount' => number_format($order->total_amount, 0, ',', '.')
                         ];
                     })
             ];
@@ -574,8 +544,84 @@ class ProductOrderController extends Controller
 
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Failed to get delivery statistics'
+                'error' => 'Failed to get order statistics'
             ], 500);
         }
     }
+
+    /**
+     * Delete order (admin only)
+     * Route: DELETE /admin/orders/{order}
+     */
+    public function destroy(ProductOrder $order)
+    {
+        try {
+            // Only allow deletion of pending orders
+            if ($order->status !== 'pending') {
+                return redirect()->back()
+                    ->with('error', 'Only pending orders can be deleted.');
+            }
+
+            $orderNumber = $order->order_number;
+            
+            // Delete order items first (cascade should handle this, but being explicit)
+            $order->items()->delete();
+            
+            // Delete the order
+            $order->delete();
+
+            return redirect()->route('admin.orders.index')
+                ->with('success', "Order {$orderNumber} has been deleted successfully.");
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to delete order: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Bulk actions for orders
+     * Route: POST /admin/orders/bulk-action
+     */
+    public function bulkAction(Request $request)
+    {
+        $validated = $request->validate([
+            'action' => 'required|in:delete,update_status',
+            'order_ids' => 'required|array|min:1',
+            'order_ids.*' => 'exists:product_orders,id',
+            'status' => 'required_if:action,update_status|in:pending,confirmed,processing,ready,delivered,completed'
+        ]);
+
+        try {
+            $orders = ProductOrder::whereIn('id', $validated['order_ids']);
+            $count = $orders->count();
+
+            if ($validated['action'] === 'delete') {
+                // Only delete pending orders
+                $deletableOrders = $orders->where('status', 'pending');
+                $deletableCount = $deletableOrders->count();
+                
+                if ($deletableCount === 0) {
+                    return redirect()->back()
+                        ->with('error', 'No pending orders found to delete.');
+                }
+
+                $deletableOrders->delete();
+                
+                return redirect()->back()
+                    ->with('success', "{$deletableCount} order(s) deleted successfully.");
+                    
+            } elseif ($validated['action'] === 'update_status') {
+                $orders->update(['status' => $validated['status']]);
+                
+                return redirect()->back()
+                    ->with('success', "{$count} order(s) status updated to " . ucfirst($validated['status']) . ".");
+            }
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to perform bulk action: ' . $e->getMessage());
+        }
+    }
+
 }

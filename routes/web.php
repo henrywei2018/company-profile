@@ -13,7 +13,8 @@ use App\Http\Controllers\{
     AboutController,
     ServiceController,
     TeamController,
-    ChatController
+    ChatController,
+    SitemapController
 };
 use App\Http\Controllers\Client\{
     DashboardController as ClientDashboardController,
@@ -536,3 +537,9 @@ require __DIR__ . '/admin.php';
 */
 Route::redirect('/admin', '/admin/dashboard');
 Route::redirect('/client', '/client/dashboard');
+
+// SEO & Sitemap Routes
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+Route::get('/sitemap-client.xml', [SitemapController::class, 'clientSitemap'])->name('sitemap.client');
+Route::get('/robots.txt', [SitemapController::class, 'robots'])->name('robots');
+
