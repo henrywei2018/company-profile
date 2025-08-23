@@ -20,17 +20,6 @@
                 </div>
             </div>
             
-            <!-- Action Buttons -->
-            <div class="flex space-x-3">
-                
-                <a href="{{ route('client.messages.create', ['order_id' => $order->id]) }}" 
-                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a9.863 9.863 0 01-4.906-1.285L3 21l2.085-5.104A9.863 9.863 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z"></path>
-                    </svg>
-                    Contact Support
-                </a>
-            </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -94,8 +83,8 @@
                     </div>
                 @endif
 
-                <!-- Delivery Status & Admin Responses -->
-                @if($order->status === 'delivered' || $order->delivery_disputed || $order->delivery_confirmed_by_client)
+                <!-- Delivery Status -->
+                @if($order->status === 'delivered')
                     <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                             <h3 class="text-lg font-medium text-gray-900 dark:text-white">
@@ -107,211 +96,31 @@
                         </div>
                         
                         <div class="p-6">
-                            @php
-                                $displayStatus = $order->getDisplayStatus();
-                            @endphp
-
-                            @if($displayStatus === 'awaiting_confirmation')
-                                <!-- Awaiting Confirmation -->
-                                <div class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-4 mb-6">
-                                    <div class="flex items-start">
-                                        <svg class="w-6 h-6 text-orange-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4-8-4m16 0v10l-8 4-8-4V7"></path>
-                                        </svg>
-                                        <div class="flex-1">
-                                            <h4 class="text-sm font-medium text-orange-800 dark:text-orange-200 mb-1">
-                                                🚚 Your Order Has Been Delivered
-                                            </h4>
-                                            <p class="text-sm text-orange-700 dark:text-orange-300 mb-3">
-                                                Our team has marked this order as delivered. Please confirm that you have received your order.
-                                            </p>
-                                            
-                                            <!-- Delivery Confirmation Actions -->
-                                            <div class="flex flex-col sm:flex-row gap-2">
-                                                <button type="button" 
-                                                        onclick="showConfirmDeliveryModal({{ $order->id }})"
-                                                        class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
-                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                                    </svg>
-                                                    Yes, I Received It
-                                                </button>
-                                                <button type="button" 
-                                                        onclick="showDisputeModal({{ $order->id }})"
-                                                        class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
-                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                                    </svg>
-                                                    Report Issue
-                                                </button>
-                                            </div>
+                            <!-- Simple Delivered Status -->
+                            <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4">
+                                <div class="flex items-start">
+                                    <svg class="w-6 h-6 text-green-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <div class="flex-1">
+                                        <h4 class="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+                                            ✅ Order Delivered Successfully
+                                        </h4>
+                                        <p class="text-sm text-green-700 dark:text-green-300 mb-4">
+                                            Your order has been delivered. Please confirm receipt or report any issues below.
+                                        </p>
+                                        <div class="flex flex-wrap gap-2">
+                                            <button onclick="showConfirmDeliveryModal('{{ $order->id }}')"
+                                                    class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
+                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                </svg>
+                                                Confirm Received
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
-
-                            @elseif($displayStatus === 'completed')
-                                <!-- Completed -->
-                                <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4 mb-4">
-                                    <div class="flex items-start">
-                                        <svg class="w-6 h-6 text-green-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                        <div class="flex-1">
-                                            <h4 class="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
-                                                ✅ Order Completed Successfully
-                                            </h4>
-                                            <p class="text-sm text-green-700 dark:text-green-300">
-                                                You confirmed receipt of this order on {{ $order->delivery_confirmed_at->format('F j, Y \a\t g:i A') }}
-                                            </p>
-                                            @if($order->client_delivery_notes)
-                                                <div class="mt-3 p-3 bg-green-100 dark:bg-green-900/30 rounded border border-green-200 dark:border-green-800">
-                                                    <p class="text-sm text-green-700 dark:text-green-300">
-                                                        <span class="font-medium">Your Notes:</span> {{ $order->client_delivery_notes }}
-                                                    </p>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-
-                            @elseif($displayStatus === 'disputed')
-                                <!-- Disputed -->
-                                <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4 mb-4">
-                                    <div class="flex items-start">
-                                        <svg class="w-6 h-6 text-red-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                        </svg>
-                                        <div class="flex-1">
-                                            <h4 class="text-sm font-medium text-red-800 dark:text-red-200 mb-1">
-                                                ⚠️ Delivery Issue Reported
-                                            </h4>
-                                            <p class="text-sm text-red-700 dark:text-red-300">
-                                                You reported a delivery issue on {{ $order->dispute_reported_at->format('F j, Y \a\t g:i A') }}
-                                            </p>
-                                            
-                                            <!-- Your Dispute Reason -->
-                                            <div class="mt-3 p-3 bg-red-100 dark:bg-red-900/30 rounded border border-red-200 dark:border-red-800">
-                                                <p class="text-sm text-red-700 dark:text-red-300">
-                                                    <span class="font-medium">Issue Reported:</span> {{ $order->dispute_reason }}
-                                                </p>
-                                            </div>
-                                            
-                                            <!-- Admin Response Section -->
-                                            @if($order->hasAdminResponse())
-                                                <div class="mt-4">
-                                                    <h5 class="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Support Team Response:</h5>
-                                                    
-                                                    <!-- Admin's Response -->
-                                                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded p-3 mb-3">
-                                                        <div class="flex items-start">
-                                                            <svg class="w-5 h-5 text-blue-600 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
-                                                            </svg>
-                                                            <div class="flex-1">
-                                                                <div class="flex items-center justify-between mb-1">
-                                                                    <span class="text-xs font-medium text-blue-700 dark:text-blue-300">
-                                                                        @if($order->dispute_status === 'acknowledged')
-                                                                            💬 Issue Acknowledged
-                                                                        @elseif($order->dispute_status === 'resolved')
-                                                                            ✅ Resolution Proposed
-                                                                        @endif
-                                                                    </span>
-                                                                    <span class="text-xs text-blue-600 dark:text-blue-400">
-                                                                        {{ $order->admin_responded_at->format('M j, H:i') }}
-                                                                    </span>
-                                                                </div>
-                                                                <p class="text-sm text-gray-700 dark:text-gray-300">
-                                                                    {{ $order->admin_dispute_response }}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Client Response Section -->
-                                                    @if($order->dispute_status === 'acknowledged' && !$order->client_dispute_feedback)
-                                                        <!-- Client can respond to acknowledgment -->
-                                                        <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded p-3">
-                                                            <div class="flex items-start">
-                                                                <svg class="w-5 h-5 text-green-600 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.013 8.013 0 01-4.19-1.16l-3.81 1.16 1.16-3.81A8.013 8.013 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z"></path>
-                                                                </svg>
-                                                                <div class="flex-1">
-                                                                    <p class="text-sm text-green-700 dark:text-green-300 mb-2">
-                                                                        <strong>Your Response Needed:</strong> Please provide additional information or feedback about this issue.
-                                                                    </p>
-                                                                    <button type="button" 
-                                                                            onclick="showRespondToDisputeModal({{ $order->id }})"
-                                                                            class="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors">
-                                                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.013 8.013 0 01-4.19-1.16l-3.81 1.16 1.16-3.81A8.013 8.013 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z"></path>
-                                                                        </svg>
-                                                                        Provide More Details
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    
-                                                    @elseif($order->dispute_status === 'resolved')
-                                                        <!-- Client can accept resolution -->
-                                                        <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded p-3">
-                                                            <div class="flex items-start">
-                                                                <svg class="w-5 h-5 text-green-600 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                                </svg>
-                                                                <div class="flex-1">
-                                                                    <p class="text-sm text-green-700 dark:text-green-300 mb-2">
-                                                                        <strong>Resolution Proposed:</strong> Please review and accept the resolution if it addresses your concern.
-                                                                    </p>
-                                                                    <button type="button" 
-                                                                            onclick="showAcceptResolutionModal({{ $order->id }})"
-                                                                            class="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors">
-                                                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                                                        </svg>
-                                                                        Accept Resolution
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    
-                                                    @elseif($order->client_dispute_feedback)
-                                                        <!-- Show client's response -->
-                                                        <div class="bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 rounded p-3">
-                                                            <div class="flex items-start">
-                                                                <svg class="w-5 h-5 text-gray-600 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                                                </svg>
-                                                                <div class="flex-1">
-                                                                    <div class="flex items-center justify-between mb-1">
-                                                                        <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
-                                                                            Your Response
-                                                                        </span>
-                                                                        <span class="text-xs text-gray-600 dark:text-gray-400">
-                                                                            {{ $order->client_responded_at->format('M j, H:i') }}
-                                                                        </span>
-                                                                    </div>
-                                                                    <p class="text-sm text-gray-700 dark:text-gray-300">
-                                                                        {{ $order->client_dispute_feedback }}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                            @else
-                                                <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded">
-                                                    <p class="text-sm text-blue-700 dark:text-blue-300">
-                                                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                        </svg>
-                                                        Our support team is reviewing your issue and will respond soon.
-                                                    </p>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
+                            </div>
                         </div>
                     </div>
                 @endif
@@ -741,6 +550,11 @@
                                 Contact Support
                             </a>
                             
+                            <a href="{{ route('client.messages.order', $order->id) }}" 
+                               class="block w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-center">
+                                View Order Messages
+                            </a>
+                            
                             <a href="{{ route('client.orders.index') }}" 
                                class="block w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-center">
                                 Back to Orders
@@ -832,7 +646,7 @@
             <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75" onclick="closeRespondToDisputeModal()"></div>
             
             <div class="inline-block align-bottom bg-white dark:bg-neutral-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <form id="respondToDisputeForm" method="POST">
+                <form id="respondToDisputeForm" method="POST" enctype="multipart/form-data">
                     @csrf
                     <div class="bg-white dark:bg-neutral-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div class="sm:flex sm:items-start">
@@ -856,6 +670,54 @@
                                         <textarea name="client_response" id="client_response" rows="4" required
                                                   placeholder="Please provide more details, answer any questions from our team, or clarify your concerns..."
                                                   class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500"></textarea>
+                                    </div>
+                                    
+                                    <!-- Image Upload Section -->
+                                    <div class="mt-4">
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Attach Images (Optional)
+                                        </label>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                            Upload photos to help explain the issue (JPEG, PNG, JPG • Max 2MB each)
+                                        </p>
+                                        
+                                        <!-- File Upload Area -->
+                                        <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center hover:border-blue-400 transition-colors" 
+                                             onclick="document.getElementById('dispute_images').click()" 
+                                             ondrop="handleFileDrop(event)" 
+                                             ondragover="handleDragOver(event)"
+                                             ondragleave="handleDragLeave(event)">
+                                            <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                            </svg>
+                                            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                                                <span class="font-medium text-blue-600 cursor-pointer">Click to upload</span> or drag and drop images here
+                                            </p>
+                                        </div>
+                                        
+                                        <input type="file" 
+                                               id="dispute_images" 
+                                               name="dispute_images[]" 
+                                               multiple 
+                                               accept="image/*" 
+                                               class="hidden" 
+                                               onchange="displaySelectedFiles(this)">
+                                               
+                                        <!-- Simple File List Fallback -->
+                                        <div id="file_list_fallback" class="mt-3 hidden">
+                                            <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Selected Files:</div>
+                                            <div id="file_names" class="space-y-1"></div>
+                                        </div>
+                                        
+                                        <!-- Image Preview Grid -->
+                                        <div id="image_preview" class="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-2 hidden">
+                                            <!-- Dynamically populated with selected images -->
+                                        </div>
+                                        
+                                        <!-- Upload Instructions -->
+                                        <div id="upload_instructions" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                            Max 10 images. Supported formats: JPG, PNG, GIF, WebP (max 5MB each)
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -970,6 +832,32 @@
         </div>
     </div>
 
+    <!-- Image Modal -->
+    <div id="imageModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity bg-black bg-opacity-75" onclick="closeImageModal()"></div>
+            
+            <div class="inline-block align-bottom bg-white dark:bg-neutral-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+                <div class="bg-white dark:bg-neutral-800 px-4 pt-5 pb-4 sm:p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                            <span id="modalTitle">Image Preview</span>
+                        </h3>
+                        <button type="button" onclick="closeImageModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="text-center">
+                        <img id="modalImage" src="" alt="Preview" class="max-w-full max-h-96 mx-auto rounded">
+                        <p id="modalFilename" class="mt-2 text-sm text-gray-600 dark:text-gray-400"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @push('scripts')
     <script>
         // Modal functions for delivery confirmation
@@ -1024,7 +912,27 @@
         function closeRespondToDisputeModal() {
             const modal = document.getElementById('respondToDisputeModal');
             modal.classList.add('hidden');
+            
+            // Clear form
             document.getElementById('client_response').value = '';
+            
+            // Clear file input and preview
+            const fileInput = document.getElementById('dispute_images');
+            const preview = document.getElementById('image_preview');
+            const dropZone = document.querySelector('#respondToDisputeModal [ondrop]');
+            
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            
+            if (preview) {
+                preview.innerHTML = '';
+                preview.classList.add('hidden');
+            }
+            
+            if (dropZone) {
+                showDropZoneMessage(dropZone, 'Click to upload or drag and drop images here');
+            }
         }
 
         function showAcceptResolutionModal(orderId) {
@@ -1128,9 +1036,316 @@
                     closeDisputeModal();
                     closeRespondToDisputeModal();
                     closeAcceptResolutionModal();
+                    closeImageModal();
                 }
             });
+
+            // Initialize file input functionality
+            const fileInput = document.getElementById('dispute_images');
+            if (fileInput) {
+                console.log('File input initialized');
+            }
         });
+
+        // Image upload functions for dispute responses
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+            const dropZone = event.currentTarget;
+            dropZone.classList.add('border-blue-400', 'bg-blue-50', 'dark:bg-blue-900/10', 'border-2');
+            dropZone.classList.remove('border-dashed');
+            
+            // Update message
+            showDropZoneMessage(dropZone, 'Drop images here to upload');
+        }
+
+        function handleDragLeave(event) {
+            event.preventDefault();
+            const dropZone = event.currentTarget;
+            
+            // Only remove styles if we're actually leaving the drop zone
+            if (!dropZone.contains(event.relatedTarget)) {
+                dropZone.classList.remove('border-blue-400', 'bg-blue-50', 'dark:bg-blue-900/10', 'border-2');
+                dropZone.classList.add('border-dashed');
+                showDropZoneMessage(dropZone, 'Click to upload or drag and drop images here');
+            }
+        }
+
+        function handleFileDrop(event) {
+            event.preventDefault();
+            const dropZone = event.currentTarget;
+            dropZone.classList.remove('border-blue-400', 'bg-blue-50', 'dark:bg-blue-900/10', 'border-2');
+            dropZone.classList.add('border-dashed');
+            
+            const fileInput = document.getElementById('dispute_images');
+            const files = event.dataTransfer.files;
+            
+            if (files.length > 0) {
+                // Show processing message
+                showDropZoneMessage(dropZone, 'Processing images...');
+                
+                // Filter only image files and check file size
+                const imageFiles = Array.from(files).filter(file => {
+                    if (!file.type.startsWith('image/')) {
+                        console.warn(`Skipping non-image file: ${file.name}`);
+                        return false;
+                    }
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert(`File ${file.name} is too large. Maximum size is 5MB.`);
+                        return false;
+                    }
+                    return true;
+                });
+                
+                if (imageFiles.length > 10) {
+                    alert('Maximum 10 images allowed. Only the first 10 will be selected.');
+                    imageFiles.splice(10);
+                }
+                
+                if (imageFiles.length > 0) {
+                    // Create new FileList with existing files (if any) + new files
+                    const dt = new DataTransfer();
+                    
+                    // Add existing files first
+                    if (fileInput.files) {
+                        Array.from(fileInput.files).forEach(file => dt.items.add(file));
+                    }
+                    
+                    // Add new files
+                    imageFiles.forEach(file => dt.items.add(file));
+                    
+                    // Check total count
+                    if (dt.files.length > 10) {
+                        alert('Maximum 10 images total allowed.');
+                        return;
+                    }
+                    
+                    fileInput.files = dt.files;
+                    displaySelectedFiles(fileInput);
+                } else {
+                    showDropZoneMessage(dropZone, 'No valid image files found');
+                    setTimeout(() => {
+                        showDropZoneMessage(dropZone, 'Click to upload or drag and drop images here');
+                    }, 2000);
+                }
+            }
+        }
+
+        function displaySelectedFiles(input) {
+            const files = input.files;
+            const preview = document.getElementById('image_preview');
+            const fallbackList = document.getElementById('file_list_fallback');
+            const fileNames = document.getElementById('file_names');
+            const dropZone = document.querySelector('#respondToDisputeModal [ondrop]');
+            
+            // Clear previous content
+            if (preview) preview.innerHTML = '';
+            if (fallbackList) fallbackList.classList.add('hidden');
+            if (fileNames) fileNames.innerHTML = '';
+            
+            if (files.length === 0) {
+                if (preview) preview.classList.add('hidden');
+                if (dropZone) {
+                    showDropZoneMessage(dropZone, 'Click to upload or drag and drop images here');
+                }
+                return;
+            }
+            
+            // Validate file count
+            if (files.length > 10) {
+                alert('Maximum 10 images allowed. Please select fewer files.');
+                input.value = '';
+                return;
+            }
+            
+            // Use fallback if preview element not found
+            if (!preview) {
+                showSimpleFileList(files, fallbackList, fileNames, dropZone);
+                return;
+            }
+            
+            preview.classList.remove('hidden');
+            
+            if (dropZone) {
+                showDropZoneMessage(dropZone, `${files.length} image${files.length > 1 ? 's' : ''} selected`);
+            }
+            
+            let validImageCount = 0;
+            
+            Array.from(files).forEach((file, index) => {
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    return;
+                }
+                
+                // Validate file size (5MB max)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert(`File ${file.name} is too large. Maximum size is 5MB.`);
+                    return;
+                }
+                
+                validImageCount++;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imageDiv = document.createElement('div');
+                    imageDiv.className = 'relative group bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden';
+                    imageDiv.innerHTML = `
+                        <div class="aspect-square">
+                            <img src="${e.target.result}" 
+                                 alt="Preview ${index + 1}" 
+                                 class="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
+                                 onclick="showImageModal('${e.target.result}', '${file.name}')">
+                        </div>
+                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
+                            <button type="button" 
+                                    class="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium transition-all duration-200 shadow-lg"
+                                    onclick="removeImagePreview(this, ${index})"
+                                    title="Remove image">
+                                ✕
+                            </button>
+                        </div>
+                        <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white text-xs p-1">
+                            <div class="truncate" title="${file.name}">${file.name}</div>
+                            <div class="text-xs opacity-75">${(file.size / 1024 / 1024).toFixed(1)}MB</div>
+                        </div>
+                    `;
+                    
+                    preview.appendChild(imageDiv);
+                };
+                
+                reader.onerror = function() {
+                    console.error(`Error reading file: ${file.name}`);
+                };
+                
+                reader.readAsDataURL(file);
+            });
+            
+            if (validImageCount === 0) {
+                preview.classList.add('hidden');
+                showSimpleFileList(files, fallbackList, fileNames, dropZone);
+            }
+        }
+        
+        // Fallback function to show simple file list
+        function showSimpleFileList(files, fallbackList, fileNames, dropZone) {
+            console.log('Using fallback file list display');
+            
+            if (!fallbackList || !fileNames) {
+                console.error('Fallback elements not found');
+                return;
+            }
+            
+            fileNames.innerHTML = '';
+            
+            if (files.length === 0) {
+                fallbackList.classList.add('hidden');
+                if (dropZone) {
+                    showDropZoneMessage(dropZone, 'Click to upload or drag and drop images here');
+                }
+                return;
+            }
+            
+            fallbackList.classList.remove('hidden');
+            
+            Array.from(files).forEach((file, index) => {
+                if (file.type.startsWith('image/')) {
+                    const fileDiv = document.createElement('div');
+                    fileDiv.className = 'flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 rounded px-3 py-2 text-sm';
+                    fileDiv.innerHTML = `
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <span class="text-gray-700 dark:text-gray-300">${file.name}</span>
+                            <span class="text-xs text-gray-500">(${(file.size / 1024 / 1024).toFixed(1)}MB)</span>
+                        </div>
+                        <button type="button" 
+                                class="text-red-500 hover:text-red-700 text-xs"
+                                onclick="removeFileFromList(${index}, this)"
+                                title="Remove file">
+                            ✕
+                        </button>
+                    `;
+                    fileNames.appendChild(fileDiv);
+                }
+            });
+            
+            if (dropZone) {
+                showDropZoneMessage(dropZone, `${files.length} file${files.length > 1 ? 's' : ''} selected`);
+            }
+        }
+        
+        // Remove file from simple list
+        function removeFileFromList(index, button) {
+            const input = document.getElementById('dispute_images');
+            const dt = new DataTransfer();
+            
+            Array.from(input.files).forEach((file, i) => {
+                if (i !== index) {
+                    dt.items.add(file);
+                }
+            });
+            
+            input.files = dt.files;
+            displaySelectedFiles(input);
+        }
+        
+        function showDropZoneMessage(dropZone, message) {
+            if (dropZone) {
+                const messageElement = dropZone.querySelector('p');
+                if (messageElement) {
+                    messageElement.innerHTML = `<span class="font-medium text-blue-600 cursor-pointer">${message}</span>`;
+                    console.log('Updated drop zone message:', message);
+                } else {
+                    console.warn('Message element not found in drop zone');
+                }
+            } else {
+                console.warn('Drop zone not found');
+            }
+        }
+        
+
+        function removeImagePreview(button, index) {
+            const input = document.getElementById('dispute_images');
+            const dt = new DataTransfer();
+            
+            Array.from(input.files).forEach((file, i) => {
+                if (i !== index) {
+                    dt.items.add(file);
+                }
+            });
+            
+            input.files = dt.files;
+            displaySelectedFiles(input);
+        }
+
+        function showImageModal(src, filename) {
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const modalFilename = document.getElementById('modalFilename');
+            const modalTitle = document.getElementById('modalTitle');
+            
+            if (modal && modalImage) {
+                modalImage.src = src;
+                if (modalFilename) {
+                    modalFilename.textContent = filename || 'Image';
+                }
+                if (modalTitle) {
+                    modalTitle.textContent = filename ? `Preview: ${filename}` : 'Image Preview';
+                }
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }
+        }
     </script>
     @endpush
 </x-layouts.client>

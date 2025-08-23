@@ -250,45 +250,6 @@ class ProductOrderController extends Controller
         return view('client.orders.show', compact('order'));
     }
 
-    /**
-     * Confirm delivery by client
-     */
-    public function confirmDelivery(ProductOrder $order, Request $request)
-    {
-        $this->authorize('view', $order);
-        
-        if (!$order->canConfirmDelivery()) {
-            return back()->with('error', 'Cannot confirm delivery for this order.');
-        }
-
-        $request->validate([
-            'notes' => 'nullable|string|max:1000'
-        ]);
-
-        $order->confirmDelivery($request->notes);
-
-        return back()->with('success', 'Delivery confirmed successfully! Order moved to history.');
-    }
-
-    /**
-     * Report delivery dispute
-     */
-    public function disputeDelivery(ProductOrder $order, Request $request)
-    {
-        $this->authorize('view', $order);
-        
-        if (!$order->canDisputeDelivery()) {
-            return back()->with('error', 'Cannot dispute delivery for this order.');
-        }
-
-        $request->validate([
-            'reason' => 'required|string|max:1000'
-        ]);
-
-        $order->reportDispute($request->reason);
-
-        return back()->with('success', 'Delivery dispute reported. Our team will contact you shortly.');
-    }
 
     /**
      * Show cart
@@ -427,7 +388,10 @@ class ProductOrderController extends Controller
         ]);
 
         try {
-            DB::transaction(function () use ($validated, $order) {
+            // Check if this is a counter-offer before starting transaction
+            $isCounterOffer = $order->negotiation_status === 'in_progress';
+            
+            DB::transaction(function () use ($validated, $order, $isCounterOffer) {
                 // Calculate new total
                 $requestedTotal = 0;
                 
@@ -448,7 +412,6 @@ class ProductOrderController extends Controller
                 }
 
                 // Update order with negotiation request
-                $isCounterOffer = $order->negotiation_status === 'in_progress';
                 $order->update([
                     'needs_negotiation' => true,
                     'negotiation_message' => $validated['negotiation_message'],
@@ -739,61 +702,4 @@ class ProductOrderController extends Controller
         }
     }
 
-    /**
-     * Client responds to admin's dispute acknowledgment
-     * Route: POST /client/orders/{order}/respond-to-dispute
-     */
-    public function respondToDispute(Request $request, ProductOrder $order)
-    {
-        $this->authorize('view', $order);
-
-        if (!$order->canRespondToDispute()) {
-            return redirect()->route('client.orders.show', $order)
-                ->with('error', 'You cannot respond to this dispute at this time.');
-        }
-
-        $validated = $request->validate([
-            'client_response' => 'required|string|max:1000',
-        ]);
-
-        try {
-            $order->respondToAcknowledgment($validated['client_response']);
-
-            return redirect()->route('client.orders.show', $order)
-                ->with('success', 'Your response has been submitted. Our team will review and get back to you.');
-
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Failed to submit response: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Client accepts admin's dispute resolution
-     * Route: POST /client/orders/{order}/accept-resolution
-     */
-    public function acceptResolution(Request $request, ProductOrder $order)
-    {
-        $this->authorize('view', $order);
-
-        if (!$order->isAwaitingResolutionAcceptance()) {
-            return redirect()->route('client.orders.show', $order)
-                ->with('error', 'This resolution cannot be accepted at this time.');
-        }
-
-        $validated = $request->validate([
-            'client_feedback' => 'nullable|string|max:1000',
-        ]);
-
-        try {
-            $order->acceptDisputeResolution($validated['client_feedback']);
-
-            return redirect()->route('client.orders.show', $order)
-                ->with('success', 'Resolution accepted! Your order is now completed.');
-
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Failed to accept resolution: ' . $e->getMessage());
-        }
-    }
 }

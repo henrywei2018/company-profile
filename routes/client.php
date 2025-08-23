@@ -89,10 +89,6 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::post('/{order}/accept-negotiation', [ProductOrderController::class, 'acceptNegotiation'])->name('negotiate.accept');
         Route::get('/{order}/payment', [ProductOrderController::class, 'paymentForm'])->name('payment');
         Route::post('/{order}/payment', [ProductOrderController::class, 'uploadPaymentProof'])->name('payment.upload');
-        Route::post('/{order}/confirm-delivery', [ProductOrderController::class, 'confirmDelivery'])->name('confirm-delivery');
-        Route::post('/{order}/dispute-delivery', [ProductOrderController::class, 'disputeDelivery'])->name('dispute-delivery');
-        Route::post('/{order}/respond-to-dispute', [ProductOrderController::class, 'respondToDispute'])->name('respond-to-dispute');
-        Route::post('/{order}/accept-resolution', [ProductOrderController::class, 'acceptResolution'])->name('accept-resolution');
         
         // Additional cart actions (keep existing naming for compatibility)
         Route::post('/add-to-cart', [ProductOrderController::class, 'addToCart'])->name('add-to-cart');
@@ -178,6 +174,10 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::get('/project/{project}', [MessageController::class, 'projectMessages'])
             ->name('project')
             ->where('project', '[0-9]+');
+            
+        Route::get('/order/{order}', [MessageController::class, 'orderMessages'])
+            ->name('order')
+            ->where('order', '[0-9]+');
         
         Route::get('/{message}/attachments/{attachmentId}/download', [MessageController::class, 'downloadAttachment'])
             ->name('attachment.download')

@@ -26,8 +26,9 @@ class Message extends Model
         'is_replied',
         'user_id',
         'parent_id',
-        'project_id',  // <- Add this if not already present
-        'priority',    // <- Add this if not already present
+        'project_id',  // Project relationship
+        'order_id',    // Order relationship (NEW)
+        'priority',    // Priority field
         'read_at',
         'replied_at',
         'replied_by',
@@ -75,12 +76,18 @@ class Message extends Model
 
     /**
      * Get the project associated with this message.
-     * 
-     * ADD THIS RELATIONSHIP - This is what was missing!
      */
     public function project()
     {
-        return $this->belongsTo(Project::class, 'client_id');
+        return $this->belongsTo(Project::class, 'project_id');
+    }
+
+    /**
+     * Get the order associated with this message.
+     */
+    public function order()
+    {
+        return $this->belongsTo(\App\Models\ProductOrder::class, 'order_id');
     }
 
     /**
@@ -186,8 +193,6 @@ class Message extends Model
 
     /**
      * Scope a query to filter by project.
-     * 
-     * ADD THIS SCOPE - For filtering messages by project
      */
     public function scopeByProject($query, $projectId)
     {
@@ -195,9 +200,15 @@ class Message extends Model
     }
 
     /**
+     * Scope a query to filter by order.
+     */
+    public function scopeByOrder($query, $orderId)
+    {
+        return $query->where('order_id', $orderId);
+    }
+
+    /**
      * Scope a query to filter by priority.
-     * 
-     * ADD THIS SCOPE - For filtering messages by priority
      */
     public function scopeByPriority($query, $priority)
     {
@@ -284,12 +295,47 @@ class Message extends Model
 
     /**
      * Check if message is related to a project.
-     * 
-     * ADD THIS METHOD - For checking if message has project context
      */
     public function hasProject()
     {
         return !is_null($this->project_id) && $this->project()->exists();
+    }
+
+    /**
+     * Check if message is related to an order.
+     */
+    public function hasOrder()
+    {
+        return !is_null($this->order_id) && $this->order()->exists();
+    }
+
+    /**
+     * Get the context type for this message.
+     */
+    public function getContextType()
+    {
+        if ($this->hasOrder()) {
+            return 'order';
+        } elseif ($this->hasProject()) {
+            return 'project';
+        } else {
+            return 'general';
+        }
+    }
+
+    /**
+     * Get display label for the context.
+     */
+    public function getContextLabel()
+    {
+        switch ($this->getContextType()) {
+            case 'order':
+                return 'Order #' . $this->order->order_number;
+            case 'project':
+                return $this->project->title;
+            default:
+                return 'General Inquiry';
+        }
     }
 
     /**

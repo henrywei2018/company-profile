@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    
+    <!-- Dashboard -->
+    <url>
+        <loc>{{ url('/client/dashboard') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>1.0</priority>
+    </url>
+    
+    <!-- Products & E-commerce -->
+    <url>
+        <loc>{{ url('/client/products') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+    </url>
+    
+    <url>
+        <loc>{{ url('/client/cart') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>hourly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    
+    <url>
+        <loc>{{ url('/client/orders') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+    </url>
+    
+    <url>
+        <loc>{{ url('/client/orders/checkout') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <!-- Projects & Services -->
+    <url>
+        <loc>{{ url('/client/projects') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+    </url>
+    
+    <url>
+        <loc>{{ url('/client/quotations') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+    </url>
+    
+    <url>
+        <loc>{{ url('/client/quotations/create') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <!-- Communication -->
+    <url>
+        <loc>{{ url('/client/messages') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+    </url>
+    
+    <url>
+        <loc>{{ url('/client/messages/create') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <url>
+        <loc>{{ url('/client/chat') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+    </url>
+    
+    <url>
+        <loc>{{ url('/client/chat/history') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.6</priority>
+    </url>
+    
+    <!-- Notifications -->
+    <url>
+        <loc>{{ url('/client/notifications') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>hourly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <url>
+        <loc>{{ url('/client/notifications/preferences') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+    
+    <!-- Testimonials -->
+    <url>
+        <loc>{{ url('/client/testimonials') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+    </url>
+    
+    <url>
+        <loc>{{ url('/client/testimonials/create') }}</loc>
+        <lastmod>{{ date('Y-m-d') }}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+</urlset>

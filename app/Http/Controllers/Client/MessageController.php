@@ -47,6 +47,7 @@ class MessageController extends Controller
             'type' => 'nullable|string|in:general,support,project_inquiry,complaint,feedback,client_reply',
             'priority' => 'nullable|string|in:low,normal,high,urgent',
             'project_id' => 'nullable|exists:projects,id',
+            'order_id' => 'nullable|exists:product_orders,id',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date|after_or_equal:date_from',
             'sort' => 'nullable|string|in:created_at,updated_at,subject,is_read',
@@ -62,6 +63,11 @@ class MessageController extends Controller
         // Get filter options
         $filterOptions = $this->clientAccessService->getMessageFilters($user);
 
+        // Get user's orders for filtering
+        $orders = \App\Models\ProductOrder::where('client_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get(['id', 'order_number', 'status', 'created_at']);
+
         // Get recent activities
         $recentActivity = $this->messageService->getRecentActivity($user, 5);
 
@@ -69,6 +75,7 @@ class MessageController extends Controller
             'messages',
             'statistics',
             'filterOptions',
+            'orders',
             'recentActivity',
             'filters'
         ));
@@ -86,16 +93,36 @@ class MessageController extends Controller
             ->orderBy('title')
             ->get(['id', 'title', 'status']);
 
+        // Get user's orders for context selection
+        $orders = \App\Models\ProductOrder::where('client_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get(['id', 'order_number', 'status', 'created_at']);
+
         // Get available message types
         $messageTypes = $this->getClientMessageTypes();
 
-        // Pre-fill data from query parameters
-        $prefillData = $request->only(['subject', 'project_id', 'type', 'priority']);
+        // Pre-fill data from query parameters including order_id
+        $prefillData = $request->only(['subject', 'project_id', 'order_id', 'type', 'priority']);
+
+        // If order_id is provided, load the order for context
+        $selectedOrder = null;
+        if (!empty($prefillData['order_id'])) {
+            $selectedOrder = \App\Models\ProductOrder::where('client_id', $user->id)
+                ->where('id', $prefillData['order_id'])
+                ->first();
+                
+            // Auto-fill subject if not provided
+            if ($selectedOrder && empty($prefillData['subject'])) {
+                $prefillData['subject'] = 'Inquiry about Order #' . $selectedOrder->order_number;
+            }
+        }
 
         return view('client.messages.create', compact(
             'projects',
+            'orders',
             'messageTypes',
-            'prefillData'
+            'prefillData',
+            'selectedOrder'
         ));
     }
 
@@ -114,8 +141,20 @@ class MessageController extends Controller
                 'subject' => 'required|string|max:255',
                 'message' => 'required|string|min:10',
                 'temp_files' => 'nullable|string',
-                'project_id' => 'nullable|exists:projects,id', // if you have project selection
+                'project_id' => 'nullable|exists:projects,id',
+                'order_id' => 'nullable|exists:product_orders,id',
             ]);
+
+            // Security check: ensure order belongs to this user if provided
+            if (!empty($validated['order_id'])) {
+                $orderCheck = \App\Models\ProductOrder::where('id', $validated['order_id'])
+                    ->where('client_id', $user->id)
+                    ->exists();
+                    
+                if (!$orderCheck) {
+                    throw new \Exception('Invalid order selection');
+                }
+            }
 
             Log::info('Validation passed', ['validated_data' => $validated]);
 
@@ -144,7 +183,8 @@ class MessageController extends Controller
                 'message' => $validated['message'],
                 'priority' => $validated['priority'] ?? 'normal',
                 'user_id' => $user->id,
-                'project_id' => $validated['project_id'] ?? null, // if you have project selection
+                'project_id' => $validated['project_id'] ?? null,
+                'order_id' => $validated['order_id'] ?? null, // Order tagging
                 'is_read' => false,
                 'is_replied' => false,
             ];
@@ -263,6 +303,7 @@ class MessageController extends Controller
         $message->load([
             'attachments',
             'project',
+            'order',
             'user',
             'parent',
             'replies' => fn($q) => $q->with(['attachments', 'user'])->orderBy('created_at'),
@@ -346,6 +387,7 @@ class MessageController extends Controller
                 'priority' => $rootMessage->priority,
                 'user_id' => $user->id,
                 'project_id' => $rootMessage->project_id, // Keep project context
+                'order_id' => $rootMessage->order_id, // Keep order context
                 'parent_id' => $rootMessage->id,
                 'is_read' => false,
                 'is_replied' => false,
@@ -702,6 +744,62 @@ class MessageController extends Controller
         return view('client.messages.project', compact(
             'messages',
             'project',
+            'filters'
+        ));
+    }
+
+    /**
+     * Get order-specific messages
+     */
+    public function orderMessages(Request $request, $orderId)
+    {
+        $user = auth()->user();
+
+        // Verify order access
+        $order = \App\Models\ProductOrder::where('id', $orderId)
+            ->where('client_id', $user->id)
+            ->firstOrFail();
+
+        $filters = $request->validate([
+            'search' => 'nullable|string|max:255',
+            'type' => 'nullable|string',
+            'read' => 'nullable|string|in:read,unread',
+            'sort' => 'nullable|string|in:created_at,updated_at,subject',
+            'direction' => 'nullable|string|in:asc,desc',
+        ]);
+
+        // Get order messages
+        $query = Message::where('user_id', $user->id)
+            ->where('order_id', $orderId);
+
+        // Apply filters
+        if (!empty($filters['search'])) {
+            $query->where(function ($q) use ($filters) {
+                $q->where('subject', 'like', '%' . $filters['search'] . '%')
+                    ->orWhere('message', 'like', '%' . $filters['search'] . '%');
+            });
+        }
+
+        if (!empty($filters['type'])) {
+            $query->where('type', $filters['type']);
+        }
+
+        if (isset($filters['read'])) {
+            $isRead = $filters['read'] === 'read';
+            $query->where('is_read', $isRead);
+        }
+
+        // Sort
+        $sortField = $filters['sort'] ?? 'created_at';
+        $sortDirection = $filters['direction'] ?? 'desc';
+        $query->orderBy($sortField, $sortDirection);
+
+        $messages = $query->with(['attachments', 'parent', 'replies'])
+            ->paginate(15);
+
+        return view('client.messages.order', compact(
+            'messages',
+            'order',
             'filters'
         ));
     }
