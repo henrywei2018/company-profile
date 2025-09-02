@@ -1,13 +1,13 @@
 @extends('components.layouts.app')
 
-@section('title', 'Portfolio - CV Usaha Prima Lestari')
-@section('meta_description', 'Get in touch with CV Usaha Prima Lestari for all your construction and supply needs. We offer professional construction services, general supplies, and more.')
+@section('title', 'Portofolio - CV Usaha Prima Lestari')
+@section('meta_description', 'Hubungi kami with CV Usaha Prima Lestari for all your construction and supply needs. We offer professional construction services, general supplies, and more.')
 
 @section('content')
     <!-- Page Header -->
     <section class="page-header bg-amber-600 py-20 text-white">
         <div class="container mx-auto px-4 text-center">
-            <h1 class="text-4xl font-bold mb-4">Portfolio</h1>
+            <h1 class="text-4xl font-bold mb-4">Portofolio</h1>
             <nav class="flex justify-center" aria-label="Breadcrumb">
                 <ol class="inline-flex items-center space-x-1 md:space-x-3">
                     <li class="inline-flex items-center">
@@ -15,7 +15,7 @@
                             <svg class="w-3 h-3 mr-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
                             </svg>
-                            Home
+                            Beranda
                         </a>
                     </li>
                     <li aria-current="page">
@@ -23,7 +23,7 @@
                             <svg class="w-3 h-3 text-amber-300 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
                                 <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
                             </svg>
-                            <span class="ml-1 text-sm font-medium md:ml-2">Portfolio</span>
+                            <span class="ml-1 text-sm font-medium md:ml-2">Portofolio</span>
                         </div>
                     </li>
                 </ol>
@@ -31,11 +31,11 @@
         </div>
     </section>
 
-    <!-- Contact Info Section -->
+    <!-- Kontak Info Section -->
     <section class="py-16 bg-white">
         <div class="container mx-auto px-4">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-                <!-- Contact Card 1 -->
+                <!-- Kontak Card 1 -->
                 <div class="bg-gray-50 rounded-lg p-8 text-center shadow-md" data-aos="fade-up">
                     <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full mx-auto flex items-center justify-center mb-6">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -43,13 +43,13 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                     </div>
-                    <h3 class="text-xl font-semibold mb-3">Our Location</h3>
+                    <h3 class="text-xl font-semibold mb-3">Our Lokasi</h3>
                     <p class="text-gray-600">
                         {{ isset($companyProfile) && $companyProfile->address ? $companyProfile->address : 'Jl. Raya Bogor No. 123, Jakarta, Indonesia' }}
                     </p>
                 </div>
 
-                <!-- Contact Card 2 -->
+                <!-- Kontak Card 2 -->
                 <div class="bg-gray-50 rounded-lg p-8 text-center shadow-md" data-aos="fade-up" data-aos-delay="100">
                     <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full mx-auto flex items-center justify-center mb-6">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -64,14 +64,14 @@
                     </p>
                 </div>
 
-                <!-- Contact Card 3 -->
+                <!-- Kontak Card 3 -->
                 <div class="bg-gray-50 rounded-lg p-8 text-center shadow-md" data-aos="fade-up" data-aos-delay="200">
                     <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full mx-auto flex items-center justify-center mb-6">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                     </div>
-                    <h3 class="text-xl font-semibold mb-3">Email Address</h3>
+                    <h3 class="text-xl font-semibold mb-3">Alamat Email</h3>
                     <p class="text-gray-600">
                         <a href="mailto:{{ isset($companyProfile) && $companyProfile->email ? $companyProfile->email : 'info@cvupl.com' }}" class="hover:text-amber-600">
                             {{ isset($companyProfile) && $companyProfile->email ? $companyProfile->email : 'info@cvupl.com' }}
@@ -80,9 +80,9 @@
                 </div>
             </div>
 
-            <!-- Contact Form & Map Section -->
+            <!-- Kontak Form & Map Section -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                <!-- Contact Form -->
+                <!-- Kontak Form -->
                 <div data-aos="fade-right">
                     <h2 class="text-3xl font-bold mb-6">Get In Touch</h2>
                     <p class="text-gray-600 mb-8">
@@ -184,7 +184,7 @@
                             </li>
                             <li class="flex justify-between">
                                 <span>Sunday:</span>
-                                <span class="font-medium">Closed</span>
+                                <span class="font-medium">Tutup</span>
                             </li>
                         </ul>
                     </div>

@@ -1,8 +1,8 @@
 {{-- resources/views/pages/blog/index.blade.php --}}
 <x-layouts.public
     title="Blog - {{ $siteConfig['site_title'] }}"
-    description="Read our latest insights, industry news, and project updates from our construction and engineering experts."
-    keywords="blog, construction news, engineering insights, project updates"
+    description="Baca wawasan terbaru, berita industri, dan update proyek dari para ahli konstruksi dan teknik kami."
+    keywords="blog, berita konstruksi, wawasan teknik, update proyek"
     type="website"
 >
 
@@ -20,7 +20,7 @@
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
                         </svg>
-                        Home
+                        Beranda
                     </a>
                 </li>
                 <li aria-current="page">
@@ -36,13 +36,13 @@
 
         <div class="text-center">
             <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                Our 
+                Blog 
                 <span class="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                    Blog
+                    Kami
                 </span>
             </h1>
             <p class="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-                Stay updated with the latest insights, industry news, and project updates from our construction and engineering experts.
+                Ikuti perkembangan wawasan terbaru, berita industri, dan update proyek dari para ahli konstruksi dan teknik kami.
             </p>
             
             {{-- Quick Stats --}}
@@ -57,7 +57,7 @@
                     <svg class="w-4 h-4 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
                     </svg>
-                    {{ $stats['total_categories'] }} Categories
+                    {{ $stats['total_categories'] }} Kategori
                 </div>
                 <div class="flex items-center">
                     <svg class="w-4 h-4 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,17 +79,17 @@
                 {{-- Filter Bar --}}
                 <div class="bg-gray-50 rounded-2xl p-6 mb-8">
                     <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        {{-- Search Input --}}
+                        {{-- Cari Input --}}
                         <div class="md:col-span-2">
                             <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
-                                Search Articles
+                                Cari Artikel
                             </label>
                             <div class="relative">
                                 <input type="text" 
                                        id="search" 
                                        name="search" 
                                        value="{{ $search }}"
-                                       placeholder="Search by title, content..."
+                                       placeholder="Cari berdasarkan judul, konten..."
                                        class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent">
                                 <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -105,7 +105,7 @@
                             <select id="category" 
                                     name="category" 
                                     class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent">
-                                <option value="all" {{ $category === 'all' ? 'selected' : '' }}>All Categories</option>
+                                <option value="all" {{ $category === 'all' ? 'selected' : '' }}>Semua Kategori</option>
                                 @foreach($categories as $cat)
                                 <option value="{{ $cat->slug }}" {{ $category === $cat->slug ? 'selected' : '' }}>
                                     {{ $cat->name }} ({{ $cat->published_posts_count }})
@@ -122,10 +122,10 @@
                             <select id="sort" 
                                     name="sort" 
                                     class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent">
-                                <option value="latest" {{ $sortBy === 'latest' ? 'selected' : '' }}>Latest First</option>
+                                <option value="latest" {{ $sortBy === 'latest' ? 'selected' : '' }}>Terbaru First</option>
                                 <option value="oldest" {{ $sortBy === 'oldest' ? 'selected' : '' }}>Oldest First</option>
                                 <option value="title" {{ $sortBy === 'title' ? 'selected' : '' }}>Title A-Z</option>
-                                <option value="featured" {{ $sortBy === 'featured' ? 'selected' : '' }}>Featured First</option>
+                                <option value="featured" {{ $sortBy === 'featured' ? 'selected' : '' }}>Unggulan First</option>
                             </select>
                         </div>
                     </form>
@@ -185,16 +185,16 @@
                             @endif
                             <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                             
-                            {{-- Featured Badge --}}
+                            {{-- Unggulan Badge --}}
                             @if($post->featured)
                             <div class="absolute top-3 left-3">
                                 <span class="bg-orange-500 text-white px-2 py-1 rounded-lg text-xs font-medium">
-                                    Featured
+                                    Unggulan
                                 </span>
                             </div>
                             @endif
                             
-                            {{-- Categories --}}
+                            {{-- Kategori --}}
                             @if($post->categories->count() > 0)
                             <div class="absolute top-3 right-3">
                                 <span class="bg-white/90 text-gray-800 px-2 py-1 rounded-lg text-xs font-medium">
@@ -234,7 +234,7 @@
                                 </div>
                             </div>
                             
-                            {{-- Read More Button --}}
+                            {{-- Baca Selengkapnya Button --}}
                             <a href="{{ route('blog.show', $post->slug) }}" 
                                class="inline-flex items-center justify-center w-full px-4 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-semibold rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 transform hover:scale-105">
                                 Read Article
@@ -265,7 +265,7 @@
                     </p>
                     <a href="{{ route('blog.index') }}" 
                        class="inline-flex items-center px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-colors">
-                        View All Articles
+                        Lihat Semua Artikel
                     </a>
                 </div>
                 @endif
@@ -273,10 +273,10 @@
             
             {{-- Sidebar --}}
             <div class="lg:col-span-1">
-                {{-- Featured Posts --}}
+                {{-- Unggulan Posts --}}
                 @if($featuredPosts && $featuredPosts->count() > 0)
                 <div class="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-6 mb-8 border border-orange-100">
-                    <h3 class="text-xl font-bold text-gray-900 mb-6">Featured Articles</h3>
+                    <h3 class="text-xl font-bold text-gray-900 mb-6">Unggulan Articles</h3>
                     <div class="space-y-4">
                         @foreach($featuredPosts as $featured)
                         <article class="group">
@@ -311,10 +311,10 @@
                 </div>
                 @endif
                 
-                {{-- Categories --}}
+                {{-- Kategori --}}
                 @if($categories && $categories->count() > 0)
                 <div class="bg-white border border-gray-200 rounded-2xl p-6 mb-8">
-                    <h3 class="text-xl font-bold text-gray-900 mb-6">Categories</h3>
+                    <h3 class="text-xl font-bold text-gray-900 mb-6">Kategori</h3>
                     <div class="space-y-2">
                         @foreach($categories as $cat)
                         <a href="{{ route('blog.index', ['category' => $cat->slug]) }}" 
@@ -334,7 +334,7 @@
                 {{-- Recent Posts --}}
                 @if($recentPosts && $recentPosts->count() > 0)
                 <div class="bg-gray-50 rounded-2xl p-6">
-                    <h3 class="text-xl font-bold text-gray-900 mb-6">Recent Articles</h3>
+                    <h3 class="text-xl font-bold text-gray-900 mb-6">Artikel Terbaru</h3>
                     <div class="space-y-4">
                         @foreach($recentPosts as $recent)
                         <article class="group">

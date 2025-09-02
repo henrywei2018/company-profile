@@ -1,6 +1,6 @@
 {{-- resources/views/pages/portfolio/index.blade.php --}}
 <x-layouts.public
-    title="Our Portfolio - {{ $siteConfig['site_title'] }}"
+    title="Portofolio Kami - {{ $siteConfig['site_title'] }}"
     description="Explore our completed construction and engineering projects. See the quality and craftsmanship we deliver."
     keywords="construction portfolio, completed projects, construction gallery, engineering projects"
     type="website"
@@ -12,11 +12,31 @@
     <div class="absolute inset-0 bg-[url('/images/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
     
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
+        <nav class="flex mb-8" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="{{ route('home') }}" class="text-gray-700 hover:text-orange-600 inline-flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                        </svg>
+                        Beranda
+                    </a>
+                </li>
+                <li aria-current="page">
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="ml-1 text-orange-600 md:ml-2 font-medium">Portofolio</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
         <div class="text-center mb-12">
             <h1 class="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
                 Our 
                 <span class="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                    Portfolio
+                    Portofolio
                 </span>
             </h1>
             <p class="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
@@ -33,7 +53,7 @@
                     </svg>
                 </div>
                 <div class="text-3xl font-bold text-gray-900 mb-2">{{ $stats['total_projects'] }}+</div>
-                <div class="text-gray-600">Completed Projects</div>
+                <div class="text-gray-600">Selesai Projects</div>
             </div>
             
             <div class="text-center">
@@ -43,7 +63,7 @@
                     </svg>
                 </div>
                 <div class="text-3xl font-bold text-gray-900 mb-2">{{ $stats['satisfied_clients'] }}+</div>
-                <div class="text-gray-600">Happy Clients</div>
+                <div class="text-gray-600">Happy Kliens</div>
             </div>
             
             <div class="text-center">
@@ -53,7 +73,7 @@
                     </svg>
                 </div>
                 <div class="text-3xl font-bold text-gray-900 mb-2">{{ $stats['active_categories'] }}+</div>
-                <div class="text-gray-600">Project Categories</div>
+                <div class="text-gray-600">Kategori Proyek</div>
             </div>
             
             <div class="text-center">
@@ -67,15 +87,19 @@
             </div>
         </div>
 
-        {{-- Featured Projects --}}
+        {{-- Proyek Unggulan --}}
         @if($featuredProjects && $featuredProjects->count() > 0)
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             @foreach($featuredProjects as $project)
             <div class="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2">
                 <div class="aspect-w-16 aspect-h-10 relative">
-                    @if($project->featured_image_url)
-                        <img src="{{ $project->featured_image_url }}" 
-                             alt="{{ $project->title }}" 
+                    @php
+                        // Get featured image atau first image from eager loaded relationship
+                        $featuredImage = $project->images->where('is_featured', true)->first() ?: $project->images->first();
+                    @endphp
+                    @if($featuredImage)
+                        <img src="{{ asset('storage/' . $featuredImage->image_path) }}" 
+                             alt="{{ $featuredImage->alt_text ?: $project->title }}" 
                              class="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500">
                     @else
                         <div class="w-full h-64 bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center">
@@ -87,7 +111,7 @@
                     <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                     <div class="absolute top-4 left-4">
                         <span class="bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-                            Featured
+                            Unggulan
                         </span>
                     </div>
                 </div>
@@ -100,7 +124,7 @@
                     @endif
                     <a href="{{ route('portfolio.show', $project->slug) }}" 
                        class="inline-flex items-center text-orange-300 hover:text-white transition-colors">
-                        View Details
+                        Lihat Detail
                         <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                         </svg>
@@ -113,7 +137,7 @@
     </div>
 </section>
 
-{{-- Portfolio Content Section --}}
+{{-- Portofolio Content Section --}}
 <section class="py-20 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col lg:flex-row gap-8">
@@ -123,13 +147,13 @@
                     <h3 class="text-lg font-bold text-gray-900 mb-6">Filter Projects</h3>
                     
                     <form method="GET" id="portfolio-filters" class="space-y-6">
-                        {{-- Search --}}
+                        {{-- Cari --}}
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Cari</label>
                             <input type="text" 
                                    name="search" 
                                    value="{{ $search }}"
-                                   placeholder="Search projects..."
+                                   placeholder="Cari projects..."
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm">
                         </div>
 
@@ -137,7 +161,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
                             <select name="category" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm">
-                                <option value="all" {{ $category === 'all' ? 'selected' : '' }}>All Categories</option>
+                                <option value="all" {{ $category === 'all' ? 'selected' : '' }}>All Kategori</option>
                                 @foreach($categories as $cat)
                                 <option value="{{ $cat->slug }}" {{ $category === $cat->slug ? 'selected' : '' }}>
                                     {{ $cat->name }} ({{ $cat->active_projects_count }})
@@ -150,7 +174,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Service</label>
                             <select name="service" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm">
-                                <option value="all" {{ $service === 'all' ? 'selected' : '' }}>All Services</option>
+                                <option value="all" {{ $service === 'all' ? 'selected' : '' }}>Semua Layanan</option>
                                 @foreach($services as $svc)
                                 <option value="{{ $svc->slug }}" {{ $service === $svc->slug ? 'selected' : '' }}>
                                     {{ $svc->title }}
@@ -176,9 +200,9 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
                             <select name="sort" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm">
-                                <option value="latest" {{ $sortBy === 'latest' ? 'selected' : '' }}>Latest First</option>
+                                <option value="latest" {{ $sortBy === 'latest' ? 'selected' : '' }}>Terbaru First</option>
                                 <option value="oldest" {{ $sortBy === 'oldest' ? 'selected' : '' }}>Oldest First</option>
-                                <option value="featured" {{ $sortBy === 'featured' ? 'selected' : '' }}>Featured First</option>
+                                <option value="featured" {{ $sortBy === 'featured' ? 'selected' : '' }}>Unggulan First</option>
                                 <option value="title" {{ $sortBy === 'title' ? 'selected' : '' }}>Title A-Z</option>
                             </select>
                         </div>
@@ -206,7 +230,7 @@
                             </div>
                             @if($search)
                             <div class="flex justify-between">
-                                <span>Search:</span>
+                                <span>Cari:</span>
                                 <span class="font-medium">"{{ $search }}"</span>
                             </div>
                             @endif
@@ -230,7 +254,7 @@
                             @if($search || ($category && $category !== 'all') || ($service && $service !== 'all') || ($year && $year !== 'all'))
                                 Filtered Projects
                             @else
-                                All Projects
+                                Semua Proyek
                             @endif
                         </h2>
                         <p class="text-gray-600">
@@ -246,9 +270,13 @@
                     <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-2">
                         {{-- Project Image --}}
                         <div class="relative h-48 overflow-hidden">
-                            @if($project->featured_image_url)
-                                <img src="{{ $project->featured_image_url }}" 
-                                     alt="{{ $project->title }}" 
+                            @php
+                                // Get featured image atau first image from eager loaded relationship
+                                $featuredImage = $project->images->where('is_featured', true)->first() ?: $project->images->first();
+                            @endphp
+                            @if($featuredImage)
+                                <img src="{{ asset('storage/' . $featuredImage->image_path) }}" 
+                                     alt="{{ $featuredImage->alt_text ?: $project->title }}" 
                                      class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                             @else
                                 <div class="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
@@ -263,7 +291,7 @@
                             <div class="absolute top-3 left-3 flex gap-2">
                                 @if($project->featured)
                                 <span class="bg-orange-500 text-white px-2 py-1 rounded-lg text-xs font-medium">
-                                    Featured
+                                    Unggulan
                                 </span>
                                 @endif
                                 @if($project->category)
@@ -307,12 +335,12 @@
                             <div class="flex items-center justify-between">
                                 @if($project->client)
                                 <span class="text-xs text-gray-500">
-                                    Client: {{ $project->client->name }}
+                                    Klien: {{ $project->client->name }}
                                 </span>
                                 @endif
                                 <a href="{{ route('portfolio.show', $project->slug) }}" 
                                    class="inline-flex items-center text-orange-600 font-medium text-sm hover:text-orange-700 transition-colors">
-                                    View Details
+                                    Lihat Detail
                                     <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                                     </svg>
@@ -341,7 +369,7 @@
                     </p>
                     <a href="{{ route('portfolio.index') }}" 
                        class="inline-flex items-center px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-colors">
-                        View All Projects
+                        View Semua Proyek
                     </a>
                 </div>
                 @endif
@@ -354,7 +382,7 @@
 <section class="py-20 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">
-            Ready to Start Your Project?
+            Siap Memulai Proyek Anda?
         </h2>
         <p class="text-xl text-orange-100 mb-8">
             Join our satisfied clients and let us bring your construction vision to life.
@@ -372,7 +400,7 @@
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                 </svg>
-                View Our Services
+                View Layanan Kami
             </a>
         </div>
     </div>

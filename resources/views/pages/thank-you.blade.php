@@ -1,12 +1,12 @@
 {{-- resources/views/pages/contact/thank-you.blade.php --}}
 <x-layouts.public
-    title="Thank You - {{ $siteConfig['site_title'] }}"
+    title="Terima Kasih - {{ $siteConfig['site_title'] }}"
     description="Thank you for contacting us. We have received your message and will get back to you soon."
     keywords="thank you, contact confirmation, message received"
     type="website"
 >
 
-{{-- Thank You Hero Section --}}
+{{-- Terima Kasih Hero Section --}}
 <section class="relative min-h-screen flex items-center bg-gradient-to-br from-orange-50 via-white to-amber-50 overflow-hidden">
     {{-- Background Pattern --}}
     <div class="absolute inset-0 bg-[url('/images/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
@@ -27,7 +27,7 @@
         </div>
         
         <h1 class="text-4xl md:text-6xl font-bold text-gray-900 mb-6 animate-fade-in-up">
-            Thank You!
+            Terima Kasih!
         </h1>
         
         <h2 class="text-2xl md:text-3xl font-semibold text-orange-600 mb-8 animate-fade-in-up animation-delay-200">
@@ -37,10 +37,10 @@
         <div class="bg-white rounded-2xl shadow-xl p-8 mb-8 animate-fade-in-up animation-delay-400 max-w-2xl mx-auto">
             <p class="text-lg text-gray-700 mb-6 leading-relaxed">
                 We have successfully received your message and appreciate you taking the time to contact us. 
-                Our team will review your inquiry and get back to you within <strong class="text-orange-600">24 hours</strong>.
+                Tim kami akan meninjau pertanyaan Anda dan menghubungi Anda dalam waktu <strong class="text-orange-600">24 hours</strong>.
             </p>
             
-            {{-- What Happens Next --}}
+            {{-- Apa yang Terjadi Selanjutnya --}}
             <div class="border-t border-gray-200 pt-6">
                 <h3 class="text-xl font-semibold text-gray-900 mb-4">What happens next?</h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -59,7 +59,7 @@
                             <span class="text-orange-600 font-bold">2</span>
                         </div>
                         <div>
-                            <h4 class="font-semibold text-gray-900 mb-1">Contact</h4>
+                            <h4 class="font-semibold text-gray-900 mb-1">Kontak</h4>
                             <p class="text-gray-600">Our expert will reach out to discuss your project in detail.</p>
                         </div>
                     </div>
@@ -84,7 +84,7 @@
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                 </svg>
-                Back to Home
+                Kembali ke Beranda
             </a>
             
             <a href="{{ route('services.index') }}" 
@@ -92,11 +92,11 @@
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                 </svg>
-                View Our Services
+                View Layanan Kami
             </a>
         </div>
         
-        {{-- Contact Information --}}
+        {{-- Kontak Information --}}
         <div class="text-center animate-fade-in-up animation-delay-800">
             <p class="text-gray-600 mb-4">Need immediate assistance? Feel free to call us directly:</p>
             @if($contactInfo['phone'])
@@ -145,14 +145,14 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </div>
-                <h3 class="text-xl font-bold text-gray-900 mb-2">Professional Team</h3>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Professional Tim</h3>
                 <p class="text-gray-600">You'll work directly with our experienced professionals from start to finish.</p>
             </div>
         </div>
     </div>
 </section>
 
-{{-- Recent Projects Showcase --}}
+{{-- Proyek Terbaru Showcase --}}
 <section class="py-20 bg-gray-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12">
@@ -174,7 +174,7 @@
                     <p class="text-gray-600 text-sm mb-4">Professional construction service delivered with quality and expertise.</p>
                     <a href="{{ route('portfolio.index') }}" 
                        class="inline-flex items-center text-orange-600 font-medium text-sm hover:text-orange-700 transition-colors">
-                        View Portfolio
+                        View Portofolio
                         <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                         </svg>

@@ -1,8 +1,8 @@
 {{-- resources/views/pages/contact.blade.php --}}
 <x-layouts.public
-    title="Contact Us - {{ $siteConfig['site_title'] }}"
-    description="Get in touch with us. Contact information and contact form for professional construction services."
-    keywords="contact, get in touch, contact form, construction company"
+    title="Hubungi Kami - {{ $siteConfig['site_title'] }}"
+    description="Hubungi kami untuk konsultasi gratis. Informasi kontak dan formulir kontak untuk layanan konstruksi profesional."
+    keywords="hubungi kami, kontak, konsultasi gratis, formulir kontak, perusahaan konstruksi"
     type="website"
 >
 
@@ -26,7 +26,7 @@
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
                         </svg>
-                        Home
+                        Beranda
                     </a>
                 </li>
                 <li aria-current="page">
@@ -34,25 +34,61 @@
                         <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                         </svg>
-                        <span class="ml-1 text-orange-600 md:ml-2 font-medium">Contact Us</span>
+                        <span class="ml-1 text-orange-600 md:ml-2 font-medium">Hubungi Kami</span>
                     </div>
                 </li>
             </ol>
         </nav>
 
         <div class="text-center max-w-4xl mx-auto">
+            <div class="inline-flex items-center px-4 py-2 bg-orange-100 text-orange-600 rounded-full text-sm font-semibold mb-4">
+                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/>
+                </svg>
+                Konsultasi & Penawaran Gratis
+            </div>
+            
             <h1 class="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-                Get In 
+                Hubungi 
                 <span class="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                    Touch
+                    Kami
                 </span>
             </h1>
-            <p class="text-xl text-gray-600 mb-8 leading-relaxed">
-                Ready to start your project? Have questions about our services? We're here to help. 
-                Contact us today for a free consultation and let's bring your vision to life.
+            <p class="text-xl text-gray-600 mb-6 leading-relaxed">
+                Dapatkan konsultasi gratis dan penawaran awal untuk proyek Anda. Tim ahli kami siap membantu mewujudkan impian konstruksi Anda dengan solusi terbaik dan harga kompetitif.
             </p>
             
-            {{-- Quick Contact Actions --}}
+            {{-- Service Information --}}
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 mb-8 border border-blue-100">
+                <div class="flex items-start space-x-4">
+                    <div class="flex-shrink-0">
+                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 3a1 1 0 00-1.447-.894L8.763 6H5a3 3 0 000 6h.28l1.771 5.316A1 1 0 008 18h1a1 1 0 001-1v-4.382l6.553 3.894A1 1 0 0018 16V3z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">
+                            Ingin Penawaran Detail? 
+                        </h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">
+                            Untuk mendapatkan penawaran detail dengan rincian lengkap dan akses ke sistem manajemen proyek, silakan 
+                            <a href="{{ route('register') }}" class="text-blue-600 hover:text-blue-700 font-medium underline">daftar sebagai klien</a>
+                            atau 
+                            <a href="{{ route('login') }}" class="text-blue-600 hover:text-blue-700 font-medium underline">login</a>
+                            jika sudah memiliki akun.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <p class="text-lg text-gray-500 mb-8">
+                Siap memulai proyek Anda? Punya pertanyaan tentang layanan kami? Kami siap membantu. 
+                Hubungi kami hari ini untuk konsultasi gratis dan mari wujudkan visi Anda.
+            </p>
+            
+            {{-- Quick Kontak Actions --}}
             <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
                 @if($contactInfo['phone'])
                 <a href="tel:{{ $contactInfo['phone'] }}" 
@@ -78,11 +114,11 @@
     </div>
 </section>
 
-{{-- Contact Information Cards --}}
+{{-- Kontak Information Cards --}}
 <section class="py-20 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-            {{-- Phone Contact --}}
+            {{-- Phone Kontak --}}
             @if($contactInfo['phone'])
             <div class="text-center group">
                 <div class="w-20 h-20 bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
@@ -98,7 +134,7 @@
             </div>
             @endif
             
-            {{-- Email Contact --}}
+            {{-- Email Kontak --}}
             @if($contactInfo['email'])
             <div class="text-center group">
                 <div class="w-20 h-20 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
@@ -114,7 +150,7 @@
             </div>
             @endif
             
-            {{-- Location --}}
+            {{-- Lokasi --}}
             @if($contactInfo['address'])
             <div class="text-center group">
                 <div class="w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
@@ -134,11 +170,11 @@
     </div>
 </section>
 
-{{-- Contact Form Section --}}
+{{-- Kontak Form Section --}}
 <section class="py-20 bg-gray-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {{-- Contact Form --}}
+            {{-- Kontak Form --}}
             <div>
                 <div class="bg-white rounded-2xl shadow-xl p-8">
                     <h2 class="text-3xl font-bold text-gray-900 mb-2">Send us a Message</h2>
@@ -156,7 +192,7 @@
                     </div>
                     @endif
                     
-                    {{-- Contact Form --}}
+                    {{-- Kontak Form --}}
                     <form action="{{ route('contact.store') }}" method="POST" class="space-y-6" id="contactForm">
                         @csrf
                         
@@ -185,7 +221,7 @@
                             {{-- Email --}}
                             <div>
                                 <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Email Address *
+                                    Alamat Email *
                                 </label>
                                 <input type="email" 
                                        id="email" 
@@ -263,7 +299,7 @@
                             @enderror
                         </div>
                         
-                        {{-- Submit Button --}}
+                        {{-- Tombol Kirim --}}
                         <div>
                             <button type="submit" 
                                     class="w-full bg-gradient-to-r from-orange-600 to-amber-600 text-white font-semibold py-4 rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
@@ -280,11 +316,11 @@
                 </div>
             </div>
             
-            {{-- Contact Information & Why Choose Us --}}
+            {{-- Kontak Information & Why Choose Us --}}
             <div class="space-y-8">
-                {{-- Contact Details --}}
+                {{-- Kontak Details --}}
                 <div class="bg-white rounded-2xl shadow-xl p-8">
-                    <h3 class="text-2xl font-bold text-gray-900 mb-6">Contact Information</h3>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-6">Kontak Information</h3>
                     <div class="space-y-6">
                         @if($contactInfo['phone'])
                         <div class="flex items-start">
@@ -327,7 +363,7 @@
                                 </svg>
                             </div>
                             <div>
-                                <h4 class="font-semibold text-gray-900 mb-1">Address</h4>
+                                <h4 class="font-semibold text-gray-900 mb-1">Alamat</h4>
                                 <address class="text-gray-600 not-italic">
                                     {{ $contactInfo['address'] }}
                                 </address>
@@ -347,7 +383,7 @@
                                 <div class="text-gray-600 text-sm space-y-1">
                                     <div>Monday - Friday: 8:00 AM - 5:00 PM</div>
                                     <div>Saturday: 8:00 AM - 2:00 PM</div>
-                                    <div>Sunday: Closed</div>
+                                    <div>Minggu: Tutup</div>
                                 </div>
                             </div>
                         </div>
@@ -498,10 +534,10 @@
 <section class="py-20 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">
-            Ready to Start Your Project?
+            Siap Memulai Proyek Anda?
         </h2>
         <p class="text-xl text-orange-100 mb-8">
-            Don't wait any longer. Contact us today and let's bring your vision to life with professional expertise and quality craftsmanship.
+            Don't wait any longer. Kontak us today and let's bring your vision to life with professional expertise and quality craftsmanship.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
             @if($contactInfo['phone'])
@@ -537,7 +573,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const content = document.getElementById(targetId);
             const icon = this.querySelector('.faq-icon');
             
-            // Close all other FAQs
+            // Tutup semua yang lain FAQs
             faqToggles.forEach(otherToggle => {
                 if (otherToggle !== this) {
                     const otherTargetId = otherToggle.getAttribute('data-target');

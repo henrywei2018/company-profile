@@ -1,13 +1,14 @@
 {{-- resources/views/pages/products/show.blade.php --}}
 <x-layouts.public
-    :title="$product->name . ' - Products - ' . $siteConfig['site_title']"
-    :description="$product->short_description ?: 'Learn more about our ' . $product->name . ' product.'"
-    :keywords="$product->name . ', ' . $product->brand . ', construction product, building material'"
+    :title="$product->name . ' - Produk - ' . $siteConfig['site_title']"
+    :description="$product->short_description ?: 'Pelajari lebih lanjut tentang produk ' . $product->name . ' kami.'"
+    :keywords="$product->name . ', ' . $product->brand . ', produk konstruksi, material bangunan'"
     type="product"
 >
 
-{{-- Breadcrumbs --}}
-<section class="pt-32 pb-8 bg-gradient-to-br from-orange-50 via-white to-amber-50">
+
+{{-- Product Details Section --}}
+<section class="py-12 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <nav class="flex mb-8" aria-label="Breadcrumb">
             <ol class="inline-flex items-center space-x-1 md:space-x-3">
@@ -16,7 +17,7 @@
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
                         </svg>
-                        Home
+                        Beranda
                     </a>
                 </li>
                 <li>
@@ -24,35 +25,19 @@
                         <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                         </svg>
-                        <a href="{{ route('products.index') }}" class="ml-1 text-gray-700 hover:text-orange-600 md:ml-2">Products</a>
+                        <a href="{{ route('products.index') }}" class="ml-1 text-gray-700 hover:text-orange-600 md:ml-2">Produk</a>
                     </div>
                 </li>
-                @if($product->category)
-                <li>
-                    <div class="flex items-center">
-                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
-                        </svg>
-                        <a href="{{ route('products.index', ['category' => $product->category->slug]) }}" class="ml-1 text-gray-700 hover:text-orange-600 md:ml-2">{{ $product->category->name }}</a>
-                    </div>
-                </li>
-                @endif
                 <li aria-current="page">
                     <div class="flex items-center">
                         <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                         </svg>
-                        <span class="ml-1 text-gray-500 md:ml-2">{{ Str::limit($product->name, 30) }}</span>
+                        <span class="ml-1 text-orange-600 md:ml-2 font-medium">{{ $product->name }}</span>
                     </div>
                 </li>
             </ol>
         </nav>
-    </div>
-</section>
-
-{{-- Product Details Section --}}
-<section class="py-12 bg-white">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {{-- Product Images - CLEAN PRODUCTIMAGE ONLY --}}
             <div class="space-y-4">
@@ -76,7 +61,7 @@
                     <div class="absolute top-4 left-4 flex flex-col space-y-2">
                         @if($product->is_featured)
                         <span class="bg-orange-500 text-white px-3 py-1 rounded-lg text-sm font-medium">
-                            Featured
+                            Unggulan
                         </span>
                         @endif
                         
@@ -171,7 +156,7 @@
                     
                     @if($product->manage_stock && $product->stock_quantity !== null)
                     <div>
-                        <span class="text-gray-600">Available:</span>
+                        <span class="text-gray-600">Tersedia:</span>
                         <span class="font-medium ml-2">{{ $product->stock_quantity }} units</span>
                     </div>
                     @endif
@@ -247,11 +232,11 @@
 </section>
 @endif
 
-{{-- Related Products --}}
+{{-- Related Produk --}}
 @if($relatedProducts && $relatedProducts->count() > 0)
 <section class="py-20 bg-gray-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 class="text-3xl font-bold text-gray-900 mb-12 text-center">Related Products</h2>
+        <h2 class="text-3xl font-bold text-gray-900 mb-12 text-center">Related Produk</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             @foreach($relatedProducts as $relatedProduct)
             <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden">
@@ -272,7 +257,7 @@
                     @if($relatedProduct->is_featured)
                     <div class="absolute top-3 left-3">
                         <span class="bg-orange-500 text-white px-2 py-1 rounded-lg text-xs font-medium">
-                            Featured
+                            Unggulan
                         </span>
                     </div>
                     @endif
@@ -295,7 +280,7 @@
                         
                         <a href="{{ route('products.show', $relatedProduct->slug) }}" 
                            class="text-orange-600 hover:text-orange-700 font-medium text-sm">
-                            View Details →
+                            Lihat Detail →
                         </a>
                     </div>
                 </div>
@@ -306,7 +291,7 @@
         <div class="text-center mt-12">
             <a href="{{ route('products.index') }}" 
                class="inline-flex items-center px-8 py-4 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-colors">
-                View All Products
+                View Semua Produk
                 <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                 </svg>
@@ -324,7 +309,7 @@
             Interested in This Product?
         </h2>
         <p class="text-xl mb-8 text-orange-100 max-w-3xl mx-auto">
-            Get in touch with our team to discuss your requirements and get a customized quote for {{ $product->name }}.
+            Hubungi kami with our team to discuss your requirements and get a customized quote for {{ $product->name }}.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="{{ route('contact.index') }}?inquiry=product&product={{ $product->slug }}" 
@@ -359,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const mainImage = document.getElementById('main-image');
     if (mainImage) {
         mainImage.addEventListener('click', function() {
-            // Create modal for image zoom
+            // Buat modal untuk zoom gambar
             const modal = document.createElement('div');
             modal.className = 'fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4';
             modal.onclick = function() { document.body.removeChild(modal); };

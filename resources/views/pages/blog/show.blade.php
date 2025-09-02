@@ -17,7 +17,7 @@
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
                         </svg>
-                        Home
+                        Beranda
                     </a>
                 </li>
                 <li>
@@ -40,7 +40,7 @@
         </nav>
 
         <div class="max-w-7xl mx-auto">
-            {{-- Post Categories --}}
+            {{-- Post Kategori --}}
             @if($post->categories->count() > 0)
             <div class="flex flex-wrap gap-2 mb-6">
                 @foreach($post->categories as $category)
@@ -51,7 +51,7 @@
                 @endforeach
                 @if($post->featured)
                 <span class="bg-amber-100 text-amber-600 px-3 py-1 rounded-full text-sm font-medium">
-                    Featured Article
+                    Unggulan Article
                 </span>
                 @endif
             </div>
@@ -103,7 +103,7 @@
             {{-- Article Content --}}
             <div class="lg:col-span-3">
                 <article class="prose prose-lg max-w-none">
-                    {{-- Featured Image --}}
+                    {{-- Unggulan Image --}}
                     @if($post->featured_image)
                     <div class="mb-8 rounded-2xl overflow-hidden shadow-xl">
                         <img src="{{ asset('storage/' . $post->featured_image) }}" 
@@ -123,7 +123,7 @@
                     {{-- Share Buttons --}}
                     <div class="flex items-center justify-between">
                         <div>
-                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Share this article</h3>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Bagikan artikel ini</h3>
                             <div class="flex gap-4">
                                 <a href="https://twitter.com/intent/tweet?url={{ urlencode(request()->url()) }}&text={{ urlencode($post->title) }}" 
                                    target="_blank"
@@ -149,13 +149,13 @@
                             </div>
                         </div>
                         
-                        {{-- Back to Blog --}}
+                        {{-- Kembali ke Blog --}}
                         <a href="{{ route('blog.index') }}" 
                            class="inline-flex items-center px-6 py-3 border border-orange-600 text-orange-600 font-semibold rounded-xl hover:bg-orange-600 hover:text-white transition-all duration-300">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18"/>
                             </svg>
-                            Back to Blog
+                            Kembali ke Blog
                         </a>
                     </div>
                 </div>
@@ -187,10 +187,10 @@
                 </div>
                 @endif
                 
-                {{-- Categories --}}
+                {{-- Kategori --}}
                 @if($categories && $categories->count() > 0)
                 <div class="bg-white border border-gray-200 rounded-2xl p-6 mb-8">
-                    <h3 class="text-xl font-bold text-gray-900 mb-6">Categories</h3>
+                    <h3 class="text-xl font-bold text-gray-900 mb-6">Kategori</h3>
                     <div class="space-y-2">
                         @foreach($categories as $category)
                         <a href="{{ route('blog.index', ['category' => $category->slug]) }}" 
@@ -218,7 +218,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12">
             <h2 class="text-3xl font-bold text-gray-900 mb-4">Related Articles</h2>
-            <p class="text-gray-600">Continue reading with these related articles.</p>
+            <p class="text-gray-600">Lanjutkan membaca with these related articles.</p>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">

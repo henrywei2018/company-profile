@@ -39,7 +39,9 @@ class PortfolioController extends BaseController
         // Build projects query
         $projectsQuery = Project::where('is_active', true)
             ->where('status', 'completed')
-            ->with(['category', 'service', 'client', 'images']);
+            ->with(['category', 'service', 'client', 'images' => function($query) {
+                $query->orderBy('is_featured', 'desc')->orderBy('sort_order', 'asc');
+            }]);
 
         // Apply search filter
         if ($search) {
@@ -95,7 +97,9 @@ class PortfolioController extends BaseController
             return Project::where('is_active', true)
                 ->where('status', 'completed')
                 ->where('featured', true)
-                ->with(['category', 'service'])
+                ->with(['category', 'service', 'images' => function($query) {
+                    $query->orderBy('is_featured', 'desc')->orderBy('sort_order', 'asc');
+                }])
                 ->orderBy('created_at', 'desc')
                 ->limit(3)
                 ->get();
@@ -161,7 +165,9 @@ class PortfolioController extends BaseController
         $project = Project::where('slug', $slug)
             ->where('is_active', true)
             ->where('status', 'completed')
-            ->with(['category', 'service', 'client', 'images', 'milestones' => function($query) {
+            ->with(['category', 'service', 'client', 'images' => function($query) {
+                $query->orderBy('is_featured', 'desc')->orderBy('sort_order', 'asc');
+            }, 'milestones' => function($query) {
                 $query->orderBy('sort_order', 'asc')->orderBy('due_date', 'asc');
             }])
             ->firstOrFail();
@@ -187,7 +193,9 @@ class PortfolioController extends BaseController
                     $query->where('featured', true);
                 }
             })
-            ->with(['category', 'service'])
+            ->with(['category', 'service', 'images' => function($query) {
+                $query->orderBy('is_featured', 'desc')->orderBy('sort_order', 'asc');
+            }])
             ->orderBy('featured', 'desc')
             ->limit(3)
             ->get();

@@ -77,7 +77,7 @@
 
             {{-- Quick Links --}}
             <div>
-                <h3 class="text-lg font-semibold text-white mb-6">Quick Links</h3>
+                <h3 class="text-lg font-semibold text-white mb-6">Tautan Cepat</h3>
                 <ul class="space-y-3">
                     @foreach($navLinks as $link)
                         <li>
@@ -96,7 +96,7 @@
 
             {{-- Services --}}
             <div>
-                <h3 class="text-lg font-semibold text-white mb-6">Our Services</h3>
+                <h3 class="text-lg font-semibold text-white mb-6">Layanan Kami</h3>
                 <ul class="space-y-3">
                     @if($globalServices && $globalServices->count() > 0)
                         @foreach($globalServices->take(6) as $service)
@@ -119,7 +119,7 @@
                                          fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                                     </svg>
-                                    View All Services
+                                    Lihat Semua Layanan
                                 </a>
                             </li>
                         @endif
@@ -131,7 +131,7 @@
 
             {{-- Contact Info --}}
             <div>
-                <h3 class="text-lg font-semibold text-white mb-6">Contact Info</h3>
+                <h3 class="text-lg font-semibold text-white mb-6">Informasi Kontak</h3>
                 <ul class="space-y-4">
                     @if($contactInfo['address'])
                         <li class="flex items-start">
@@ -208,22 +208,22 @@
         <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div class="flex flex-col md:flex-row justify-between items-center">
                 <div class="text-gray-400 text-sm mb-4 md:mb-0">
-                    © {{ date('Y') }} {{ $companyProfile->company_name ?? config('app.name') }}. All rights reserved.
+                    © {{ date('Y') }} {{ $companyProfile->company_name ?? config('app.name') }}. Hak cipta dilindungi.
                 </div>
                 
                 <div class="flex items-center space-x-6 text-sm">
                     <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300">
-                        Privacy Policy
+                        Kebijakan Privasi
                     </a>
                     <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300">
-                        Terms of Service
+                        Syarat Layanan
                     </a>
                     <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300">
                         Sitemap
                     </a>
                     @if($settings['cookie_policy_enabled'] ?? false)
                     <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300">
-                        Cookie Policy
+                        Kebijakan Cookie
                     </a>
                     @endif
                 </div>

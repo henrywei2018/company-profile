@@ -1,6 +1,6 @@
 {{-- resources/views/pages/portfolio/show.blade.php --}}
 <x-layouts.public
-    :title="$project->title . ' - Portfolio - ' . $siteConfig['site_title']"
+    :title="$project->title . ' - Portofolio - ' . $siteConfig['site_title']"
     :description="$project->short_description ?: 'View details of our ' . $project->title . ' project.'"
     :keywords="$project->title . ', construction project, portfolio'"
     type="article"
@@ -12,7 +12,6 @@
     <div class="absolute inset-0 bg-[url('/images/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
     
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
-        {{-- Breadcrumbs --}}
         <nav class="flex mb-8" aria-label="Breadcrumb">
             <ol class="inline-flex items-center space-x-1 md:space-x-3">
                 <li class="inline-flex items-center">
@@ -20,7 +19,7 @@
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
                         </svg>
-                        Home
+                        Beranda
                     </a>
                 </li>
                 <li>
@@ -28,7 +27,7 @@
                         <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                         </svg>
-                        <a href="{{ route('portfolio.index') }}" class="ml-1 text-gray-700 hover:text-orange-600 md:ml-2">Portfolio</a>
+                        <a href="{{ route('portfolio.index') }}" class="ml-1 text-gray-700 hover:text-orange-600 md:ml-2">Portofolio</a>
                     </div>
                 </li>
                 <li aria-current="page">
@@ -41,7 +40,6 @@
                 </li>
             </ol>
         </nav>
-
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {{-- Project Content --}}
             <div>
@@ -53,7 +51,7 @@
                     @endif
                     @if($project->featured)
                     <span class="bg-amber-100 text-amber-600 px-3 py-1 rounded-full text-sm font-medium">
-                        Featured Project
+                        Unggulan Project
                     </span>
                     @endif
                     <span class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm font-medium">
@@ -81,7 +79,7 @@
                             </svg>
                         </div>
                         <div>
-                            <div class="font-semibold text-gray-900">Client</div>
+                            <div class="font-semibold text-gray-900">Klien</div>
                             <div class="text-sm text-gray-600">{{ $project->client->name }}</div>
                         </div>
                     </div>
@@ -110,7 +108,7 @@
                             </svg>
                         </div>
                         <div>
-                            <div class="font-semibold text-gray-900">Location</div>
+                            <div class="font-semibold text-gray-900">Lokasi</div>
                             <div class="text-sm text-gray-600">{{ $project->location }}</div>
                         </div>
                     </div>
@@ -145,7 +143,7 @@
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                         </svg>
-                        View All Projects
+                        View Semua Proyek
                     </a>
                 </div>
             </div>
@@ -153,9 +151,13 @@
             {{-- Project Image --}}
             <div class="relative">
                 <div class="relative rounded-2xl overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-500">
-                    @if($project->featured_image_url)
-                        <img src="{{ $project->featured_image_url }}" 
-                             alt="{{ $project->title }}" 
+                    @php
+                        // Get featured image atau first image from eager loaded relationship
+                        $featuredImage = $project->images->where('is_featured', true)->first() ?: $project->images->first();
+                    @endphp
+                    @if($featuredImage)
+                        <img src="{{ asset('storage/' . $featuredImage->image_path) }}" 
+                             alt="{{ $featuredImage->alt_text ?: $project->title }}" 
                              class="w-full h-96 object-cover">
                     @else
                         <div class="w-full h-96 bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center">
@@ -319,7 +321,7 @@
                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                             </svg>
-                                            Completed: {{ $milestone->completed_date->format('M d, Y') }}
+                                            Selesai: {{ $milestone->completed_date->format('M d, Y') }}
                                         </div>
                                         @endif
                                         
@@ -364,7 +366,7 @@
                     <div class="space-y-4">
                         @if($project->start_date)
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Start Date:</span>
+                            <span class="text-gray-600">Tanggal Mulai:</span>
                             <span class="font-medium">{{ $project->start_date->format('M d, Y') }}</span>
                         </div>
                         @endif
@@ -378,7 +380,7 @@
                         
                         @if($project->budget)
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Budget:</span>
+                            <span class="text-gray-600">Anggaran:</span>
                             <span class="font-medium">${{ number_format($project->budget) }}</span>
                         </div>
                         @endif
@@ -397,11 +399,11 @@
                     </div>
                 </div>
 
-                {{-- Contact Card --}}
+                {{-- Kontak Card --}}
                 <div class="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-6 border border-orange-100">
                     <h3 class="text-xl font-bold text-gray-900 mb-4">Interested in Similar Project?</h3>
                     <p class="text-gray-600 mb-6">
-                        Get in touch with our team to discuss your project requirements and get a personalized quote.
+                        Hubungi kami with our team to discuss your project requirements and get a personalized quote.
                     </p>
                     <div class="space-y-3">
                         <a href="{{ route('contact.index', ['project' => $project->title]) }}" 
@@ -409,7 +411,7 @@
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.405L3 21l2.595-5.094A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z"/>
                             </svg>
-                            Get Quote
+                            Minta Penawaran
                         </a>
                         
                         @if($contactInfo['phone'])
@@ -442,9 +444,13 @@
             <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-2">
                 {{-- Project Image --}}
                 <div class="relative h-48 overflow-hidden">
-                    @if($relatedProject->featured_image_url)
-                        <img src="{{ $relatedProject->featured_image_url }}" 
-                             alt="{{ $relatedProject->title }}" 
+                    @php
+                        // Get featured image atau first image from eager loaded relationship
+                        $relatedFeaturedImage = $relatedProject->images->where('is_featured', true)->first() ?: $relatedProject->images->first();
+                    @endphp
+                    @if($relatedFeaturedImage)
+                        <img src="{{ asset('storage/' . $relatedFeaturedImage->image_path) }}" 
+                             alt="{{ $relatedFeaturedImage->alt_text ?: $relatedProject->title }}" 
                              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                     @else
                         <div class="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
@@ -458,7 +464,7 @@
                     @if($relatedProject->featured)
                     <div class="absolute top-3 left-3">
                         <span class="bg-orange-500 text-white px-2 py-1 rounded-lg text-xs font-medium">
-                            Featured
+                            Unggulan
                         </span>
                     </div>
                     @endif
@@ -502,7 +508,7 @@
                         @endif
                         <a href="{{ route('portfolio.show', $relatedProject->slug) }}" 
                            class="inline-flex items-center text-orange-600 font-medium text-sm hover:text-orange-700 transition-colors">
-                            View Project
+                            Lihat Proyek
                             <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                             </svg>
@@ -516,7 +522,7 @@
         <div class="text-center mt-8">
             <a href="{{ route('portfolio.index') }}" 
                class="inline-flex items-center px-6 py-3 border border-orange-600 text-orange-600 font-semibold rounded-xl hover:bg-orange-600 hover:text-white transition-all duration-300">
-                View All Projects
+                View Semua Proyek
                 <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                 </svg>
@@ -530,7 +536,7 @@
 <section class="py-20 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">
-            Ready to Start Your Own Project?
+            Siap Memulai Proyek Anda Sendiri?
         </h2>
         <p class="text-xl text-orange-100 mb-8">
             Let us help you achieve the same level of quality and success for your construction needs.
@@ -548,7 +554,7 @@
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                 </svg>
-                View Our Services
+                View Layanan Kami
             </a>
         </div>
     </div>
@@ -648,7 +654,7 @@ document.addEventListener('DOMContentLoaded', function() {
     nextButton.addEventListener('click', nextImage);
     prevButton.addEventListener('click', prevImage);
     
-    // Close modal when clicking outside image
+    // Tutup modal ketika klik di luar gambar
     modal.addEventListener('click', function(e) {
         if (e.target === modal) {
             closeModalFunction();

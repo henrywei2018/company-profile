@@ -4,7 +4,9 @@
       "Bash(php artisan tinker:*)",
       "Bash(php artisan:*)",
       "Bash(php:*)",
-      "Read(/E:\\tmp/**)"
+      "Read(/E:\\tmp/**)",
+      "Bash(find:*)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": []

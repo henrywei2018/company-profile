@@ -1,8 +1,8 @@
 {{-- resources/views/pages/services/show.blade.php --}}
 <x-layouts.public
     :title="$service->title . ' - ' . $siteConfig['site_title']"
-    :description="$service->short_description ?: 'Professional ' . $service->title . ' services with quality and expertise.'"
-    :keywords="$service->title . ', construction, engineering, professional services'"
+    :description="$service->short_description ?: 'Layanan ' . $service->title . ' profesional dengan kualitas dan keahlian terpercaya.'"
+    :keywords="$service->title . ', konstruksi, teknik, layanan profesional'"
     type="article"
 >
 
@@ -12,7 +12,6 @@
     <div class="absolute inset-0 bg-[url('/images/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
     
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
-        {{-- Breadcrumbs --}}
         <nav class="flex mb-8" aria-label="Breadcrumb">
             <ol class="inline-flex items-center space-x-1 md:space-x-3">
                 <li class="inline-flex items-center">
@@ -20,7 +19,7 @@
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
                         </svg>
-                        Home
+                        Beranda
                     </a>
                 </li>
                 <li>
@@ -28,7 +27,7 @@
                         <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                         </svg>
-                        <a href="{{ route('services.index') }}" class="ml-1 text-gray-700 hover:text-orange-600 md:ml-2">Services</a>
+                        <a href="{{ route('services.index') }}" class="ml-1 text-gray-700 hover:text-orange-600 md:ml-2">Layanan</a>
                     </div>
                 </li>
                 <li aria-current="page">
@@ -41,7 +40,6 @@
                 </li>
             </ol>
         </nav>
-
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {{-- Service Content --}}
             <div>
@@ -52,7 +50,7 @@
                     </span>
                     @if($service->featured)
                     <span class="bg-amber-100 text-amber-600 px-3 py-1 rounded-full text-sm font-medium ml-2">
-                        Featured Service
+                        Unggulan Service
                     </span>
                     @endif
                 </div>
@@ -79,7 +77,7 @@
                         </div>
                         <div>
                             <div class="font-semibold text-gray-900">{{ $serviceProjects->count() }}+ Projects</div>
-                            <div class="text-sm text-gray-500">Successfully Completed</div>
+                            <div class="text-sm text-gray-500">Successfully Selesai</div>
                         </div>
                     </div>
                     @endif
@@ -93,7 +91,7 @@
                         </div>
                         <div>
                             <div class="font-semibold text-gray-900">From ${{ number_format($service->base_price) }}</div>
-                            <div class="text-sm text-gray-500">Starting Price</div>
+                            <div class="text-sm text-gray-500">Harga Mulai</div>
                         </div>
                     </div>
                     @endif
@@ -172,7 +170,7 @@
                 {{-- Service Features --}}
                 @if($features && count($features) > 0)
                 <div class="mb-12">
-                    <h2 class="text-3xl font-bold text-gray-900 mb-8">Key Features & Benefits</h2>
+                    <h2 class="text-3xl font-bold text-gray-900 mb-8">Fitur Utama & Manfaat</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         @foreach($features as $feature)
                         <div class="flex items-start p-6 bg-gray-50 rounded-xl hover:bg-orange-300 transition-colors duration-300">
@@ -214,9 +212,9 @@
             
             {{-- Sidebar --}}
             <div class="lg:col-span-1">
-                {{-- Contact Information --}}
+                {{-- Kontak Information --}}
                 <div class="bg-white border border-gray-200 rounded-2xl p-6 mb-8">
-                    <h3 class="text-xl font-bold text-gray-900 mb-4">Contact Information</h3>
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">Informasi Kontak</h3>
                     <div class="space-y-4">
                         @if($contactInfo['phone'])
                         <div class="flex items-center">
@@ -276,7 +274,7 @@
                 @endif
                 {{-- Service Benefits --}}
                 <div class="bg-gray-100 rounded-2xl p-6">
-                    <h3 class="text-xl font-bold text-gray-900 mb-4">Why Choose Us?</h3>
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">Mengapa Memilih Kami?</h3>
                     <ul class="space-y-3">
                         <li class="flex items-center">
                             <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -379,7 +377,7 @@
                     @endif
                     <div class="absolute bottom-3 right-3">
                         <span class="bg-green-500 text-white px-2 py-1 rounded-lg text-xs font-medium">
-                            Completed
+                            Selesai
                         </span>
                     </div>
                 </div>
@@ -406,7 +404,7 @@
                         @endif
                         <a href="{{ route('portfolio.show', $project->slug) }}" 
                            class="inline-flex items-center text-orange-600 font-medium text-sm hover:text-orange-700 transition-colors">
-                            View Project
+                            Lihat Proyek
                             <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                             </svg>
@@ -432,13 +430,13 @@
 </section>
 @endif
 
-{{-- Related Services Section --}}
+{{-- Related Layanan Section --}}
 @if($relatedServices && $relatedServices->count() > 0)
 <section class="py-20 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12">
-            <h2 class="text-3xl font-bold text-gray-900 mb-4">Related Services</h2>
-            <p class="text-gray-600">Explore other services that might interest you.</p>
+            <h2 class="text-3xl font-bold text-gray-900 mb-4">Layanan Terkait</h2>
+            <p class="text-gray-600">Jelajahi layanan lain yang mungkin menarik bagi Anda.</p>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -462,7 +460,7 @@
                     @if($relatedService->featured)
                     <div class="absolute top-3 left-3">
                         <span class="bg-orange-500 text-white px-2 py-1 rounded-lg text-xs font-medium">
-                            Featured
+                            Unggulan
                         </span>
                     </div>
                     @endif
@@ -485,7 +483,7 @@
                         @endif
                         <a href="{{ route('services.show', $relatedService->slug) }}" 
                            class="inline-flex items-center text-orange-600 font-medium text-sm hover:text-orange-700 transition-colors">
-                            Learn More
+                            Pelajari Lebih Lanjut
                             <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                             </svg>
@@ -499,7 +497,7 @@
         <div class="text-center mt-8">
             <a href="{{ route('services.index') }}" 
                class="inline-flex items-center px-6 py-3 border border-orange-600 text-orange-600 font-semibold rounded-xl hover:bg-orange-600 hover:text-white transition-all duration-300">
-                View All Services
+                View Semua Layanan
                 <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                 </svg>
@@ -516,7 +514,7 @@
             Ready to Start Your {{ $service->title }} Project?
         </h2>
         <p class="text-xl text-orange-100 mb-8">
-            Get in touch with our experts today for a free consultation and detailed quote.
+            Hubungi kami with our experts today for a free consultation and detailed quote.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="{{ route('contact.index', ['service' => $service->slug]) }}" 
@@ -552,7 +550,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const content = document.getElementById(targetId);
             const icon = this.querySelector('.faq-icon');
             
-            // Close all other FAQs
+            // Tutup semua yang lain FAQs
             faqToggles.forEach(otherToggle => {
                 if (otherToggle !== this) {
                     const otherTargetId = otherToggle.getAttribute('data-target');

@@ -1,8 +1,8 @@
 {{-- resources/views/pages/services/index.blade.php --}}
 <x-layouts.public
-    title="Our Services - {{ $siteConfig['site_title'] }}"
-    description="Discover our comprehensive range of professional construction and engineering services. Quality solutions for all your project needs."
-    keywords="construction services, engineering, building, renovation, consultation"
+    title="Layanan Kami - {{ $siteConfig['site_title'] }}"
+    description="Temukan rangkaian lengkap layanan konstruksi dan teknik profesional kami. Solusi berkualitas untuk semua kebutuhan proyek Anda."
+    keywords="layanan konstruksi, teknik, bangunan, renovasi, konsultasi"
     type="website"
 >
 
@@ -19,31 +19,50 @@
     </div>
 
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
+        <nav class="flex mb-8" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="{{ route('home') }}" class="text-gray-700 hover:text-orange-600 inline-flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                        </svg>
+                        Beranda
+                    </a>
+                </li>
+                <li aria-current="page">
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="ml-1 text-orange-600 md:ml-2 font-medium">Layanan</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {{-- Hero Content --}}
             <div class="text-center lg:text-left">
                 <div class="flex items-center justify-center lg:justify-start mb-6">
                     <div class="w-16 h-1 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full mr-4"></div>
-                    <span class="text-orange-600 font-semibold text-lg">Professional Services</span>
+                    <span class="text-orange-600 font-semibold text-lg">Layanan Profesional</span>
                 </div>
                 
                 <h1 class="text-4xl md:text-6xl font-bold text-gray-900 mb-6 animate-fade-in-up">
-                    Comprehensive 
+                    Solusi Konstruksi 
                     <span class="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                        Construction
-                    </span>
-                    Solutions
+                                            </span>
+                    Terpadu
                 </h1>
                 
                 <p class="text-xl text-gray-600 mb-8 leading-relaxed animate-fade-in-up animation-delay-200">
-                    From innovative design to flawless execution, we deliver exceptional construction and engineering services tailored to meet your specific needs and requirements.
+                    Dari desain inovatif hingga eksekusi yang sempurna, kami memberikan layanan konstruksi dan teknik yang luar biasa, disesuaikan untuk memenuhi kebutuhan dan persyaratan spesifik Anda.
                 </p>
                 
                 {{-- CTA Buttons --}}
                 <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-in-up animation-delay-400">
                     <a href="#services-grid" 
                        class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-semibold rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
-                        Explore Services
+                        Jelajahi Layanan
                         <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
                         </svg>
@@ -57,7 +76,7 @@
                     </a>
                 </div>
                 
-                {{-- Contact Info --}}
+                {{-- Kontak Info --}}
                 @if($contactInfo['phone'])
                 <div class="flex items-center justify-center lg:justify-start mt-8 animate-fade-in-up animation-delay-600">
                     <svg class="w-5 h-5 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,7 +92,7 @@
                 <div class="relative rounded-2xl overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-500">
                     @if($featuredServices->first() && $featuredServices->first()->image)
                         <img src="{{ asset('storage/' . $featuredServices->first()->image) }}" 
-                             alt="Featured Service" 
+                             alt="Unggulan Service" 
                              class="w-full h-96 object-cover">
                     @else
                         <div class="w-full h-96 bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center">
@@ -89,14 +108,14 @@
                 <div class="absolute -bottom-6 -left-6 bg-white rounded-xl shadow-lg p-4 animate-float">
                     <div class="text-center">
                         <div class="text-2xl font-bold text-orange-600">{{ $stats['total_services'] }}+</div>
-                        <div class="text-sm text-gray-600">Services</div>
+                        <div class="text-sm text-gray-600">Layanan</div>
                     </div>
                 </div>
                 
                 <div class="absolute -top-6 -right-6 bg-white rounded-xl shadow-lg p-4 animate-float animation-delay-500">
                     <div class="text-center">
                         <div class="text-2xl font-bold text-orange-600">{{ $stats['satisfied_clients'] }}+</div>
-                        <div class="text-sm text-gray-600">Happy Clients</div>
+                        <div class="text-sm text-gray-600">Happy Kliens</div>
                     </div>
                 </div>
             </div>
@@ -122,7 +141,7 @@
                     </svg>
                 </div>
                 <div class="text-3xl font-bold text-gray-900 mb-2 counter" data-count="{{ $stats['total_services'] }}">0</div>
-                <div class="text-gray-600">Professional Services</div>
+                <div class="text-gray-600">Layanan Profesional</div>
             </div>
             
             <div class="text-center group">
@@ -132,7 +151,7 @@
                     </svg>
                 </div>
                 <div class="text-3xl font-bold text-gray-900 mb-2 counter" data-count="{{ $stats['completed_projects'] }}">0</div>
-                <div class="text-gray-600">Completed Projects</div>
+                <div class="text-gray-600">Selesai Projects</div>
             </div>
             
             <div class="text-center group">
@@ -142,7 +161,7 @@
                     </svg>
                 </div>
                 <div class="text-3xl font-bold text-gray-900 mb-2 counter" data-count="{{ $stats['satisfied_clients'] }}">0</div>
-                <div class="text-gray-600">Happy Clients</div>
+                <div class="text-gray-600">Happy Kliens</div>
             </div>
             
             <div class="text-center group">
@@ -152,25 +171,25 @@
                     </svg>
                 </div>
                 <div class="text-3xl font-bold text-gray-900 mb-2 counter" data-count="{{ $stats['team_experts'] }}">0</div>
-                <div class="text-gray-600">Expert Team</div>
+                <div class="text-gray-600">Expert Tim</div>
             </div>
         </div>
     </div>
 </section>
 
-{{-- Featured Services Showcase --}}
+{{-- Unggulan Layanan Showcase --}}
 @if($featuredServices && $featuredServices->count() > 0)
 <section class="py-20 bg-gray-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {{-- Section Header --}}
         <div class="text-center mb-16">
-            <h2 class="text-4xl font-bold text-gray-900 mb-4">Featured Services</h2>
+            <h2 class="text-4xl font-bold text-gray-900 mb-4">Layanan Unggulan</h2>
             <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-                Our most popular and specialized services that showcase our expertise and commitment to excellence.
+                Layanan paling populer dan terspesialisasi kami yang menunjukkan keahlian dan komitmen terhadap keunggulan.
             </p>
         </div>
         
-        {{-- Featured Services Grid --}}
+        {{-- Unggulan Layanan Grid --}}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
             @foreach($featuredServices as $service)
             <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-2">
@@ -190,7 +209,7 @@
                     <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                     <div class="absolute top-4 right-4">
                         <span class="bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-                            Featured
+                            Unggulan
                         </span>
                     </div>
                 </div>
@@ -221,7 +240,7 @@
                     {{-- CTA Button --}}
                     <a href="{{ route('services.show', $service->slug) }}" 
                        class="inline-flex items-center justify-center w-full px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-semibold rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 transform hover:scale-105">
-                        Learn More
+                        Pelajari Lebih Lanjut
                         <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                         </svg>
@@ -234,15 +253,15 @@
 </section>
 @endif
 
-{{-- Search and Filter Section --}}
+{{-- Cari and Filter Section --}}
 <section class="py-12 bg-white border-t border-gray-200" id="services-grid">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {{-- Search and Filter Header --}}
+        {{-- Cari and Filter Header --}}
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
             <div>
-                <h2 class="text-3xl font-bold text-gray-900 mb-2">All Services</h2>
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">Semua Layanan</h2>
                 <p class="text-gray-600">
-                    Showing {{ $services->count() }} of {{ $services->total() }} services
+                    Menampilkan {{ $services->count() }} dari {{ $services->total() }} layanan
                     @if($search)
                         for "{{ $search }}"
                     @endif
@@ -264,20 +283,20 @@
             </div>
         </div>
         
-        {{-- Search and Filter Form --}}
+        {{-- Cari and Filter Form --}}
         <form method="GET" class="bg-gray-50 rounded-2xl p-6 mb-12">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {{-- Search Input --}}
+                {{-- Cari Input --}}
                 <div class="md:col-span-2">
                     <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
-                        Search Services
+                        Cari Layanan
                     </label>
                     <div class="relative">
                         <input type="text" 
                                id="search" 
                                name="search" 
                                value="{{ $search }}"
-                               placeholder="Search by service name or description..."
+                               placeholder="Cari by service name or description..."
                                class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent">
                         <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -293,7 +312,7 @@
                     <select id="category" 
                             name="category" 
                             class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent">
-                        <option value="all" {{ $category === 'all' ? 'selected' : '' }}>All Categories</option>
+                        <option value="all" {{ $category === 'all' ? 'selected' : '' }}>All Kategori</option>
                         @foreach($categories as $cat)
                         <option value="{{ $cat->slug }}" {{ $category === $cat->slug ? 'selected' : '' }}>
                             {{ $cat->name }} ({{ $cat->active_services_count }})
@@ -310,7 +329,7 @@
                     <select id="sort" 
                             name="sort" 
                             class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent">
-                        <option value="featured" {{ $sortBy === 'featured' ? 'selected' : '' }}>Featured First</option>
+                        <option value="featured" {{ $sortBy === 'featured' ? 'selected' : '' }}>Unggulan First</option>
                         <option value="title" {{ $sortBy === 'title' ? 'selected' : '' }}>Name A-Z</option>
                         <option value="newest" {{ $sortBy === 'newest' ? 'selected' : '' }}>Newest First</option>
                         <option value="price" {{ $sortBy === 'price' ? 'selected' : '' }}>Price Low to High</option>
@@ -339,11 +358,11 @@
     </div>
 </section>
 
-{{-- Services Grid --}}
+{{-- Layanan Grid --}}
 @if($services && $services->count() > 0)
 <section class="pb-20 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {{-- Services Grid --}}
+        {{-- Layanan Grid --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
             @foreach($services as $service)
             <div class="group bg-white rounded-2xl border border-gray-200 hover:border-orange-300 shadow-md hover:shadow-xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1">
@@ -362,11 +381,11 @@
                     @endif
                     <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
                     
-                    {{-- Featured Badge --}}
+                    {{-- Unggulan Badge --}}
                     @if($service->featured)
                     <div class="absolute top-3 left-3">
                         <span class="bg-orange-500 text-white px-2 py-1 rounded-lg text-xs font-medium">
-                            Featured
+                            Unggulan
                         </span>
                     </div>
                     @endif
@@ -420,14 +439,14 @@
                     <div class="flex flex-col sm:flex-row gap-3">
                         <a href="{{ route('services.show', $service->slug) }}" 
                            class="flex-1 inline-flex items-center justify-center px-4 py-3 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-colors">
-                            Learn More
+                            Pelajari Lebih Lanjut
                             <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                             </svg>
                         </a>
                         <a href="{{ route('contact.index', ['service' => $service->slug]) }}" 
                            class="flex-1 inline-flex items-center justify-center px-4 py-3 border border-orange-600 text-orange-600 font-semibold rounded-xl hover:bg-orange-50 transition-colors">
-                            Get Quote
+                            Minta Penawaran
                         </a>
                     </div>
                 </div>
@@ -444,33 +463,33 @@
     </div>
 </section>
 @else
-{{-- No Services Found --}}
+{{-- No Layanan Found --}}
 <section class="py-20 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <div class="max-w-md mx-auto">
             <svg class="w-24 h-24 text-gray-300 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
-            <h3 class="text-2xl font-bold text-gray-900 mb-4">No Services Found</h3>
+            <h3 class="text-2xl font-bold text-gray-900 mb-4">Layanan Tidak Ditemukan</h3>
             <p class="text-gray-600 mb-8">
-                We couldn't find any services matching your criteria. Try adjusting your search or filters.
+                Kami tidak dapat menemukan layanan yang sesuai dengan kriteria Anda. Coba sesuaikan pencarian atau filter Anda.
             </p>
             <a href="{{ route('services.index') }}" 
                class="inline-flex items-center px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-colors">
-                View All Services
+                Lihat Semua Layanan
             </a>
         </div>
     </div>
 </section>
 @endif
 
-{{-- Recent Projects Showcase --}}
+{{-- Proyek Terbaru Showcase --}}
 @if($recentProjects && $recentProjects->count() > 0)
 <section class="py-20 bg-gray-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {{-- Section Header --}}
         <div class="text-center mb-16">
-            <h2 class="text-4xl font-bold text-gray-900 mb-4">Recent Projects</h2>
+            <h2 class="text-4xl font-bold text-gray-900 mb-4">Proyek Terbaru</h2>
             <p class="text-xl text-gray-600 max-w-3xl mx-auto">
                 See how we bring our services to life through successful project implementations and satisfied clients.
             </p>
@@ -521,12 +540,12 @@
                     <div class="flex items-center justify-between">
                         @if($project->completed_at)
                         <span class="text-gray-500 text-sm">
-                            Completed {{ $project->completed_at->format('M Y') }}
+                            Selesai {{ $project->completed_at->format('M Y') }}
                         </span>
                         @endif
                         <a href="{{ route('portfolio.show', $project->slug) }}" 
                            class="inline-flex items-center text-orange-600 font-semibold hover:text-orange-700 transition-colors">
-                            View Project
+                            Lihat Proyek
                             <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                             </svg>
@@ -537,11 +556,11 @@
             @endforeach
         </div>
         
-        {{-- View All Projects Button --}}
+        {{-- View Semua Proyek Button --}}
         <div class="text-center">
             <a href="{{ route('portfolio.index') }}" 
                class="inline-flex items-center px-8 py-4 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
-                View All Projects
+                View Semua Proyek
                 <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                 </svg>
@@ -557,7 +576,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {{-- Section Header --}}
         <div class="text-center mb-16">
-            <h2 class="text-4xl font-bold text-gray-900 mb-4">What Our Clients Say</h2>
+            <h2 class="text-4xl font-bold text-gray-900 mb-4">What Our Kliens Say</h2>
             <p class="text-xl text-gray-600 max-w-3xl mx-auto">
                 Real feedback from satisfied clients who have experienced our professional services firsthand.
             </p>
@@ -581,7 +600,7 @@
                     "{{ $testimonial->content }}"
                 </blockquote>
                 
-                {{-- Client Info --}}
+                {{-- Klien Info --}}
                 <div class="flex items-center">
                     @if($testimonial->client_photo)
                     <img src="{{ asset('storage/' . $testimonial->client_photo) }}" 
@@ -616,10 +635,10 @@
 <section class="py-20 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 class="text-4xl font-bold text-white mb-6">
-            Ready to Start Your Project?
+            Siap Memulai Proyek Anda?
         </h2>
         <p class="text-xl text-orange-100 mb-8 max-w-3xl mx-auto">
-            Get in touch with our experts today for a free consultation and detailed quote for your construction needs.
+            Hubungi kami with our experts today for a free consultation and detailed quote for your construction needs.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="{{ route('contact.index') }}" 

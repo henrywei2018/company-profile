@@ -5,33 +5,60 @@
         <div class="absolute inset-0 bg-[url('/images/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center">
+                <div class="inline-flex items-center px-4 py-2 bg-orange-100 text-orange-600 rounded-full text-sm font-semibold mb-6">
+                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V8z" clip-rule="evenodd"/>
+                    </svg>
+                    Penawaran Gratis & Cepat
+                </div>
+                
                 <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                    Request Your 
+                    Dapatkan Penawaran 
                     <span class="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                        Project Quotation
+                        Proyek Anda
                     </span>
                 </h1>
                 <p class="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-                    Get a detailed, professional quotation for your project. Our experienced team will analyze your requirements and provide competitive pricing with transparent breakdown.
+                    Dapatkan penawaran detail dan profesional untuk proyek Anda. Tim berpengalaman kami akan menganalisis kebutuhan Anda dan memberikan harga kompetitif dengan rincian yang transparan.
                 </p>
                 
                 {{-- Quick Stats --}}
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
-                    <div class="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-sm">
-                        <div class="text-2xl font-bold text-orange-600 mb-2">24-48h</div>
-                        <div class="text-sm text-gray-600">Initial Response</div>
+                    <div class="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-sm hover:shadow-lg transition-shadow">
+                        <div class="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-full mx-auto mb-3">
+                            <svg class="w-6 h-6 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="text-2xl font-bold text-orange-600 mb-2">24-48 Jam</div>
+                        <div class="text-sm text-gray-600">Respon Awal</div>
                     </div>
-                    <div class="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-sm">
-                        <div class="text-2xl font-bold text-orange-600 mb-2">Free</div>
-                        <div class="text-sm text-gray-600">Consultation</div>
+                    <div class="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-sm hover:shadow-lg transition-shadow">
+                        <div class="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mx-auto mb-3">
+                            <svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="text-2xl font-bold text-green-600 mb-2">GRATIS</div>
+                        <div class="text-sm text-gray-600">Konsultasi</div>
                     </div>
-                    <div class="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-sm">
-                        <div class="text-2xl font-bold text-orange-600 mb-2">500+</div>
-                        <div class="text-sm text-gray-600">Projects Completed</div>
+                    <div class="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-sm hover:shadow-lg transition-shadow">
+                        <div class="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mx-auto mb-3">
+                            <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div class="text-2xl font-bold text-blue-600 mb-2">500+</div>
+                        <div class="text-sm text-gray-600">Proyek Selesai</div>
                     </div>
-                    <div class="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-sm">
-                        <div class="text-2xl font-bold text-orange-600 mb-2">15+</div>
-                        <div class="text-sm text-gray-600">Years Experience</div>
+                    <div class="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-sm hover:shadow-lg transition-shadow">
+                        <div class="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full mx-auto mb-3">
+                            <svg class="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="text-2xl font-bold text-purple-600 mb-2">15+</div>
+                        <div class="text-sm text-gray-600">Tahun Pengalaman</div>
                     </div>
                 </div>
             </div>
@@ -52,7 +79,7 @@
                     <div class="flex-1 mx-4 h-1 bg-gray-200 rounded"></div>
                     <div class="flex items-center">
                         <div class="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-semibold">2</div>
-                        <div class="ml-3 text-sm font-medium text-gray-500">Review & Submit</div>
+                        <div class="ml-3 text-sm font-medium text-gray-500">Tinjau Review & Submit Kirim</div>
                     </div>
                     <div class="flex-1 mx-4 h-1 bg-gray-200 rounded"></div>
                     <div class="flex items-center">
@@ -65,7 +92,7 @@
             <form action="{{ route('quotation.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8" id="quotationForm">
                 @csrf
                 
-                {{-- Client Information Section --}}
+                {{-- Klien Information Section --}}
                 <div class="bg-gray-50 rounded-xl p-8">
                     <h2 class="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
                         <svg class="w-6 h-6 text-orange-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,7 +111,7 @@
                         </div>
                         
                         <div>
-                            <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Alamat Email *</label>
                             <input type="email" id="email" name="email" value="{{ old('email') }}" required
                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200"
                                    placeholder="your.email@example.com">
@@ -125,7 +152,7 @@
                             <select id="service_id" name="service_id" required
                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200">
                                 <option value="">Select a service...</option>
-                                @foreach($serviceCategories as $category)
+                                @foreach($serviceKategori as $category)
                                     <optgroup label="{{ $category->name }}">
                                         @foreach($category->activeServices as $service)
                                             <option value="{{ $service->id }}" 
@@ -145,9 +172,9 @@
                             @error('project_type')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
                         
-                        {{-- Project Location --}}
+                        {{-- Project Lokasi --}}
                         <div>
-                            <label for="location" class="block text-sm font-medium text-gray-700 mb-2">Project Location</label>
+                            <label for="location" class="block text-sm font-medium text-gray-700 mb-2">Project Lokasi</label>
                             <textarea id="location" name="location" rows="3"
                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200"
                                       placeholder="Please provide the full address or location details...">{{ old('location') }}</textarea>
@@ -166,19 +193,19 @@
                     </div>
                 </div>
 
-                {{-- Budget and Timeline Section --}}
+                {{-- Anggaran and Timeline Section --}}
                 <div class="bg-gray-50 rounded-xl p-8">
                     <h2 class="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
                         <svg class="w-6 h-6 text-orange-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
                         </svg>
-                        Budget & Timeline
+                        Anggaran & Timeline
                     </h2>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {{-- Budget Range --}}
+                        {{-- Anggaran Range --}}
                         <div>
-                            <label for="budget_range" class="block text-sm font-medium text-gray-700 mb-2">Budget Range (IDR)</label>
+                            <label for="budget_range" class="block text-sm font-medium text-gray-700 mb-2">Anggaran Range (IDR)</label>
                             <select id="budget_range" name="budget_range"
                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200">
                                 <option value="">Select budget range...</option>
@@ -193,9 +220,9 @@
                             @error('budget_range')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
                         
-                        {{-- Preferred Start Date --}}
+                        {{-- Preferred Tanggal Mulai --}}
                         <div>
-                            <label for="start_date" class="block text-sm font-medium text-gray-700 mb-2">Preferred Start Date</label>
+                            <label for="start_date" class="block text-sm font-medium text-gray-700 mb-2">Preferred Tanggal Mulai</label>
                             <input type="date" id="start_date" name="start_date" value="{{ old('start_date') }}"
                                    min="{{ date('Y-m-d', strtotime('+1 day')) }}"
                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200">
@@ -215,7 +242,7 @@
                     </h2>
                     
                     <div class="space-y-6">
-                        {{-- File Upload --}}
+                        {{-- Upload File --}}
                         <div>
                             <label for="attachments" class="block text-sm font-medium text-gray-700 mb-2">Project Files (Optional)</label>
                             <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition-colors duration-200">
@@ -224,7 +251,7 @@
                                 </svg>
                                 <div class="mt-4">
                                     <label for="attachments" class="cursor-pointer">
-                                        <span class="mt-2 block text-sm font-medium text-gray-900">Upload project files</span>
+                                        <span class="mt-2 block text-sm font-medium text-gray-900">Upload file proyek</span>
                                         <span class="mt-2 block text-sm text-gray-500">or drag and drop</span>
                                     </label>
                                     <input id="attachments" name="attachments[]" type="file" multiple class="sr-only"
@@ -251,7 +278,7 @@
                     </div>
                 </div>
 
-                {{-- Terms and Submit Section --}}
+                {{-- Bagian Syarat dan Kirim --}}
                 <div class="bg-gray-50 rounded-xl p-8">
                     <h2 class="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
                         <svg class="w-6 h-6 text-orange-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -296,7 +323,7 @@
                             @error('privacy_accepted')<p class="ml-7 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
 
-                        {{-- Submit Button --}}
+                        {{-- Tombol Kirim --}}
                         <div class="pt-6 border-t border-gray-200">
                             <div class="flex flex-col sm:flex-row gap-4">
                                 <button type="submit" 
@@ -305,7 +332,7 @@
                                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
                                         </svg>
-                                        Submit Quotation Request
+                                        Kirim Permintaan Penawaran
                                     </span>
                                 </button>
                                 
@@ -325,7 +352,7 @@
         </div>
     </section>
 
-    {{-- Contact Information Section --}}
+    {{-- Kontak Information Section --}}
     <section class="py-16 bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-12">
@@ -452,7 +479,7 @@
                     </h2>
                     
                     <div class="space-y-6">
-                        {{-- File Upload --}}
+                        {{-- Upload File --}}
                         <div>
                             <label for="attachments" class="block text-sm font-medium text-gray-700 mb-2">Project Files</label>
                             <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition-colors duration-200">
@@ -461,7 +488,7 @@
                                 </svg>
                                 <div class="mt-4">
                                     <label for="attachments" class="cursor-pointer">
-                                        <span class="mt-2 block text-sm font-medium text-gray-900">Upload project files</span>
+                                        <span class="mt-2 block text-sm font-medium text-gray-900">Upload file proyek</span>
                                         <span class="mt-2 block text-sm text-gray-500">or drag and drop</span>
                                     </label>
                                     <input id="attachments" name="attachments[]" type="file" multiple class="sr-only"
@@ -488,7 +515,7 @@
                     </div>
                 </div>
 
-                {{-- Terms and Submit Section --}}
+                {{-- Bagian Syarat dan Kirim --}}
                 <div class="bg-gray-50 rounded-xl p-8">
                     <h2 class="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
                         <svg class="w-6 h-6 text-orange-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -533,7 +560,7 @@
                             @error('privacy_accepted')<p class="ml-7 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
 
-                        {{-- Submit Button --}}
+                        {{-- Tombol Kirim --}}
                         <div class="pt-6 border-t border-gray-200">
                             <div class="flex flex-col sm:flex-row gap-4">
                                 <button type="submit" 
@@ -542,7 +569,7 @@
                                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
                                         </svg>
-                                        Submit Quotation Request
+                                        Kirim Permintaan Penawaran
                                     </span>
                                 </button>
                                 
@@ -562,7 +589,7 @@
         </div>
     </section>
 
-    {{-- Contact Information Section --}}
+    {{-- Kontak Information Section --}}
     <section class="py-16 bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-12">

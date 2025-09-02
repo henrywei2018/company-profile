@@ -1,7 +1,7 @@
 {{-- resources/views/pages/products/index.blade.php --}}
-<x-layouts.public :title="'Our Products - ' . $siteConfig['site_title']"
-    description="Explore our complete range of construction and engineering products. Quality materials and solutions for your projects."
-    keywords="construction products, building materials, engineering products, construction supplies" type="website">
+<x-layouts.public :title="'Produk Kami - ' . $siteConfig['site_title']"
+    description="Jelajahi rangkaian lengkap produk konstruksi dan teknik kami. Material berkualitas dan solusi untuk proyek Anda."
+    keywords="produk konstruksi, material bangunan, produk teknik, perlengkapan konstruksi" type="website">
 
     {{-- Hero Section - ORANGE THEME TO MATCH PORTFOLIO --}}
     <section class="relative pt-32 pb-20 bg-gradient-to-br from-orange-50 via-white to-amber-50 overflow-hidden">
@@ -11,40 +11,60 @@
         </div>
 
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
+            <nav class="flex mb-8" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="{{ route('home') }}" class="text-gray-700 hover:text-orange-600 inline-flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                        </svg>
+                        Beranda
+                    </a>
+                </li>
+                <li aria-current="page">
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="ml-1 text-orange-600 md:ml-2 font-medium">Produk</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
             <div class="text-center mb-12">
                 <h1 class="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-                    Our
+                    Produk
                     <span class="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                        Products
+                        Kami
                     </span>
                 </h1>
                 <p class="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-                    Discover our comprehensive range of high-quality construction and engineering products designed to
-                    meet your project needs.
+                    Temukan rangkaian lengkap produk konstruksi dan teknik berkualitas tinggi yang dirancang untuk
+                    memenuhi kebutuhan proyek Anda.
                 </p>
 
                 {{-- Quick Stats --}}
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
                     <div class="text-center">
                         <div class="text-3xl font-bold text-orange-600">{{ $stats['total_products'] }}+</div>
-                        <div class="text-gray-600 text-sm">Total Products</div>
+                        <div class="text-gray-600 text-sm">Total Produk</div>
                     </div>
                     <div class="text-center">
                         <div class="text-3xl font-bold text-orange-600">{{ $stats['active_categories'] }}+</div>
-                        <div class="text-gray-600 text-sm">Categories</div>
+                        <div class="text-gray-600 text-sm">Kategori</div>
                     </div>
                     <div class="text-center">
                         <div class="text-3xl font-bold text-orange-600">{{ $stats['featured_products'] }}+</div>
-                        <div class="text-gray-600 text-sm">Featured</div>
+                        <div class="text-gray-600 text-sm">Unggulan</div>
                     </div>
                     <div class="text-center">
                         <div class="text-3xl font-bold text-orange-600">{{ $stats['in_stock_products'] }}+</div>
-                        <div class="text-gray-600 text-sm">In Stock</div>
+                        <div class="text-gray-600 text-sm">Tersedia</div>
                     </div>
                 </div>
             </div>
 
-            {{-- Featured Products Preview --}}
+            {{-- Unggulan Produk Preview --}}
             @if ($featuredProducts && $featuredProducts->count() > 0)
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     @foreach ($featuredProducts->take(3) as $product)
@@ -74,7 +94,7 @@
                                 @endif
                                 <div class="absolute top-3 left-3">
                                     <span class="bg-orange-500 text-white px-2 py-1 rounded-lg text-xs font-medium">
-                                        Featured
+                                        Unggulan
                                     </span>
                                 </div>
                             </div>
@@ -83,7 +103,7 @@
                                 <p class="text-orange-600 font-semibold mb-3">{!! $product->formatted_price !!}</p>
                                 <a href="{{ route('products.show', $product->slug) }}"
                                     class="inline-flex items-center text-orange-600 hover:text-orange-700 font-medium">
-                                    View Details
+                                    Lihat Detail
                                     <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -97,30 +117,30 @@
         </div>
     </section>
 
-    {{-- Products Content Section --}}
+    {{-- Produk Content Section --}}
     <section class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col lg:flex-row gap-8">
                 {{-- Sidebar Filters --}}
                 <div class="lg:w-1/4">
                     <div class="bg-gray-50 rounded-2xl p-6 sticky top-8">
-                        <h3 class="text-lg font-bold text-gray-900 mb-6">Filter Products</h3>
+                        <h3 class="text-lg font-bold text-gray-900 mb-6">Filter Produk</h3>
 
                         <form method="GET" id="product-filters" class="space-y-6">
-                            {{-- Search --}}
+                            {{-- Cari --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Cari</label>
                                 <input type="text" name="search" value="{{ $search }}"
-                                    placeholder="Search products..."
+                                    placeholder="Cari products..."
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm">
                             </div>
 
                             {{-- Category Filter --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Kategori</label>
                                 <select name="category"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm">
-                                    <option value="all" {{ $category === 'all' ? 'selected' : '' }}>All Categories
+                                    <option value="all" {{ $category === 'all' ? 'selected' : '' }}>All Kategori
                                     </option>
                                     @foreach ($categories as $cat)
                                         <option value="{{ $cat->slug }}"
@@ -133,10 +153,10 @@
 
                             {{-- Service Filter --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Service</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Layanan</label>
                                 <select name="service"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm">
-                                    <option value="all" {{ $service === 'all' ? 'selected' : '' }}>All Services
+                                    <option value="all" {{ $service === 'all' ? 'selected' : '' }}>Semua Layanan
                                     </option>
                                     @foreach ($services as $svc)
                                         <option value="{{ $svc->slug }}"
@@ -167,7 +187,7 @@
 
                             {{-- Price Range Filter --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Kisaran Harga</label>
                                 <select name="price_range"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm">
                                     <option value="all" {{ $priceRange === 'all' ? 'selected' : '' }}>All Prices
@@ -190,20 +210,20 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
                                 <select name="sort"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm">
-                                    <option value="latest" {{ $sortBy === 'latest' ? 'selected' : '' }}>Latest</option>
+                                    <option value="latest" {{ $sortBy === 'latest' ? 'selected' : '' }}>Terbaru</option>
                                     <option value="name" {{ $sortBy === 'name' ? 'selected' : '' }}>Name A-Z</option>
                                     <option value="price_low" {{ $sortBy === 'price_low' ? 'selected' : '' }}>Price:
                                         Low to High</option>
                                     <option value="price_high" {{ $sortBy === 'price_high' ? 'selected' : '' }}>Price:
                                         High to Low</option>
-                                    <option value="featured" {{ $sortBy === 'featured' ? 'selected' : '' }}>Featured
+                                    <option value="featured" {{ $sortBy === 'featured' ? 'selected' : '' }}>Unggulan
                                         First</option>
                                 </select>
                             </div>
 
                             <button type="submit"
                                 class="w-full bg-orange-600 text-white py-2 px-4 rounded-lg hover:bg-orange-700 transition-colors">
-                                Apply Filters
+                                Terapkan Filter
                             </button>
 
                             @if ($search || $category !== 'all' || $service !== 'all' || $brand !== 'all' || $priceRange !== 'all')
@@ -216,26 +236,26 @@
                     </div>
                 </div>
 
-                {{-- Products Grid --}}
+                {{-- Produk Grid --}}
                 <div class="lg:w-3/4">
                     {{-- Results Header --}}
                     <div class="flex justify-between items-center mb-8">
                         <div>
                             <h2 class="text-2xl font-bold text-gray-900">
                                 @if ($search)
-                                    Search Results for "{{ $search }}"
+                                    Cari Results for "{{ $search }}"
                                 @elseif($category && $category !== 'all')
                                     @php $selectedCategory = $categories->firstWhere('slug', $category) @endphp
-                                    {{ $selectedCategory ? $selectedCategory->name : 'Category' }} Products
+                                    {{ $selectedCategory ? $selectedCategory->name : 'Category' }} Produk
                                 @else
-                                    All Products
+                                    Semua Produk
                                 @endif
                             </h2>
                             <p class="text-gray-600">{{ $products->total() }} products found</p>
                         </div>
                     </div>
 
-                    {{-- Products Grid --}}
+                    {{-- Produk Grid --}}
                     @if ($products->count() > 0)
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
                             @foreach ($products as $product)
@@ -271,7 +291,7 @@
                                             @if ($product->is_featured)
                                                 <span
                                                     class="bg-orange-500 text-white px-2 py-1 rounded-lg text-xs font-medium">
-                                                    Featured
+                                                    Unggulan
                                                 </span>
                                             @endif
 
@@ -303,7 +323,7 @@
                                             class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center">
                                             <a href="{{ route('products.show', $product->slug) }}"
                                                 class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white text-orange-600 px-6 py-3 rounded-lg font-semibold hover:bg-orange-50 transform translate-y-4 group-hover:translate-y-0">
-                                                View Details
+                                                Lihat Detail
                                             </a>
                                         </div>
                                     </div>
@@ -354,19 +374,19 @@
                             {{ $products->appends(request()->query())->links() }}
                         </div>
                     @else
-                        {{-- No Products Found --}}
+                        {{-- No Produk Found --}}
                         <div class="text-center py-16">
                             <svg class="w-24 h-24 text-gray-300 mx-auto mb-6" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
                                     d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                             </svg>
-                            <h3 class="text-2xl font-bold text-gray-900 mb-4">No Products Found</h3>
+                            <h3 class="text-2xl font-bold text-gray-900 mb-4">No Produk Found</h3>
                             <p class="text-gray-600 mb-6">We couldn't find any products matching your criteria. Try
                                 adjusting your filters or search terms.</p>
                             <a href="{{ route('products.index') }}"
                                 class="inline-flex items-center px-6 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 transition-colors">
-                                View All Products
+                                Lihat Semua Produk
                             </a>
                         </div>
                     @endif
@@ -383,13 +403,13 @@
                 Need Custom Solutions?
             </h2>
             <p class="text-xl mb-8 text-orange-100 max-w-3xl mx-auto">
-                Can't find exactly what you're looking for? Our team can help you find the perfect products for your
+                Tidak dapat menemukan persis apa yang Anda cari? Tim kami dapat membantu Anda menemukan produk yang sempurna for your
                 specific project requirements.
             </p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
                 <a href="{{ route('contact.index') }}"
                     class="inline-flex items-center px-8 py-4 bg-white text-orange-600 font-semibold rounded-xl hover:bg-orange-50 transition-all duration-300 transform hover:scale-105 shadow-lg">
-                    Contact Our Team
+                    Kontak Our Tim
                     <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -397,7 +417,7 @@
                 </a>
                 <a href="{{ route('services.index') }}"
                     class="inline-flex items-center px-8 py-4 border-2 border-white text-white font-semibold rounded-xl hover:bg-white hover:text-orange-600 transition-all duration-300">
-                    View Our Services
+                    View Layanan Kami
                     <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M13 7l5 5m0 0l-5 5m5-5H6" />

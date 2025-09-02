@@ -1,8 +1,8 @@
 {{-- resources/views/pages/about/team.blade.php --}}
 <x-layouts.public
-    title="Our Team - {{ $siteConfig['site_title'] }}"
-    description="Meet our professional team members and their expertise."
-    keywords="team, staff, professionals, expertise"
+    title="Tim Kami - {{ $siteConfig['site_title'] }}"
+    description="Kenali anggota tim profesional kami dan keahlian mereka."
+    keywords="tim, staf, profesional, keahlian"
     type="website"
 >
 
@@ -20,7 +20,7 @@
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
                         </svg>
-                        Home
+                        Beranda
                     </a>
                 </li>
                 <li>
@@ -28,7 +28,7 @@
                         <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                         </svg>
-                        <a href="{{ route('about.index') }}" class="ml-1 text-gray-700 hover:text-orange-600 md:ml-2">About</a>
+                        <a href="{{ route('about.index') }}" class="ml-1 text-gray-700 hover:text-orange-600 md:ml-2">Tentang</a>
                     </div>
                 </li>
                 <li aria-current="page">
@@ -36,7 +36,7 @@
                         <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                         </svg>
-                        <span class="ml-1 text-orange-600 md:ml-2 font-medium">Our Team</span>
+                        <span class="ml-1 text-orange-600 md:ml-2 font-medium">Tim Kami</span>
                     </div>
                 </li>
             </ol>
@@ -44,9 +44,9 @@
 
         <div class="text-center">
             <h1 class="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-                Meet Our 
+                Kenali 
                 <span class="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                    Team
+                    Tim Kami
                 </span>
             </h1>
             <p class="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
@@ -56,7 +56,7 @@
     </div>
 </section>
 
-{{-- Team Members by Department --}}
+{{-- Tim Members by Department --}}
 @if($departments && $departments->count() > 0)
 <section class="py-20 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -72,7 +72,7 @@
                     <div class="w-24 h-1 bg-gradient-to-r from-orange-500 to-amber-500 mx-auto mt-4"></div>
                 </div>
                 
-                {{-- Team Members Grid --}}
+                {{-- Tim Members Grid --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                     @foreach($department->activeTeamMembers as $member)
                     <div class="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
@@ -90,11 +90,11 @@
                                 </div>
                             @endif
                             
-                            {{-- Featured Badge --}}
+                            {{-- Unggulan Badge --}}
                             @if($member->featured)
                             <div class="absolute top-3 right-3">
                                 <span class="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                                    Featured
+                                    Unggulan
                                 </span>
                             </div>
                             @endif
@@ -109,7 +109,7 @@
                             <p class="text-gray-600 text-sm mb-4 line-clamp-3">{{ $member->bio }}</p>
                             @endif
                             
-                            {{-- Contact & Social Links --}}
+                            {{-- Kontak & Social Links --}}
                             <div class="flex items-center space-x-3">
                                 @if($member->email)
                                 <a href="mailto:{{ $member->email }}" 
@@ -157,31 +157,31 @@
     </div>
 </section>
 @else
-{{-- No Team Members --}}
+{{-- No Tim Members --}}
 <section class="py-20 bg-white">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <div class="max-w-md mx-auto">
             <svg class="w-24 h-24 text-gray-300 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
             </svg>
-            <h3 class="text-2xl font-bold text-gray-900 mb-4">Team Information Coming Soon</h3>
+            <h3 class="text-2xl font-bold text-gray-900 mb-4">Tim Information Coming Soon</h3>
             <p class="text-gray-600 mb-8">
                 We're updating our team profiles. Check back soon to meet our amazing professionals.
             </p>
             <a href="{{ route('about.index') }}" 
                class="inline-flex items-center px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-colors">
-                Back to About Us
+                Kembali ke Tentang Kami
             </a>
         </div>
     </div>
 </section>
 @endif
 
-{{-- Join Our Team CTA --}}
+{{-- Join Our Tim CTA --}}
 <section class="py-20 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">
-            Want to Join Our Team?
+            Want to Join Our Tim?
         </h2>
         <p class="text-xl text-orange-100 mb-8">
             We're always looking for talented professionals to join our growing team.
@@ -192,7 +192,7 @@
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.405L3 21l2.595-5.094A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z"/>
                 </svg>
-                Contact Us
+                Hubungi Kami
             </a>
             @if($contactInfo['email'])
             <a href="mailto:{{ $contactInfo['email'] }}" 

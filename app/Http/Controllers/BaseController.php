@@ -115,31 +115,31 @@ class BaseController extends Controller
     {
         return [
             [
-                'label' => 'Home',
+                'label' => 'Beranda',
                 'route' => 'home',
                 'icon' => 'home',
                 'active_routes' => ['home']
             ],
             [
-                'label' => 'About',
+                'label' => 'Tentang Kami',
                 'route' => 'about.index',
                 'icon' => 'users',
                 'active_routes' => ['about.*'],
                 'dropdown' => [
                     [
-                        'label' => 'Company Profile', 
+                        'label' => 'Profil Perusahaan', 
                         'route' => 'about.index',
-                        'description' => 'Learn about our company'
+                        'description' => 'Pelajari tentang perusahaan kami'
                     ],
                     [
-                        'label' => 'Our Team', 
+                        'label' => 'Tim Kami', 
                         'route' => 'about.team',
-                        'description' => 'Meet our professionals'
+                        'description' => 'Kenali para profesional kami'
                     ],
                 ]
             ],
             [
-                'label' => 'Services',
+                'label' => 'Layanan',
                 'route' => 'services.index',
                 'icon' => 'briefcase',
                 'active_routes' => ['services.*'],
@@ -147,7 +147,7 @@ class BaseController extends Controller
             ],
             // NEW: Products navigation
             [
-                'label' => 'Products',
+                'label' => 'Produk',
                 'route' => 'products.index',
                 'icon' => 'cube',
                 'active_routes' => ['products.*'],
@@ -167,15 +167,15 @@ class BaseController extends Controller
                 'active_routes' => ['blog.*']
             ],
             [
-                'label' => 'Contact',
+                'label' => 'Hubungi Kami',
                 'route' => 'contact.index',
                 'icon' => 'mail',
                 'active_routes' => ['contact.*'],
                 'dropdown' => [
                     [
-                        'label' => 'Contact Us', 
+                        'label' => 'Hubungi Kami', 
                         'route' => 'contact.index',
-                        'description' => 'Get in touch'
+                        'description' => 'Silakan hubungi kami'
                     ],
                 ]
             ]
@@ -189,9 +189,9 @@ class BaseController extends Controller
     {
         $dropdown = [
             [
-                'label' => 'All Services',
+                'label' => 'Semua Layanan',
                 'route' => 'services.index',
-                'description' => 'View all our services'
+                'description' => 'Lihat semua layanan kami'
             ]
         ];
 
@@ -217,9 +217,9 @@ class BaseController extends Controller
     {
         $dropdown = [
             [
-                'label' => 'All Products',
+                'label' => 'Semua Produk',
                 'route' => 'products.index',
-                'description' => 'View all our products'
+                'description' => 'Lihat semua produk kami'
             ]
         ];
 
@@ -245,9 +245,9 @@ class BaseController extends Controller
     {
         $dropdown = [
             [
-                'label' => 'All Projects',
+                'label' => 'Semua Proyek',
                 'route' => 'portfolio.index',
-                'description' => 'View all our projects'
+                'description' => 'Lihat semua proyek kami'
             ]
         ];
 
