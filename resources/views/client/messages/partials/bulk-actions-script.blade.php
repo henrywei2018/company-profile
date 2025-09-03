@@ -120,7 +120,7 @@ async function bulkAction(action) {
             showNotification('error', data.message || 'Action failed');
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Kesalahan:', error);
         showNotification('error', 'An error occurred while processing your request');
     } finally {
         // Restore button states
@@ -275,8 +275,8 @@ document.addEventListener('keydown', function(e) {
         }
     }
     
-    // Delete key to delete selected messages
-    if (e.key === 'Delete' || e.key === 'Backspace') {
+    // Hapus key to delete selected messages
+    if (e.key === 'Hapus' || e.key === 'Kembalispace') {
         if (selectedMessages.size > 0) {
             e.preventDefault();
             if (confirm(`Are you sure you want to delete ${selectedMessages.size} message(s)?`)) {
@@ -324,13 +324,13 @@ function loadSelectionState() {
             });
             updateBulkActions();
         } catch (e) {
-            console.log('Error loading selection state:', e);
+            console.log('Kesalahan loading selection state:', e);
             sessionStorage.removeItem('selectedMessages');
         }
     }
 }
 
-// Save selection state when messages are selected
+// Simpan selection state when messages are selected
 document.addEventListener('change', function(e) {
     if (e.target.classList.contains('message-checkbox')) {
         saveSelectionState();

@@ -200,7 +200,7 @@
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('Kesalahan:', error);
             alert('An error occurred');
         });
     }
@@ -221,7 +221,7 @@
                 window.location.href = url;
             }
         })
-        .catch(error => console.error('Error marking notification as read:', error));
+        .catch(error => console.error('Kesalahan marking notification as read:', error));
     }
     </script>
     @endpush

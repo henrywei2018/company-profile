@@ -89,7 +89,7 @@
                 @endif
             </div>
 
-            <!-- Product Information -->
+            <!-- Product Informasi -->
             <div class="space-y-6">
                 
                 <!-- Header -->
@@ -233,19 +233,19 @@
                                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
                             </div>
 
-                            <!-- Add to Cart Button -->
+                            <!-- Add to Keranjang Button -->
                             <div class="flex space-x-3">
                                 <button type="submit" 
                                         class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors">
                                     <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"></path>
                                     </svg>
-                                    Add to Cart
+                                    Add to Keranjang
                                 </button>
 
                                 <a href="{{ route('client.cart.index') }}" 
                                    class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-6 rounded-lg transition-colors">
-                                    View Cart
+                                    View Keranjang
                                 </a>
                             </div>
                         </form>
@@ -364,12 +364,12 @@
                                     @if($relatedProduct->canAddToCart())
                                         <button onclick="quickAddToCart({{ $relatedProduct->id }})" 
                                                 class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-2 rounded text-xs transition-colors">
-                                            Add to Cart
+                                            Add to Keranjang
                                         </button>
                                     @else
                                         <a href="{{ route('client.quotations.create', ['product_id' => $relatedProduct->id]) }}" 
                                            class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-1 px-2 rounded text-xs text-center transition-colors">
-                                            Request Quote
+                                            Minta Penawaran
                                         </a>
                                     @endif
                                     
@@ -502,7 +502,7 @@
                         }
                     })
                     .catch(error => {
-                        console.error('Error:', error);
+                        console.error('Kesalahan:', error);
                         showToast('error', 'An error occurred. Please try again.');
                     })
                     .finally(() => {
@@ -537,7 +537,7 @@
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                console.error('Kesalahan:', error);
                 showToast('error', 'Failed to add item to cart');
             });
         }

@@ -1,11 +1,11 @@
 {{-- resources/views/client/testimonials/index.blade.php --}}
-<x-layouts.client title="My Testimonials">
+<x-layouts.client title="Testimoni Saya">
     <!-- Breadcrumb -->
-    <x-admin.breadcrumb :items="['My Testimonials' => '']" />
+    <x-admin.breadcrumb :items="['Testimoni Saya' => '']" />
 
     <!-- Header Section -->
     <x-admin.header-section 
-        title="My Testimonials" 
+        title="Testimoni Saya" 
         description="Track and manage your testimonials. Share your experience to help other clients discover our services."
         >
         <!-- Header Actions -->

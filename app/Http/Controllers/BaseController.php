@@ -322,7 +322,7 @@ class BaseController extends Controller
             'twitter' => $this->settings['social_twitter'] ?? '',
             'linkedin' => $this->settings['social_linkedin'] ?? '',
             'youtube' => $this->settings['social_youtube'] ?? '',
-            'whatsapp' => $this->settings['social_whatsapp'] ?? '',
+            'whatsapp' => $this->settings['social_whatsapp'] ?? $this->companyProfile->whatsapp ?? '',
         ];
     }
 
@@ -337,6 +337,7 @@ class BaseController extends Controller
             'address' => $this->companyProfile->address ?? $this->settings['contact_address'] ?? '',
             'city' => $this->companyProfile->city ?? $this->settings['contact_city'] ?? '',
             'postal_code' => $this->companyProfile->postal_code ?? $this->settings['contact_postal_code'] ?? '',
+            'whatsapp' => $this->companyProfile->whatsapp ?? $this->settings['contact_whatsapp'] ?? '',
             'business_hours' => $this->settings['business_hours'] ?? 'Mon-Fri: 8 AM - 6 PM',
             'emergency_phone' => $this->settings['emergency_phone'] ?? '',
         ];

@@ -6,7 +6,10 @@
       "Bash(php:*)",
       "Read(/E:\\tmp/**)",
       "Bash(find:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "WebFetch(domain:127.0.0.1)",
+      "Bash(rg:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

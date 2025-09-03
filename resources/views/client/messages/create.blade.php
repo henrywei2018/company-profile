@@ -1,10 +1,10 @@
 <!-- resources/views/client/messages/create.blade.php -->
-<x-layouts.client title="New Message" :unreadMessages="0" :pendingQuotations="0">
+<x-layouts.client title="Pesan Baru" :unreadMessages="0" :pendingQuotations="0">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <x-admin.breadcrumb :items="[
             'Messages' => route('client.messages.index'),
-            'New Message' => '#',
+            'Pesan Baru' => '#',
         ]" />
     </div>
 
@@ -12,7 +12,7 @@
         <!-- Main Form -->
         <div class="lg:col-span-2">
             <x-admin.card>
-                <x-slot name="title">Send New Message</x-slot>
+                <x-slot name="title">Send Pesan Baru</x-slot>
                 <x-slot name="subtitle">Get in touch with our support team</x-slot>
 
                 <form action="{{ route('client.messages.store') }}" method="POST" enctype="multipart/form-data"
@@ -154,21 +154,21 @@
                     <!-- Hidden field to store uploaded file paths -->
                     <input type="hidden" name="temp_files" id="temp_files" value="">
 
-                    <!-- Submit Button -->
+                    <!-- Kirim Button -->
                     <div class="flex justify-end">
                         <button type="submit" id="submit-btn"
                             class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                             </svg>
-                            Send Message
+                            Kirim Pesan
                         </button>
                     </div>
                     </div>
                 </form>
                 @if($errors->any())
 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 mt-4">
-    <strong>Validation Errors:</strong>
+    <strong>Validation Kesalahans:</strong>
     <ul class="mt-2">
         @foreach($errors->all() as $error)
             <li>• {{ $error }}</li>
@@ -407,7 +407,7 @@
         setTimeout(() => {
             submitBtn.disabled = false;
             submitBtn.innerHTML =
-                '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>Send Message';
+                '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>Kirim Pesan';
         }, 10000);
     });
 
@@ -440,7 +440,7 @@
                     document.getElementById('project_id').value = draftData.project_id;
                 }
             } catch (e) {
-                console.log('Error loading draft:', e);
+                console.log('Kesalahan loading draft:', e);
             }
         }
     }
@@ -504,7 +504,7 @@
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                         </svg>
-                        Send Message
+                        Kirim Pesan
                     `;
                 }, 10000);
             });

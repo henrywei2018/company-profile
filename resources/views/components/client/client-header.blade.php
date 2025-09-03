@@ -81,7 +81,7 @@
                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg>
-                <span class="sr-only">Toggle dark mode</span>
+                <span class="sr-only">Ubah mode gelap</span>
             </button>
 
             <!-- FIXED: Notification Dropdown -->
@@ -108,7 +108,7 @@
                 <div
                     class="hs-dropdown-menu hidden z-50 min-w-60 mt-2 bg-white shadow-lg rounded-lg border dark:bg-neutral-800 dark:border-neutral-700">
                     <div class="px-5 py-3 bg-gray-50 dark:bg-neutral-700 rounded-t-lg">
-                        <p class="text-sm text-gray-500 dark:text-neutral-400">Signed in as</p>
+                        <p class="text-sm text-gray-500 dark:text-neutral-400">Masuk sebagai</p>
                         <p class="text-sm font-medium text-gray-800 dark:text-white truncate">
                             {{ auth()->user()->name }}</p>
                         <p class="text-xs text-gray-500 dark:text-neutral-400 truncate">{{ auth()->user()->email }}
@@ -121,7 +121,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                             </svg>
-                            Dashboard
+                            Dasbor
                         </a>
                         <a href="{{ route('profile.show') }}"
                             class="flex items-center gap-3 py-2 px-3 rounded-lg text-sm text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
@@ -129,7 +129,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                             </svg>
-                            My Profile
+                            Profil Saya
                         </a>
 
                         <form method="POST" action="{{ route('logout') }}">
@@ -140,7 +140,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                 </svg>
-                                Logout
+                                Keluar
                             </button>
                         </form>
                     </div>

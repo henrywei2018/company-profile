@@ -29,7 +29,7 @@
                 <div>
                     <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
                     <select id="category" name="category" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm rounded-md">
-                        <option value="">All Categories</option>
+                        <option value="">Semua Kategori</option>
                         <option value="residential" {{ request('category') == 'residential' ? 'selected' : '' }}>Residential</option>
                         <option value="commercial" {{ request('category') == 'commercial' ? 'selected' : '' }}>Commercial</option>
                         <option value="industrial" {{ request('category') == 'industrial' ? 'selected' : '' }}>Industrial</option>

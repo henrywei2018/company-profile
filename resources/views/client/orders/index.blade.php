@@ -1,14 +1,14 @@
 {{-- resources/views/client/orders/index.blade.php --}}
 <x-layouts.client>
-    <x-slot name="title">My Orders</x-slot>
+    <x-slot name="title">Pesanan Saya</x-slot>
 
     <div class="space-y-6">
         <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">My Orders</h1>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Pesanan Saya</h1>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Track and manage your product orders
+                    Lacak dan kelola pesanan produk Anda
                 </p>
             </div>
 
@@ -20,7 +20,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
-                    Browse Products
+                    Jelajahi Produk
                 </a>
 
                 <a href="{{ route('client.cart.index') }}"
@@ -30,7 +30,7 @@
                             d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6">
                         </path>
                     </svg>
-                    View Cart
+                    View Keranjang
                 </a>
             </div>
         </div>
@@ -45,7 +45,7 @@
                         <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        Active Orders
+                        Pesanan Aktif
                         <span class="ml-2 bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300 py-0.5 px-2 rounded-full text-xs font-medium">
                             {{ $activeCount ?? 0 }}
                         </span>
@@ -55,7 +55,7 @@
                         <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        Order History
+                        Riwayat Pesanan
                         <span class="ml-2 bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300 py-0.5 px-2 rounded-full text-xs font-medium">
                             {{ $deliveredCount ?? 0 }}
                         </span>
@@ -79,7 +79,7 @@
                             <input type="text" 
                                    name="search" 
                                    value="{{ request('search') }}"
-                                   placeholder="Search orders by number or product name..." 
+                                   placeholder="Cari pesanan berdasarkan nomor atau nama produk..." 
                                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                         </div>
                     </div>
@@ -89,12 +89,12 @@
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                             </svg>
-                            Clear
+                            Hapus
                         </a>
                     @endif
                     <button type="submit" 
                             class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
-                        Search
+                        Cari
                     </button>
                 </form>
             </div>
@@ -110,7 +110,7 @@
 
                 <!-- Header -->
                 <div class="px-2 py-4 border-b border-gray-100 dark:border-gray-700">
-                    <h3 class="text-lg flex justify-center font-semibold text-gray-900 dark:text-white">Quick Actions
+                    <h3 class="text-lg flex justify-center font-semibold text-gray-900 dark:text-white">Tindakan Cepat
                     </h3>
                 </div>
 
@@ -128,11 +128,11 @@
                                 </path>
                             </svg>
                             <span class="text-xs text-center text-white opacity-90 group-hover:opacity-100">
-                                Browse Products
+                                Jelajahi Produk
                             </span>
                         </a>
 
-                        <!-- Cart -->
+                        <!-- Keranjang -->
                         <a href="{{ route('client.cart.index') }}"
                             class="group flex flex-col items-center justify-center p-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-lg transition-all duration-200 hover:scale-105 shadow-sm hover:shadow-md">
                             <svg class="w-6 h-6 text-white mb-1" fill="none" stroke="currentColor"
@@ -142,7 +142,7 @@
                                 </path>
                             </svg>
                             <span class="text-xs text-center text-white opacity-90 group-hover:opacity-100">
-                                My Cart
+                                Keranjang Saya
                             </span>
                         </a>
 
@@ -152,15 +152,15 @@
                     <div class="pt-4 border-t border-gray-200 dark:border-gray-600">
                         <div class="space-y-2">
                             <div class="flex items-center justify-between text-sm">
-                                <span class="text-gray-600 dark:text-gray-400">Active Orders</span>
+                                <span class="text-gray-600 dark:text-gray-400">Pesanan Aktif</span>
                                 <span class="font-medium text-blue-600">{{ $activeCount }}</span>
                             </div>
                             <div class="flex items-center justify-between text-sm">
-                                <span class="text-gray-600 dark:text-gray-400">Delivered</span>
+                                <span class="text-gray-600 dark:text-gray-400">Selesai</span>
                                 <span class="font-medium text-green-600">{{ $deliveredCount }}</span>
                             </div>
                             <div class="flex items-center justify-between text-sm">
-                                <span class="text-gray-600 dark:text-gray-400">Total Orders</span>
+                                <span class="text-gray-600 dark:text-gray-400">Total Pesanan</span>
                                 <span class="font-medium text-gray-900 dark:text-white">{{ $activeCount + $deliveredCount }}</span>
                             </div>
                         </div>
@@ -182,11 +182,11 @@
                                 <tr>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Order
+                                        Pesanan
                                     </th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Items
+                                        Item
                                     </th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -194,15 +194,15 @@
                                     </th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Amount
+                                        Jumlah
                                     </th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Date
+                                        Tanggal
                                     </th>
                                     <th scope="col"
                                         class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Actions
+                                        Aksi
                                     </th>
                                 </tr>
                             </thead>
@@ -232,7 +232,7 @@
                                         <!-- Items -->
                                         <td class="px-6 py-4">
                                             <div class="text-sm text-gray-900 dark:text-white font-medium">
-                                                {{ $order->items->count() }} item(s)
+                                                {{ $order->items->count() }} item
                                             </div>
                                             <div class="text-xs text-gray-500 dark:text-gray-400">
                                                 {{ $order->items->first()->product->name ?? 'N/A' }}
@@ -244,31 +244,16 @@
 
                                         <!-- Status -->
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            @php
-                                                $displayStatus = $order->getDisplayStatus();
-                                            @endphp
                                             <span
                                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                    {{ $displayStatus === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : '' }}
-                                                    {{ $displayStatus === 'processing' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : '' }}
-                                                    {{ $displayStatus === 'shipped' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200' : '' }}
-                                                    {{ $displayStatus === 'awaiting_confirmation' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' : '' }}
-                                                    {{ $displayStatus === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : '' }}
-                                                    {{ $displayStatus === 'disputed' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : '' }}
-                                                    {{ $displayStatus === 'cancelled' ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' : '' }}">
-                                                @switch($displayStatus)
-                                                    @case('awaiting_confirmation')
-                                                        🚚 Awaiting Confirmation
-                                                        @break
-                                                    @case('completed')
-                                                        ✅ Completed
-                                                        @break
-                                                    @case('disputed')
-                                                        ⚠️ Disputed
-                                                        @break
-                                                    @default
-                                                        {{ ucfirst($displayStatus) }}
-                                                @endswitch
+                                                    {{ $order->status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : '' }}
+                                                    {{ $order->status === 'confirmed' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : '' }}
+                                                    {{ $order->status === 'processing' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200' : '' }}
+                                                    {{ $order->status === 'ready' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : '' }}
+                                                    {{ $order->status === 'delivered' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' : '' }}
+                                                    {{ $order->status === 'complete' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : '' }}
+                                                    {{ $order->status === 'cancelled' ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' : '' }}">
+                                                {{ $order->getStatusLabel() }}
                                             </span>
                                         </td>
 
@@ -292,7 +277,7 @@
                                                 <a href="{{ route('client.orders.show', $order) }}"
                                                    onclick="event.stopPropagation()"
                                                    class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:underline">
-                                                    View Details
+                                                    Lihat Detail
                                                 </a>
                                             </div>
                                         </td>
@@ -306,7 +291,7 @@
                                                     <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                                                     </svg>
-                                                    Order Items ({{ $order->items->count() }})
+                                                    Item Pesanan ({{ $order->items->count() }})
                                                 </h4>
                                                 
                                                 <div class="space-y-3">
@@ -359,7 +344,7 @@
                                                                     @endif
                                                                     @if($item->specifications)
                                                                         <p class="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                                                                            <span class="font-medium">Notes:</span> {{ Str::limit($item->specifications, 40) }}
+                                                                            <span class="font-medium">Catatan:</span> {{ Str::limit($item->specifications, 40) }}
                                                                         </p>
                                                                     @endif
                                                                 </div>
@@ -368,7 +353,7 @@
                                                             <!-- Quantity & Price -->
                                                             <div class="text-right">
                                                                 <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                                                    Qty: {{ $item->quantity }}
+                                                                    Jml: {{ $item->quantity }}
                                                                 </div>
                                                                 <div class="text-sm text-gray-600 dark:text-gray-400">
                                                                     @ Rp {{ number_format($item->price, 0, ',', '.') }}
@@ -387,11 +372,11 @@
                                                         <div class="text-sm text-gray-600 dark:text-gray-400">
                                                             @if($order->notes)
                                                                 <div class="mb-1">
-                                                                    <span class="font-medium">Notes:</span> {{ Str::limit($order->notes, 60) }}
+                                                                    <span class="font-medium">Catatan:</span> {{ Str::limit($order->notes, 60) }}
                                                                 </div>
                                                             @endif
                                                             <div>
-                                                                <span class="font-medium">Delivery to:</span> {{ Str::limit($order->delivery_address, 50) }}
+                                                                <span class="font-medium">Kirim ke:</span> {{ Str::limit($order->delivery_address, 50) }}
                                                             </div>
                                                         </div>
                                                         <div class="text-right">
@@ -412,10 +397,10 @@
                                                                 </div>
                                                                 <div class="flex-1">
                                                                     <h4 class="text-sm font-medium text-blue-900 dark:text-blue-300">
-                                                                        Order Delivered - Confirmation Required
+                                                                        Pesanan Terkirim - Konfirmasi Penerimaan
                                                                     </h4>
                                                                     <p class="mt-1 text-sm text-blue-700 dark:text-blue-400">
-                                                                        Your order has been marked as delivered. Please confirm receipt or report any issues.
+                                                                        Pesanan telah dikirim. Silakan konfirmasi penerimaan pesanan Anda atau hubungi admin jika ada masalah.   
                                                                     </p>
                                                                     <div class="mt-3 flex flex-col sm:flex-row gap-2">
                                                                         <form method="POST" action="{{ route('client.orders.confirm-delivery', $order) }}" 
@@ -428,17 +413,16 @@
                                                                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                                                                 </svg>
-                                                                                Confirm Delivery
+                                                                                Konfirmasi Penerimaan
                                                                             </button>
                                                                         </form>
-                                                                        <button type="button" 
-                                                                                onclick="showDisputeModal({{ $order->id }})"
-                                                                                class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
+                                                                        <a href="{{ route('client.messages.create', ['order_id' => $order->id]) }}"
+                                                                           class="inline-flex items-center px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-lg transition-colors">
                                                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                                                                             </svg>
-                                                                            Report Issue
-                                                                        </button>
+                                                                            Hubungi Admin
+                                                                        </a>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -446,38 +430,14 @@
                                                     @endif
 
                                                     <!-- Display delivery confirmation status if already confirmed -->
-                                                    @if($order->delivery_confirmed_by_client)
+                                                    @if($order->status === 'complete')
                                                         <div class="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
                                                             <div class="flex items-center">
                                                                 <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                                                 </svg>
                                                                 <div class="text-sm text-green-700 dark:text-green-300">
-                                                                    <span class="font-medium">Delivery confirmed</span> on {{ $order->delivery_confirmed_at->format('M j, Y \a\t g:i A') }}
-                                                                    @if($order->client_delivery_notes)
-                                                                        <div class="mt-1 text-green-600 dark:text-green-400">
-                                                                            Notes: {{ $order->client_delivery_notes }}
-                                                                        </div>
-                                                                    @endif
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    @endif
-
-                                                    <!-- Display dispute status if disputed -->
-                                                    @if($order->delivery_disputed)
-                                                        <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-700">
-                                                            <div class="flex items-center">
-                                                                <svg class="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                                                </svg>
-                                                                <div class="text-sm text-red-700 dark:text-red-300">
-                                                                    <span class="font-medium">Delivery dispute reported</span> on {{ $order->dispute_reported_at->format('M j, Y \a\t g:i A') }}
-                                                                    @if($order->dispute_reason)
-                                                                        <div class="mt-1 text-red-600 dark:text-red-400">
-                                                                            Reason: {{ $order->dispute_reason }}
-                                                                        </div>
-                                                                    @endif
+                                                                    <span class="font-medium">Pesanan telah selesai</span> - {{ $order->updated_at->format('M j, Y \a\t g:i A') }}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -510,9 +470,9 @@
                                 d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
                             </path>
                         </svg>
-                        <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No orders found</h3>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by browsing our products
-                            and placing your first order.</p>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">Tidak ada pesanan ditemukan</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Mulai dengan menjelajahi produk kami
+                            dan buat pesanan pertama Anda.</p>
                         <div class="mt-6">
                             <a href="{{ route('client.products.index') }}"
                                 class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
@@ -521,7 +481,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                 </svg>
-                                Browse Products
+                                Jelajahi Produk
                             </a>
                         </div>
                     </div>
@@ -531,7 +491,7 @@
     </div>
     </div>
 
-    <!-- Confirm Delivery Modal -->
+    <!-- Modal Konfirmasi Penerimaan -->
     <div id="confirmDeliveryModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75" onclick="closeConfirmModal()"></div>
@@ -552,14 +512,14 @@
                                 </h3>
                                 <div class="mt-2">
                                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                                        Are you sure you want to confirm that you have received this order? This action cannot be undone.
+                                        Apakah Anda yakin ingin mengkonfirmasi bahwa Anda telah menerima pesanan ini? Tindakan ini tidak dapat dibatalkan.
                                     </p>
                                     <div class="mt-4">
                                         <label for="delivery_notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            Delivery Notes (Optional)
+                                            Catatan Pengiriman (Opsional)
                                         </label>
                                         <textarea name="notes" id="delivery_notes" rows="3" 
-                                                  placeholder="Add any comments about the delivery..." 
+                                                  placeholder="Tambahkan komentar tentang pengiriman..." 
                                                   class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500"></textarea>
                                     </div>
                                 </div>
@@ -571,7 +531,7 @@
                             Confirm Delivery
                         </button>
                         <button type="button" onclick="closeConfirmModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Cancel
+                            Batal
                         </button>
                     </div>
                 </form>
@@ -579,53 +539,6 @@
         </div>
     </div>
 
-    <!-- Dispute Modal -->
-    <div id="disputeModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
-        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75" onclick="closeDisputeModal()"></div>
-            
-            <div class="inline-block align-bottom bg-white dark:bg-neutral-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <form id="disputeForm" method="POST">
-                    @csrf
-                    <div class="bg-white dark:bg-neutral-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <div class="sm:flex sm:items-start">
-                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 sm:mx-0 sm:h-10 sm:w-10">
-                                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                </svg>
-                            </div>
-                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                                    Report Delivery Issue
-                                </h3>
-                                <div class="mt-2">
-                                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                                        Please describe the issue with your delivery. Our team will review and contact you.
-                                    </p>
-                                    <div class="mt-4">
-                                        <label for="dispute_reason" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            Issue Description <span class="text-red-500">*</span>
-                                        </label>
-                                        <textarea name="reason" id="dispute_reason" rows="4" required
-                                                  placeholder="Please describe the issue in detail (e.g., damaged items, wrong items, not delivered, etc.)" 
-                                                  class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500"></textarea>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 dark:bg-neutral-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
-                            Report Issue
-                        </button>
-                        <button type="button" onclick="closeDisputeModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Cancel
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 
     <style>
         /* Prevent layout shifts on table row hover */
@@ -656,9 +569,9 @@
 
     @push('scripts')
     <script>
-        // Simple search functionality and expandable orders
+        // Fungsionalitas pencarian sederhana dan pesanan yang dapat diperluas
         document.addEventListener('DOMContentLoaded', function() {
-            // Search field auto-submit on Enter
+            // Field pencarian auto-submit saat Enter
             const searchField = document.querySelector('input[name="search"]');
             if (searchField) {
                 searchField.addEventListener('keypress', function(e) {
@@ -669,7 +582,7 @@
                 });
             }
 
-            // Add active/hover effects to tabs
+            // Tambahkan efek aktif/hover pada tab
             const tabs = document.querySelectorAll('nav[aria-label="Tabs"] a');
             tabs.forEach(tab => {
                 tab.addEventListener('mouseover', function() {
@@ -686,17 +599,17 @@
             });
         });
 
-        // Toggle order items expand/collapse
+        // Toggle expand/collapse item pesanan
         function toggleOrderItems(orderId) {
             const itemsRow = document.getElementById('items-' + orderId);
             const chevron = document.getElementById('chevron-' + orderId);
             
             if (itemsRow.classList.contains('hidden')) {
-                // Expand
+                // Perluas
                 itemsRow.classList.remove('hidden');
                 chevron.style.transform = 'rotate(90deg)';
                 
-                // Add smooth animation
+                // Tambahkan animasi halus
                 itemsRow.style.opacity = '0';
                 itemsRow.style.transform = 'translateY(-10px)';
                 
@@ -707,7 +620,7 @@
                 }, 10);
                 
             } else {
-                // Collapse
+                // Tutup
                 itemsRow.style.transition = 'all 0.2s ease-in';
                 itemsRow.style.opacity = '0';
                 itemsRow.style.transform = 'translateY(-10px)';
@@ -722,14 +635,14 @@
             }
         }
 
-        // Add visual feedback on hover for expandable rows
+        // Tambahkan feedback visual saat hover untuk baris yang dapat diperluas
         document.addEventListener('DOMContentLoaded', function() {
             const expandableRows = document.querySelectorAll('tr[onclick*="toggleOrderItems"]');
             expandableRows.forEach(row => {
                 row.addEventListener('mouseenter', function() {
-                    // Remove scaling that causes scroll issues, just add subtle shadow
+                    // Hapus scaling yang menyebabkan masalah scroll, hanya tambahkan bayangan halus
                     this.style.boxShadow = '0 2px 12px rgba(0,0,0,0.15)';
-                    this.style.backgroundColor = 'rgba(59, 130, 246, 0.05)'; // subtle blue tint
+                    this.style.backgroundColor = 'rgba(59, 130, 246, 0.05)'; // warna biru halus
                 });
                 
                 row.addEventListener('mouseleave', function() {
@@ -739,14 +652,14 @@
             });
         });
 
-        // Modal functions for delivery confirmation
+        // Fungsi modal untuk konfirmasi pengiriman
         function showConfirmDeliveryModal(orderId) {
             const modal = document.getElementById('confirmDeliveryModal');
             const form = document.getElementById('confirmDeliveryForm');
             form.action = `/client/orders/${orderId}/confirm-delivery`;
             modal.classList.remove('hidden');
             
-            // Focus on textarea after modal animation
+            // Fokus pada textarea setelah animasi modal
             setTimeout(() => {
                 document.getElementById('delivery_notes').focus();
             }, 150);
@@ -758,27 +671,10 @@
             document.getElementById('delivery_notes').value = '';
         }
 
-        function showDisputeModal(orderId) {
-            const modal = document.getElementById('disputeModal');
-            const form = document.getElementById('disputeForm');
-            form.action = `/client/orders/${orderId}/dispute-delivery`;
-            modal.classList.remove('hidden');
-            
-            // Focus on textarea after modal animation
-            setTimeout(() => {
-                document.getElementById('dispute_reason').focus();
-            }, 150);
-        }
 
-        function closeDisputeModal() {
-            const modal = document.getElementById('disputeModal');
-            modal.classList.add('hidden');
-            document.getElementById('dispute_reason').value = '';
-        }
-
-        // Handle form submissions with loading states
+        // Tangani pengiriman form dengan status loading
         document.addEventListener('DOMContentLoaded', function() {
-            // Confirm delivery form
+            // Form konfirmasi pengiriman
             document.getElementById('confirmDeliveryForm').addEventListener('submit', function(e) {
                 const submitButton = this.querySelector('button[type="submit"]');
                 submitButton.disabled = true;
@@ -787,42 +683,20 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Confirming...
+                    Mengkonfirmasi...
                 `;
             });
 
-            // Dispute form  
-            document.getElementById('disputeForm').addEventListener('submit', function(e) {
-                const submitButton = this.querySelector('button[type="submit"]');
-                const textarea = this.querySelector('textarea[name="reason"]');
-                
-                if (!textarea.value.trim()) {
-                    e.preventDefault();
-                    textarea.focus();
-                    showToast('Please describe the issue before submitting.', 'error');
-                    return;
-                }
-                
-                submitButton.disabled = true;
-                submitButton.innerHTML = `
-                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Reporting...
-                `;
-            });
 
-            // Close modals on escape key
+            // Tutup modal saat tombol escape
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape') {
                     closeConfirmModal();
-                    closeDisputeModal();
                 }
             });
         });
 
-        // Toast notification for actions
+        // Notifikasi toast untuk aksi
         function showToast(message, type = 'info') {
             const toast = document.createElement('div');
             const bgColor = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600';
@@ -831,12 +705,12 @@
             
             document.body.appendChild(toast);
             
-            // Animate in
+            // Animasi masuk
             setTimeout(() => {
                 toast.classList.remove('translate-x-full', 'opacity-0');
             }, 100);
             
-            // Remove after 3 seconds
+            // Hapus setelah 3 detik
             setTimeout(() => {
                 toast.classList.add('translate-x-full', 'opacity-0');
                 setTimeout(() => document.body.removeChild(toast), 300);

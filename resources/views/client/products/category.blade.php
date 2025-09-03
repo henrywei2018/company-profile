@@ -68,12 +68,12 @@
                     <div class="flex-shrink-0 space-y-2">
                         <a href="{{ route('client.cart.index') }}" 
                            class="block bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors text-center">
-                            View Cart
+                            View Keranjang
                         </a>
                         
                         <a href="{{ route('client.quotations.create') }}" 
                            class="block bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors text-center">
-                            Request Quote
+                            Minta Penawaran
                         </a>
                     </div>
                 </div>
@@ -285,12 +285,12 @@
                                         <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"></path>
                                         </svg>
-                                        Add to Cart
+                                        Add to Keranjang
                                     </button>
                                 @else
                                     <a href="{{ route('client.quotations.create', ['product_id' => $product->id]) }}" 
                                        class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-center text-sm">
-                                        Request Quote
+                                        Minta Penawaran
                                     </a>
                                 @endif
                                 
@@ -390,12 +390,12 @@
                                             @if($product->canAddToCart())
                                                 <button onclick="quickAddToCart({{ $product->id }})" 
                                                         class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">
-                                                    Add to Cart
+                                                    Add to Keranjang
                                                 </button>
                                             @else
                                                 <a href="{{ route('client.quotations.create', ['product_id' => $product->id]) }}" 
                                                    class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">
-                                                    Request Quote
+                                                    Minta Penawaran
                                                 </a>
                                             @endif
                                             
@@ -494,7 +494,7 @@
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                console.error('Kesalahan:', error);
                 showToast('error', 'Failed to add item to cart');
             });
         }

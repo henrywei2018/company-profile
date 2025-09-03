@@ -1,13 +1,13 @@
 {{-- resources/views/client/dashboard.blade.php - Perbaikan lengkap dengan safe array access --}}
-<x-layouts.client :title="'Client Dashboard'" :enableCharts="true" :unreadMessages="$notifications['unread_messages'] ?? 0" :pendingApprovals="$notifications['pending_approvals'] ?? 0">
+<x-layouts.client :title="'Dasbor Klien'" :enableCharts="true" :unreadMessages="$notifications['unread_messages'] ?? 0" :pendingApprovals="$notifications['pending_approvals'] ?? 0">
     
     <!-- Page Header -->
     <div class="mb-8">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-            Welcome back, {{ auth()->user()->name }}!
+            Selamat datang kembali, {{ auth()->user()->name }}!
         </h1>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Here's what's happening with your projects and quotations.
+            Berikut ini yang terjadi dengan proyek dan penawaran Anda.
         </p>
     </div>
 
@@ -21,7 +21,7 @@
                     </svg>
                 </div>
                 <div class="ml-3">
-                    <h3 class="text-sm font-medium text-red-800">Dashboard Error</h3>
+                    <h3 class="text-sm font-medium text-red-800">Kesalahan Dasbor</h3>
                     <div class="mt-2 text-sm text-red-700">{{ $error }}</div>
                 </div>
             </div>
@@ -45,10 +45,10 @@
                     </div>
                 </div>
                 <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Projects</p>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Proyek</p>
                     <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $statistics['projects']['total'] ?? 0 }}</p>
                     <p class="text-xs text-green-600 dark:text-green-400">
-                        {{ $statistics['projects']['active'] ?? 0 }} active
+                        {{ $statistics['projects']['active'] ?? 0 }} aktif
                     </p>
                 </div>
             </div>
@@ -65,10 +65,10 @@
                     </div>
                 </div>
                 <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Quotations</p>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Penawaran</p>
                     <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $statistics['quotations']['total'] ?? 0 }}</p>
                     <p class="text-xs text-yellow-600 dark:text-yellow-400">
-                        {{ $statistics['quotations']['pending'] ?? 0 }} pending
+                        {{ $statistics['quotations']['pending'] ?? 0 }} tertunda
                     </p>
                 </div>
             </div>
@@ -85,10 +85,10 @@
                     </div>
                 </div>
                 <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Messages</p>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Pesan</p>
                     <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $statistics['messages']['total'] ?? 0 }}</p>
                     <p class="text-xs text-red-600 dark:text-red-400">
-                        {{ $statistics['messages']['unread'] ?? 0 }} unread
+                        {{ $statistics['messages']['unread'] ?? 0 }} belum dibaca
                     </p>
                 </div>
             </div>
@@ -105,10 +105,10 @@
                     </div>
                 </div>
                 <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Completion Rate</p>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Tingkat Penyelesaian</p>
                     <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $statistics['summary']['completion_rate'] ?? 0 }}%</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ $statistics['projects']['completed'] ?? 0 }} completed
+                        {{ $statistics['projects']['completed'] ?? 0 }} selesai
                     </p>
                 </div>
             </div>
@@ -126,17 +126,17 @@
                     </svg>
                 </div>
                 <div class="ml-3">
-                    <h3 class="text-sm font-medium text-blue-800 dark:text-blue-200">Attention Required</h3>
+                    <h3 class="text-sm font-medium text-blue-800 dark:text-blue-200">Perlu Perhatian</h3>
                     <div class="mt-2 text-sm text-blue-700 dark:text-blue-300">
                         <ul class="list-disc pl-5 space-y-1">
                             @if(($notifications['unread_messages'] ?? 0) > 0)
-                                <li>You have {{ $notifications['unread_messages'] }} unread messages</li>
+                                <li>Anda memiliki {{ $notifications['unread_messages'] }} pesan yang belum dibaca</li>
                             @endif
                             @if(($notifications['pending_approvals'] ?? 0) > 0)
-                                <li>{{ $notifications['pending_approvals'] }} quotations awaiting your approval</li>
+                                <li>{{ $notifications['pending_approvals'] }} penawaran menunggu persetujuan Anda</li>
                             @endif
                             @if(($notifications['overdue_projects'] ?? 0) > 0)
-                                <li>{{ $notifications['overdue_projects'] }} projects are overdue</li>
+                                <li>{{ $notifications['overdue_projects'] }} proyek sudah terlambat</li>
                             @endif
                         </ul>
                     </div>
@@ -155,7 +155,7 @@
             <!-- Recent Activities dengan Safe Array Access -->
             <div class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl">
                 <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Recent Activities</h2>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Aktivitas Terkini</h2>
                 </div>
                 <div class="p-6">
                     @php
@@ -234,8 +234,8 @@
                             <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No upcoming deadlines</h3>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">All caught up! No project deadlines in the next 30 days.</p>
+                            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">Tidak ada tenggat waktu mendatang</h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Semua sudah terkendali! Tidak ada tenggat waktu proyek dalam 30 hari ke depan.</p>
                         </div>
                     @endif
                 </div>
@@ -247,13 +247,13 @@
             <!-- Performance Summary dengan Safe Array Access -->
             <div class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl">
                 <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Performance Summary</h2>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Ringkasan Kinerja</h2>
                 </div>
                 <div class="p-6 space-y-4">
                     <!-- Completion Rate -->
                     <div>
                         <div class="flex justify-between text-sm">
-                            <span class="text-gray-600 dark:text-gray-400">Project Completion Rate</span>
+                            <span class="text-gray-600 dark:text-gray-400">Tingkat Penyelesaian Proyek</span>
                             <span class="font-medium text-gray-900 dark:text-white">{{ $statistics['summary']['completion_rate'] ?? 0 }}%</span>
                         </div>
                         <div class="mt-2 bg-gray-200 dark:bg-neutral-700 rounded-full h-2">
@@ -264,7 +264,7 @@
                     <!-- Response Rate -->
                     <div>
                         <div class="flex justify-between text-sm">
-                            <span class="text-gray-600 dark:text-gray-400">Message Response Rate</span>
+                            <span class="text-gray-600 dark:text-gray-400">Tingkat Respon Pesan</span>
                             <span class="font-medium text-gray-900 dark:text-white">{{ $statistics['summary']['response_rate'] ?? 0 }}%</span>
                         </div>
                         <div class="mt-2 bg-gray-200 dark:bg-neutral-700 rounded-full h-2">
@@ -274,14 +274,14 @@
 
                     <!-- This Week Activity -->
                     <div class="pt-4 border-t border-gray-200 dark:border-neutral-700">
-                        <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-2">This Week</h4>
+                        <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Minggu Ini</h4>
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
-                                <span class="text-gray-600 dark:text-gray-400">New Messages</span>
+                                <span class="text-gray-600 dark:text-gray-400">Pesan Baru</span>
                                 <span class="font-medium text-gray-900 dark:text-white">{{ $statistics['messages']['this_week'] ?? 0 }}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span class="text-gray-600 dark:text-gray-400">Project Updates</span>
+                                <span class="text-gray-600 dark:text-gray-400">Update Proyek</span>
                                 @php
                                     $projectUpdatesThisWeek = 0;
                                     if (isset($recentActivities) && is_array($recentActivities)) {
@@ -413,9 +413,9 @@ function handleDashboardError(error, context = 'dashboard') {
                         </svg>
                     </div>
                     <div class="ml-3">
-                        <h3 class="text-sm font-medium text-yellow-800">Dashboard Notice</h3>
+                        <h3 class="text-sm font-medium text-yellow-800">Pemberitahuan Dasbor</h3>
                         <div class="mt-2 text-sm text-yellow-700">
-                            Some dashboard features may be temporarily unavailable. Please refresh the page.
+                            Beberapa fitur dasbor mungkin tidak tersedia sementara. Silakan muat ulang halaman.
                         </div>
                     </div>
                 </div>

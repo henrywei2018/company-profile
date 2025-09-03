@@ -34,7 +34,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
-                    Back to Testimonials
+                    Kembali to Testimonials
                 </a>
             </div>
         </div>
@@ -229,7 +229,7 @@
                             title="New Client Photo"
                             emptyMessage="No new photo uploaded" 
                             :showPreview="true" 
-                            :allowDelete="true"
+                            :allowHapus="true"
                             :deleteEndpoint="route('client.testimonials.temp-delete')" 
                             gridCols="grid-cols-1" 
                             :componentId="'temp-display-testimonial-edit'" />
@@ -240,7 +240,7 @@
                 <div class="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
                     <a href="{{ route('client.testimonials.index') }}"
                         class="px-6 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
-                        Cancel
+                        Batal
                     </a>
 
                     <button type="submit"
@@ -258,7 +258,7 @@
             </form>
         </div>
 
-        <!-- Deletion Warning (only for pending/rejected testimonials) -->
+        <!-- Deletion Peringatan (only for pending/rejected testimonials) -->
         @if(in_array($testimonial->status, ['pending', 'rejected']))
             <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
                 <div class="flex items-start">
@@ -269,7 +269,7 @@
                         </svg>
                     </div>
                     <div class="ml-3 flex-1">
-                        <h3 class="text-sm font-medium text-red-800 dark:text-red-200">Delete Testimonial</h3>
+                        <h3 class="text-sm font-medium text-red-800 dark:text-red-200">Hapus Testimonial</h3>
                         <div class="mt-2 text-sm text-red-700 dark:text-red-300">
                             <p>If this testimonial is no longer needed, you can delete it. This action cannot be undone.</p>
                         </div>
@@ -280,7 +280,7 @@
                                 @method('DELETE')
                                 <button type="submit" 
                                         class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200">
-                                    Delete Testimonial
+                                    Hapus Testimonial
                                 </button>
                             </form>
                         </div>
@@ -429,24 +429,24 @@
                 // Listen for universal uploader events
                 document.addEventListener('files-uploaded', function(event) {
                     if (event.detail.component && event.detail.component.includes(uploaderId)) {
-                        handleTempImageUploadSuccess(event.detail);
+                        handleTempImageUploadBerhasil(event.detail);
                     }
                 });
 
                 document.addEventListener('file-deleted', function(event) {
                     if (event.detail.component && event.detail.component.includes(uploaderId)) {
-                        handleTempImageDelete(event.detail);
+                        handleTempImageHapus(event.detail);
                     }
                 });
 
                 // Handle temporary image upload success
-                function handleTempImageUploadSuccess(detail) {
+                function handleTempImageUploadBerhasil(detail) {
                     showNotification(detail.message || 'New client photo uploaded successfully!', 'success');
                     console.log('Client testimonial temp image uploaded:', detail);
                 }
 
                 // Handle temporary image deletion
-                function handleTempImageDelete(detail) {
+                function handleTempImageHapus(detail) {
                     showNotification(detail.message || 'New client photo removed!', 'info');
                     console.log('Client testimonial temp image deleted:', detail);
                 }

@@ -1,14 +1,14 @@
 {{-- resources/views/client/cart/index.blade.php --}}
 <x-layouts.client>
-    <x-slot name="title">My Cart</x-slot>
+    <x-slot name="title">My Keranjang</x-slot>
 
     <div class="space-y-6">
         <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">My Cart</h1>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">My Keranjang</h1>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Review your items before checkout
+                    Tinjau item Anda sebelum checkout
                 </p>
             </div>
             
@@ -19,7 +19,7 @@
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
-                    Continue Shopping
+                    Lanjutkan Belanja
                 </a>
             </div>
         </div>
@@ -27,7 +27,7 @@
         @if($cartItems->count() > 0)
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                <!-- Cart Items -->
+                <!-- Keranjang Items -->
                 <div class="lg:col-span-2">
                     <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                         
@@ -35,16 +35,16 @@
                         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                             <div class="flex items-center justify-between">
                                 <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-                                    Cart Items ({{ $cartItems->count() }})
+                                    Item Keranjang ({{ $cartItems->count() }})
                                 </h3>
-                                <button type="button" onclick="clearCart()" 
+                                <button type="button" onclick="clearKeranjang()" 
                                         class="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
-                                    Clear Cart
+                                    Kosongkan Keranjang
                                 </button>
                             </div>
                         </div>
 
-                        <!-- Cart Items List -->
+                        <!-- Keranjang Items List -->
                         <div class="divide-y divide-gray-200 dark:divide-gray-700">
                             @foreach($cartItems as $item)
                                 <div class="p-6" id="cart-item-{{ $item->product->id }}">
@@ -122,7 +122,7 @@
 
                                                 <!-- Remove Button -->
                                                 <button type="button" 
-                                                        onclick="removeFromCart({{ $item->product->id }})"
+                                                        onclick="removeFromKeranjang({{ $item->product->id }})"
                                                         class="ml-4 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400">
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -132,7 +132,7 @@
 
                                             <!-- Quantity Controls -->
                                             <div class="flex items-center mt-3">
-                                                <label class="text-xs text-gray-600 dark:text-gray-400 mr-2">Quantity:</label>
+                                                <label class="text-xs text-gray-600 dark:text-gray-400 mr-2">Jumlah:</label>
                                                 <div class="flex items-center space-x-2">
                                                     <button type="button" 
                                                             onclick="updateQuantity({{ $item->product->id }}, {{ max(1, $item->quantity - 1) }})"
@@ -178,7 +178,7 @@
                     </div>
                 </div>
 
-                <!-- Cart Summary -->
+                <!-- Keranjang Summary -->
                 <div class="lg:col-span-1">
                     <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden sticky top-6">
                         
@@ -192,7 +192,7 @@
                             <!-- Items Count -->
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600 dark:text-gray-400">Items ({{ $cartItems->sum('quantity') }})</span>
-                                <span class="text-gray-900 dark:text-white">{{ $cartItems->count() }} product(s)</span>
+                                <span class="text-gray-900 dark:text-white">{{ $cartItems->count() }} produk</span>
                             </div>
 
                             <!-- Price breakdown -->
@@ -220,21 +220,21 @@
                                 <!-- Checkout Button -->
                                 <a href="{{ route('client.orders.checkout') }}" 
                                    class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors text-center">
-                                    Proceed to Checkout
+                                    Lanjut ke Checkout
                                 </a>
 
                                 <!-- Continue Shopping -->
                                 <a href="{{ route('client.products.index') }}" 
                                    class="block w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors text-center">
-                                    Continue Shopping
+                                    Lanjutkan Belanja
                                 </a>
                             </div>
 
                             <!-- Additional Info -->
                             <div class="mt-6 text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                                <p>• All items have confirmed pricing</p>
-                                <p>• Delivery fees will be calculated at checkout</p>
-                                <p>• All prices are in Indonesian Rupiah (IDR)</p>
+                                <p>• Semua item memiliki harga yang dikonfirmasi</p>
+                                <p>• Biaya pengiriman akan dihitung saat checkout</p>
+                                <p>• Semua harga dalam Rupiah Indonesia (IDR)</p>
                             </div>
                         </div>
                     </div>
@@ -242,21 +242,21 @@
             </div>
 
         @else
-            <!-- Empty Cart -->
+            <!-- Empty Keranjang -->
             <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8">
                 <div class="text-center">
                     <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"></path>
                     </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">Your cart is empty</h3>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Start adding some products to your cart.</p>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">Keranjang Anda kosong</h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Mulai menambahkan beberapa produk ke keranjang Anda.</p>
                     <div class="mt-6">
                         <a href="{{ route('client.products.index') }}" 
                            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                             <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                             </svg>
-                            Browse Products
+                            Jelajahi Produk
                         </a>
                     </div>
                 </div>
@@ -290,14 +290,14 @@
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to update quantity');
+                console.error('Kesalahan:', error);
+                alert('Gagal memperbarui jumlah');
             });
         }
 
         // Remove from cart
-        function removeFromCart(productId) {
-            if (!confirm('Are you sure you want to remove this item from your cart?')) {
+        function removeFromKeranjang(productId) {
+            if (!confirm('Apakah Anda yakin ingin menghapus item ini dari keranjang Anda?')) {
                 return;
             }
             
@@ -317,18 +317,18 @@
                     document.getElementById('cart-item-' + productId).remove();
                     location.reload();
                 } else {
-                    alert(data.message || 'Failed to remove item');
+                    alert(data.message || 'Gagal menghapus item');
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to remove item');
+                console.error('Kesalahan:', error);
+                alert('Gagal menghapus item');
             });
         }
 
         // Clear cart
-        function clearCart() {
-            if (!confirm('Are you sure you want to clear your entire cart?')) {
+        function clearKeranjang() {
+            if (!confirm('Apakah Anda yakin ingin mengosongkan seluruh keranjang Anda?')) {
                 return;
             }
             
@@ -344,12 +344,12 @@
                 if (data.success) {
                     location.reload();
                 } else {
-                    alert(data.message || 'Failed to clear cart');
+                    alert(data.message || 'Gagal mengosongkan keranjang');
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to clear cart');
+                console.error('Kesalahan:', error);
+                alert('Gagal mengosongkan keranjang');
             });
         }
 

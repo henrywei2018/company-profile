@@ -27,10 +27,10 @@
                 <!-- Checkout Form -->
                 <div class="lg:col-span-2 space-y-6">
                     
-                    <!-- Customer Information -->
+                    <!-- Customer Informasi -->
                     <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Customer Information</h3>
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Informasi Pelanggan</h3>
                         </div>
                         
                         <div class="p-6">
@@ -82,10 +82,10 @@
                         </div>
                     </div>
 
-                    <!-- Delivery Information -->
+                    <!-- Delivery Informasi -->
                     <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Delivery Information</h3>
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Delivery Informasi</h3>
                         </div>
                         
                         <div class="p-6 space-y-4">
@@ -236,7 +236,7 @@
 
                             <hr class="border-gray-200 dark:border-gray-600">
 
-                            <!-- Submit Button -->
+                            <!-- Kirim Button -->
                             <div class="space-y-3">
                                 <button type="submit" 
                                         class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
@@ -245,7 +245,7 @@
 
                                 <a href="{{ route('client.cart.index') }}" 
                                    class="block w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors text-center">
-                                    Back to Cart
+                                    Kembali to Keranjang
                                 </a>
                             </div>
 

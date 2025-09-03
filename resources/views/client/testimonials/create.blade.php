@@ -1,5 +1,5 @@
 {{-- resources/views/client/testimonials/create.blade.php --}}
-<x-layouts.client title="Write Testimonial">
+<x-layouts.client title="Tulis Testimoni">
     <div class="space-y-6">
         <!-- Header -->
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
@@ -16,7 +16,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
-                    Back to Testimonials
+                    Kembali to Testimonials
                 </a>
             </div>
         </div>
@@ -141,7 +141,7 @@
                             title="Uploaded"
                             emptyMessage="No client photo uploaded yet" 
                             :showPreview="true" 
-                            :allowDelete="true"
+                            :allowHapus="true"
                             :deleteEndpoint="route('client.testimonials.temp-delete')" 
                             gridCols="grid-cols-1" 
                             :componentId="'temp-display-testimonial'" />
@@ -152,7 +152,7 @@
                 <div class="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
                     <a href="{{ route('client.testimonials.index') }}"
                         class="px-6 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
-                        Cancel
+                        Batal
                     </a>
 
                     <button type="submit"
@@ -163,7 +163,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                             </svg>
-                            Submit Testimonial
+                            Kirim Testimonial
                         </span>
                     </button>
                 </div>
@@ -289,7 +289,7 @@
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Submitting...
+                            Kirimting...
                         </span>
                     `;
                 });
@@ -300,24 +300,24 @@
                 // Listen for universal uploader events
                 document.addEventListener('files-uploaded', function(event) {
                     if (event.detail.component && event.detail.component.includes(uploaderId)) {
-                        handleTempImageUploadSuccess(event.detail);
+                        handleTempImageUploadBerhasil(event.detail);
                     }
                 });
 
                 document.addEventListener('file-deleted', function(event) {
                     if (event.detail.component && event.detail.component.includes(uploaderId)) {
-                        handleTempImageDelete(event.detail);
+                        handleTempImageHapus(event.detail);
                     }
                 });
 
                 // Handle temporary image upload success
-                function handleTempImageUploadSuccess(detail) {
+                function handleTempImageUploadBerhasil(detail) {
                     showNotification(detail.message || 'Client photo uploaded successfully!', 'success');
                     console.log('Client testimonial temp image uploaded:', detail);
                 }
 
                 // Handle temporary image deletion
-                function handleTempImageDelete(detail) {
+                function handleTempImageHapus(detail) {
                     showNotification(detail.message || 'Client photo removed!', 'info');
                     console.log('Client testimonial temp image deleted:', detail);
                 }

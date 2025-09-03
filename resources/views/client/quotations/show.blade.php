@@ -1,6 +1,6 @@
 {{-- resources/views/client/quotations/show.blade.php --}}
 <x-layouts.client>
-    <x-slot name="title">{{ $quotation->project_type }} - Quotation Details</x-slot>
+    <x-slot name="title">{{ $quotation->project_type }} - Detail Penawaran</x-slot>
     <x-slot name="description">View detailed information about your quotation request.</x-slot>
 
     <!-- Modern Header Section -->
@@ -8,7 +8,7 @@
         <!-- Breadcrumb -->
         <nav class="flex mb-4" aria-label="Breadcrumb">
             <ol class="flex items-center space-x-2 text-sm">
-                <li><a href="{{ route('client.quotations.index') }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400">My Quotations</a></li>
+                <li><a href="{{ route('client.quotations.index') }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400">Penawaran Saya</a></li>
                 <li class="text-gray-400">/</li>
                 <li class="text-gray-600 dark:text-gray-300">{{ Str::limit($quotation->project_type, 25) }}</li>
             </ol>
@@ -126,7 +126,7 @@
                                             <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                             </svg>
-                                            Cancel Request
+                                            Batal Request
                                         </button>
                                     </form>
                                 @endif
@@ -171,7 +171,7 @@
                     </div>
                 </div>
                 <div class="flex items-center justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    <span>Submitted</span>
+                    <span>Kirimted</span>
                     <span>Under Review</span>
                     <span>{{ $quotation->status === 'approved' ? 'Approved' : ($quotation->status === 'rejected' ? 'Rejected' : 'Decision') }}</span>
                 </div>
@@ -184,7 +184,7 @@
         <!-- Left Column - Main Content -->
         <div class="lg:col-span-2 space-y-6">
             
-            <!-- Project Information Card -->
+            <!-- Project Informasi Card -->
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                 <div class="p-6">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center">
@@ -365,14 +365,14 @@
         <!-- Right Column - Sidebar -->
         <div class="space-y-6">
             
-            <!-- Contact Information Card -->
+            <!-- Contact Informasi Card -->
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                 <div class="p-6">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                         <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
-                        Contact Information
+                        Contact Informasi
                     </h3>
 
                     <div class="space-y-4">
@@ -434,7 +434,7 @@
                         </div>
 
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Days Since Submitted</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Days Since Kirimted</span>
                             <span class="text-sm font-semibold text-gray-900 dark:text-white">
                                 {{ $quotation->created_at->diffInDays(now()) }}
                             </span>
@@ -461,14 +461,14 @@
                 </div>
             </div>
 
-            <!-- Next Steps Card -->
+            <!-- Selanjutnya Steps Card -->
             <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
                 <div class="p-6">
                     <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-400 mb-4 flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
-                        What's Next?
+                        What's Selanjutnya?
                     </h3>
 
                     <div class="space-y-3 text-sm text-blue-800 dark:text-blue-300">
@@ -708,7 +708,7 @@
             transition-duration: 150ms;
         }
 
-        /* Loading animation */
+        /* Memuat...imation */
         @keyframes spin {
             to {
                 transform: rotate(360deg);

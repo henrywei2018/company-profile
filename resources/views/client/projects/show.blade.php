@@ -476,7 +476,7 @@
                                 </div>
                                 <p class="text-sm text-green-700 dark:text-green-300">{{ $project->testimonial->content }}</p>
                                 <div class="text-xs text-green-600 dark:text-green-400 mt-2">
-                                    Submitted on {{ $project->testimonial->created_at->format('M d, Y') }}
+                                    Kirimted on {{ $project->testimonial->created_at->format('M d, Y') }}
                                 </div>
                             </div>
                         @else
@@ -490,7 +490,7 @@
                                 </p>
                                 <a href="{{ route('client.projects.testimonial', $project) }}" 
                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 transition-colors duration-200">
-                                    Write Review
+                                    Tulis Ulasan
                                 </a>
                             </div>
                         @endif

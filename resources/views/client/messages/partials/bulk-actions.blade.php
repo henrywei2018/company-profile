@@ -147,7 +147,7 @@ async function bulkAction(action) {
             showNotification('error', data.message || 'Action failed');
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Kesalahan:', error);
         showNotification('error', 'An error occurred');
     }
 }

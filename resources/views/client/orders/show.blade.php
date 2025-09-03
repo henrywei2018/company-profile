@@ -104,7 +104,7 @@
                                     </svg>
                                     <div class="flex-1">
                                         <h4 class="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
-                                            ✅ Order Delivered Successfully
+                                            ✅ Pesanan Telah Sampai Tujuan
                                         </h4>
                                         <p class="text-sm text-green-700 dark:text-green-300 mb-4">
                                             Your order has been delivered. Please confirm receipt or report any issues below.
@@ -341,10 +341,10 @@
                     </div>
                 </div>
 
-                <!-- Delivery Information -->
+                <!-- Delivery Informasi -->
                 <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Delivery Information</h3>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Informasi Pengiriman</h3>
                     </div>
                     
                     <div class="p-6 space-y-4">
@@ -540,7 +540,7 @@
                                         <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                         </svg>
-                                        Cancel Order
+                                        Batal Pesanan
                                     </button>
                                 </form>
                             @endif
@@ -557,7 +557,7 @@
                             
                             <a href="{{ route('client.orders.index') }}" 
                                class="block w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-center">
-                                Back to Orders
+                                Kembali ke Daftar Pesanan
                             </a>
                         </div>
                     </div>
@@ -575,7 +575,7 @@
                             <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                             </svg>
-                            Browse Products
+                            Jelajahi Produk
                         </a>
                         
                         
@@ -584,7 +584,7 @@
                             <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                             </svg>
-                            View All Orders
+                            Lihat Semua Pesanan
                         </a>
                     </div>
                 </div>
@@ -609,7 +609,7 @@
                             </div>
                             <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                                 <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                                    Confirm Delivery
+                                    Konfirmasi Penerimaan Pesanan
                                 </h3>
                                 <div class="mt-2">
                                     <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -632,7 +632,7 @@
                             Yes, I Received It
                         </button>
                         <button type="button" onclick="closeConfirmModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Cancel
+                            Batal
                         </button>
                     </div>
                 </form>
@@ -665,7 +665,7 @@
                                     </p>
                                     <div class="mt-4">
                                         <label for="client_response" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            Additional Information <span class="text-red-500">*</span>
+                                            Informasi Tambahan <span class="text-red-500">*</span>
                                         </label>
                                         <textarea name="client_response" id="client_response" rows="4" required
                                                   placeholder="Please provide more details, answer any questions from our team, or clarify your concerns..."
@@ -728,7 +728,7 @@
                             Send Response
                         </button>
                         <button type="button" onclick="closeRespondToDisputeModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Cancel
+                            Batal
                         </button>
                     </div>
                 </form>
@@ -776,7 +776,7 @@
                             Accept Resolution
                         </button>
                         <button type="button" onclick="closeAcceptResolutionModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Cancel
+                            Batal
                         </button>
                     </div>
                 </form>
@@ -824,7 +824,7 @@
                             Report Issue
                         </button>
                         <button type="button" onclick="closeDisputeModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Cancel
+                            Batal
                         </button>
                     </div>
                 </form>
@@ -1215,7 +1215,7 @@
                 };
                 
                 reader.onerror = function() {
-                    console.error(`Error reading file: ${file.name}`);
+                    console.error(`Kesalahan reading file: ${file.name}`);
                 };
                 
                 reader.readAsDataURL(file);

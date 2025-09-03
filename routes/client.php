@@ -89,6 +89,7 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'client'])->group(
         Route::post('/{order}/accept-negotiation', [ProductOrderController::class, 'acceptNegotiation'])->name('negotiate.accept');
         Route::get('/{order}/payment', [ProductOrderController::class, 'paymentForm'])->name('payment');
         Route::post('/{order}/payment', [ProductOrderController::class, 'uploadPaymentProof'])->name('payment.upload');
+        Route::post('/{order}/confirm-delivery', [ProductOrderController::class, 'confirmDelivery'])->name('confirm-delivery');
         
         // Additional cart actions (keep existing naming for compatibility)
         Route::post('/add-to-cart', [ProductOrderController::class, 'addToCart'])->name('add-to-cart');

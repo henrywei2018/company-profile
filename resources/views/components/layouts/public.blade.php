@@ -162,7 +162,9 @@
     @if($socialMedia['whatsapp'] ?? $contactInfo['whatsapp'] ?? false)
         <x-public.whatsapp-button 
             :number="$socialMedia['whatsapp'] ?? $contactInfo['whatsapp']"
-            :message="'Hello! I would like to inquire about services from ' . ($companyProfile->company_name ?? config('app.name')) . '.'" />
+            :message="'Halo! Saya ingin menanyakan tentang layanan dari ' . ($companyProfile->company_name ?? config('app.name')) . '. Mohon informasinya. Terima kasih.'"
+            :show-tooltip="true"
+            :show-pulse="true" />
     @endif
 
     {{-- Scroll to Top Button --}}

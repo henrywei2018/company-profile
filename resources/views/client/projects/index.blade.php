@@ -1,11 +1,11 @@
 {{-- resources/views/client/projects/index.blade.php --}}
-<x-layouts.client title="My Projects">
+<x-layouts.client title="Proyek Saya">
     <!-- Page Header -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">My Projects</h1>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Proyek Saya</h1>
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Track and manage your project progress
+                Lacak dan kelola kemajuan proyek Anda
             </p>
         </div>
 
@@ -16,7 +16,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                Request New Project
+                Minta Proyek Baru
             </a>
         </div>
     </div>
@@ -36,7 +36,7 @@
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Projects
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Proyek
                                 </dt>
                                 <dd class="text-lg font-medium text-gray-900 dark:text-white">
                                     {{ $statistics['total'] ?? 0 }}</dd>
@@ -60,7 +60,7 @@
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Active</dt>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Aktif</dt>
                                 <dd class="text-lg font-medium text-gray-900 dark:text-white">
                                     {{ $statistics['active'] ?? 0 }}</dd>
                             </dl>
@@ -83,7 +83,7 @@
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">In Progress
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Sedang Berlangsung
                                 </dt>
                                 <dd class="text-lg font-medium text-gray-900 dark:text-white">
                                     {{ $statistics['in_progress'] ?? 0 }}</dd>
@@ -105,7 +105,7 @@
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Completed</dt>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Selesai</dt>
                                 <dd class="text-lg font-medium text-gray-900 dark:text-white">
                                     {{ $statistics['completed'] ?? 0 }}</dd>
                             </dl>
@@ -119,15 +119,15 @@
     <!-- Filters -->
     <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-6">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Filter Projects</h3>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Filter Proyek</h3>
         </div>
         <form method="GET" action="{{ route('client.projects.index') }}" class="p-6" id="projectFilters">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label for="search"
-                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Search</label>
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Cari</label>
                     <input type="text" name="search" id="search" value="{{ request('search') }}"
-                        placeholder="Search projects..."
+                        placeholder="Cari proyek..."
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400">
                 </div>
 
@@ -136,25 +136,25 @@
                         class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
                     <select name="status" id="status"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                        <option value="">All Statuses</option>
-                        <option value="planning" {{ request('status') === 'planning' ? 'selected' : '' }}>Planning
+                        <option value="">Semua Status</option>
+                        <option value="planning" {{ request('status') === 'planning' ? 'selected' : '' }}>Perencanaan
                         </option>
                         <option value="in_progress" {{ request('status') === 'in_progress' ? 'selected' : '' }}>In
-                            Progress</option>
-                        <option value="on_hold" {{ request('status') === 'on_hold' ? 'selected' : '' }}>On Hold</option>
-                        <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Completed
+                            Kemajuan</option>
+                        <option value="on_hold" {{ request('status') === 'on_hold' ? 'selected' : '' }}>Ditahan</option>
+                        <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Selesai
                         </option>
-                        <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Cancelled
+                        <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Dibatalkan
                         </option>
                     </select>
                 </div>
 
                 <div>
                     <label for="category"
-                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Kategori</label>
                     <select name="category" id="category"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                        <option value="">All Categories</option>
+                        <option value="">Semua Kategori</option>
                         @foreach ($categories as $cat)
                             <option value="{{ $cat->id }}"
                                 {{ request('category') == $cat->id ? 'selected' : '' }}>
@@ -191,23 +191,23 @@
                                 Updated</option>
                             <option value="created_at" {{ request('sort') === 'created_at' ? 'selected' : '' }}>Date
                                 Created</option>
-                            <option value="title" {{ request('sort') === 'title' ? 'selected' : '' }}>Project Title
+                            <option value="title" {{ request('sort') === 'title' ? 'selected' : '' }}>Judul Proyek
                             </option>
                             <option value="status" {{ request('sort') === 'status' ? 'selected' : '' }}>Status
                             </option>
-                            <option value="end_date" {{ request('sort') === 'end_date' ? 'selected' : '' }}>End Date
+                            <option value="end_date" {{ request('sort') === 'end_date' ? 'selected' : '' }}>Tanggal Selesai
                             </option>
                         </select>
                     </div>
 
                     <div>
                         <label for="direction"
-                            class="block text-sm font-medium text-gray-700 dark:text-gray-300">Order</label>
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300">Urutan</label>
                         <select name="direction" id="direction"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                             <option value="desc" {{ request('direction') === 'desc' ? 'selected' : '' }}>Newest
                                 First</option>
-                            <option value="asc" {{ request('direction') === 'asc' ? 'selected' : '' }}>Oldest First
+                            <option value="asc" {{ request('direction') === 'asc' ? 'selected' : '' }}>Terlama Dulu
                             </option>
                         </select>
                     </div>
@@ -216,12 +216,12 @@
                 <div class="flex space-x-3">
                     <a href="{{ route('client.projects.index') }}"
                         class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 transition-colors duration-200">
-                        Clear Filters
+                        Bersihkan Filter
                     </a>
                     <button type="submit"
                         class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
                         id="filterSubmitBtn">
-                        <span class="filter-text">Apply Filters</span>
+                        <span class="filter-text">Terapkan Filter</span>
                     </button>
                 </div>
             </div>
@@ -290,7 +290,7 @@
                             @endif
                         </div>
 
-                        <!-- Project Title -->
+                        <!-- Judul Proyek -->
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                             <a href="{{ route('client.projects.show', $project) }}"
                                 class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200">
@@ -347,7 +347,7 @@
                         <div class="mt-4 flex items-center justify-between">
                             <a href="{{ route('client.projects.show', $project) }}"
                                 class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-600 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 transition-colors duration-200">
-                                View Details
+                                Lihat Detail
                                 <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M9 5l7 7-7 7" />
@@ -401,7 +401,7 @@
             @else
                 <a href="{{ route('client.quotations.index') }}"
                     class="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition-colors duration-200">
-                    Request New Project
+                    Minta Proyek Baru
                 </a>
             @endif
         </div>
@@ -448,7 +448,7 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            Filtering...
+            Memfilter...
         `;
             });
 
@@ -465,7 +465,7 @@
 
                 const filterBtn = document.querySelector('[href*="projects.index"]:not([type="submit"])');
                 if (filterBtn && activeFilters > 0) {
-                    filterBtn.innerHTML = `Clear Filters (${activeFilters})`;
+                    filterBtn.innerHTML = `Bersihkan Filter (${activeFilters})`;
                     filterBtn.classList.add('text-red-600', 'border-red-300', 'hover:bg-red-50');
                 }
             }

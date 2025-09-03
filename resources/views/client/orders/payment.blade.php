@@ -255,17 +255,17 @@
                         </div>
                     </div>
 
-                    <!-- Submit Button -->
+                    <!-- Kirim Button -->
                     <button type="submit" id="submitBtn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2">
                         <svg id="submitIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                         </svg>
-                        <span id="submitText">Submit Payment Proof</span>
+                        <span id="submitText">Kirim Bukti Pembayaran</span>
                     </button>
                 </form>
             </div>
 
-            <!-- Help & Information -->
+            <!-- Help & Informasi -->
             <div class="space-y-6">
                 
                 <!-- Payment Instructions -->
@@ -279,11 +279,11 @@
                     <ol class="space-y-3 text-sm text-amber-800 dark:text-amber-200">
                         <li class="flex items-start">
                             <span class="inline-flex items-center justify-center w-6 h-6 bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 rounded-full text-xs font-semibold mr-3 mt-0.5">1</span>
-                            <span>Select your preferred payment method above</span>
+                            <span>Pilih preferesi metode pembayaran anda</span>
                         </li>
                         <li class="flex items-start">
                             <span class="inline-flex items-center justify-center w-6 h-6 bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 rounded-full text-xs font-semibold mr-3 mt-0.5">2</span>
-                            <span>Transfer exactly <strong>Rp {{ number_format($order->total_amount, 0, ',', '.') }}</strong> to the account</span>
+                            <span>Transfer sesuai dengan <strong>Rp {{ number_format($order->total_amount, 0, ',', '.') }}</strong> to the account</span>
                         </li>
                         <li class="flex items-start">
                             <span class="inline-flex items-center justify-center w-6 h-6 bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 rounded-full text-xs font-semibold mr-3 mt-0.5">3</span>
@@ -468,12 +468,12 @@
         function handleFileSelect(file) {
             // Validate file
             if (!file.type.startsWith('image/')) {
-                showError('Please select an image file (JPG, PNG, GIF)');
+                showKesalahan('Please select an image file (JPG, PNG, GIF)');
                 return;
             }
             
             if (file.size > 2 * 1024 * 1024) {
-                showError('File size must be less than 2MB');
+                showKesalahan('File size must be less than 2MB');
                 return;
             }
             
@@ -521,7 +521,7 @@
             filePreview.className = 'hidden';
         }
         
-        function showError(message) {
+        function showKesalahan(message) {
             // You can implement a toast notification here
             alert(message);
         }

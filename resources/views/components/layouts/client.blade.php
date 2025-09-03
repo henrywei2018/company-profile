@@ -23,7 +23,7 @@
         <meta name="is-admin" content="{{ auth()->user()->hasRole(['admin', 'super-admin']) ? 'true' : 'false' }}">
     @endauth
 
-    <title>{{ $title }} - Client Panel</title>
+    <title>{{ $title }} - Panel Klien</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -130,7 +130,7 @@
         :auto-open="false"
         :show-online-status="true"
         welcome-message="Halo! Ada yang bisa kami bantu?"
-        operator-name="Customer Support" />
+        operator-name="Dukungan Pelanggan" />
     
     <!-- ========== END MAIN CONTENT ========== -->
 <script>

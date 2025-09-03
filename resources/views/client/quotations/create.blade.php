@@ -48,10 +48,10 @@
               method="POST" 
               enctype="multipart/form-data"
               x-data="quotationFormHandler()"
-              @submit="handleSubmit">
+              @submit="handleKirim">
             @csrf
 
-            <!-- Step 1: Personal Information -->
+            <!-- Step 1: Personal Informasi -->
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6"
                  x-show="currentStep === 1" x-transition>
                 <div class="p-8">
@@ -62,7 +62,7 @@
                             </svg>
                         </div>
                         <div>
-                            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Contact Information</h2>
+                            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Contact Informasi</h2>
                             <p class="text-sm text-gray-600 dark:text-gray-400">Let us know how to reach you</p>
                         </div>
                     </div>
@@ -146,7 +146,7 @@
                                 class="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 
                                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 
                                        disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
-                            Next: Project Details
+                            Selanjutnya: Project Details
                             <svg class="w-4 h-4 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                             </svg>
@@ -155,7 +155,7 @@
                 </div>
             </div>
 
-            <!-- Step 2: Project Information -->
+            <!-- Step 2: Project Informasi -->
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6"
                  x-show="currentStep === 2" x-transition>
                 <div class="p-8">
@@ -319,7 +319,7 @@
                             <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                             </svg>
-                            Back
+                            Kembali
                         </button>
 
                         <button type="button" 
@@ -328,7 +328,7 @@
                                 class="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 
                                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 
                                        disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
-                            Next: Requirements
+                            Selanjutnya: Requirements
                             <svg class="w-4 h-4 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                             </svg>
@@ -429,7 +429,7 @@
                             <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                             </svg>
-                            Back
+                            Kembali
                         </button>
 
                         <button type="submit" 
@@ -441,14 +441,14 @@
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                                 </svg>
-                                Submit Quotation Request
+                                Kirim Quotation Request
                             </span>
                             <span x-show="submitting" class="flex items-center">
                                 <svg class="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                Submitting...
+                                Kirimting...
                             </span>
                         </button>
                     </div>
@@ -613,7 +613,7 @@
             return this.formData.requirements && this.formData.requirements.length >= 50;
         },
 
-        handleSubmit(event) {
+        handleKirim(event) {
             if (!this.isStep3Valid()) {
                 event.preventDefault();
                 this.showNotification('Please provide detailed requirements (minimum 50 characters)', 'error');
@@ -864,7 +864,7 @@ document.addEventListener('DOMContentLoaded', function() {
             transform: translateY(0);
         }
 
-        /* Loading spinner */
+        /* Memuat...inner */
         @keyframes spin {
             to {
                 transform: rotate(360deg);

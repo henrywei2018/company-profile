@@ -185,20 +185,13 @@ class ProductOrderController extends Controller
         $tab = $request->get('tab', 'active');
         
         if ($tab === 'delivered') {
-            // Order History: Only completed (client-confirmed) orders
+            // Order History: Only completed orders
             $query = clone $baseQuery;
-            $query->where('status', 'delivered')
-                  ->where('delivery_confirmed_by_client', true);
+            $query->where('status', 'complete');
         } else {
             // Active orders: All orders that are not completed
             $query = clone $baseQuery;
-            $query->where(function($q) {
-                $q->where('status', '!=', 'delivered')
-                  ->orWhere(function($subQuery) {
-                      $subQuery->where('status', 'delivered')
-                               ->where('delivery_confirmed_by_client', false);
-                  });
-            });
+            $query->where('status', '!=', 'complete');
         }
 
         // Search functionality
@@ -221,18 +214,11 @@ class ProductOrderController extends Controller
 
         // Get counts for tabs
         $activeCount = ProductOrder::where('client_id', Auth::id())
-            ->where(function($q) {
-                $q->where('status', '!=', 'delivered')
-                  ->orWhere(function($subQuery) {
-                      $subQuery->where('status', 'delivered')
-                               ->where('delivery_confirmed_by_client', false);
-                  });
-            })
+            ->where('status', '!=', 'complete')
             ->count();
             
         $deliveredCount = ProductOrder::where('client_id', Auth::id())
-            ->where('status', 'delivered')
-            ->where('delivery_confirmed_by_client', true)
+            ->where('status', 'complete')
             ->count();
 
         return view('client.orders.index', compact('orders', 'activeCount', 'deliveredCount'));
@@ -700,6 +686,24 @@ class ProductOrderController extends Controller
                 'message' => $e->getMessage()
             ], 400);
         }
+    }
+
+    /**
+     * Konfirmasi pengiriman pesanan oleh klien
+     */
+    public function confirmDelivery(Request $request, ProductOrder $order)
+    {
+        $this->authorize('view', $order);
+        
+        if (!$order->canConfirmDelivery()) {
+            return back()->with('error', 'Pesanan tidak dapat dikonfirmasi saat ini.');
+        }
+
+        $order->update([
+            'status' => 'complete'
+        ]);
+
+        return back()->with('success', 'Pengiriman berhasil dikonfirmasi. Pesanan telah selesai.');
     }
 
 }

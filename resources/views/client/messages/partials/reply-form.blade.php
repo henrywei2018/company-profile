@@ -74,7 +74,7 @@
                     onclick="toggleReplyForm()"
                     class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                    Cancel
+                    Batal
                 </button>
                 
                 <button
@@ -177,7 +177,7 @@ if (messageTextarea) {
     messageTextarea.addEventListener('input', function() {
         clearTimeout(autosaveTimer);
         autosaveTimer = setTimeout(() => {
-            // Save draft to localStorage (if you want this feature)
+            // Simpan draft to localStorage (if you want this feature)
             localStorage.setItem(`reply_draft_{{ $message->id }}`, this.value);
         }, 2000);
     });
@@ -215,7 +215,7 @@ window.addEventListener('beforeunload', function() {
                 color="primary"
                 size="sm"
             >
-                Send New Message
+                Send Pesan Baru
             </x-admin.button>
         </div>
     </div>

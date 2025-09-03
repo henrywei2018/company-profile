@@ -1,5 +1,5 @@
 <x-layouts.client>
-    <x-slot name="title">My Quotations</x-slot>
+    <x-slot name="title">Penawaran Saya</x-slot>
     <x-slot name="description">View and manage your quotation requests and their status.</x-slot>
 
     <!-- Statistics Cards -->
@@ -253,14 +253,14 @@
                                                     </a>
 
                                                     @if($quotation->status === 'pending')
-                                                        <!-- Cancel -->
+                                                        <!-- Batal -->
                                                         <form method="POST" action="{{ route('client.quotations.cancel', $quotation) }}" 
                                                               class="inline"
                                                               onsubmit="return confirm('Are you sure you want to cancel this quotation?')">
                                                             @csrf
                                                             @method('PATCH')
                                                             <button type="submit" class="block w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-neutral-700 text-left">
-                                                                Cancel
+                                                                Batal
                                                             </button>
                                                         </form>
                                                     @endif

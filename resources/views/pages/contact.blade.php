@@ -96,7 +96,7 @@
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                     </svg>
-                    Call {{ $contactInfo['phone'] }}
+                    Telepon {{ $contactInfo['phone'] }}
                 </a>
                 @endif
                 
@@ -106,7 +106,7 @@
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                     </svg>
-                    Send Email
+                    Kirim Email
                 </a>
                 @endif
             </div>
@@ -126,8 +126,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                     </svg>
                 </div>
-                <h3 class="text-xl font-bold text-gray-900 mb-2">Call Us</h3>
-                <p class="text-gray-600 mb-4">Mon - Fri from 8am to 5pm</p>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Hubungi Kami</h3>
+                <p class="text-gray-600 mb-4">Senin - Jumat dari 08:00 - 17:00</p>
                 <a href="tel:{{ $contactInfo['phone'] }}" class="text-orange-600 font-semibold hover:text-orange-700 transition-colors">
                     {{ $contactInfo['phone'] }}
                 </a>
@@ -142,8 +142,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                     </svg>
                 </div>
-                <h3 class="text-xl font-bold text-gray-900 mb-2">Email Us</h3>
-                <p class="text-gray-600 mb-4">We'll respond within 24 hours</p>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Email Kami</h3>
+                <p class="text-gray-600 mb-4">Kami akan merespon dalam 24 jam</p>
                 <a href="mailto:{{ $contactInfo['email'] }}" class="text-orange-600 font-semibold hover:text-orange-700 transition-colors">
                     {{ $contactInfo['email'] }}
                 </a>
@@ -159,8 +159,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                     </svg>
                 </div>
-                <h3 class="text-xl font-bold text-gray-900 mb-2">Visit Us</h3>
-                <p class="text-gray-600 mb-4">Come and say hello at our office</p>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Kunjungi Kami</h3>
+                <p class="text-gray-600 mb-4">Datang dan sambangi kantor kami</p>
                 <address class="text-orange-600 font-semibold not-italic">
                     {{ $contactInfo['address'] }}
                 </address>
@@ -177,8 +177,8 @@
             {{-- Kontak Form --}}
             <div>
                 <div class="bg-white rounded-2xl shadow-xl p-8">
-                    <h2 class="text-3xl font-bold text-gray-900 mb-2">Send us a Message</h2>
-                    <p class="text-gray-600 mb-8">Fill out the form below and we'll get back to you as soon as possible.</p>
+                    <h2 class="text-3xl font-bold text-gray-900 mb-2">Kirim Pesan kepada Kami</h2>
+                    <p class="text-gray-600 mb-8">Isi formulir di bawah ini dan kami akan menghubungi Anda sesegera mungkin.</p>
                     
                     {{-- Success Message --}}
                     @if(session('success'))
@@ -205,7 +205,7 @@
                             {{-- Name --}}
                             <div>
                                 <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Full Name *
+                                    Nama Lengkap *
                                 </label>
                                 <input type="text" 
                                        id="name" 
@@ -239,7 +239,7 @@
                             {{-- Phone --}}
                             <div>
                                 <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Phone Number
+                                    Nomor Telepon
                                 </label>
                                 <input type="tel" 
                                        id="phone" 
@@ -254,7 +254,7 @@
                             {{-- Company --}}
                             <div>
                                 <label for="company" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Company Name
+                                    Nama Perusahaan
                                 </label>
                                 <input type="text" 
                                        id="company" 
@@ -270,7 +270,7 @@
                         {{-- Subject --}}
                         <div>
                             <label for="subject" class="block text-sm font-medium text-gray-700 mb-2">
-                                Subject *
+                                Subjek *
                             </label>
                             <input type="text" 
                                    id="subject" 
@@ -286,13 +286,13 @@
                         {{-- Message --}}
                         <div>
                             <label for="message" class="block text-sm font-medium text-gray-700 mb-2">
-                                Message *
+                                Pesan *
                             </label>
                             <textarea id="message" 
                                       name="message" 
                                       rows="5" 
                                       required
-                                      placeholder="Tell us about your project, requirements, or any questions you have..."
+                                      placeholder="Ceritakan kepada kami tentang proyek, kebutuhan, atau pertanyaan yang Anda miliki..."
                                       class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors resize-none @error('message') border-red-500 @enderror">{{ old('message') }}</textarea>
                             @error('message')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -308,7 +308,7 @@
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
                                     </svg>
-                                    Send Message
+                                    Kirim Pesan
                                 </span>
                             </button>
                         </div>
@@ -320,7 +320,7 @@
             <div class="space-y-8">
                 {{-- Kontak Details --}}
                 <div class="bg-white rounded-2xl shadow-xl p-8">
-                    <h3 class="text-2xl font-bold text-gray-900 mb-6">Kontak Information</h3>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-6">Informasi Kontak</h3>
                     <div class="space-y-6">
                         @if($contactInfo['phone'])
                         <div class="flex items-start">
@@ -330,7 +330,7 @@
                                 </svg>
                             </div>
                             <div>
-                                <h4 class="font-semibold text-gray-900 mb-1">Phone</h4>
+                                <h4 class="font-semibold text-gray-900 mb-1">Telepon</h4>
                                 <a href="tel:{{ $contactInfo['phone'] }}" class="text-gray-600 hover:text-orange-600 transition-colors">
                                     {{ $contactInfo['phone'] }}
                                 </a>
@@ -379,10 +379,10 @@
                                 </svg>
                             </div>
                             <div>
-                                <h4 class="font-semibold text-gray-900 mb-1">Business Hours</h4>
+                                <h4 class="font-semibold text-gray-900 mb-1">Jam Kerja</h4>
                                 <div class="text-gray-600 text-sm space-y-1">
-                                    <div>Monday - Friday: 8:00 AM - 5:00 PM</div>
-                                    <div>Saturday: 8:00 AM - 2:00 PM</div>
+                                    <div>Senin - Jumat: 08:00 - 17:00</div>
+                                    <div>Sabtu: 08:00 - 14:00</div>
                                     <div>Minggu: Tutup</div>
                                 </div>
                             </div>
@@ -392,37 +392,37 @@
                 
                 {{-- Why Choose Us --}}
                 <div class="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl border border-orange-100 p-8">
-                    <h3 class="text-2xl font-bold text-gray-900 mb-6">Why Choose Us?</h3>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-6">Mengapa Memilih Kami?</h3>
                     <ul class="space-y-4">
                         <li class="flex items-center">
                             <svg class="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
-                            <span class="text-gray-700">Free consultation and project assessment</span>
+                            <span class="text-gray-700">Konsultasi dan penilaian proyek gratis</span>
                         </li>
                         <li class="flex items-center">
                             <svg class="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
-                            <span class="text-gray-700">Licensed and insured professionals</span>
+                            <span class="text-gray-700">Profesional berlisensi dan berinsurasi</span>
                         </li>
                         <li class="flex items-center">
                             <svg class="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
-                            <span class="text-gray-700">Competitive pricing with no hidden costs</span>
+                            <span class="text-gray-700">Harga kompetitif tanpa biaya tersembunyi</span>
                         </li>
                         <li class="flex items-center">
                             <svg class="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
-                            <span class="text-gray-700">Quality guarantee on all work</span>
+                            <span class="text-gray-700">Garansi kualitas untuk semua pekerjaan</span>
                         </li>
                         <li class="flex items-center">
                             <svg class="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
-                            <span class="text-gray-700">24/7 emergency support</span>
+                            <span class="text-gray-700">Dukungan darurat 24/7</span>
                         </li>
                     </ul>
                 </div>
@@ -457,73 +457,73 @@
 <section class="py-20 bg-white">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12">
-            <h2 class="text-3xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
-            <p class="text-gray-600">Quick answers to common questions about our services and process.</p>
+            <h2 class="text-3xl font-bold text-gray-900 mb-4">Pertanyaan yang Sering Diajukan</h2>
+            <p class="text-gray-600">Jawaban cepat untuk pertanyaan umum tentang layanan dan proses kami.</p>
         </div>
         
         <div class="space-y-4">
             <div class="bg-gray-50 rounded-xl shadow-md overflow-hidden">
                 <button class="w-full px-6 py-4 text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-orange-500 faq-toggle"
                         data-target="faq-0">
-                    <span class="font-semibold text-gray-900">How do I get started with my project?</span>
+                    <span class="font-semibold text-gray-900">Bagaimana cara memulai proyek saya?</span>
                     <svg class="w-5 h-5 text-gray-500 transform transition-transform duration-200 faq-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                     </svg>
                 </button>
                 <div class="faq-content hidden px-6 pb-4" id="faq-0">
-                    <p class="text-gray-600 leading-relaxed">Simply contact us through this form, phone, or email. We'll schedule a free consultation to discuss your project requirements, timeline, and budget. Our team will then provide you with a detailed proposal and quote.</p>
+                    <p class="text-gray-600 leading-relaxed">Cukup hubungi kami melalui formulir ini, telepon, atau email. Kami akan menjadwalkan konsultasi gratis untuk membahas kebutuhan proyek, jadwal, dan anggaran Anda. Tim kami kemudian akan memberikan proposal dan penawaran yang detail.</p>
                 </div>
             </div>
             
             <div class="bg-gray-50 rounded-xl shadow-md overflow-hidden">
                 <button class="w-full px-6 py-4 text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-orange-500 faq-toggle"
                         data-target="faq-1">
-                    <span class="font-semibold text-gray-900">Do you provide free estimates?</span>
+                    <span class="font-semibold text-gray-900">Apakah Anda menyediakan estimasi gratis?</span>
                     <svg class="w-5 h-5 text-gray-500 transform transition-transform duration-200 faq-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                     </svg>
                 </button>
                 <div class="faq-content hidden px-6 pb-4" id="faq-1">
-                    <p class="text-gray-600 leading-relaxed">Yes! We provide free, no-obligation estimates for all projects. Our team will assess your requirements and provide a detailed quote with transparent pricing and no hidden costs.</p>
+                    <p class="text-gray-600 leading-relaxed">Ya! Kami menyediakan estimasi gratis tanpa kewajiban untuk semua proyek. Tim kami akan menilai kebutuhan Anda dan memberikan penawaran detail dengan harga transparan dan tanpa biaya tersembunyi.</p>
                 </div>
             </div>
             
             <div class="bg-gray-50 rounded-xl shadow-md overflow-hidden">
                 <button class="w-full px-6 py-4 text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-orange-500 faq-toggle"
                         data-target="faq-2">
-                    <span class="font-semibold text-gray-900">How long does a typical project take?</span>
+                    <span class="font-semibold text-gray-900">Berapa lama waktu yang dibutuhkan untuk proyek pada umumnya?</span>
                     <svg class="w-5 h-5 text-gray-500 transform transition-transform duration-200 faq-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                     </svg>
                 </button>
                 <div class="faq-content hidden px-6 pb-4" id="faq-2">
-                    <p class="text-gray-600 leading-relaxed">Project timelines vary depending on scope and complexity. Small projects may take 1-2 weeks, while larger construction projects can take several months. We'll provide you with a detailed timeline during the planning phase.</p>
+                    <p class="text-gray-600 leading-relaxed">Jadwal proyek bervariasi tergantung pada cakupan dan kompleksitas. Proyek kecil mungkin memerlukan 1-2 minggu, sedangkan proyek konstruksi besar dapat memakan waktu beberapa bulan. Kami akan memberikan jadwal detail selama fase perencanaan.</p>
                 </div>
             </div>
             
             <div class="bg-gray-50 rounded-xl shadow-md overflow-hidden">
                 <button class="w-full px-6 py-4 text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-orange-500 faq-toggle"
                         data-target="faq-3">
-                    <span class="font-semibold text-gray-900">Are you licensed and insured?</span>
+                    <span class="font-semibold text-gray-900">Apakah Anda berlisensi dan berinsurasi?</span>
                     <svg class="w-5 h-5 text-gray-500 transform transition-transform duration-200 faq-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                     </svg>
                 </button>
                 <div class="faq-content hidden px-6 pb-4" id="faq-3">
-                    <p class="text-gray-600 leading-relaxed">Yes, we are fully licensed and insured. All our work is covered by comprehensive liability insurance, and we maintain all necessary licenses and certifications for construction and engineering services.</p>
+                    <p class="text-gray-600 leading-relaxed">Ya, kami sepenuhnya berlisensi dan berinsurasi. Semua pekerjaan kami dicakup oleh asuransi tanggung jawab yang komprehensif, dan kami mempertahankan semua lisensi dan sertifikasi yang diperlukan untuk layanan konstruksi dan teknik.</p>
                 </div>
             </div>
             
             <div class="bg-gray-50 rounded-xl shadow-md overflow-hidden">
                 <button class="w-full px-6 py-4 text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-orange-500 faq-toggle"
                         data-target="faq-4">
-                    <span class="font-semibold text-gray-900">What payment methods do you accept?</span>
+                    <span class="font-semibold text-gray-900">Metode pembayaran apa yang Anda terima?</span>
                     <svg class="w-5 h-5 text-gray-500 transform transition-transform duration-200 faq-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                     </svg>
                 </button>
                 <div class="faq-content hidden px-6 pb-4" id="faq-4">
-                    <p class="text-gray-600 leading-relaxed">We accept various payment methods including bank transfers, checks, and credit cards. For larger projects, we offer flexible payment schedules tied to project milestones to help manage your budget effectively.</p>
+                    <p class="text-gray-600 leading-relaxed">Kami menerima berbagai metode pembayaran termasuk transfer bank, cek, dan kartu kredit. Untuk proyek yang lebih besar, kami menawarkan jadwal pembayaran fleksibel yang terikat dengan milestone proyek untuk membantu mengelola anggaran Anda secara efektif.</p>
                 </div>
             </div>
         </div>
@@ -537,7 +537,7 @@
             Siap Memulai Proyek Anda?
         </h2>
         <p class="text-xl text-orange-100 mb-8">
-            Don't wait any longer. Kontak us today and let's bring your vision to life with professional expertise and quality craftsmanship.
+            Jangan menunggu lebih lama lagi. Hubungi kami hari ini dan mari wujudkan visi Anda dengan keahlian profesional dan kerajinan berkualitas.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
             @if($contactInfo['phone'])
@@ -546,7 +546,7 @@
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                 </svg>
-                Call {{ $contactInfo['phone'] }}
+                Telepon {{ $contactInfo['phone'] }}
             </a>
             @endif
             <a href="#contactForm" 
@@ -554,7 +554,7 @@
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.405L3 21l2.595-5.094A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z"/>
                 </svg>
-                Send Message
+                Kirim Pesan
             </a>
         </div>
     </div>
@@ -573,7 +573,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const content = document.getElementById(targetId);
             const icon = this.querySelector('.faq-icon');
             
-            // Tutup semua yang lain FAQs
+            // Tutup semua FAQ yang lain
             faqToggles.forEach(otherToggle => {
                 if (otherToggle !== this) {
                     const otherTargetId = otherToggle.getAttribute('data-target');
@@ -605,7 +605,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Sending...
+                    Mengirim...
                 </span>
             `;
             submitBtn.disabled = true;

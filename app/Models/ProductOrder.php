@@ -177,12 +177,12 @@ class ProductOrder extends Model
     public function getStatusLabel()
     {
         return match($this->status) {
-            'pending' => 'Pending Review',
-            'confirmed' => 'Confirmed',
-            'processing' => 'Being Processed',
-            'ready' => 'Ready for Pickup',
-            'delivered' => 'Delivered',
-            'completed' => 'Completed',
+            'pending' => 'Menunggu Review',
+            'confirmed' => 'Dikonfirmasi',
+            'processing' => 'Sedang Diproses',
+            'ready' => 'Siap Diambil',
+            'delivered' => 'Terkirim',
+            'complete' => 'Selesai',
             default => ucfirst($this->status)
         };
     }
@@ -256,6 +256,11 @@ class ProductOrder extends Model
     public function canBeDeleted()
     {
         return $this->status === 'pending';
+    }
+
+    public function canConfirmDelivery()
+    {
+        return $this->status === 'delivered';
     }
 
     public function canBeModifiedByAdmin()

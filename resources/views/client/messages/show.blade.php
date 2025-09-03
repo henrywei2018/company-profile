@@ -1,4 +1,4 @@
-<x-layouts.client title="Message Details" :unreadMessages="0" :pendingQuotations="0">
+<x-layouts.client title="Detail Pesan" :unreadMessages="0" :pendingQuotations="0">
     <!-- Compact Header -->
     <div class="flex items-center justify-between mb-6">
         <div class="flex items-center space-x-4">
@@ -7,7 +7,7 @@
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                 </svg>
-                Back to Messages
+                Kembali to Messages
             </a>
             <div class="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
             <h1 class="text-xl font-bold text-gray-900 dark:text-white">{{ $rootMessage->subject }}</h1>
@@ -306,12 +306,12 @@
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
-                        New Message
+                        Pesan Baru
                     </a>
                 </div>
             </x-admin.card>
 
-            <!-- Message Details -->
+            <!-- Detail Pesan -->
             <x-admin.card>
                 <x-slot name="title">Details</x-slot>
                 
@@ -568,12 +568,12 @@
             // FILE DELETION EVENTS
             window.addEventListener('file-deleted', function(e) {
                 console.log('🗑️ file-deleted event:', e.detail);
-                handleFileDelete(e.detail);
+                handleFileHapus(e.detail);
             });
 
-            window.addEventListener('fileDeleted', function(e) {
-                console.log('🗑️ fileDeleted event:', e.detail);
-                handleFileDelete(e.detail);
+            window.addEventListener('fileHapusd', function(e) {
+                console.log('🗑️ fileHapusd event:', e.detail);
+                handleFileHapus(e.detail);
             });
 
             // Helper functions
@@ -589,7 +589,7 @@
                 }
             }
 
-            function handleFileDelete(detail) {
+            function handleFileHapus(detail) {
                 if (detail && detail.uploaderId === 'reply-attachments') {
                     const file = detail.file || detail;
                     const filePath = file.path || file.file_path || file.filePath;
@@ -676,7 +676,7 @@
                 
                 // Show user feedback if files are attached
                 if (replyUploadedFiles.length > 0) {
-                    console.log(`🎉 Submitting with ${replyUploadedFiles.length} file(s)`);
+                    console.log(`🎉 Kirimting with ${replyUploadedFiles.length} file(s)`);
                 } else {
                     console.log('⚠️ No files detected - submitting without attachments');
                 }

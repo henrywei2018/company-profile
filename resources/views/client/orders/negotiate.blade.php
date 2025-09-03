@@ -269,7 +269,7 @@
 
                             <hr class="border-gray-200 dark:border-gray-600">
 
-                            <!-- Submit Button -->
+                            <!-- Kirim Button -->
                             <div class="space-y-3">
                                 <button type="submit" 
                                         class="block w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
@@ -277,15 +277,15 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                                     </svg>
                                     @if($order->negotiation_status === 'in_progress')
-                                        Submit Counter Offer
+                                        Kirim Counter Offer
                                     @else
-                                        Submit Negotiation Request
+                                        Kirim Negotiation Request
                                     @endif
                                 </button>
                                 
                                 <a href="{{ route('client.orders.show', $order) }}" 
                                    class="block w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-center">
-                                    Cancel
+                                    Batal
                                 </a>
                             </div>
                         </div>
