@@ -7,7 +7,7 @@
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                 </svg>
-                Kembali to Messages
+                Kembali
             </a>
             <div class="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
             <h1 class="text-xl font-bold text-gray-900 dark:text-white">{{ $rootMessage->subject }}</h1>
@@ -16,7 +16,7 @@
         <div class="flex items-center gap-2">
             @if($rootMessage->isUrgent())
                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                    Urgent
+                    Mendesak
                 </span>
             @else
                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
@@ -33,7 +33,7 @@
                     <button type="submit" 
                             class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full text-orange-700 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50"
                             onclick="return confirm('Mark this message as urgent?')">
-                        Mark Urgent
+                        Tandai Mendesak
                     </button>
                 </form>
             @endif
@@ -83,7 +83,7 @@
             <!-- Conversation Thread -->
             <x-admin.card>
                 <x-slot name="title">
-                    Conversation ({{ $thread->count() }})
+                    Percakapan ({{ $thread->count() }})
                     @if($thread->where('is_read', false)->where('type', 'admin_to_client')->count() > 0)
                         <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                             {{ $thread->where('is_read', false)->where('type', 'admin_to_client')->count() }} new
@@ -122,18 +122,18 @@
                                     <div class="flex items-center justify-between mb-2">
                                         <div class="flex items-center gap-2 min-w-0 flex-1">
                                             <span class="font-medium text-sm {{ $threadMessage->type === 'admin_to_client' ? 'text-green-700 dark:text-green-400' : 'text-gray-900 dark:text-white' }}">
-                                                {{ $threadMessage->type === 'admin_to_client' ? 'Support Team' : 'You' }}
+                                                {{ $threadMessage->type === 'admin_to_client' ? 'Support Team' : '' }}
                                             </span>
                                             
                                             @if(!$threadMessage->is_read && $threadMessage->type === 'admin_to_client')
                                                 <span class="px-1.5 py-0.5 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded text-xs font-medium flex-shrink-0">
-                                                    New
+                                                    Baru
                                                 </span>
                                             @endif
 
                                             @if($index === 0)
                                                 <span class="px-1.5 py-0.5 bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 rounded text-xs flex-shrink-0">
-                                                    Original
+                                                    Pesan Asal
                                                 </span>
                                             @endif
                                         </div>
@@ -176,7 +176,7 @@
             <!-- Reply Form -->
             @if($canReply)
                 <x-admin.card id="reply-section">
-                    <x-slot name="title">Send Reply</x-slot>
+                    <x-slot name="title">Kirim Balasan</x-slot>
                     
                     <form action="{{ route('client.messages.reply', $message) }}" method="POST" id="reply-form">
                         @csrf
@@ -185,7 +185,7 @@
                             <!-- Message Input -->
                             <div>
                                 <label for="reply-message" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Your Reply <span class="text-red-500">*</span>
+                                    Balasan<span class="text-red-500">*</span>
                                 </label>
                                 <textarea id="reply-message" 
                                           name="message" 
@@ -193,11 +193,11 @@
                                           required 
                                           minlength="10"
                                           maxlength="5000"
-                                          placeholder="Type your reply here..."
+                                          placeholder="Tulis Balasan disini..."
                                           class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">{{ old('message') }}</textarea>
                                 <div class="mt-1 flex justify-between text-xs text-gray-500 dark:text-gray-400">
                                     <span><span id="char-count">0</span>/5000 characters</span>
-                                    <span>You will receive a notification when support responds</span>
+                                    <span>Anda akan menerima pemberitahuan saat dukungan merespons</span>
                                 </div>
                                 @error('message')
                                     <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
@@ -207,7 +207,7 @@
                             <!-- Universal File Uploader -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Attachments (Optional)
+                                    Lampiran (Optional)
                                 </label>
                                 
                                 <x-universal-file-uploader 
@@ -254,7 +254,7 @@
                                 <button type="button" 
                                         onclick="clearReplyForm()"
                                         class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    Clear
+                                    Hapus
                                 </button>
                                 
                                 <button type="submit" 
@@ -263,7 +263,7 @@
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                                     </svg>
-                                    Send Reply
+                                    Kirim Balasan
                                 </button>
                             </div>
                         </div>
@@ -275,9 +275,9 @@
                         <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636"></path>
                         </svg>
-                        <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">Cannot Reply</h3>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">Ditutup</h3>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            This conversation has been closed or you don't have permission to reply.
+                            Percakapan ini telah ditutup atau Anda tidak memiliki izin untuk membalas.
                         </p>
                     </div>
                 </x-admin.card>
@@ -288,7 +288,7 @@
         <div class="lg:col-span-1 space-y-4">
             <!-- Quick Actions -->
             <x-admin.card>
-                <x-slot name="title">Quick Actions</x-slot>
+                <x-slot name="title">Aksi Cepat</x-slot>
                 
                 <div class="space-y-2">
                     @if($canReply)
@@ -297,7 +297,7 @@
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
                             </svg>
-                            Reply
+                            Balas
                         </button>
                     @endif
 
@@ -313,11 +313,11 @@
 
             <!-- Detail Pesan -->
             <x-admin.card>
-                <x-slot name="title">Details</x-slot>
+                <x-slot name="title">Detail</x-slot>
                 
                 <div class="space-y-3 text-sm">
                     <div>
-                        <span class="text-gray-500 dark:text-gray-400">Type:</span>
+                        <span class="text-gray-500 dark:text-gray-400">Jenis:</span>
                         <span class="ml-2 font-medium">{{ ucfirst(str_replace('_', ' ', $rootMessage->type)) }}</span>
                     </div>
                     
@@ -325,21 +325,21 @@
                         <span class="text-gray-500 dark:text-gray-400">Status:</span>
                         <span class="ml-2">
                             @if($rootMessage->is_replied)
-                                <span class="text-green-600 dark:text-green-400 font-medium">Replied</span>
+                                <span class="text-green-600 dark:text-green-400 font-medium">Dibalas</span>
                             @else
-                                <span class="text-yellow-600 dark:text-yellow-400 font-medium">Pending</span>
+                                <span class="text-yellow-600 dark:text-yellow-400 font-medium">Tertunda</span>
                             @endif
                         </span>
                     </div>
                     
                     <div>
-                        <span class="text-gray-500 dark:text-gray-400">Messages:</span>
+                        <span class="text-gray-500 dark:text-gray-400">Pesan:</span>
                         <span class="ml-2 font-medium">{{ $thread->count() }}</span>
                     </div>
                     
                     @if($thread->count() > 1)
                         <div>
-                            <span class="text-gray-500 dark:text-gray-400">Last Activity:</span>
+                            <span class="text-gray-500 dark:text-gray-400">Aktivitas Terakhir:</span>
                             <span class="ml-2 font-medium">{{ $thread->last()->created_at->format('M j, g:i A') }}</span>
                         </div>
                     @endif
@@ -349,7 +349,7 @@
             <!-- Related Messages -->
             @if($relatedMessages->count() > 0)
                 <x-admin.card>
-                    <x-slot name="title">Related Messages</x-slot>
+                    <x-slot name="title">Pesan Terkait</x-slot>
                     
                     <div class="space-y-2">
                         @foreach($relatedMessages->take(3) as $relatedMessage)
@@ -369,7 +369,7 @@
                             <div class="text-center pt-1">
                                 <a href="{{ route('client.messages.project', $rootMessage->project) }}" 
                                    class="text-xs text-blue-600 dark:text-blue-400 hover:underline">
-                                    View all {{ $relatedMessages->count() }} messages
+                                    Lihat Semua {{ $relatedMessages->count() }} Pesan
                                 </a>
                             </div>
                         @endif
@@ -457,7 +457,7 @@
             }
         }
 
-        // Clear reply form - UPDATED
+        // Hapus reply form - UPDATED
         function clearReplyForm() {
             const textarea = document.getElementById('reply-message');
             const tempFiles = document.getElementById('reply_temp_files');
@@ -465,12 +465,12 @@
             if (textarea) textarea.value = '';
             if (tempFiles) tempFiles.value = '';
             
-            // Clear the JavaScript array
+            // Hapus the JavaScript array
             replyUploadedFiles = [];
             
             updateCharCount();
             
-            // Clear universal uploader files
+            // Hapus universal uploader files
             if (window.universalUploaderInstances && window.universalUploaderInstances['reply-attachments']) {
                 window.universalUploaderInstances['reply-attachments'].clearAll();
             }

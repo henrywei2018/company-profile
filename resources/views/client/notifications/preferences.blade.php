@@ -1,5 +1,5 @@
 {{-- resources/views/client/notifications/preferences.blade.php --}}
-<x-layouts.client title="Notification Preferences">
+<x-layouts.client title="Preferensi Notifikasi">
     
     <!-- Page Header -->
     <div class="mb-8">
@@ -66,7 +66,7 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">This Week</dt>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Minggu Ini</dt>
                             <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ $stats['notifications_this_week'] ?? 0 }}</dd>
                         </dl>
                     </div>
@@ -330,7 +330,7 @@
             if (data.success) {
                 alert('Test notification sent! You should receive it shortly if your preferences allow it.');
             } else {
-                alert('Failed to send test notification: ' + (data.message || 'Unknown error'));
+                alert('Gagal mencoba notifikasi: ' + (data.message || 'Unknown error'));
             }
         })
         .catch(error => {

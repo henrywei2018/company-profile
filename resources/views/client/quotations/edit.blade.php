@@ -428,7 +428,7 @@
                 deleting: false,
                 
                 async deleteAttachment(attachmentId) {
-                    if (!confirm('Are you sure you want to delete this attachment?')) {
+                    if (!confirm('Apakah Anda yakin ingin sampai menghapus lampiran ini?')) {
                         return;
                     }
 

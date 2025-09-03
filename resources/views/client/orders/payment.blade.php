@@ -1,6 +1,6 @@
 {{-- resources/views/client/orders/payment.blade.php --}}
 <x-layouts.client>
-    <x-slot name="title">Payment - Order #{{ $order->order_number }}</x-slot>
+    <x-slot name="title">Pembayaran - Order #{{ $order->order_number }}</x-slot>
 
     <div class="max-w-4xl mx-auto space-y-8">
         
@@ -39,10 +39,10 @@
             <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
             </svg>
-            <span class="text-gray-900 dark:text-white font-medium">Payment</span>
+            <span class="text-gray-900 dark:text-white font-medium">Pembayaran</span>
         </div>
 
-        <!-- Payment Steps Progress -->
+        <!-- Pembayaran Steps Progress -->
         <div class="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <div class="flex items-center justify-center space-x-8">
                 <div class="flex items-center text-green-600 dark:text-green-400">
@@ -60,7 +60,7 @@
                     <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
                         <div class="w-3 h-3 bg-blue-600 dark:bg-blue-400 rounded-full animate-pulse"></div>
                     </div>
-                    <span class="ml-3 text-sm font-medium">Payment</span>
+                    <span class="ml-3 text-sm font-medium">Pembayaran</span>
                 </div>
                 
                 <div class="flex-1 h-px bg-gray-200 dark:bg-gray-600"></div>
@@ -69,7 +69,7 @@
                     <div class="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 rounded-full flex items-center justify-center">
                         <span class="text-xs font-medium">3</span>
                     </div>
-                    <span class="ml-3 text-sm">Processing</span>
+                    <span class="ml-3 text-sm">Sedang Diproses</span>
                 </div>
             </div>
         </div>
@@ -77,12 +77,12 @@
         <!-- Main Content -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
-            <!-- Payment Form -->
+            <!-- Pembayaran Form -->
             <div class="space-y-6">
                 
                 <!-- Order Summary Card -->
                 <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-6 border border-blue-200/50 dark:border-blue-700/50">
-                    <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">Payment Required</h3>
+                    <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">Lakukan Pembayaran</h3>
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm text-blue-700 dark:text-blue-300">Total Amount</p>
@@ -101,18 +101,18 @@
                 <form action="{{ route('client.orders.payment.upload', $order) }}" method="POST" enctype="multipart/form-data" id="paymentForm" class="space-y-6">
                     @csrf
                     
-                    <!-- Step 1: Select Payment Method -->
+                    <!-- Step 1: Select Pembayaran Method -->
                     <div class="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                         <div class="bg-gray-50 dark:bg-neutral-700 px-6 py-4">
                             <div class="flex items-center">
                                 <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mr-3">
                                     <span class="text-blue-600 dark:text-blue-400 text-sm font-bold">1</span>
                                 </div>
-                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Select Payment Method</h3>
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Select Pembayaran Method</h3>
                             </div>
                         </div>
                         
-                        <!-- Payment Methods -->
+                        <!-- Pembayaran Methods -->
                         <div class="p-6">
                             <div class="space-y-4">
                                 <div class="grid grid-cols-1 gap-4">
@@ -146,7 +146,7 @@
                                                     <div class="radio-indicator"></div>
                                                 </div>
                                                 <div class="payment-details mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700 hidden">
-                                                    <h4 class="font-medium text-blue-900 dark:text-blue-100 mb-3">{{ $method->name }} Payment Details</h4>
+                                                    <h4 class="font-medium text-blue-900 dark:text-blue-100 mb-3">{{ $method->name }}Detail Pembayaran</h4>
                                                     <div class="space-y-2 text-sm">
                                                         @foreach($method->display_details as $label => $value)
                                                             @if($value)
@@ -165,7 +165,7 @@
                                                         
                                                         @if(empty($method->display_details))
                                                             <div class="text-center py-2">
-                                                                <p class="text-blue-600 dark:text-blue-400 text-sm">Payment details will be provided upon selection</p>
+                                                                <p class="text-blue-600 dark:text-blue-400 text-sm">Detail Pembayaran </p>
                                                             </div>
                                                         @endif
                                                     </div>
@@ -179,8 +179,8 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
                                                 </svg>
                                             </div>
-                                            <p class="text-gray-500 dark:text-gray-400">No payment methods available</p>
-                                            <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Please contact support for assistance</p>
+                                            <p class="text-gray-500 dark:text-gray-400">Tidak ada metode pembayaran</p>
+                                            <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Silahkan hubungi support center</p>
                                         </div>
                                     @endforelse
                                 </div>
@@ -192,14 +192,14 @@
                         </div>
                     </div>
 
-                    <!-- Step 2: Upload Payment Proof -->
+                    <!-- Step 2: Upload Pembayaran Proof -->
                     <div class="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                         <div class="bg-gray-50 dark:bg-neutral-700 px-6 py-4">
                             <div class="flex items-center">
                                 <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mr-3">
                                     <span class="text-blue-600 dark:text-blue-400 text-sm font-bold">2</span>
                                 </div>
-                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Upload Payment Proof</h3>
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Upload Bukti Pembayaran</h3>
                             </div>
                         </div>
                         
@@ -268,7 +268,7 @@
             <!-- Help & Informasi -->
             <div class="space-y-6">
                 
-                <!-- Payment Instructions -->
+                <!-- Pembayaran Instructions -->
                 <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-2xl p-6">
                     <h3 class="text-lg font-semibold text-amber-900 dark:text-amber-100 mb-4 flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -298,24 +298,24 @@
 
                 <!-- FAQ -->
                 <div class="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <div class="px-6 py-4 bg-gray-50 dark:bg-neutral-700">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Frequently Asked Questions</h3>
-                    </div>
-                    <div class="p-6 space-y-4">
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white mb-1">When will my payment be verified?</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Payment verification typically takes 1-2 business days. You'll receive a notification once verified.</p>
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white mb-1">What if I made a wrong transfer amount?</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Contact our support team immediately with your transfer details. We'll help resolve the issue.</p>
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white mb-1">Can I change the payment method?</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Yes, you can select a different payment method before uploading your proof.</p>
-                        </div>
-                    </div>
-                </div>
+<div class="px-6 py-4 bg-gray-50 dark:bg-neutral-700">
+<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Pertanyaan Umum</h3>
+</div>
+<div class="p-6 space-y-4">
+<div>
+<h4 class="font-medium text-gray-900 dark:text-white mb-1">Kapan pembayaran saya akan diverifikasi?</h4>
+<p class="text-sm text-gray-600 dark:text-gray-400">Verifikasi pembayaran biasanya membutuhkan waktu 1-2 hari kerja. Anda akan menerima notifikasi setelah terverifikasi.</p>
+</div>
+<div>
+<h4 class="font-medium text-gray-900 dark:text-white mb-1">Bagaimana jika saya melakukan transfer dengan jumlah yang salah?</h4>
+<p class="text-sm text-gray-600 dark:text-gray-400">Segera hubungi tim dukungan kami dengan detail transfer Anda. Kami akan membantu menyelesaikan masalah ini.</p>
+</div>
+<div>
+<h4 class="font-medium text-gray-900 dark:text-white mb-1">Bisakah saya mengubah metode pembayaran?</h4>
+<p class="text-sm text-gray-600 dark:text-gray-400">Ya, Anda dapat memilih metode pembayaran lain sebelum mengunggah bukti pembayaran.</p>
+</div>
+</div>
+</div>
 
                 <!-- Contact Support -->
                 <div class="text-center">
@@ -333,7 +333,7 @@
     </div>
 
     <style>
-        /* Payment Method Cards */
+        /* Pembayaran Method Cards */
         .payment-method-card input:checked + .payment-option > div:first-child {
             @apply border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20;
         }
@@ -392,7 +392,7 @@
         const submitText = document.getElementById('submitText');
         const submitIcon = document.getElementById('submitIcon');
         
-        // Payment method selection functionality
+        // Pembayaran method selection functionality
         const paymentCards = document.querySelectorAll('.payment-method-card');
         
         paymentCards.forEach(card => {
@@ -508,7 +508,7 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 document.getElementById('imagePreview').innerHTML = `
-                    <img src="${e.target.result}" alt="Payment proof preview" 
+                    <img src="${e.target.result}" alt="Bukti Pembayaran" 
                          class="w-full max-w-xs h-24 object-cover rounded-lg border border-gray-200 dark:border-gray-600">
                 `;
             };
@@ -529,7 +529,7 @@
         // Form submission
         form.addEventListener('submit', function(e) {
             submitBtn.disabled = true;
-            submitText.textContent = 'Uploading Payment Proof...';
+            submitText.textContent = 'Mengunggah Bukti Pembayaran...';
             submitIcon.innerHTML = `
                 <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

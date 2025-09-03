@@ -149,7 +149,7 @@
                 </div>
             </div>
 
-            <!-- Products Grid View -->
+            <!-- Products Grid Lihat -->
             <div id="products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 @foreach($products as $product)
                     <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-all duration-200 group">
@@ -173,11 +173,11 @@
                                 </div>
                             @endif
 
-                            <!-- Featured Badge -->
+                            <!-- Unggulan Badge -->
                             @if($product->featured)
                                 <div class="absolute top-3 left-3">
                                     <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                                        Featured
+                                        Unggulan
                                     </span>
                                 </div>
                             @endif
@@ -185,7 +185,7 @@
                             <!-- Hover Overlay -->
                             <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
                                 <div class="flex space-x-2">
-                                    <!-- Quick View -->
+                                    <!-- Quick Lihat -->
                                     <a href="{{ route('client.products.show', $product) }}" 
                                        class="bg-white dark:bg-gray-800 p-3 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 transform hover:scale-110"
                                        title="Lihat Cepat">
@@ -260,7 +260,7 @@
                                     </div>
                                 @else
                                     <span class="text-lg font-medium text-yellow-600 dark:text-yellow-400">
-                                        Quote Required
+                                        Perlu Penawaran
                                     </span>
                                 @endif
                             </div>
@@ -289,7 +289,7 @@
                                         <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"></path>
                                         </svg>
-                                        Add to Keranjang
+                                        Tambahkan ke Keranjang
                                     </button>
                                 @else
                                     <a href="{{ route('client.quotations.create', ['product_id' => $product->id]) }}" 
@@ -300,7 +300,7 @@
                                 
                                 <a href="{{ route('client.products.show', $product) }}" 
                                    class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm">
-                                    View
+                                    Lihat
                                 </a>
                             </div>
                         </div>
@@ -308,7 +308,7 @@
                 @endforeach
             </div>
 
-            <!-- Products List View (Hidden by default) -->
+            <!-- Products List Lihat (Hidden by default) -->
             <div id="products-list" class="hidden space-y-4">
                 @foreach($products as $product)
                     <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
@@ -380,7 +380,7 @@
                                                 </div>
                                             @else
                                                 <span class="text-lg font-medium text-yellow-600 dark:text-yellow-400">
-                                                    Quote Required
+                                                    Perlu Penawaran
                                                 </span>
                                             @endif
                                         </div>
@@ -405,7 +405,7 @@
                                             @if($product->canAddToCart())
                                                 <button onclick="quickAddToCart({{ $product->id }})" 
                                                         class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">
-                                                    Add to Keranjang
+                                                    Tambahkan ke Keranjang
                                                 </button>
                                             @else
                                                 <a href="{{ route('client.quotations.create', ['product_id' => $product->id]) }}" 
@@ -416,7 +416,7 @@
                                             
                                             <a href="{{ route('client.products.show', $product) }}" 
                                                class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">
-                                                View Details
+                                                Lihat Details
                                             </a>
                                         </div>
                                     </div>

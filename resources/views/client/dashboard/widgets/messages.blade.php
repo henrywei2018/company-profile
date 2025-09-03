@@ -6,7 +6,7 @@
                 <svg class="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                 </svg>
-                Messages
+                Pesan
             </span>
             <a href="{{ route('client.messages.index') }}" class="text-sm font-normal text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
                 View All
@@ -35,7 +35,7 @@
                 <div class="text-lg font-bold text-orange-600 dark:text-orange-400" id="widget-pending-messages">
                     {{ $messageSummary['awaiting_reply'] ?? 0 }}
                 </div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">Pending</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">Tertunda</div>
             </div>
             
             <div class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
@@ -158,7 +158,7 @@
             </div>
         </div>
         
-        <!-- Urgent Messages Alert -->
+        <!-- Urgent Pesan Alert -->
         @if(($messageSummary['urgent'] ?? 0) > 0)
         <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
             <div class="flex items-center">

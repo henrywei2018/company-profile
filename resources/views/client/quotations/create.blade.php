@@ -1,14 +1,14 @@
 {{-- resources/views/client/quotations/create.blade.php --}}
 <x-layouts.client>
-    <x-slot name="title">Request a Quotation</x-slot>
-    <x-slot name="description">Tell us about your project and we'll get back to you with a detailed quote.</x-slot>
+    <x-slot name="title">Minta Penawaran</x-slot>
+    <x-slot name="description">Ceritakan kepada kami tentang proyek Anda dan kami akan menghubungi Anda dengan penawaran terperinci.</x-slot>
 
     <!-- Progress Header -->
     <div class="mb-8">
     <div class="max-w-3xl mx-auto">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Request a Quotation</h1>
-            <p class="mt-2 text-lg text-gray-600 dark:text-gray-400">Get a detailed quote for your project in 3 easy steps</p>
+            <p class="mt-2 text-lg text-gray-600 dark:text-gray-400">Dapatkan penawaran terperinci untuk proyek Anda dalam 3 langkah mudah</p>
         </div>
         
         <!-- Progress Steps - Connect to main form's Alpine.js data -->
@@ -17,7 +17,7 @@
                 <div class="step-circle flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300">
                     1
                 </div>
-                <span class="step-text ml-2 text-sm font-medium transition-all duration-300">Contact Info</span>
+                <span class="step-text ml-2 text-sm font-medium transition-all duration-300">Informasi Kontak</span>
             </div>
             
             <div class="step-connector w-16 h-0.5 bg-gray-300 dark:bg-gray-600 transition-all duration-300"></div>
@@ -26,7 +26,7 @@
                 <div class="step-circle flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300">
                     2
                 </div>
-                <span class="step-text ml-2 text-sm font-medium transition-all duration-300">Project Details</span>
+                <span class="step-text ml-2 text-sm font-medium transition-all duration-300">Detail Penawaran</span>
             </div>
             
             <div class="step-connector w-16 h-0.5 bg-gray-300 dark:bg-gray-600 transition-all duration-300"></div>
@@ -35,7 +35,7 @@
                 <div class="step-circle flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300">
                     3
                 </div>
-                <span class="step-text ml-2 text-sm font-medium transition-all duration-300">Requirements</span>
+                <span class="step-text ml-2 text-sm font-medium transition-all duration-300">Informasi Tambahan</span>
             </div>
         </div>
     </div>
@@ -62,15 +62,15 @@
                             </svg>
                         </div>
                         <div>
-                            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Contact Informasi</h2>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Let us know how to reach you</p>
+                            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Informasi Kontak</h2>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Beri tahu kami cara menghubungi Anda</p>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Full Name <span class="text-red-500">*</span>
+                                Nama Lengkap <span class="text-red-500">*</span>
                             </label>
                             <input type="text" 
                                    name="name" 
@@ -88,7 +88,7 @@
 
                         <div>
                             <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Email Address <span class="text-red-500">*</span>
+                                Alamat Email <span class="text-red-500">*</span>
                             </label>
                             <input type="email" 
                                    name="email" 
@@ -106,7 +106,7 @@
 
                         <div>
                             <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Phone Number
+                                Nomor Telepom
                             </label>
                             <input type="tel" 
                                    name="phone" 
@@ -123,7 +123,7 @@
 
                         <div>
                             <label for="company" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Company Name
+                                Nama Perusahaan
                             </label>
                             <input type="text" 
                                    name="company" 
@@ -146,7 +146,7 @@
                                 class="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 
                                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 
                                        disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
-                            Selanjutnya: Project Details
+                            Selanjutnya: Detail Penawaran
                             <svg class="w-4 h-4 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                             </svg>
@@ -174,14 +174,14 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="service_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Service Category
+                                Kategori Layanan
                             </label>
                             <select name="service_id" 
                                     id="service_id"
                                     x-model="formData.service_id"
                                     class="block w-full px-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white 
                                            shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200">
-                                <option value="">Select a service category...</option>
+                                <option value="">Pilih kategori layanan...</option>
                                 @foreach($services as $service)
                                     <option value="{{ $service->id }}" {{ old('service_id') == $service->id ? 'selected' : '' }}>
                                         {{ $service->title }}
@@ -195,7 +195,7 @@
 
                         <div>
                             <label for="project_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Project Type <span class="text-red-500">*</span>
+                                Jenis Penawaran <span class="text-red-500">*</span>
                             </label>
                             <input type="text" 
                                    name="project_type" 
@@ -213,7 +213,7 @@
 
                         <div>
                             <label for="location" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Project Location
+                                Lokasi
                             </label>
                             <input type="text" 
                                    name="location" 
@@ -230,7 +230,7 @@
 
                         <div>
     <label for="budget" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Project Budget
+        Estimasi Anggaran
         <span class="text-red-500">*</span>
     </label>
     <div class="relative">
@@ -269,7 +269,7 @@
             <span class="budget-range px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600" 
                   onclick="setBudgetValue(50000000)">50</span>
         </div>
-        <p class="mt-1">Click on amounts above for quick selection, or enter your custom budget</p>
+        <p class="mt-1">Klik jumlah di atas untuk pemilihan cepat, atau masukkan anggaran khusus Anda</p>
     </div>
     
     {{-- Budget Validation Messages --}}
@@ -278,13 +278,13 @@
             <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
             </svg>
-            Budget seems quite low for typical construction projects
+            Anggaran tampaknya cukup rendah untuk proyek konstruksi pada umumnya
         </div>
         <div class="budget-success text-green-600 dark:text-green-400 hidden">
             <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
             </svg>
-            Budget looks good for your project scope
+            Anggaran terlihat bagus untuk cakupan proyek Anda
         </div>
     </div>
     
@@ -295,7 +295,7 @@
 
                         <div class="md:col-span-2">
                             <label for="start_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Preferred Start Date
+                                Perkiraan Tanggal Mulai
                             </label>
                             <input type="date" 
                                    name="start_date" 
@@ -328,7 +328,7 @@
                                 class="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 
                                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 
                                        disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
-                            Selanjutnya: Requirements
+                            Selanjutnya: Informasi Tambahan
                             <svg class="w-4 h-4 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                             </svg>
@@ -348,15 +348,15 @@
                             </svg>
                         </div>
                         <div>
-                            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Project Requirements</h2>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Provide detailed information about your needs</p>
+                            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Persyaratan Proyek</h2>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Berikan informasi terperinci tentang kebutuhan Anda</p>
                         </div>
                     </div>
 
                     <div class="space-y-6">
                         <div>
                             <label for="requirements" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Detailed Requirements <span class="text-red-500">*</span>
+                                Detai Persyaratan<span class="text-red-500">*</span>
                             </label>
                             <textarea name="requirements" 
                                       id="requirements" 
@@ -365,10 +365,10 @@
                                       x-model="formData.requirements"
                                       class="block w-full px-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white 
                                              shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200 resize-none"
-                                      placeholder="Please describe your project requirements in detail. Include:&#10;&#10;• What you want to achieve&#10;• Key features and functionality&#10;• Target audience&#10;• Any specific technologies or platforms&#10;• Design preferences&#10;• Timeline expectations&#10;• Any other important details...">{{ old('requirements') }}</textarea>
+                                      placeholder="Jelaskan kebutuhan proyek Anda secara detail. Sertakan: • Apa yang ingin Anda capai • Fitur dan fungsi utama • Target audiens • Teknologi atau platform spesifik apa pun • Preferensi desain • Ekspektasi waktu • Detail penting lainnya...">{{ old('requirements') }}</textarea>
                             <div class="mt-2 flex items-center justify-between">
                                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                                    Be as detailed as possible for the most accurate quotation.
+                                    Berikanlah rincian semaksimal mungkin untuk memperoleh kutipan yang paling akurat.
                                 </p>
                                 <span class="text-xs text-gray-400" x-text="formData.requirements.length + ' characters'"></span>
                             </div>
@@ -380,7 +380,7 @@
                         <!-- File Upload Section using Universal Uploader -->
                         <div class="space-y-4">
                             <div class="flex items-center justify-between">
-                                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Project Files (Optional)</h4>
+                                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Lampiran (Optional)</h4>
                                 <span class="text-xs text-gray-500 dark:text-gray-400">Max 5 files, 10MB each</span>
                             </div>
                             
@@ -441,14 +441,14 @@
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                                 </svg>
-                                Kirim Quotation Request
+                                Kirim Permintaan Penawaran
                             </span>
                             <span x-show="submitting" class="flex items-center">
                                 <svg class="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                Kirimting...
+                                Mengirim...
                             </span>
                         </button>
                     </div>
@@ -462,7 +462,7 @@
                 
                 <div class="space-y-3 text-sm">
                     <div x-show="formData.name">
-                        <span class="text-gray-600 dark:text-gray-400">Contact:</span>
+                        <span class="text-gray-600 dark:text-gray-400">Kontak:</span>
                         <span class="text-gray-900 dark:text-white font-medium" x-text="formData.name"></span>
                     </div>
                     
@@ -472,27 +472,27 @@
                     </div>
                     
                     <div x-show="formData.project_type">
-                        <span class="text-gray-600 dark:text-gray-400">Project:</span>
+                        <span class="text-gray-600 dark:text-gray-400">Proyek:</span>
                         <span class="text-gray-900 dark:text-white font-medium" x-text="formData.project_type"></span>
                     </div>
                     
                     <div x-show="formData.budget_range">
-                        <span class="text-gray-600 dark:text-gray-400">Budget:</span>
+                        <span class="text-gray-600 dark:text-gray-400">Anggaran:</span>
                         <span class="text-gray-900 dark:text-white font-medium" x-text="formData.budget_range"></span>
                     </div>
                     
                     <div x-show="formData.location">
-                        <span class="text-gray-600 dark:text-gray-400">Location:</span>
+                        <span class="text-gray-600 dark:text-gray-400">Lokasi:</span>
                         <span class="text-gray-900 dark:text-white font-medium" x-text="formData.location"></span>
                     </div>
                 </div>
 
                 <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
                     <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                        <p>✓ Fast response within 24 hours</p>
-                        <p>✓ Detailed project breakdown</p>
-                        <p>✓ Transparent pricing</p>
-                        <p>✓ Free consultation included</p>
+                        <p>✓ Respons cepat dalam 24 jam</p>
+<p>✓ Rincian proyek terperinci</p>
+<p>✓ Harga transparan</p>
+<p>✓ Konsultasi gratis termasuk</p>
                     </div>
                 </div>
             </div>

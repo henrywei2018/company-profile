@@ -11,7 +11,7 @@
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
                         </svg>
-                        Products
+                        Produk
                     </a>
                 </li>
                 @if($product->category)
@@ -107,7 +107,7 @@
 
                         @if($product->featured)
                             <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                                Featured
+                                Unggulan
                             </span>
                         @endif
                     </div>
@@ -140,10 +140,10 @@
                     @else
                         <div class="flex items-center space-x-3">
                             <span class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                                Quote Required
+                                Perlu Penawaran
                             </span>
                             <span class="text-sm text-gray-500 dark:text-gray-400">
-                                Contact us for pricing
+                                Hubungi kami untuk informasi harga.
                             </span>
                         </div>
                     @endif
@@ -170,10 +170,10 @@
                     </div>
                 @endif
 
-                <!-- Description -->
+                <!-- Deskripsi -->
                 @if($product->description)
                     <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Description</h3>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Deskripsi</h3>
                         <div class="text-gray-600 dark:text-gray-300 prose prose-sm max-w-none">
                             {!! nl2br(e($product->description)) !!}
                         </div>
@@ -224,12 +224,12 @@
                             <!-- Specifications -->
                             <div>
                                 <label for="specifications" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Special Requirements (Optional)
+                                    Catatan Tambahan (Optional)
                                 </label>
                                 <textarea name="specifications" 
                                           id="specifications"
                                           rows="3"
-                                          placeholder="Enter any specific requirements or customizations..."
+                                          placeholder="Masukkan persyaratan atau penyesuaian khusus apa pun..."
                                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
                             </div>
 
@@ -245,7 +245,7 @@
 
                                 <a href="{{ route('client.cart.index') }}" 
                                    class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-6 rounded-lg transition-colors">
-                                    View Keranjang
+                                    Lihat Keranjang
                                 </a>
                             </div>
                         </form>
@@ -259,7 +259,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                                 <div class="flex-1">
-                                    <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Quote Required</h3>
+                                    <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Perlu Penawaran</h3>
                                     <p class="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
                                         This product requires a custom quotation. Contact us to get pricing and availability.
                                     </p>
@@ -278,7 +278,7 @@
 
                             <a href="{{ route('client.messages.create') }}" 
                                class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors">
-                                Contact Us
+                                Hubungi Kami
                             </a>
                         </div>
                     </div>
@@ -296,10 +296,10 @@
             </div>
         </div>
 
-        <!-- Related Products -->
+        <!-- Related Produk -->
         @if($relatedProducts && $relatedProducts->count() > 0)
             <div class="border-t border-gray-200 dark:border-gray-700 pt-8">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Related Products</h2>
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Related Produk</h2>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     @foreach($relatedProducts as $relatedProduct)
@@ -325,7 +325,7 @@
                                 @endif
                                 
                                 @if($relatedFirstImage)
-                                    <!-- Hover Overlay for Related Products -->
+                                    <!-- Hover Overlay for Related Produk -->
                                     <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
                                         <a href="{{ route('client.products.show', $relatedProduct) }}" 
                                            class="bg-white dark:bg-gray-800 p-2 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 transform hover:scale-110">
@@ -354,7 +354,7 @@
                                         </span>
                                     @else
                                         <span class="text-sm font-medium text-yellow-600 dark:text-yellow-400">
-                                            Quote Required
+                                            Perlu Penawaran
                                         </span>
                                     @endif
                                 </div>
@@ -375,7 +375,7 @@
                                     
                                     <a href="{{ route('client.products.show', $relatedProduct) }}" 
                                        class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-1 px-2 rounded text-xs transition-colors">
-                                        View
+                                        Lihat
                                     </a>
                                 </div>
                             </div>

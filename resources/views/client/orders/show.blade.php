@@ -83,7 +83,7 @@
                     </div>
                 @endif
 
-                <!-- Delivery Status -->
+                <!-- Pengiriman Status -->
                 @if($order->status === 'delivered')
                     <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -91,12 +91,12 @@
                                 <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4-8-4m16 0v10l-8 4-8-4V7"></path>
                                 </svg>
-                                Delivery Status
+                                Pengiriman Status
                             </h3>
                         </div>
                         
                         <div class="p-6">
-                            <!-- Simple Delivered Status -->
+                            <!-- Simple Terkirim Status -->
                             <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4">
                                 <div class="flex items-start">
                                     <svg class="w-6 h-6 text-green-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,7 +186,7 @@
                                 <div>
                                     <span class="font-medium text-gray-900 dark:text-white block mb-2">Payment Proof:</span>
                                     <img src="{{ asset('storage/' . $order->payment_proof) }}" 
-                                         alt="Payment Proof" 
+                                         alt="Bukti Pembayaran" 
                                          class="max-w-full h-48 object-contain rounded-lg border border-gray-200 dark:border-gray-600 cursor-pointer"
                                          onclick="window.open('{{ asset('storage/' . $order->payment_proof) }}', '_blank')">
                                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Click to view full size</p>
@@ -228,7 +228,7 @@
                             <div class="flex items-center space-x-2">
                                 <div class="w-3 h-3 rounded-full 
                                     {{ in_array($order->status, ['processing', 'shipped', 'delivered']) ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600' }}"></div>
-                                <span class="text-gray-600 dark:text-gray-400">Processing</span>
+                                <span class="text-gray-600 dark:text-gray-400">Sedang Diproses</span>
                             </div>
                             
                             <div class="flex-1 h-px bg-gray-200 dark:bg-gray-600
@@ -246,7 +246,7 @@
                             <div class="flex items-center space-x-2">
                                 <div class="w-3 h-3 rounded-full 
                                     {{ $order->status === 'delivered' ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600' }}"></div>
-                                <span class="text-gray-600 dark:text-gray-400">Delivered</span>
+                                <span class="text-gray-600 dark:text-gray-400">Terkirim</span>
                             </div>
                         </div>
                     </div>
@@ -341,7 +341,7 @@
                     </div>
                 </div>
 
-                <!-- Delivery Informasi -->
+                <!-- Pengiriman Informasi -->
                 <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                         <h3 class="text-lg font-medium text-gray-900 dark:text-white">Informasi Pengiriman</h3>
@@ -350,7 +350,7 @@
                     <div class="p-6 space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Delivery Address
+                                Alamat tujuan
                             </label>
                             <p class="text-sm text-gray-900 dark:text-white">
                                 {{ $order->delivery_address }}
@@ -427,7 +427,7 @@
                                 </div>
                                 
                                 <div class="flex justify-between">
-                                    <span class="text-gray-600 dark:text-gray-400">Delivery</span>
+                                    <span class="text-gray-600 dark:text-gray-400">Pengiriman</span>
                                     <span class="text-gray-900 dark:text-white">
                                         {{ $order->delivery_fee > 0 ? 'Rp ' . number_format($order->delivery_fee, 0, ',', '.') : 'TBD' }}
                                     </span>
@@ -507,7 +507,7 @@
                             @elseif($order->canCounterNegotiate() || $order->canAcceptNegotiation())
                                 <!-- Accept Admin's Offer -->
                                 <form action="{{ route('client.orders.negotiate.accept', $order) }}" method="POST" 
-                                      onsubmit="return confirm('Are you sure you want to accept the admin\'s current price offer? This will complete the negotiation.')" 
+                                      onsubmit="return confirm('Yakin ingin menerima penawaran harga admin saat ini? Ini akan menyelesaikan negosiasi.')" 
                                       class="w-full">
                                     @csrf
                                     <button type="submit" 
@@ -531,7 +531,7 @@
                             
                             @if(in_array($order->status, ['pending', 'confirmed']))
                                 <form action="{{ route('client.orders.cancel', $order) }}" method="POST" 
-                                      onsubmit="return confirm('Are you sure you want to cancel this order? This action cannot be undone.')" 
+                                      onsubmit="return confirm('Yakin ingin membatalkan pesanan ini? Tindakan ini tidak dapat dibatalkan.')" 
                                       class="w-full">
                                     @csrf
                                     @method('PATCH')
@@ -592,7 +592,7 @@
         </div>
     </div>
 
-    <!-- Confirm Delivery Modal -->
+    <!-- Confirm Pengiriman Modal -->
     <div id="confirmDeliveryModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75" onclick="closeConfirmModal()"></div>
@@ -617,7 +617,7 @@
                                     </p>
                                     <div class="mt-4">
                                         <label for="delivery_notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            Delivery Notes (Optional)
+                                            Informasi Tambahan (Optional)
                                         </label>
                                         <textarea name="notes" id="delivery_notes" rows="3" 
                                                   placeholder="Any feedback about the delivery or product condition..."
@@ -801,7 +801,7 @@
                             </div>
                             <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                                 <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                                    Report Delivery Issue
+                                    Report Pengiriman Issue
                                 </h3>
                                 <div class="mt-2">
                                     <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -812,7 +812,7 @@
                                             Describe the Issue <span class="text-red-500">*</span>
                                         </label>
                                         <textarea name="reason" id="dispute_reason" rows="4" required
-                                                  placeholder="Please provide details about the delivery issue (e.g., damaged items, missing items, wrong delivery, quality concerns, etc.)"
+                                                  placeholder="Harap berikan rincian tentang masalah pengiriman (misalnya, barang rusak, barang hilang, pengiriman salah, masalah kualitas, dll.)"
                                                   class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500"></textarea>
                                     </div>
                                 </div>
@@ -861,7 +861,7 @@
     @push('scripts')
     <script>
         // Modal functions for delivery confirmation
-        function showConfirmDeliveryModal(orderId) {
+        function showConfirmPengirimanModal(orderId) {
             const modal = document.getElementById('confirmDeliveryModal');
             const form = document.getElementById('confirmDeliveryForm');
             form.action = `/client/orders/${orderId}/confirm-delivery`;
@@ -1082,7 +1082,7 @@
             
             if (files.length > 0) {
                 // Show processing message
-                showDropZoneMessage(dropZone, 'Processing images...');
+                showDropZoneMessage(dropZone, 'Sedang Diproses...');
                 
                 // Filter only image files and check file size
                 const imageFiles = Array.from(files).filter(file => {
@@ -1116,7 +1116,7 @@
                     
                     // Check total count
                     if (dt.files.length > 10) {
-                        alert('Maximum 10 images total allowed.');
+                        alert('Maximum 10 gambar.');
                         return;
                     }
                     
@@ -1201,7 +1201,7 @@
                             <button type="button" 
                                     class="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium transition-all duration-200 shadow-lg"
                                     onclick="removeImagePreview(this, ${index})"
-                                    title="Remove image">
+                                    title="Hapus Gambar">
                                 ✕
                             </button>
                         </div>
@@ -1263,7 +1263,7 @@
                         <button type="button" 
                                 class="text-red-500 hover:text-red-700 text-xs"
                                 onclick="removeFileFromList(${index}, this)"
-                                title="Remove file">
+                                title="Hapus file">
                             ✕
                         </button>
                     `;

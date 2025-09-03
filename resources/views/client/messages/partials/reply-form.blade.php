@@ -17,7 +17,7 @@
                     name="message"
                     rows="6"
                     required
-                    placeholder="Type your reply here..."
+                    placeholder="Jenis your reply here..."
                     class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 >{{ old('message') }}</textarea>
                 @error('message')

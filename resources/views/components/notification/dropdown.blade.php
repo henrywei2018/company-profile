@@ -24,7 +24,7 @@
                 {{ $unreadCount > 99 ? '99+' : $unreadCount }}
             </span>
         @endif
-        <span class="sr-only">Notifications ({{ $unreadCount }} unread)</span>
+        <span class="sr-only">Notifikasi ({{ $unreadCount }} unread)</span>
     </button>
 
     <!-- Dropdown Panel -->
@@ -37,7 +37,7 @@
                 <h3 class="text-sm font-medium text-gray-800 dark:text-white">Notifications</h3>
                 @if($unreadCount > 0)
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                        {{ $unreadCount }} new
+                        {{ $unreadCount }} Baru
                     </span>
                 @endif
             </div>
@@ -46,12 +46,12 @@
                 <button type="button" 
                     onclick="markAllNotificationsAsRead('{{ $variant }}')"
                     class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
-                    Mark all read
+                    Tandai Semua Sudah Dibaca
                 </button>
                 @endif
                 <a href="{{ $variant === 'admin' ? route('admin.notifications.index') : route('client.notifications.index') }}" 
                    class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium">
-                    View all
+                    Lihat Semua
                 </a>
             </div>
         </div>
@@ -59,7 +59,7 @@
         <!-- Loading State -->
         <div id="notification-loading" class="hidden px-4 py-6 text-center">
             <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Loading notifications...</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Menyiapkan notifikasi...</p>
         </div>
 
         <!-- Notification List -->
@@ -78,7 +78,7 @@
         @if($notifications->count() > $maxDisplay || $showAll)
         <div class="px-4 py-3 border-t border-gray-200 dark:border-neutral-700 flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-neutral-700/50">
             <span class="text-xs text-gray-500 dark:text-gray-400">
-                Showing {{ min($maxDisplay, $notifications->count()) }} of {{ $notifications->count() }}
+                Menampilkan {{ min($maxDisplay, $notifications->count()) }} of {{ $notifications->count() }}
             </span>
             <div class="flex items-center gap-2">
                 @if($variant === 'admin')
@@ -93,7 +93,7 @@
                 @endif
                 <a href="{{ $variant === 'admin' ? route('admin.notifications.index') : route('client.notifications.index') }}" 
                    class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
-                    View all →
+                    Lihat Semua →
                 </a>
             </div>
         </div>

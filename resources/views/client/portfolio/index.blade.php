@@ -5,7 +5,7 @@
         <div class="absolute inset-0">
             <img 
                 src="{{ asset('images/portfolio-hero-bg.jpg') }}" 
-                alt="Our Projects" 
+                alt="Proyek Kami" 
                 class="w-full h-full object-cover opacity-30"
             >
             <div class="absolute inset-0 bg-amber-600 mix-blend-multiply"></div>
@@ -22,12 +22,12 @@
         </div>
     </div>
 
-    <!-- Filter Section -->
+    <!-- Saring Section -->
     <div class="bg-white">
         <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
             <form action="{{ route('portfolio.index') }}" method="GET" class="flex flex-wrap items-center gap-4">
                 <div>
-                    <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                    <label for="category" class="block text-sm font-medium text-gray-700">Kategori</label>
                     <select id="category" name="category" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm rounded-md">
                         <option value="">Semua Kategori</option>
                         <option value="residential" {{ request('category') == 'residential' ? 'selected' : '' }}>Residential</option>
@@ -60,7 +60,7 @@
                     </button>
                     @if(request()->anyFilled(['category', 'year', 'location']))
                         <a href="{{ route('portfolio.index') }}" class="ml-2 text-amber-600 hover:text-amber-800 font-medium py-2 px-4">
-                            Clear
+                            Hapus
                         </a>
                     @endif
                 </div>

@@ -58,7 +58,7 @@
                                 @if($user->phone)
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            Phone
+                                            Telepon
                                         </label>
                                         <input type="text" 
                                                value="{{ $user->phone }}" 
@@ -82,16 +82,16 @@
                         </div>
                     </div>
 
-                    <!-- Delivery Informasi -->
+                    <!-- Pengiriman Informasi -->
                     <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Delivery Informasi</h3>
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Pengiriman Informasi</h3>
                         </div>
                         
                         <div class="p-6 space-y-4">
                             <div>
                                 <label for="delivery_address" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Delivery Address <span class="text-red-500">*</span>
+                                    Alamat Tujuan<span class="text-red-500">*</span>
                                 </label>
                                 <textarea name="delivery_address" 
                                           id="delivery_address"
@@ -219,7 +219,7 @@
                                 </div>
 
                                 <div class="flex justify-between text-sm">
-                                    <span class="text-gray-600 dark:text-gray-400">Delivery</span>
+                                    <span class="text-gray-600 dark:text-gray-400">Pengiriman</span>
                                     <span class="text-gray-900 dark:text-white">To be calculated</span>
                                 </div>
                             </div>
@@ -240,7 +240,7 @@
                             <div class="space-y-3">
                                 <button type="submit" 
                                         class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
-                                    Place Order
+                                    Buat Pesanan
                                 </button>
 
                                 <a href="{{ route('client.cart.index') }}" 
@@ -251,10 +251,10 @@
 
                             <!-- Additional Info -->
                             <div class="mt-6 text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                                <p>• All items have confirmed pricing</p>
-                                <p>• Order will be processed immediately after confirmation</p>
-                                <p>• Delivery fees will be calculated based on location</p>
-                                <p>• You will receive order confirmation via email</p>
+                                <p>• Semua barang telah dikonfirmasi harganya</p>
+<p>• Pesanan akan segera diproses setelah konfirmasi</p>
+<p>• Biaya pengiriman akan dihitung berdasarkan lokasi</p>
+<p>• Anda akan menerima konfirmasi pesanan melalui email</p>
                             </div>
                         </div>
                     </div>

@@ -21,10 +21,7 @@
         <!-- Main Message -->
         <div class="space-y-1">
             <p class="text-sm font-medium text-gray-900 dark:text-white">
-                No new notifications
-            </p>
-            <p class="text-xs text-gray-500 dark:text-neutral-400">
-                You're all caught up! 🎉
+                Tidak Ada Notifikasi Baru
             </p>
         </div>
 
@@ -32,12 +29,12 @@
         <div class="pt-2 space-y-2">
             @if($variant === 'admin')
                 <div class="text-xs text-gray-400 dark:text-neutral-500 space-y-1">
-                    <p>You'll be notified when:</p>
+                    <p>Anda akan diberi tahu ketika:</p>
                     <ul class="text-left space-y-0.5 pl-3">
-                        <li>• New quotations are submitted</li>
-                        <li>• Projects need attention</li>
-                        <li>• Messages are received</li>
-                        <li>• System alerts occur</li>
+                        <li>• Kutipan baru telah dikirimkan</li>
+                        <li>• Proyek perlu perhatian</li>
+                        <li>• Pesan telah diterima</li>
+                        <li>• Peringatan sistem muncul</li>
                     </ul>
                 </div>
                 
@@ -47,7 +44,7 @@
                         <svg class="size-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2V5a2 2 0 012-2h14a2 2 0 012 2v2" />
                         </svg>
-                        View Dashboard
+                        Lihat Dashboard
                     </a>
                     <button type="button" 
                             onclick="refreshNotifications('admin')"
@@ -60,12 +57,12 @@
                 </div>
             @else
                 <div class="text-xs text-gray-400 dark:text-neutral-500 space-y-1">
-                    <p>You'll be notified about:</p>
+                    <p>Anda akan mendapatkan notifikasi tentang:</p>
                     <ul class="text-left space-y-0.5 pl-3">
-                        <li>• Project updates & completions</li>
-                        <li>• Quotation approvals</li>
-                        <li>• Message replies</li>
-                        <li>• Important deadlines</li>
+                    <li>• Pembaruan & penyelesaian proyek</li>
+                    <li>• Persetujuan penawaran</li>
+                    <li>• Balasan pesan</li>
+                    <li>• Tenggat waktu penting</li>
                     </ul>
                 </div>
                 
@@ -75,14 +72,14 @@
                         <svg class="size-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
-                        Request Quote
+                        Minta Penawaran
                     </a>
                     <a href="{{ route('client.messages.create') }}" 
                        class="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium text-green-600 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 rounded-md transition-colors">
                         <svg class="size-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
-                        Send Message
+                        Kirim Pesan
                     </a>
                 </div>
             @endif

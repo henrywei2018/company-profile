@@ -6,7 +6,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Total Quotations -->
         <x-admin.stat-card 
-            title="Total Quotations" 
+            title="Total Penawaran" 
             :value="$quotations->total()"
             icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />'
             iconColor="text-blue-600 dark:text-blue-400" 
@@ -15,7 +15,7 @@
         
         <!-- Pending -->
         <x-admin.stat-card 
-            title="Pending Review" 
+            title="Tertunda Review" 
             :value="$quotations->where('status', 'pending')->count()"
             icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />'
             iconColor="text-yellow-600 dark:text-yellow-400" 
@@ -25,7 +25,7 @@
         
         <!-- Approved -->
         <x-admin.stat-card 
-            title="Approved" 
+            title="Disetujui" 
             :value="$quotations->where('status', 'approved')->count()"
             icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />'
             iconColor="text-green-600 dark:text-green-400" 
@@ -35,7 +35,7 @@
         
         <!-- This Month -->
         <x-admin.stat-card 
-            title="This Month" 
+            title="Bulan Ini" 
             :value="$quotations->where('created_at', '>=', now()->startOfMonth())->count()"
             icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />'
             iconColor="text-indigo-600 dark:text-indigo-400" 
@@ -54,29 +54,29 @@
             [
                 'name' => 'status',
                 'label' => 'Status',
-                'allLabel' => 'All Statuses',
+                'allLabel' => 'Semua Status',
                 'options' => [
-                    'pending' => 'Pending',
-                    'reviewed' => 'Under Review',
-                    'approved' => 'Approved',
-                    'rejected' => 'Rejected'
+                    'pending' => 'Tunda',
+                    'reviewed' => 'Direviu',
+                    'approved' => 'Disetujui',
+                    'rejected' => 'Ditolak'
                 ]
             ],
             [
                 'name' => 'priority',
-                'label' => 'Priority',
-                'allLabel' => 'All Priorities',
+                'label' => 'Prioritas',
+                'allLabel' => 'Semua Prioritas',
                 'options' => [
-                    'low' => 'Low',
+                    'low' => 'Rendah',
                     'normal' => 'Normal',
-                    'high' => 'High',
-                    'urgent' => 'Urgent'
+                    'high' => 'Tinggi',
+                    'urgent' => 'Mendesak'
                 ]
             ],
             [
                 'name' => 'service',
-                'label' => 'Service',
-                'allLabel' => 'All Services',
+                'label' => 'Layanan',
+                'allLabel' => 'Semua Layanan',
                 'options' => $services->pluck('name', 'id')->toArray()
             ]
         ]"
@@ -93,7 +93,7 @@
     <!-- Quotations Table -->
     <x-admin.card>
         @if($quotations->count() > 0)
-            <!-- Table Header Actions -->
+            <!-- Table Header Aksi -->
             <div class="px-6 py-4 border-b border-gray-200 dark:border-neutral-700">
                 <div class="flex items-center justify-between">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-white">
@@ -101,19 +101,19 @@
                     </h3>
                     
                     <div class="flex items-center gap-3">
-                        <!-- Create New Button -->
+                        <!-- Create New button -->
                         <x-admin.button href="{{ route('client.quotations.create') }}" color="primary">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                             </svg>
-                            New Quotation
+                            Penawaran Baru
                         </x-admin.button>
 
                         <!-- Pagination Info -->
                         <div class="text-sm text-gray-700 dark:text-neutral-400">
-                            Showing <span class="font-medium text-gray-900 dark:text-white">{{ $quotations->firstItem() }}</span> 
-                            to <span class="font-medium text-gray-900 dark:text-white">{{ $quotations->lastItem() }}</span> 
-                            of <span class="font-medium text-gray-900 dark:text-white">{{ $quotations->total() }}</span> quotations
+                            Menampilkan <span class="font-medium text-gray-900 dark:text-white">{{ $quotations->firstItem() }}</span> 
+                            sampai <span class="font-medium text-gray-900 dark:text-white">{{ $quotations->lastItem() }}</span> 
+                            dari <span class="font-medium text-gray-900 dark:text-white">{{ $quotations->total() }}</span> penawaran
                         </div>
                     </div>
                 </div>
@@ -125,22 +125,22 @@
                     <thead class="bg-gray-50 dark:bg-neutral-800">
                         <tr>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">
-                                Project Details
+                                Informasi Penawaran
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">
-                                Service
+                                Layanan
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">
                                 Status
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">
-                                Priority
+                                Prioritas
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">
-                                Created
+                                dibuat
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">
-                                Actions
+                                Aksi
                             </th>
                         </tr>
                     </thead>
@@ -196,7 +196,7 @@
                                     <div class="text-xs">{{ $quotation->created_at->diffForHumans() }}</div>
                                 </td>
 
-                                <!-- Actions -->
+                                <!-- Aksi -->
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end space-x-2">
                                         <!-- View -->
@@ -204,7 +204,7 @@
                                             href="{{ route('client.quotations.show', $quotation) }}" 
                                             size="sm" 
                                             color="light"
-                                            title="View Details"
+                                            title="Lihat Detail"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -218,7 +218,7 @@
                                                 href="{{ route('client.quotations.edit', $quotation) }}" 
                                                 size="sm" 
                                                 color="gray"
-                                                title="Edit Quotation"
+                                                title="Edit Penawaran"
                                             >
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -245,18 +245,18 @@
                                                         </button>
                                                     </form>
 
-                                                    <!-- Print -->
+                                                    <!-- Cetak -->
                                                     <a href="{{ route('client.quotations.print', $quotation) }}" 
                                                        target="_blank"
                                                        class="block px-4 py-2 text-sm text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700">
-                                                        Print
+                                                        Cetak
                                                     </a>
 
                                                     @if($quotation->status === 'pending')
                                                         <!-- Batal -->
                                                         <form method="POST" action="{{ route('client.quotations.cancel', $quotation) }}" 
                                                               class="inline"
-                                                              onsubmit="return confirm('Are you sure you want to cancel this quotation?')">
+                                                              onsubmit="return confirm('Apakah Anda yakin ingin membatalkan penawaran ini?')">
                                                             @csrf
                                                             @method('PATCH')
                                                             <button type="submit" class="block w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-neutral-700 text-left">

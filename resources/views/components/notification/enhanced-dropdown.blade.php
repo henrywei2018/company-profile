@@ -54,7 +54,7 @@
         style="{{ $unreadCount > 0 ? '' : 'display:none;' }}">
         {{ $unreadCount > 99 ? '99+' : $unreadCount }}
     </span>
-        <span class="sr-only">Notifications</span>
+        <span class="sr-only">Notifikasi</span>
     </button>
 
     <!-- Dropdown Panel -->
@@ -64,7 +64,7 @@
         <!-- Header with Actions -->
         <div class="px-1 py-2 border-b border-gray-200 dark:border-neutral-700">
             <div class="flex items-center justify-between">
-                <h3 class="text-sm font-medium text-gray-800 dark:text-white">Notifications</h3>
+                <h3 class="text-sm font-medium text-gray-800 dark:text-white">Notifikasi</h3>
                 <div class="flex items-center gap-2">
                     @if($showBulkActions)
                         <!-- Bulk Actions Toggle (hidden by default, shown by JS) -->
@@ -75,7 +75,7 @@
                             <svg class="size-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            Select
+                            Pilih
                         </button>
                     @endif
                     <!-- Quick Mark All Read -->
@@ -83,12 +83,12 @@
                         id="mark-all-read-btn"
                         onclick="markAllNotificationsAsRead()"
                         class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
-                        Mark all read
+                        Tandai sudah baca semua
                     </button>
                     <!-- View All Link -->
                     <a href="{{ $viewAllRoute ?? $defaultViewAll }}"
                         class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors">
-                        View all
+                        Lihat semua
                     </a>
                 </div>
             </div>
@@ -100,28 +100,28 @@
                     <div class="flex items-center gap-2">
                         <button type="button" onclick="selectAllNotifications()"
                             class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
-                            Select all
+                            Pilih Semua
                         </button>
                         <button type="button" onclick="deselectAllNotifications()"
                             class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-                            Deselect all
+                            Batal pilih semua
                         </button>
                         <span id="selection-count" class="text-xs text-gray-500 dark:text-gray-400">
-                            0 selected
+                            0 Tepilih
                         </span>
                     </div>
                     <div class="flex items-center gap-2">
                         <button type="button" onclick="bulkMarkAsRead()"
                             class="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors">
-                            Mark read
+                            Tandai baca
                         </button>
                         <button type="button" onclick="bulkDelete()"
                             class="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition-colors">
-                            Delete
+                            Hapus
                         </button>
                         <button type="button" onclick="toggleBulkActions()"
                             class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-                            Cancel
+                            Batal
                         </button>
                     </div>
                 </div>
@@ -135,19 +135,19 @@
             <div class="flex items-center gap-2">
                 <select id="{{ $filterId }}" onchange="filterNotifications()"
                     class="text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
-                    <option value="unread">Unread only</option>
-                    <option value="all">All notifications</option>
-                    <option value="read">Read only</option>
+                    <option value="unread">Belum dibaca</option>
+                    <option value="all">Semua notifikasi</option>
+                    <option value="read">Sudah dibaca</option>
                 </select>
                 <select id="{{ $categoryId }}" onchange="filterNotifications()"
                     class="text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
-                    <option value="">All categories</option>
-                    <option value="project">Projects</option>
-                    <option value="quotation">Quotations</option>
-                    <option value="message">Messages</option>
+                    <option value="">Semua Kategori</option>
+                    <option value="project">Proyek</option>
+                    <option value="quotation">Penawaran</option>
+                    <option value="message">Pesan</option>
                     <option value="chat">Chat</option>
-                    <option value="user">Account</option>
-                    <option value="system">System</option>
+                    <option value="user">Akun</option>
+                    <option value="system">Sistem</option>
                 </select>
                 <button type="button" onclick="refreshNotifications()"
                     class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 ml-auto p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors">
@@ -164,7 +164,7 @@
             <!-- Loading State (JS will overwrite this) -->
             <div id="notification-loading" class="px-4 py-8 text-center">
                 <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Loading notifications...</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Menyiapkan notifikasi...</p>
             </div>
             <div id="{{ $contentId }}">
                 <!-- Notification content will be injected by JS -->
@@ -184,11 +184,11 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        Settings
+                        Pengaturan
                     </button>
                     <a href="{{ $viewAllRoute ?? $defaultViewAll }}"
                         class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors">
-                        View all →
+                        Lihat Semua →
                     </a>
                 </div>
             </div>

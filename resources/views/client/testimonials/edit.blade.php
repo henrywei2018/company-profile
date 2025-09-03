@@ -1,5 +1,5 @@
 {{-- resources/views/client/testimonials/edit.blade.php --}}
-<x-layouts.client title="Edit Testimonial">
+<x-layouts.client title="Edit Testimoni">
     <div class="space-y-6">
         <!-- Header -->
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
@@ -171,7 +171,7 @@
                         <div class="flex items-start space-x-4">
                             <div class="flex-shrink-0">
                                 <img src="{{ Storage::disk('public')->url($testimonial->image) }}" 
-                                     alt="Current client photo" 
+                                     alt="Foto Client" 
                                      class="h-20 w-20 rounded-lg object-cover border border-gray-300 dark:border-gray-600">
                             </div>
                             <div class="flex-1">
@@ -226,7 +226,7 @@
                     <div class="lg:col-span-1 space-y-6">
                         <x-temp-files-display 
                             :sessionKey="'temp_testimonial_images_' . session()->getId()" 
-                            title="New Client Photo"
+                            title="Foto Baru Client"
                             emptyMessage="No new photo uploaded" 
                             :showPreview="true" 
                             :allowHapus="true"
@@ -275,7 +275,7 @@
                         </div>
                         <div class="mt-4">
                             <form action="{{ route('client.testimonials.destroy', $testimonial) }}" method="POST" 
-                                  onsubmit="return confirm('Are you sure you want to delete this testimonial? This action cannot be undone.')">
+                                  onsubmit="return confirm('Yakin ingin menghapus testimonial ini? Tindakan ini tidak dapat dibatalkan.')">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" 
@@ -381,7 +381,7 @@
                 // Remove current image functionality
                 if (removeImageBtn) {
                     removeImageBtn.addEventListener('click', function() {
-                        if (confirm('Are you sure you want to remove the current photo?')) {
+                        if (confirm('Apakah Anda yakin ingin sampai menghapus foto saat ini?')) {
                             removeImageInput.value = '1';
                             this.closest('.bg-gray-50').style.display = 'none';
                             showNotification('Current photo will be removed when you save the testimonial.', 'info');

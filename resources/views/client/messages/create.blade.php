@@ -1,9 +1,9 @@
 <!-- resources/views/client/messages/create.blade.php -->
-<x-layouts.client title="Pesan Baru" :unreadMessages="0" :pendingQuotations="0">
+<x-layouts.client title="Pesan Baru" :unreadPesans="0" :pendingQuotations="0">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <x-admin.breadcrumb :items="[
-            'Messages' => route('client.messages.index'),
+            'Pesans' => route('client.messages.index'),
             'Pesan Baru' => '#',
         ]" />
     </div>
@@ -12,8 +12,8 @@
         <!-- Main Form -->
         <div class="lg:col-span-2">
             <x-admin.card>
-                <x-slot name="title">Send Pesan Baru</x-slot>
-                <x-slot name="subtitle">Get in touch with our support team</x-slot>
+                <x-slot name="title">Kirim Pesan Baru</x-slot>
+                <x-slot name="subtitle">Hubungi tim dukungan kami</x-slot>
 
                 <form action="{{ route('client.messages.store') }}" method="POST" enctype="multipart/form-data"
                     id="message-form">
@@ -27,7 +27,7 @@
                                 Subject <span class="text-red-500">*</span>
                             </label>
                             <input type="text" id="subject" name="subject" required maxlength="255"
-                                placeholder="Brief description of your inquiry"
+                                placeholder="Ringkasan"
                                 value="{{ old('subject', $prefillData['subject'] ?? '') }}"
                                 class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                             @error('subject')
@@ -37,17 +37,17 @@
 
                         <!-- Type and Priority Row -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <!-- Message Type -->
+                            <!-- Pesan Type -->
                             <input type="hidden" name="type" value="client_to_admin">
                             @if ($projects->count() > 0)
                             <div>
                                 <label for="project_id"
                                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Related Project (Optional)
+                                    Proyek Terkait (Optional)
                                 </label>
                                 <select id="project_id" name="project_id"
                                     class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                    <option value="">No specific project</option>
+                                    <option value="">Tidak Ada</option>
                                     @foreach ($projects as $project)
                                         <option value="{{ $project->id }}"
                                             {{ old('project_id', $prefillData['project_id'] ?? '') == $project->id ? 'selected' : '' }}>
@@ -65,7 +65,7 @@
                             <div>
                                 <label for="priority"
                                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Priority
+                                    Prioritas
                                 </label>
                                 <select id="priority" name="priority"
                                     class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
@@ -86,21 +86,21 @@
                         <!-- Project Selection -->
                         
 
-                        <!-- Message Content -->
+                        <!-- Pesan Content -->
                         <div>
                             <label for="message"
                                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Message <span class="text-red-500">*</span>
+                                Pesan <span class="text-red-500">*</span>
                             </label>
                             <textarea id="message" name="message" rows="8" required maxlength="5000"
-                                placeholder="Please describe your inquiry in detail..."
+                                placeholder="Jelaskan pertanyaan Anda secara rinci..."
                                 class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">{{ old('message') }}</textarea>
                             <div class="flex justify-between mt-1">
                                 @error('message')
                                     <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                                 @else
-                                    <p class="text-sm text-gray-500 dark:text-gray-400">Be as detailed as possible to help
-                                        us assist you better</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Berikan detail selengkap mungkin untuk membantu
+kami membantu Anda dengan lebih baik.</p>
                                 @enderror
                                 <p class="text-sm text-gray-500 dark:text-gray-400">
                                     <span id="char-count">0</span>/5000
@@ -183,56 +183,56 @@
         <div class="lg:col-span-1 space-y-6">
             <!-- Tips Card -->
             <x-admin.card>
-                <x-slot name="title">💡 Tips for Better Support</x-slot>
+                <x-slot name="title">💡 Tips untuk pelayanan yang lebih baik</x-slot>
 
                 <div class="space-y-3 text-sm text-gray-600 dark:text-gray-400">
                     <div class="flex items-start space-x-2">
                         <div class="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <p>Be specific about your issue or request</p>
+                        <p>Jelaskan secara spesifik tentang masalah atau permintaan Anda</p>
                     </div>
                     <div class="flex items-start space-x-2">
                         <div class="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <p>Include relevant project details if applicable</p>
+                        <p>Sertakan detail proyek yang relevan jika berlaku</p>
                     </div>
                     <div class="flex items-start space-x-2">
                         <div class="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <p>Attach screenshots or documents that help explain your issue</p>
+                        <p>Lampirkan tangkapan layar atau dokumen yang membantu menjelaskan masalah Anda</p>
                     </div>
                     <div class="flex items-start space-x-2">
                         <div class="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <p>Use "Urgent" priority only for critical issues</p>
+                        <p>Gunakan prioritas "Mendesak" hanya untuk masalah kritis</p>
                     </div>
                 </div>
             </x-admin.card>
 
             <!-- Response Time Info -->
             <x-admin.card>
-                <x-slot name="title">📞 Response Times</x-slot>
+                <x-slot name="title">📞 Waktu Respon</x-slot>
 
                 <div class="space-y-3 text-sm">
                     <div class="flex items-center justify-between">
                         <span class="text-gray-600 dark:text-gray-400">Urgent:</span>
-                        <span class="font-medium text-red-600 dark:text-red-400">Within 2 hours</span>
+                        <span class="font-medium text-red-600 dark:text-red-400">Dalam 2 Jam</span>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-gray-600 dark:text-gray-400">High:</span>
-                        <span class="font-medium text-orange-600 dark:text-orange-400">Within 8 hours</span>
+                        <span class="font-medium text-orange-600 dark:text-orange-400">Dalam 8 Jam</span>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-gray-600 dark:text-gray-400">Normal:</span>
-                        <span class="font-medium text-green-600 dark:text-green-400">Within 24 hours</span>
+                        <span class="font-medium text-green-600 dark:text-green-400">Dalam 24 Jams</span>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-gray-600 dark:text-gray-400">Low:</span>
-                        <span class="font-medium text-gray-600 dark:text-gray-400">Within 48 hours</span>
+                        <span class="font-medium text-gray-600 dark:text-gray-400">Dalam 48 Jam</span>
                     </div>
                 </div>
             </x-admin.card>
 
-            <!-- Recent Messages -->
+            <!-- Recent Pesans -->
             @if (!empty($recentMessages) && count($recentMessages) > 0)
                 <x-admin.card>
-                    <x-slot name="title">📨 Recent Messages</x-slot>
+                    <x-slot name="title">📨 Pesan Baru</x-slot>
 
                     <div class="space-y-3">
                         @foreach (array_slice($recentMessages, 0, 3) as $recentMessage)
@@ -257,7 +257,7 @@
     document.getElementById('message-form').addEventListener('submit', function(e) {
     console.log('Form submitting...');
     console.log('Subject:', document.getElementById('subject').value);
-    console.log('Message length:', document.getElementById('message').value.length);
+    console.log('Panjang Pesan:', document.getElementById('message').value.length);
     console.log('Priority:', document.getElementById('priority').value);
     
     // Basic validation
@@ -294,7 +294,7 @@
 
         if (input.files.length > 0) {
             if (input.files.length > 5) {
-                alert('You can only upload up to 5 files at once.');
+                alert('Maksimal 5 Files');
                 input.value = '';
                 return;
             }

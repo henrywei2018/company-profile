@@ -54,7 +54,7 @@
                     </div>
                 </div>
 
-                <!-- Right Section - Status & Actions -->
+                <!-- Right Section - Status & Aksi -->
                 <div class="flex items-center gap-4">
                     <!-- Status Badge with Enhanced Design -->
                     <div class="flex items-center gap-2">
@@ -73,13 +73,13 @@
                         </span>
                     </div>
 
-                    <!-- Actions Dropdown -->
+                    <!-- Aksi Dropdown -->
                     <div class="relative" x-data="{ open: false }">
                         <button @click="open = !open" 
                                 class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium 
                                        text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 
                                        transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                            Actions
+                            Aksi
                             <svg class="w-4 h-4 ml-2 transition-transform" :class="open ? 'rotate-180' : ''" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                             </svg>
@@ -94,32 +94,14 @@
                                         <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
-                                        Edit Quotation
+                                        Ubah Penawaran
                                     </a>
                                 @endif
-
-                                <form method="POST" action="{{ route('client.quotations.duplicate', $quotation) }}">
-                                    @csrf
-                                    <button type="submit" class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                        </svg>
-                                        Duplicate
-                                    </button>
-                                </form>
-
-                                <a href="{{ route('client.quotations.print', $quotation) }}" target="_blank"
-                                   class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                    <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                    Print / PDF
-                                </a>
 
                                 @if(in_array($quotation->status, ['pending', 'reviewed']))
                                     <div class="border-t border-gray-100 dark:border-gray-600 my-1"></div>
                                     <form method="POST" action="{{ route('client.quotations.cancel', $quotation) }}" 
-                                          onsubmit="return confirm('Are you sure you want to cancel this quotation?')">
+                                          onsubmit="return confirm('Apakah Anda yakin ingin membatalkan penawaran ini?')">
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" class="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
@@ -191,7 +173,7 @@
                         <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                         </svg>
-                        Project Details
+                        Detail Penawaran
                     </h2>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -218,19 +200,19 @@
             </span>
             @if($quotation->budget >= 50000000)
                 <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                    Premium Project
+                    Sanggat Tinggi
                 </span>
             @elseif($quotation->budget >= 10000000)
                 <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                    Large Project
+                    Tinggi
                 </span>
             @elseif($quotation->budget >= 5000000)
                 <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
-                    Medium Project
+                    Menengah
                 </span>
             @else
                 <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
-                    Small Project
+                    Rendah
                 </span>
             @endif
         </div>
@@ -238,9 +220,9 @@
         {{-- Budget breakdown or additional info can go here --}}
         <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
             @if($quotation->budget >= 10000000)
-                Includes premium consultation and dedicated project manager
+                Termasuk konsultasi premium dan manajer proyek khusus
             @else
-                Standard project package with regular updates
+                Paket proyek standar dengan pembaruan rutin
             @endif
         </div>
     </div>
@@ -263,7 +245,7 @@
                         <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        Project Requirements
+                        Informasi Tambahan
                     </h2>
                     
                     <div class="prose max-w-none text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
@@ -280,7 +262,7 @@
                             <svg class="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                             </svg>
-                            Project Files
+                            File Penawaran
                             <span class="ml-2 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full">
                                 {{ $quotation->attachments->count() }}
                             </span>
@@ -372,12 +354,12 @@
                         <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
-                        Contact Informasi
+                        Informasi Kontak
                     </h3>
 
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Full Name</label>
+                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Nama Lengkap</label>
                             <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $quotation->name }}</p>
                         </div>
 
@@ -392,7 +374,7 @@
 
                         @if($quotation->phone)
                             <div>
-                                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Phone</label>
+                                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Telepon</label>
                                 <p class="text-sm text-gray-900 dark:text-white">
                                     <a href="tel:{{ $quotation->phone }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
                                         {{ $quotation->phone }}
@@ -403,7 +385,7 @@
 
                         @if($quotation->company)
                             <div>
-                                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Company</label>
+                                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Perusahaan</label>
                                 <p class="text-sm text-gray-900 dark:text-white">{{ $quotation->company }}</p>
                             </div>
                         @endif
@@ -418,12 +400,12 @@
                         <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
-                        Quick Stats
+                        Statistik Singkat
                     </h3>
 
                     <div class="space-y-4">
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Priority</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Prioritas</span>
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                 {{ $quotation->priority === 'urgent' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' : '' }}
                                 {{ $quotation->priority === 'high' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' : '' }}
@@ -434,7 +416,7 @@
                         </div>
 
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Days Since Kirimted</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Hari sejak dikirim</span>
                             <span class="text-sm font-semibold text-gray-900 dark:text-white">
                                 {{ $quotation->created_at->diffInDays(now()) }}
                             </span>
@@ -442,7 +424,7 @@
 
                         @if($quotation->attachments->count() > 0)
                             <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-600 dark:text-gray-400">Attachments</span>
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Lampiran</span>
                                 <span class="text-sm font-semibold text-gray-900 dark:text-white">
                                     {{ $quotation->attachments->count() }} files
                                 </span>
@@ -451,7 +433,7 @@
 
                         @if($quotation->source)
                             <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-600 dark:text-gray-400">Source</span>
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Sumber</span>
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
                                     {{ ucfirst(str_replace('_', ' ', $quotation->source)) }}
                                 </span>
@@ -462,91 +444,7 @@
             </div>
 
             <!-- Selanjutnya Steps Card -->
-            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                <div class="p-6">
-                    <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-400 mb-4 flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        What's Selanjutnya?
-                    </h3>
-
-                    <div class="space-y-3 text-sm text-blue-800 dark:text-blue-300">
-                        @if($quotation->status === 'pending')
-                            <div class="flex items-start space-x-2">
-                                <div class="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                                <p>Your quotation is in our review queue. We'll get back to you within 24-48 hours.</p>
-                            </div>
-                            <div class="flex items-start space-x-2">
-                                <div class="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                                <p>You can still edit your quotation details if needed.</p>
-                            </div>
-                        @elseif($quotation->status === 'reviewed')
-                            <div class="flex items-start space-x-2">
-                                <div class="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                                <p>Your quotation is currently under detailed review by our team.</p>
-                            </div>
-                            <div class="flex items-start space-x-2">
-                                <div class="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                                <p>We may contact you for additional clarifications if needed.</p>
-                            </div>
-                        @elseif($quotation->status === 'approved')
-                            <div class="flex items-start space-x-2">
-                                <div class="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                                <p>Congratulations! Your quotation has been approved.</p>
-                            </div>
-                            <div class="flex items-start space-x-2">
-                                <div class="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                                <p>Our team will contact you soon to discuss next steps and project timeline.</p>
-                            </div>
-                        @elseif($quotation->status === 'rejected')
-                            <div class="flex items-start space-x-2">
-                                <div class="w-1.5 h-1.5 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
-                                <p>Unfortunately, we couldn't proceed with this quotation.</p>
-                            </div>
-                            <div class="flex items-start space-x-2">
-                                <div class="w-1.5 h-1.5 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
-                                <p>You can create a new quotation with updated requirements.</p>
-                            </div>
-                        @endif
-                    </div>
-
-                    <!-- Call to Action -->
-                    <div class="mt-4 pt-4 border-t border-blue-200 dark:border-blue-700">
-                        @if($quotation->status === 'pending' || $quotation->status === 'reviewed')
-                            <p class="text-xs text-blue-700 dark:text-blue-400 mb-3">Need to make changes?</p>
-                            <a href="{{ route('client.quotations.edit', $quotation) }}" 
-                               class="inline-flex items-center px-3 py-2 border border-blue-300 dark:border-blue-600 rounded-lg text-sm font-medium 
-                                      text-blue-700 dark:text-blue-300 bg-white dark:bg-blue-900/30 hover:bg-blue-50 dark:hover:bg-blue-900/50 transition-colors">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                                Edit Quotation
-                            </a>
-                        @elseif($quotation->status === 'rejected')
-                            <p class="text-xs text-blue-700 dark:text-blue-400 mb-3">Start fresh with a new request</p>
-                            <a href="{{ route('client.quotations.create') }}" 
-                               class="inline-flex items-center px-3 py-2 border border-blue-300 dark:border-blue-600 rounded-lg text-sm font-medium 
-                                      text-blue-700 dark:text-blue-300 bg-white dark:bg-blue-900/30 hover:bg-blue-50 dark:hover:bg-blue-900/50 transition-colors">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg>
-                                New Quotation
-                            </a>
-                        @else
-                            <p class="text-xs text-blue-700 dark:text-blue-400 mb-3">Have questions about your project?</p>
-                            <a href="mailto:{{ config('mail.from.address', 'contact@company.com') }}" 
-                               class="inline-flex items-center px-3 py-2 border border-blue-300 dark:border-blue-600 rounded-lg text-sm font-medium 
-                                      text-blue-700 dark:text-blue-300 bg-white dark:bg-blue-900/30 hover:bg-blue-50 dark:hover:bg-blue-900/50 transition-colors">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
-                                Contact Us
-                            </a>
-                        @endif
-                    </div>
-                </div>
-            </div>
+            
 
             <!-- Help & Support Card -->
             <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
@@ -555,7 +453,7 @@
                         <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Need Help?
+                        Butuh Bantuan?
                     </h3>
 
                     <div class="space-y-3">
@@ -564,7 +462,7 @@
                             <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
-                            Email Support
+                            Email Bantuan
                         </a>
 
                         <a href="tel:+1234567890" 
@@ -572,12 +470,12 @@
                             <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                             </svg>
-                            Phone Support
+                            Telepon Bantuan
                         </a>
 
                         <div class="pt-3 border-t border-gray-200 dark:border-gray-600">
                             <p class="text-xs text-gray-500 dark:text-gray-400">
-                                📞 Support Hours: Monday - Friday, 9 AM - 6 PM
+                                📞 Jam Kerja: Senin - Jummat, 9 AM - 6 PM
                             </p>
                         </div>
                     </div>

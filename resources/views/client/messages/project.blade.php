@@ -1,5 +1,5 @@
 <!-- resources/views/client/messages/project.blade.php -->
-<x-layouts.admin title="Project Messages" :unreadMessages="$unreadMessages ?? 0" :pendingQuotations="$pendingQuotations ?? 0">
+<x-layouts.admin title="Pesan Proyek" :unreadMessages="$unreadMessages ?? 0" :pendingQuotations="$pendingQuotations ?? 0">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <x-admin.breadcrumb :items="[
@@ -49,13 +49,13 @@
         </div>
     </x-admin.card>
 
-    <!-- Filters -->
+    <!-- Sarings -->
     <x-admin.card class="mb-6">
         <form method="GET" class="flex flex-wrap gap-4">
             <div class="flex-1 min-w-0">
                 <x-admin.input
                     name="search"
-                    placeholder="Search messages..."
+                    placeholder="Cari Pesan..."
                     value="{{ $filters['search'] ?? '' }}"
                     class="w-full"
                 />
@@ -89,7 +89,7 @@
                     color="light" 
                     size="sm"
                 >
-                    Clear
+                    Hapus
                 </x-admin.button>
             @endif
         </form>
@@ -170,7 +170,7 @@
                                 @if($message->is_replied)
                                     <span class="text-xs text-green-600 dark:text-green-400 font-medium">Replied</span>
                                 @elseif($message->type !== 'admin_to_client')
-                                    <span class="text-xs text-orange-600 dark:text-orange-400">Pending</span>
+                                    <span class="text-xs text-orange-600 dark:text-orange-400">Tertunda</span>
                                 @endif
                             </div>
                         </div>
@@ -201,7 +201,7 @@
                             href="{{ route('client.messages.project', $project) }}" 
                             color="light"
                         >
-                            Clear Filters
+                            Hapus Filter
                         </x-admin.button>
                     </div>
                 @endif

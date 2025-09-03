@@ -11,7 +11,7 @@
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
                         </svg>
-                        All Products
+                        Semua Produk
                     </a>
                 </li>
                 <li aria-current="page">
@@ -68,7 +68,7 @@
                     <div class="flex-shrink-0 space-y-2">
                         <a href="{{ route('client.cart.index') }}" 
                            class="block bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors text-center">
-                            View Keranjang
+                            Lihat Keranjang
                         </a>
                         
                         <a href="{{ route('client.quotations.create') }}" 
@@ -84,15 +84,15 @@
         <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <form method="GET" action="{{ route('client.products.category', $category) }}" class="space-y-4">
                 
-                <!-- Search Bar -->
+                <!-- Cari Bar -->
                 <div class="flex flex-col sm:flex-row gap-4">
                     <div class="flex-1">
-                        <label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search in {{ $category->name }}</label>
+                        <label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cari di {{ $category->name }}</label>
                         <input type="text" 
                                name="search" 
                                id="search"
                                value="{{ request('search') }}"
-                               placeholder="Search products in this category..."
+                               placeholder="Cari produk..."
                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
                     <div class="flex items-end">
@@ -101,7 +101,7 @@
                             <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                             </svg>
-                            Search
+                            Cari
                         </button>
                     </div>
                 </div>
@@ -109,40 +109,40 @@
                 <!-- Filter Row -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     
-                    <!-- Price Range Filter -->
+                    <!-- Rentang Harga Filter -->
                     <div>
-                        <label for="price_range" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Price Range</label>
+                        <label for="price_range" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rentang Harga</label>
                         <select name="price_range" id="price_range" 
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <option value="">All Prices</option>
-                            <option value="under_1m" {{ request('price_range') == 'under_1m' ? 'selected' : '' }}>Under Rp 1M</option>
-                            <option value="1m_5m" {{ request('price_range') == '1m_5m' ? 'selected' : '' }}>Rp 1M - 5M</option>
-                            <option value="5m_10m" {{ request('price_range') == '5m_10m' ? 'selected' : '' }}>Rp 5M - 10M</option>
-                            <option value="over_10m" {{ request('price_range') == 'over_10m' ? 'selected' : '' }}>Over Rp 10M</option>
-                            <option value="quote_required" {{ request('price_range') == 'quote_required' ? 'selected' : '' }}>Quote Required</option>
+                            <option value="">Semua Harga</option>
+                            <option value="under_1m" {{ request('price_range') == 'under_1m' ? 'selected' : '' }}>Under Rp 1Juta</option>
+                            <option value="1m_5m" {{ request('price_range') == '1m_5m' ? 'selected' : '' }}>Rp 1Juta - 5Juta</option>
+                            <option value="5m_10m" {{ request('price_range') == '5m_10m' ? 'selected' : '' }}>Rp 5Juta - 10Juta</option>
+                            <option value="over_10m" {{ request('price_range') == 'over_10m' ? 'selected' : '' }}>Lebih dari Rp 10Juta</option>
+                            <option value="quote_required" {{ request('price_range') == 'quote_required' ? 'selected' : '' }}>Perlu Penawaran</option>
                         </select>
                     </div>
 
                     <!-- Stock Filter -->
                     <div>
-                        <label for="stock_status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Availability</label>
+                        <label for="stock_status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ketersediaan</label>
                         <select name="stock_status" id="stock_status" 
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <option value="">All Products</option>
-                            <option value="in_stock" {{ request('stock_status') == 'in_stock' ? 'selected' : '' }}>In Stock</option>
-                            <option value="out_of_stock" {{ request('stock_status') == 'out_of_stock' ? 'selected' : '' }}>Out of Stock</option>
+                            <option value="">Semua Produk</option>
+                            <option value="in_stock" {{ request('stock_status') == 'in_stock' ? 'selected' : '' }}>Tersedia</option>
+                            <option value="out_of_stock" {{ request('stock_status') == 'out_of_stock' ? 'selected' : '' }}>Habis</option>
                         </select>
                     </div>
 
                     <!-- Sort Filter -->
                     <div>
-                        <label for="sort" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sort By</label>
+                        <label for="sort" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Urutkan</label>
                         <select name="sort" id="sort" 
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <option value="name" {{ request('sort') == 'name' ? 'selected' : '' }}>Name A-Z</option>
-                            <option value="price" {{ request('sort') == 'price' ? 'selected' : '' }}>Price Low-High</option>
-                            <option value="newest" {{ request('sort') == 'newest' ? 'selected' : '' }}>Newest First</option>
-                            <option value="featured" {{ request('sort') == 'featured' ? 'selected' : '' }}>Featured</option>
+                            <option value="name" {{ request('sort') == 'name' ? 'selected' : '' }}>Nama A-Z</option>
+                            <option value="price" {{ request('sort') == 'price' ? 'selected' : '' }}>Harga Rendah-Tinggi</option>
+                            <option value="newest" {{ request('sort') == 'newest' ? 'selected' : '' }}>Terbaru</option>
+                            <option value="featured" {{ request('sort') == 'featured' ? 'selected' : '' }}>Unggulan</option>
                         </select>
                     </div>
                 </div>
@@ -152,7 +152,7 @@
                     <div class="flex justify-end">
                         <a href="{{ route('client.products.category', $category) }}" 
                            class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            Clear all filters
+                            Hapus semua filter
                         </a>
                     </div>
                 @endif
@@ -167,7 +167,7 @@
                     Showing {{ $products->firstItem() }} to {{ $products->lastItem() }} of {{ $products->total() }} products in {{ $category->name }}
                 </div>
                 <div class="flex items-center space-x-2">
-                    <span class="text-sm text-gray-500 dark:text-gray-400">View:</span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Lihat:</span>
                     <button onclick="toggleGridView('grid')" id="grid-btn" 
                             class="p-2 rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -183,7 +183,7 @@
                 </div>
             </div>
 
-            <!-- Products Grid View -->
+            <!-- Products Grid Lihat -->
             <div id="products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 @foreach($products as $product)
                     <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-all duration-200 group">
@@ -202,16 +202,16 @@
                                 </div>
                             @endif
 
-                            <!-- Featured Badge -->
+                            <!-- Unggulan Badge -->
                             @if($product->featured)
                                 <div class="absolute top-3 left-3">
                                     <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                                        Featured
+                                        Unggulan
                                     </span>
                                 </div>
                             @endif
 
-                            <!-- Quick View Button -->
+                            <!-- Quick Lihat Button -->
                             <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                 <a href="{{ route('client.products.show', $product) }}" 
                                    class="bg-white dark:bg-gray-800 p-2 rounded-full shadow-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
@@ -256,7 +256,7 @@
                                     </div>
                                 @else
                                     <span class="text-lg font-medium text-yellow-600 dark:text-yellow-400">
-                                        Quote Required
+                                        Perlu Penawaran
                                     </span>
                                 @endif
                             </div>
@@ -270,7 +270,7 @@
                                         </span>
                                     @else
                                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                                            Out of stock
+                                            Stok Tidak Tersedia
                                         </span>
                                     @endif
                                 </div>
@@ -285,7 +285,7 @@
                                         <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"></path>
                                         </svg>
-                                        Add to Keranjang
+                                        Tambahkan ke Keranjang
                                     </button>
                                 @else
                                     <a href="{{ route('client.quotations.create', ['product_id' => $product->id]) }}" 
@@ -296,7 +296,7 @@
                                 
                                 <a href="{{ route('client.products.show', $product) }}" 
                                    class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm">
-                                    View
+                                    Lihat
                                 </a>
                             </div>
                         </div>
@@ -304,7 +304,7 @@
                 @endforeach
             </div>
 
-            <!-- Products List View (Hidden by default) -->
+            <!-- Products List Lihat (Hidden by default) -->
             <div id="products-list" class="hidden space-y-4">
                 @foreach($products as $product)
                     <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
@@ -365,7 +365,7 @@
                                                 </div>
                                             @else
                                                 <span class="text-lg font-medium text-yellow-600 dark:text-yellow-400">
-                                                    Quote Required
+                                                    Perlu Penawaran
                                                 </span>
                                             @endif
                                         </div>
@@ -401,7 +401,7 @@
                                             
                                             <a href="{{ route('client.products.show', $product) }}" 
                                                class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">
-                                                View Details
+                                                Lihat Details
                                             </a>
                                         </div>
                                     </div>
@@ -437,7 +437,7 @@
                         </a>
                         <a href="{{ route('client.products.index') }}" 
                            class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">
-                            Browse All Products
+                            Jelajahi Semua Produk
                         </a>
                     </div>
                 </div>
@@ -462,8 +462,8 @@
                 listBtn.classList.add('text-gray-400', 'hover:bg-gray-100', 'dark:hover:bg-gray-700');
                 listBtn.classList.remove('bg-blue-100', 'text-blue-600', 'dark:bg-blue-900', 'dark:text-blue-300');
             } else {
-                gridView.classList.add('hidden');
-                listView.classList.remove('hidden');
+                gridLihat.classList.add('hidden');
+                listLihat.classList.remove('hidden');
                 listBtn.classList.add('bg-blue-100', 'text-blue-600', 'dark:bg-blue-900', 'dark:text-blue-300');
                 listBtn.classList.remove('text-gray-400', 'hover:bg-gray-100', 'dark:hover:bg-gray-700');
                 gridBtn.classList.add('text-gray-400', 'hover:bg-gray-100', 'dark:hover:bg-gray-700');

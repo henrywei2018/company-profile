@@ -1,11 +1,11 @@
 
-<x-layouts.client title="Notifications">
+<x-layouts.client title="Notifikasi">
     
     <!-- Page Header -->
     <div class="mb-8">
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Notifications</h1>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Notifikasi</h1>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
                     Stay updated with your projects and activities.
                 </p>
@@ -79,7 +79,7 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">This Week</dt>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Minggu Ini</dt>
                             <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ $statistics['this_week'] }}</dd>
                         </dl>
                     </div>
@@ -99,7 +99,7 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Today</dt>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Hari Ini</dt>
                             <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ $statistics['today'] }}</dd>
                         </dl>
                     </div>
@@ -108,10 +108,10 @@
         </div>
     </div>
 
-    <!-- Simple Notifications List -->
+    <!-- Simple Notifikasi List -->
     <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 class="text-lg font-medium text-gray-900 dark:text-white">All Notifications</h2>
+            <h2 class="text-lg font-medium text-gray-900 dark:text-white">Semua Notifikasi</h2>
         </div>
         
         <div class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -196,7 +196,7 @@
             if (data.success) {
                 location.reload();
             } else {
-                alert('Failed to mark notifications as read');
+                alert('Gagal menandai notifikasi');
             }
         })
         .catch(error => {

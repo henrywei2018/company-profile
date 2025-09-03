@@ -17,7 +17,7 @@
                         <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"></path>
                     </svg>
                     <a href="{{ route('client.projects.index') }}" class="ml-1 md:ml-2 text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white transition-colors duration-200">
-                        My Projects
+                        Proyek Saya
                     </a>
                 </div>
             </li>
@@ -137,7 +137,7 @@
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                         </svg>
-                        Print
+                        Cetak
                     </button>
                 </div>
             </div>
@@ -171,7 +171,7 @@
                                     </div>
                                     @if($image->is_featured)
                                         <div class="absolute top-2 left-2">
-                                            <span class="bg-orange-500 text-white px-2 py-1 rounded text-xs font-medium">Featured</span>
+                                            <span class="bg-orange-500 text-white px-2 py-1 rounded text-xs font-medium">Unggulan</span>
                                         </div>
                                     @endif
                                 </div>
@@ -207,7 +207,7 @@
                                 </div>
                                 <div>
                                     <div class="text-2xl font-bold text-green-600">{{ $progress['completed_milestones'] }}</div>
-                                    <div class="text-sm text-gray-500">Completed</div>
+                                    <div class="text-sm text-gray-500">Selesai</div>
                                 </div>
                                 <div>
                                     <div class="text-2xl font-bold text-blue-600">{{ $progress['in_progress_milestones'] ?? 0 }}</div>
@@ -254,7 +254,7 @@
                                                 <span>Due: {{ $milestone->due_date->format('M d, Y') }}</span>
                                             @endif
                                             @if($milestone->completed_at)
-                                                <span class="ml-3 text-green-600">Completed: {{ $milestone->completed_at->format('M d, Y') }}</span>
+                                                <span class="ml-3 text-green-600">Selesai: {{ $milestone->completed_at->format('M d, Y') }}</span>
                                             @endif
                                         </div>
                                     </div>
@@ -291,7 +291,7 @@
                                             </div>
                                             <a href="{{ route('client.projects.files.download', [$project, $file]) }}" 
                                                class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-blue-600 bg-blue-100 hover:bg-blue-200 transition-colors duration-200">
-                                                Download
+                                                Unduh
                                             </a>
                                         </div>
                                     @endforeach
@@ -333,7 +333,7 @@
                     
                     @if($project->actual_completion_date)
                         <div>
-                            <div class="text-sm text-gray-500 dark:text-gray-400">Completed On</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">Selesai pada</div>
                             <div class="font-medium text-green-600">{{ $project->actual_completion_date->format('M d, Y') }}</div>
                         </div>
                     @endif
