@@ -5,9 +5,9 @@
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Edit Testimonial</h1>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Ubah Testimoni</h1>
                     <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                        Update your testimonial. After editing, it will be reviewed again by our team.
+                        Perbarui testimoni Anda. Setelah diedit, testimoni akan ditinjau kembali oleh tim kami.
                     </p>
                     <!-- Status Badge -->
                     @php
@@ -24,7 +24,7 @@
                             {{ $config[1] }}
                         </span>
                         <span class="text-sm text-gray-500 dark:text-gray-400">
-                            Last updated: {{ $testimonial->updated_at->format('M d, Y \a\t g:i A') }}
+                            Update : {{ $testimonial->updated_at->format('M d, Y \a\t g:i A') }}
                         </span>
                     </div>
                 </div>
@@ -34,7 +34,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
-                    Kembali to Testimonials
+                    Kembali to Testimoni
                 </a>
             </div>
         </div>
@@ -49,11 +49,11 @@
                         </svg>
                     </div>
                     <div class="ml-3">
-                        <h3 class="text-sm font-medium text-red-800 dark:text-red-200">Testimonial Needs Revision</h3>
+                        <h3 class="text-sm font-medium text-red-800 dark:text-red-200">Testimoni Perlu Direvisi</h3>
                         <div class="mt-2 text-sm text-red-700 dark:text-red-300">
-                            <p>Your testimonial was reviewed and needs some improvements. Please update the content below and resubmit.</p>
+                            <p>Testimoni Anda telah ditinjau dan perlu diperbaiki. Harap perbarui konten di bawah ini dan kirimkan kembali.</p>
                             @if($testimonial->admin_notes)
-                                <p class="mt-2 font-medium">Admin feedback: {{ $testimonial->admin_notes }}</p>
+                                <p class="mt-2 font-medium">Tanggapan Admin: {{ $testimonial->admin_notes }}</p>
                             @endif
                         </div>
                     </div>
@@ -68,9 +68,9 @@
                         </svg>
                     </div>
                     <div class="ml-3">
-                        <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Under Review</h3>
+                        <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Direviu</h3>
                         <div class="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
-                            <p>Your testimonial is currently being reviewed by our team. You can still make changes if needed.</p>
+                            <p>Testimoni Anda saat ini sedang ditinjau oleh tim kami. Anda masih dapat melakukan perubahan jika diperlukan.</p>
                         </div>
                     </div>
                 </div>
@@ -87,11 +87,11 @@
                 <!-- Project Selection -->
                 <div>
                     <label for="project_id" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                        Related Project (Optional)
+                        Proyek Terkait (Optional)
                     </label>
                     <select name="project_id" id="project_id"
                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-300">
-                        <option value="">Select a project...</option>
+                        <option value="">Pilih Proyek...</option>
                         @foreach ($userProjects as $project)
                             <option value="{{ $project->id }}"
                                 {{ old('project_id', $testimonial->project_id) == $project->id ? 'selected' : '' }}>
@@ -108,14 +108,14 @@
                         <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                     @enderror
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        Link this testimonial to a specific project you worked on with us.
+                        Hubungkan testimonial ini ke proyek spesifik yang Anda kerjakan bersama kami.
                     </p>
                 </div>
 
                 <!-- Rating -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                        Your Rating <span class="text-red-500">*</span>
+                        Rating <span class="text-red-500">*</span>
                     </label>
                     <div class="flex items-center space-x-1">
                         @for ($i = 1; $i <= 5; $i++)
@@ -146,7 +146,7 @@
                 <!-- Testimonial Content -->
                 <div>
                     <label for="content" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                        Your Testimonial <span class="text-red-500">*</span>
+                        Testimoni <span class="text-red-500">*</span>
                     </label>
                     <textarea name="content" id="content" rows="6"
                         placeholder="Share your experience working with us. What did you like most? How did we help achieve your goals? What would you tell others about our services?"
@@ -156,7 +156,7 @@
                     @enderror
                     <div class="flex justify-between mt-1">
                         <p class="text-xs text-gray-500 dark:text-gray-400">
-                            Minimum 50 characters, maximum 1500 characters.
+                            Minimal 50 karakter, maksimal 1500 karakter.
                         </p>
                         <span id="char-count" class="text-xs text-gray-500 dark:text-gray-400">{{ strlen(old('content', $testimonial->content)) }}/1500</span>
                     </div>
@@ -166,7 +166,7 @@
                 @if($testimonial->image)
                     <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-3">
-                            Current Client Photo
+                            Foto Client
                         </label>
                         <div class="flex items-start space-x-4">
                             <div class="flex-shrink-0">
@@ -176,11 +176,11 @@
                             </div>
                             <div class="flex-1">
                                 <p class="text-sm text-gray-600 dark:text-gray-400">
-                                    Current photo will be replaced if you upload a new one below.
+                                    Foto saat ini akan diganti jika Anda mengunggah yang baru di bawah.
                                 </p>
                                 <button type="button" id="remove-current-image" 
                                         class="mt-2 text-sm text-red-600 hover:text-red-500">
-                                    Remove current photo
+                                    Hapus Foto
                                 </button>
                                 <input type="hidden" name="remove_image" id="remove_image" value="0">
                             </div>
@@ -251,7 +251,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
                             </svg>
-                            Update Testimonial
+                            Update Testimoni
                         </span>
                     </button>
                 </div>
@@ -271,7 +271,7 @@
                     <div class="ml-3 flex-1">
                         <h3 class="text-sm font-medium text-red-800 dark:text-red-200">Hapus Testimonial</h3>
                         <div class="mt-2 text-sm text-red-700 dark:text-red-300">
-                            <p>If this testimonial is no longer needed, you can delete it. This action cannot be undone.</p>
+                            <p>Jika testimonial ini tidak lagi diperlukan, Anda dapat menghapusnya. Tindakan ini tidak dapat dibatalkan.</p>
                         </div>
                         <div class="mt-4">
                             <form action="{{ route('client.testimonials.destroy', $testimonial) }}" method="POST" 

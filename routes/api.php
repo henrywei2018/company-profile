@@ -80,6 +80,17 @@ Route::prefix('posts')->name('api.posts.')->group(function () {
 Route::post('/contact', [ContactController::class, 'store'])->name('api.contact');
 Route::post('/quotation', [QuotationController::class, 'store'])->name('api.quotation');
 
+// Survey (Public)
+Route::prefix('survey')->name('api.survey.')->group(function () {
+    Route::post('/submit', [App\Http\Controllers\SurveyController::class, 'submit'])
+        ->middleware([
+            'survey.security', // Custom security middleware
+            'throttle:5,1', // 5 submissions per minute
+            'throttle:20,60' // 20 submissions per hour (additional protection)
+        ])
+        ->name('submit');
+});
+
 /*
 |--------------------------------------------------------------------------
 | Client Authenticated APIs
@@ -130,6 +141,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('api.admin.')->group
     Route::get('/dashboard', [DashboardController::class, 'getAnalyticsData'])->name('dashboard');
     Route::get('/stats', [DashboardController::class, 'getStats'])->name('stats');
     Route::post('/cache/clear', [DashboardController::class, 'clearCache'])->name('cache.clear');
+    
+    // Survey Management (Admin Only)
+    Route::prefix('surveys')->name('surveys.')->group(function () {
+        Route::get('/statistics', [App\Http\Controllers\SurveyController::class, 'statistics'])->name('statistics');
+        Route::get('/recent', [App\Http\Controllers\SurveyController::class, 'recent'])->name('recent');
+    });
     
     // Chat Management
     Route::prefix('chat')->name('chat.')->group(function () {

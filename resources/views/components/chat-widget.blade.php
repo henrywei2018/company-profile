@@ -306,6 +306,9 @@
                         </svg>
                         <div x-show="isSending" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     </button>
+                    <x-simple-whatsapp-widget 
+        phone-number="6281234567890"
+        message="Halo! Saya adalah klien {{ auth()->user()->name ?? 'pelanggan' }} dari {{ $companyProfile->company_name ?? config('app.name') }}. Ada yang ingin saya tanyakan." />
                 </div>
                 
                 <!-- Quick Actions -->
@@ -1016,6 +1019,7 @@ function chatWidget() {
                 }, 3000); // Wait 3 seconds after page load
             }
         },
+
 
         // Cleanup
         destroy() {

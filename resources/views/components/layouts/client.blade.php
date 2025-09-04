@@ -130,7 +130,10 @@
         :auto-open="false"
         :show-online-status="true"
         welcome-message="Halo! Ada yang bisa kami bantu?"
-        operator-name="Dukungan Pelanggan" />
+        operator-name="Dukungan Pelanggan"
+        :whatsapp-number="$socialMedia['whatsapp'] ?? $contactInfo['whatsapp'] ?? null"
+        :whatsapp-fallback-message="'Halo! Saya adalah klien ' . (auth()->user()->name ?? 'pelanggan') . ' dari ' . ($companyProfile->company_name ?? config('app.name')) . '. Ada yang ingin saya tanyakan.'" />
+
     
     <!-- ========== END MAIN CONTENT ========== -->
 <script>

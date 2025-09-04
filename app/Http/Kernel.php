@@ -25,6 +25,7 @@ class Kernel extends HttpKernel
 
     protected $routeMiddleware = [
         'auth' => \App\Http\Middleware\Authenticate::class,
+        'survey.security' => \App\Http\Middleware\SurveySecurityMiddleware::class,
         // ... etc
     ];
 }

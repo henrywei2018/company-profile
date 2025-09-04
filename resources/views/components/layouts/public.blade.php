@@ -158,17 +158,15 @@
         <x-public.footer />
     @endif
 
-    {{-- WhatsApp Floating Button --}}
-    @if($socialMedia['whatsapp'] ?? $contactInfo['whatsapp'] ?? false)
-        <x-public.whatsapp-button 
-            :number="$socialMedia['whatsapp'] ?? $contactInfo['whatsapp']"
-            :message="'Halo! Saya ingin menanyakan tentang layanan dari ' . ($companyProfile->company_name ?? config('app.name')) . '. Mohon informasinya. Terima kasih.'"
-            :show-tooltip="true"
-            :show-pulse="true" />
-    @endif
-
-    {{-- Scroll to Top Button --}}
-    <x-public.scroll-to-top />
+    {{-- Floating Widgets Stack (Vertical) --}}
+    <x-floating-widgets-stack 
+        position="bottom-right"
+        spacing="space-y-3"
+        :show-whatsapp="(bool)($socialMedia['whatsapp'] ?? $contactInfo['whatsapp'] ?? false)"
+        :show-survey="true"
+        :show-scroll-top="true"
+        :whatsapp-number="$socialMedia['whatsapp'] ?? $contactInfo['whatsapp'] ?? null"
+        :whatsapp-message="'Halo! Saya ingin menanyakan tentang layanan dari ' . ($companyProfile->company_name ?? config('app.name')) . '. Mohon informasinya. Terima kasih.'" />
 
     {{-- Scripts --}}
     @stack('scripts')
